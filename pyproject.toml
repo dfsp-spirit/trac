@@ -1,0 +1,31 @@
+[project]
+name = "o-timeusediary-backend"
+version = "0.1.0"
+description = "Backend for the o-timeusediary web form for time use research."
+authors = [
+    {name = "Tim Schäfer", email = "ts+code@rcmd.org"},
+]
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0", # Development server
+    "pydantic>=2.0.0",
+    "sqlmodel>=0.0.14",
+    "psycopg2-binary>=2.9.0", # PostgreSQL driver
+    "python-dotenv>=1.0.0", # For environment variable management
+    "gunicorn>=23.0.0", # Production WSGI server
+]
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "isort>=5.12.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/o_timeusediary_backend"]
