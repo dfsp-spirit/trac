@@ -1,0 +1,20 @@
+{
+  "studies": [
+    {
+      "name": "Default Study",
+      "name_short": "default",
+      "description": "Default study for time use research",
+      "entry_names": ["default"],
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true
+    },
+    {
+      "name": "Weekly Study",
+      "name_short": "weekly",
+      "description": "Study covering full week days",
+      "entry_names": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
+      "study_participant_ids": ["berndasbrot", "annasmith", "john_doe"],
+      "allow_unlisted_participants": false
+    }
+  ]
+}
