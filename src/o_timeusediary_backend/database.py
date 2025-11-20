@@ -11,10 +11,11 @@ logger = logging.getLogger(__name__)
 engine = create_engine(settings.database_url)
 
 
-def create_db_and_tables():
+def create_db_and_tables(do_report_contents: bool = False):
     SQLModel.metadata.create_all(engine)
     create_default_studies(settings.studies_config_path)
-    report_on_db_contents()
+    if do_report_contents:
+        report_on_db_contents()
 
 def report_on_db_contents():
     """Report on existing studies and their entry names in the database"""

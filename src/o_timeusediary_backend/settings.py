@@ -11,6 +11,7 @@ class TUDBackendSettings:
         # Backend-specific settings
         self.debug = True if os.getenv("TUD_DEBUG", "false").lower() == "true" else False
         self.studies_config_path: str = os.getenv("TUD_STUDIES_CONFIG_PATH", "studies_config.json")
+        self.print_db_contents_on_startup = True if os.getenv("TUD_REPORT_DB_CONTENTS_ON_STARTUP", "false").lower() == "true" else False
 
     # Environment-dependent settings as properties
     @property

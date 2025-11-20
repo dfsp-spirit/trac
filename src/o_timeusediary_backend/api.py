@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
         print(f"Debug mode enabled.")
 
     logger.info("Running on_startup tasks...")
-    create_db_and_tables()
+    create_db_and_tables(settings.print_db_contents_on_startup)
 
     yield
     # Shutdown
@@ -172,11 +172,11 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
     )
 
 
-@app.get("/")
+@app.get("/api")
 def root():
     return {"message": "TUD API is running"}
 
-@app.get("/health")
+@app.get("/api/health")
 def health_check(session: Session = Depends(get_session)):
     count = session.exec(select(TimeuseEntry)).all()
     return {"status": "healthy", "entries_count": len(count)}
@@ -185,7 +185,7 @@ def health_check(session: Session = Depends(get_session)):
 
 
 
-@app.post("/timeline/submit", response_model=TimeuseEntryRead)
+@app.post("/api/timeline/submit", response_model=TimeuseEntryRead)
 async def submit_timeline_data(
     entry_data: TimeuseEntryCreate,
     session: Session = Depends(get_session)
@@ -281,7 +281,7 @@ def get_valid_entry_indices(session: Session, study_id: int) -> List[Tuple[int, 
     return [(en.entry_index, en.entry_name) for en in entry_names]
 
 # Study management endpoints
-@app.post("/studies/", response_model=StudyRead)
+@app.post("/api/studies/", response_model=StudyRead)
 async def create_study(study: StudyCreate, session: Session = Depends(get_session)):
     existing = session.exec(
         select(Study).where(Study.name_short == study.name_short)
@@ -308,7 +308,7 @@ async def create_study(study: StudyCreate, session: Session = Depends(get_sessio
 
     return db_study
 
-@app.post("/studies/{study_id}/entry_names", response_model=StudyEntryNameRead)
+@app.post("/api/studies/{study_id}/entry_names", response_model=StudyEntryNameRead)
 async def add_study_entry_name(
     study_id: int,
     entry_name: StudyEntryNameCreate,
@@ -349,7 +349,7 @@ async def add_study_entry_name(
     return db_entry_name
 
 
-@app.get("/studies/{study_id}/entry_names", response_model=List[StudyEntryNameRead])
+@app.get("/api/studies/{study_id}/entry_names", response_model=List[StudyEntryNameRead])
 async def get_study_entry_names(study_id: int, session: Session = Depends(get_session)):
     study = session.get(Study, study_id)
     if not study:
@@ -361,7 +361,7 @@ async def get_study_entry_names(study_id: int, session: Session = Depends(get_se
     return entry_names
 
 
-@app.get("/timeline/entries", response_model=List[TimeuseEntryRead])
+@app.get("/api/timeline/entries", response_model=List[TimeuseEntryRead])
 async def get_timeline_entries(
     participant_id: str = Query(..., description="Participant ID"),
     study_name_short: str = Query(..., description="Study short name"),
