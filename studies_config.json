@@ -3,18 +3,24 @@
     {
       "name": "Default Study",
       "name_short": "default",
-      "description": "Default study for time use research",
+      "description": "Default study for time use research for one day",
       "entry_names": ["default"],
       "study_participant_ids": [],
-      "allow_unlisted_participants": true
+      "allow_unlisted_participants": true,
+      "activities_json_url": "https://example.com/activities_default.json",
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
     },
     {
       "name": "Weekly Study",
       "name_short": "weekly",
-      "description": "Study covering full week days",
+      "description": "Study covering a full week",
       "entry_names": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"],
-      "study_participant_ids": ["berndasbrot", "annasmith", "john_doe"],
-      "allow_unlisted_participants": false
+      "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
+      "allow_unlisted_participants": false,
+      "activities_json_url": "https://example.com/activities_weekly.json",
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
     }
   ]
 }
