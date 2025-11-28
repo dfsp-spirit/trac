@@ -23,7 +23,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 from . settings import settings
-from .models import Activity, Study, Timeline, DayLabel, StudyParticipant
+from .models import Activity, Study, Timeline, DayLabel, StudyParticipant, Participant
 from .database import get_session, create_db_and_tables
 
 
@@ -183,6 +183,18 @@ def health_check(session: Session = Depends(get_session)):
     return {"status": "healthy", "entries_count": len(count)}
 
 
+@app.get("/api/debug/routes")
+def debug_routes():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "path") and "/api/studies" in route.path:
+            routes.append({
+                "path": route.path,
+                "methods": getattr(route, "methods", []),
+                "name": getattr(route, "name", "")
+            })
+    return {"routes": routes}
+
 @app.get("/api/studies/{study_name_short}/activities-config")
 def get_study_activities_config(
     study_name_short: str,
@@ -266,6 +278,7 @@ def compute_activity_path(activity_item: ActivitySubmitItem) -> str:
 
     return " > ".join(parts)
 
+
 @app.post("/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities")
 def submit_activities(
     study_name_short: str,
@@ -285,8 +298,9 @@ def submit_activities(
     if not study:
         raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
 
-    # Validate participant is allowed for this study
+    # Validate/Create participant based on study settings
     if not study.allow_unlisted_participants:
+        # Study restricts participants - check if they're in the allowed list
         study_participant = session.exec(
             select(StudyParticipant).where(
                 StudyParticipant.study_id == study.id,
@@ -298,6 +312,32 @@ def submit_activities(
                 status_code=403,
                 detail=f"Participant '{participant_id}' not authorized for this study"
             )
+    else:
+        # Study allows unlisted participants - ensure participant exists and is linked to study
+        participant = session.exec(
+            select(Participant).where(Participant.id == participant_id)
+        ).first()
+
+        if not participant:
+            # Create the participant since they don't exist yet
+            participant = Participant(id=participant_id)
+            session.add(participant)
+            session.flush()
+
+        # Ensure participant is linked to study (for tracking)
+        study_participant = session.exec(
+            select(StudyParticipant).where(
+                StudyParticipant.study_id == study.id,
+                StudyParticipant.participant_id == participant_id
+            )
+        ).first()
+
+        if not study_participant:
+            study_participant = StudyParticipant(
+                study_id=study.id,
+                participant_id=participant_id
+            )
+            session.add(study_participant)
 
     # Validate day label exists for this study
     day_label = session.exec(
@@ -360,15 +400,7 @@ def submit_activities(
                 )
 
             # Create one activity record for each selected code
-            for code_str in activity_item.codes:
-                try:
-                    code = int(code_str)
-                except (ValueError, TypeError):
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Invalid activity code '{code_str}' for timeline '{activity_item.timeline_key}'"
-                    )
-
+            for code in activity_item.codes:  # Now codes are already integers
                 activity = Activity(
                     study_id=study.id,
                     participant_id=participant_id,
@@ -377,7 +409,8 @@ def submit_activities(
                     activity_code=code,
                     start_minutes=activity_item.start_minutes,
                     end_minutes=activity_item.end_minutes,
-                    custom_input=None
+                    activity_name=activity_item.activity,
+                    activity_path_frontend=compute_activity_path(activity_item),
                 )
                 session.add(activity)
                 created_activities.append(activity)
