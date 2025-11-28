@@ -82,7 +82,7 @@ def report_on_db_contents():
             logger.info(f"  Activity: participant='{participant_id}', study='{study_name_short}', "
                        f"day='{day_label_name}', timeline='{timeline_name}', "
                        f"activity_code={activity.activity_code}, time={activity.start_minutes}-{activity.end_minutes}min, "
-                       f"custom_input='{activity.custom_input}'")
+                       f"activity_name='{activity.activity_name}'")
 
         if len(activities) > 10:
             logger.info(f"  ... and {len(activities) - 10} more activities")
