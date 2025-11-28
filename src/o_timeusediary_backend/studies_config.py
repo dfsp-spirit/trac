@@ -6,18 +6,18 @@ import json
 from pathlib import Path
 import re
 
-class CfgFileStudyEntryConfig(BaseModel):
+class CfgFileDayLabel(BaseModel):
     entry_index: int
     entry_name: str
 
-class CfgFileStudyConfig(BaseModel):
+class CfgFileStudy(BaseModel):
     name: str
     name_short: str
     description: Optional[str] = None
-    entry_names: List[str]  # Simplified - will be converted to CfgFileStudyEntryConfig
+    day_labels: List[str]  # Simplified - will be converted to CfgFileDayLabel
     study_participant_ids: List[str] = []
     allow_unlisted_participants: bool = True
-    activities_json_url: str = None
+    activities_json_file: str = None
     data_collection_start: str = None  # ISO 8601 date string
     data_collection_end: str = None    # ISO 8601 date string
 
@@ -50,12 +50,20 @@ class CfgFileStudyConfig(BaseModel):
                 raise ValueError(f'Date "{v}" is not in valid ISO 8601 format (e.g., 2024-01-01T00:00:00Z)')
         return v
 
+    @validator('activities_json_file')
+    def validate_activities_json_file(cls, v):
+        if v is not None and not isinstance(v, str):
+            raise ValueError('activities_json_file must be a string')
+        if v is not None and v.strip() == "":
+            raise ValueError('activities_json_file cannot be an empty string')
+        return v
 
 
-class CfgFileStudiesConfig(BaseModel):
-    studies: List[CfgFileStudyConfig]
 
-def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
+class CfgFileStudies(BaseModel):
+    studies: List[CfgFileStudy]
+
+def load_studies_config(config_path: str) -> CfgFileStudies:
     """Load studies configuration from YAML or JSON file"""
 
     config_path = Path(config_path)
@@ -72,4 +80,5 @@ def load_studies_config(config_path: str) -> CfgFileStudiesConfig:
     else:
         raise ValueError(f"Unsupported config file format: {config_path.suffix}")
 
-    return CfgFileStudiesConfig(**data)
+    return CfgFileStudies(**data)
+
