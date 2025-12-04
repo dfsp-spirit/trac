@@ -43,8 +43,6 @@ async def lifespan(app: FastAPI):
     logger.info("Running on_startup tasks...")
     create_db_and_tables(settings.print_db_contents_on_startup)
 
-    # Shutdown
-    logger.info("TUD Backend shutting down")
     yield
 
 
