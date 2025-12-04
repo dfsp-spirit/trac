@@ -28,6 +28,20 @@ class TUDBackendSettings:
             raise ValueError("TUD_ALLOWED_ORIGINS environment variable is not set. Please set a JSON array of allowed origins.")
         return origins
 
+    @property
+    def admin_username(self):
+        username = os.getenv("TUD_API_ADMIN_USERNAME")
+        if not username:
+            raise ValueError("TUD_API_ADMIN_USERNAME environment variable is not set.")
+        return username
+
+    @property
+    def admin_password(self):
+        password = os.getenv("TUD_API_ADMIN_PASSWORD")
+        if not password:
+            raise ValueError("TUD_API_ADMIN_PASSWORD environment variable is not set.")
+        return password
+
 
 settings = TUDBackendSettings()
 

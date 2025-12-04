@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import logging
 import uuid
 from typing import List, Optional, Tuple
@@ -15,9 +17,9 @@ from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from urllib.parse import urlparse
 import sys, argparse
-
+from fastapi.templating import Jinja2Templates
 from .activities_config import load_activities_config
-
+import secrets
 from .logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -25,12 +27,19 @@ logger = logging.getLogger(__name__)
 from . settings import settings
 from .models import Activity, Study, Timeline, DayLabel, StudyParticipant, Participant
 from .database import get_session, create_db_and_tables
-
+from pathlib import Path
 from .api_deps.activities import (
     validate_activity_code_dependency,
     get_activity_info_dependency,
     get_study_activity_codes
 )
+
+security = HTTPBasic()
+
+# Initialize templates with absolute path
+current_dir = Path(__file__).parent
+templates = Jinja2Templates(directory=str(current_dir / "templates"))
+static_dir = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -56,6 +65,36 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Operation"] # custom header to tell frontend on submit if the entry was created or updated.
 )
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    favicon_path = static_dir / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(favicon_path)
+    return Response(status_code=204)
+
+def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(
+        credentials.username,
+        settings.admin_username
+    )
+    correct_password = secrets.compare_digest(
+        credentials.password,
+        settings.admin_password
+    )
+
+    if not (correct_username and correct_password):
+        logger.info(f"Failed admin authentication attempt for user '{credentials.username}'")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+    logger.info(f"Admin '{credentials.username}' authenticated successfully.")
+
+    return credentials.username
+
 
 
 
