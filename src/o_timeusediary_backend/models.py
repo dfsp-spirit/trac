@@ -1,14 +1,17 @@
 from sqlmodel import SQLModel, Field, Relationship, JSON, Column
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from sqlalchemy import Text
+
+from .utils import utc_now
+
 
 class Participant(SQLModel, table=True):
     __tablename__ = "participants"
 
     id: str = Field(primary_key=True)  # External ID like "bernddasbrot", "annasmith"
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     study_associations: List["StudyParticipant"] = Relationship(back_populates="participant")
@@ -25,7 +28,7 @@ class Study(SQLModel, table=True):
     activities_json_url: str
     data_collection_start: datetime
     data_collection_end: datetime
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     day_labels: List["DayLabel"] = Relationship(back_populates="study")
@@ -69,7 +72,7 @@ class StudyParticipant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
     participant_id: str = Field(foreign_key="participants.id")
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     study: Study = Relationship(back_populates="participants")
@@ -95,7 +98,7 @@ class Activity(SQLModel, table=True):
     parent_activity_code: Optional[int] = Field(default=None, index=True)
 
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
 
     # Relationships
     study: Study = Relationship(back_populates="activities")

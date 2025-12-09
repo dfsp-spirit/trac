@@ -41,6 +41,7 @@ import json
 from io import StringIO
 from typing import Optional
 
+from .utils import utc_now
 
 security = HTTPBasic()
 
@@ -729,7 +730,7 @@ async def admin_overview(
             "total_participants": total_participants,
             "total_activities_all": total_activities_all,
             "recent_activities": enriched_recent_activities,
-            "current_time": datetime.utcnow()
+            "current_time": utc_now()
         }
     )
 
@@ -856,7 +857,7 @@ async def export_study_activities(
         export_data.append(record)
 
     # Generate filename with timestamp
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = utc_now().strftime("%Y%m%d_%H%M%S")
     filename = f"{study_name_short}_activities_{timestamp}"
 
     if format.lower() == "json":
@@ -900,7 +901,7 @@ def export_json(data: list, filename: str) -> Response:
     # Create JSON response
     response_data = {
         "metadata": {
-            "export_timestamp": datetime.utcnow().isoformat(),
+            "export_timestamp": utc_now().isoformat(),
             "total_records": len(data),
             "format": "json",
             "version": "1.0"

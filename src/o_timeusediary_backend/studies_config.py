@@ -17,9 +17,9 @@ class CfgFileStudy(BaseModel):
     day_labels: List[str]  # Simplified - will be converted to CfgFileDayLabel
     study_participant_ids: List[str] = []
     allow_unlisted_participants: bool = True
-    activities_json_file: str = None
-    data_collection_start: str = None  # ISO 8601 date string
-    data_collection_end: str = None    # ISO 8601 date string
+    activities_json_file: str = str
+    data_collection_start: str = str  # ISO 8601 date string
+    data_collection_end: str = str    # ISO 8601 date string
 
     @validator('name_short')
     def validate_name_short(cls, v):
