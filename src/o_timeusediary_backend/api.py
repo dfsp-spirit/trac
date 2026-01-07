@@ -229,8 +229,8 @@ def root():
 
 @app.get("/api/health")
 def health_check(session: Session = Depends(get_session)):
-    count = session.exec(select(Activity)).all()
-    return {"status": "healthy", "entries_count": len(count)}
+    activities = session.exec(select(Activity)).all()
+    return {"status": "healthy", "entries_count": len(activities)}
 
 
 @app.get("/api/debug/routes")
@@ -924,7 +924,7 @@ async def export_study_activities(
 
 def export_csv(data: list, filename: str, include_metadata: bool, include_path: bool) -> Response:
     """
-    Export data as CSV with proper headers.
+    Export data as CSV with proper headers. Used in admin interface.
     """
     if not data:
         raise HTTPException(status_code=404, detail="No data to export")
@@ -957,7 +957,7 @@ def export_csv(data: list, filename: str, include_metadata: bool, include_path: 
 
 def export_json(data: list, filename: str) -> Response:
     """
-    Export data as JSON with pretty formatting.
+    Export data as JSON with pretty formatting. Used in admin interface.
     """
     if not data:
         raise HTTPException(status_code=404, detail="No data to export")
@@ -1082,5 +1082,59 @@ def get_participant_day_activities(
         "total_activities": len(response_activities),
         "activities": response_activities
     }
+
+
+class ActiveOpenStudyResponse(BaseModel):
+    name_short: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+@app.get("/api/active_open_study_names", response_model=List[ActiveOpenStudyResponse])
+async def get_active_open_study_names(
+    session: Session = Depends(get_session)
+):
+    """
+    Public endpoint (no authentication required) that returns a list of all studies
+    that:
+    1. Have allow_unlisted_participants set to True
+    2. Are currently active (current date is between data_collection_start and data_collection_end)
+
+    Each study object includes name_short, name, and description fields.
+    Returns empty list if no studies match criteria.
+    """
+    try:
+        # Get current UTC time
+        now = utc_now()
+
+        # Query for studies that match both criteria
+        studies = session.exec(
+            select(Study).where(
+                Study.allow_unlisted_participants == True,
+                Study.data_collection_start <= now,
+                Study.data_collection_end >= now
+            ).order_by(Study.name_short)  # Optional: order alphabetically
+        ).all()
+
+        # Create response objects with the required fields
+        study_responses = [
+            ActiveOpenStudyResponse(
+                name_short=study.name_short,
+                name=study.name,
+                description=study.description
+            )
+            for study in studies
+        ]
+
+        logger.info(f"Found {len(study_responses)} active open studies")
+
+        return study_responses
+
+    except Exception as e:
+        logger.error(f"Error fetching active open study names: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching study information"
+        )
 
 
