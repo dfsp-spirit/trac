@@ -878,7 +878,7 @@ async def export_study_activities(
         # Base data that everyone wants
         record = {
             # Core activity data
-            "activity_id": activity.id,
+            "activity_id_backend": activity.id,
             "activity_code": activity.activity_code,
             "activity_name": activity.activity_name,
             "start_time": f"{start_hour:02d}:{start_minute:02d}",
@@ -1095,8 +1095,10 @@ def get_participant_day_activities(
 
             # Metadata
             "created_at": activity.created_at.isoformat(),
-            "activity_id": activity.id
+            "activity_id_backend": activity.id
         })
+
+    print(f"Returning activities (by day name) for participant '{participant_id}', study '{study_name_short}', day label name '{day_label_name}':", response_activities)
 
     return {
         "study": study_name_short,
@@ -1203,8 +1205,10 @@ def get_participant_day_activities_by_index(
 
             # Metadata
             "created_at": activity.created_at.isoformat(),
-            "activity_id": activity.id
+            "activity_id_backend": activity.id
         })
+
+    print(f"Returning activities (by day index) for participant '{participant_id}', study '{study_name_short}', day label index '{day_label_index}':", response_activities)
 
     return {
         "study": study_name_short,
