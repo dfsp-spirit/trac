@@ -10,7 +10,7 @@ Group=tuduser
 WorkingDirectory=/opt/tud-backend/
 Environment=PATH=/opt/tud-backend/.venv/bin
 Environment=UV_CACHE_DIR=/var/cache/tud-user
-ExecStart=/opt/tud-backend/.venv/bin/gunicorn -c gunicorn_conf.py timeusediary_backend.api:app
+ExecStart=/opt/tud-backend/.venv/bin/gunicorn -c gunicorn_conf.py o_timeusediary_backend.api:app
 Restart=always
 RestartSec=10
 TimeoutStopSec=30
