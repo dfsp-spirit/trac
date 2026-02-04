@@ -1,0 +1,34 @@
+o-timeusediary MPIAE Changes
+============================
+
+
+Current WIP
+-----------
+
+Version 0.5.0 -- First deployed version
+---------------------------------------
+* NEW: support rootpath setting for FastAPI
+* NEW: support saving color of activities in database
+* NEW: report version on startup
+
+
+Version 0.4.1 -- admin infrastructure
+---------------------------------------
+* BRK: unify endpoints for getting activities from database by index vs by name into one
+* NEW: adapt activities in cfg
+* NEW: add endpoints to get study info
+* NEW: validate many settings, both in cfg file and on API usage
+* NEW: add admin pages
+
+
+Version 0.4.0 -- Backend save data support
+------------------------------------------
+* NEW: API endpoint to send data to backend works and saves
+* NEW: add data retrieval endpoint
+* FIX: move various global setting to study-specific settings
+
+
+Version 0.3.0 -- Fix case mismatch frontend - backend
+------------------------------------------------------
+* FIX: create mapping between frontend and backend data field names (snake_case vs CamelCase)
+* add dev setup
