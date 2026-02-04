@@ -29,6 +29,10 @@ class TUDBackendSettings:
         return origins
 
     @property
+    def rootpath(self):
+        return os.getenv("TUD_ROOTPATH", "/")
+
+    @property
     def admin_username(self):
         username = os.getenv("TUD_API_ADMIN_USERNAME")
         if not username:

@@ -24,7 +24,7 @@ from .logging_config import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-from . settings import settings
+from .settings import settings
 from .models import Activity, Study, Timeline, DayLabel, StudyParticipant, Participant
 from .database import get_session, create_db_and_tables
 from pathlib import Path
@@ -54,8 +54,8 @@ templates = Jinja2Templates(directory=str(current_dir / "templates"))
 static_dir = Path(__file__).parent / "static"
 
 # get version from __init__.py
-import timeusediary_backend
-tud_version = timeusediary_backend.__version__
+import o_timeusediary_backend
+tud_version = o_timeusediary_backend.__version__
 
 
 @asynccontextmanager
@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Timeusediary (TUD) API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Timeusediary (TUD) API", version=tud_version, root_path=settings.rootpath, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
