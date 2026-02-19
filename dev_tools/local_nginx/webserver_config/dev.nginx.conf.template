@@ -34,7 +34,7 @@ http {
             alias FRONTENDREPOPATH/favicon.ico;
         }
 
-        location /rate/ {
+        location /report/ {
             alias FRONTENDREPOPATH/;
 
             # Try to serve the requested file, if not found serve index.html
