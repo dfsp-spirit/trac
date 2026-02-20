@@ -63,6 +63,7 @@ cd "$NGINX_CONF_DIR" || { echo -e "❌ Failed to change directory to $NGINX_CONF
 NGINX_CONF_FILE="./dev.nginx.conf"
 ./replace_home.sh dev.nginx.conf.template "$NGINX_CONF_FILE" "$GIT_FRONTEND_REPO_PATH" "$GIT_BACKEND_REPO_PATH" || { echo -e "❌ Failed to create nginx configuration file from template"; exit 1; }
 
+sed -i '1i# THIS FILE IS AUTO-GENERATED FROM THE TEMPLATE ON EACH START. DO NOT EDIT!' "$NGINX_CONF_FILE"
 
 if [ ! -f "$NGINX_CONF_FILE" ]; then
     echo -e "❌ nginx configuration file not found at $NGINX_CONF_FILE in current working directory $(pwd)"
