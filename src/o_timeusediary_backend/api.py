@@ -1065,6 +1065,12 @@ def export_json(data: list, filename: str) -> Response:
     return response
 
 
+def timelines_to_json(timelines: List[Timeline]) -> List[dict]:
+    """Convert list of Timeline objects to JSON list with selected fields."""
+    return [
+        timeline.dict(include={"name", "display_name", "mode", "min_coverage"})
+        for timeline in timelines
+    ]
 
 @app.get("/api/studies/{study_name_short}/participants/{participant_id}/activities")
 def get_participant_day_activities(
@@ -1157,7 +1163,9 @@ def get_participant_day_activities(
             )
 
     study_timelines : List[Timeline] = get_timelines_for_study(study.id)
+    study_timelines_json = timelines_to_json(study_timelines)
     study_timelines_names = [t.name for t in study_timelines]
+
 
     # Get all activities for this participant and day label
     activities = session.exec(
@@ -1287,7 +1295,7 @@ def get_participant_day_activities(
         "day_label_id": day_label.id,
         "day_label_index": day_label.display_order,
         "day_display_name": day_label.display_name,
-        "timelines_in_study": study_timelines_names,
+        "timelines_in_study": study_timelines_json,
         "total_activities": len(response_activities),
         "total_timelines": len(study_timelines_names),
         "total_timelines_with_activities": len(set([a['timeline_key'] for a in response_activities])),
