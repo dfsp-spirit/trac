@@ -28,7 +28,7 @@ class TimelineConfig(BaseModel):
     name: str
     description: Optional[str] = None
     mode: str  # "single-choice" or "multiple-choice"
-    min_coverage: Optional[str] = None  # String because it can be "10" or "0"
+    min_coverage: Optional[int] = None
     categories: List[ActivityCategory]
 
     @field_validator('mode')
@@ -37,6 +37,13 @@ class TimelineConfig(BaseModel):
         valid_modes = ['single-choice', 'multiple-choice']
         if v not in valid_modes:
             raise ValueError(f'Timeline mode must be one of {valid_modes}, got "{v}"')
+        return v
+
+    @field_validator('min_coverage')
+    @classmethod
+    def validate_min_coverage(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and (v < 0 or v > 1440):
+            raise ValueError(f'min_coverage must be between 0 and 1440, got {v}') # day has 1440 minutes
         return v
 
 class GeneralConfig(BaseModel):
