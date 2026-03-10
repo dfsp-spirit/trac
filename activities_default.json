@@ -317,7 +317,7 @@
               {
                 "name": "Shopping / Errands",
                 "code": 1162,
-                "label": "Shopping or running errands outside",
+                "label": "Shopping or running errands",
                 "short": "shopping out",
                 "vshort": "shop",
                 "color": "#EE82EE"
