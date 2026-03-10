@@ -33,6 +33,7 @@ def report_on_db_contents():
             logger.info(f"Study: {study.name} (short: {study.name_short}, id: {study.id})")
             logger.info(f"  Description: {study.description}")
             logger.info(f"  Allow unlisted: {study.allow_unlisted_participants}")
+            logger.info(f"  Default language: {study.default_language}")
             logger.info(f"  Data collection: {study.data_collection_start} to {study.data_collection_end}")
 
             # Report day labels

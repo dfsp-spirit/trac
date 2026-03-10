@@ -1383,6 +1383,7 @@ class StudyConfigResponse(BaseModel):
     allow_unlisted_participants: bool
     data_collection_start: datetime
     data_collection_end: datetime
+    default_language: str
     activities_json_url: str
     timelines: List[TimelineConfigResponse]
     day_labels: List[DayLabelConfigResponse]
@@ -1493,6 +1494,7 @@ def get_study_config(
         allow_unlisted_participants=study.allow_unlisted_participants,
         data_collection_start=study.data_collection_start,
         data_collection_end=study.data_collection_end,
+        default_language=study.default_language,
         activities_json_url=study.activities_json_url,
         timelines=timeline_responses,
         day_labels=day_label_responses,

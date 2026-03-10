@@ -15,6 +15,7 @@
         ],
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
+      "default_language": "en",
       "activities_json_file": "activities_default.json",
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z"
@@ -34,6 +35,7 @@
         ],
       "study_participant_ids": ["bernddasbrot", "annasmith", "john_doe"],
       "allow_unlisted_participants": false,
+      "default_language": "en",
       "activities_json_file": "activities_weekly.json",
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z"
