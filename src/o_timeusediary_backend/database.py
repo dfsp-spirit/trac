@@ -122,6 +122,7 @@ def create_config_file_studies(config_path: str):
                     name_short=study_config.name_short,
                     description=study_config.description,
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
+                    default_language=study_config.default_language,
                     activities_json_url=study_config.activities_json_file,
                     data_collection_start=study_config.data_collection_start,
                     data_collection_end=study_config.data_collection_end

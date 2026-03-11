@@ -61,16 +61,20 @@ class CfgFileStudy(BaseModel):
 
     @model_validator(mode='after')
     def validate_default_language(self) -> 'CfgFileStudy':
-        """Validate that default_language is one of the supported language codes."""
-        allowed_languages = {"de", "en", "fr", "sv"}
+        """Validate that default_language is a 2-letter lowercase ASCII string."""
+        import re
 
-        if self.default_language not in allowed_languages:
+        if not isinstance(self.default_language, str):
+            raise ValueError("default_language must be a string")
+
+        if not re.match(r'^[a-z]{2}$', self.default_language):
             raise ValueError(
-                f'default_language "{self.default_language}" is not supported. '
-                f'Must be one of: {", ".join(sorted(allowed_languages))}'
+                f'default_language "{self.default_language}" is invalid. '
+                f'Must be a 2-letter lowercase ASCII string (a-z).'
             )
 
         return self
+
 
     @model_validator(mode='after')
     def validate_activities_json_file(self) -> 'CfgFileStudy':
