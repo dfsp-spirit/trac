@@ -49,27 +49,27 @@ fi
 CURRENT_DIR=$(pwd)
 
 
-cd "$GIT_BACKEND_REPO_PATH" || { echo -e "❌ Failed to change directory to backend repository at '$GIT_BACKEND_REPO_PATH'"; exit 1; }
+cd "$GIT_BACKEND_REPO_PATH" || { echo -e "ERROR: Failed to change directory to backend repository at '$GIT_BACKEND_REPO_PATH'"; exit 1; }
 
 NGINX_CONF_DIR="./dev_tools/local_nginx/webserver_config/"
 
 if [ ! -d "$NGINX_CONF_DIR" ]; then
-    echo -e "❌ nginx configuration directory not found at '$NGINX_CONF_DIR', did you set the correct backend repo root directory ('$GIT_BACKEND_REPO_PATH')? Current working directory: $(pwd)"
+    echo -e "ERROR: nginx configuration directory not found at '$NGINX_CONF_DIR', did you set the correct backend repo root directory ('$GIT_BACKEND_REPO_PATH')? Current working directory: $(pwd)"
     exit 1
 fi
 
-cd "$NGINX_CONF_DIR" || { echo -e "❌ Failed to change directory to '$NGINX_CONF_DIR'"; exit 1; }
+cd "$NGINX_CONF_DIR" || { echo -e "ERROR: Failed to change directory to '$NGINX_CONF_DIR'"; exit 1; }
 
 
 
 # Create the nginx configuration file from the template, replacing 'USERHOME' with the actual home directory
 NGINX_CONF_FILE="./dev.nginx.conf"
-./replace_home.sh dev.nginx.conf.template "$NGINX_CONF_FILE" "$GIT_FRONTEND_REPO_PATH" "$GIT_BACKEND_REPO_PATH" || { echo -e "❌ Failed to create nginx configuration file from template"; exit 1; }
+./replace_home.sh dev.nginx.conf.template "$NGINX_CONF_FILE" "$GIT_FRONTEND_REPO_PATH" "$GIT_BACKEND_REPO_PATH" || { echo -e "ERROR: Failed to create nginx configuration file from template"; exit 1; }
 
 sed -i '1i# THIS FILE IS AUTO-GENERATED FROM THE TEMPLATE ON EACH START. DO NOT EDIT!' "$NGINX_CONF_FILE"
 
 if [ ! -f "$NGINX_CONF_FILE" ]; then
-    echo -e "❌ nginx configuration file not found at $NGINX_CONF_FILE in current working directory $(pwd)"
+    echo -e "ERROR: nginx configuration file not found at $NGINX_CONF_FILE in current working directory $(pwd)"
     exit 1
 fi
 
@@ -78,21 +78,21 @@ FULL_NGINX_CONF_PATH="$(pwd)/$NGINX_CONF_FILE" # nginx requires an absolute path
 nginx -c "$FULL_NGINX_CONF_PATH"
 
 cleanup() {
-    echo -e "\n👋 Shutting down nginx service..."
+    echo -e "\n Shutting down nginx service..."
 
-    kill -QUIT $(cat $HOME/nginx-dev.pid) && echo "✅ Cleanup complete. Goodbye!" || echo "⚠️ Failed to stop nginx. You may need to stop it manually with 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)'"
+    kill -QUIT $(cat $HOME/nginx-dev.pid) && echo "Cleanup complete. Goodbye!" || echo "WARNING: Failed to stop nginx. You may need to stop it manually with 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)'"
 }
 
 # Set up trap for Ctrl+C
 trap cleanup SIGINT SIGTERM
 
 if [ $? -eq 0 ]; then
-    echo -e "✅ Started nginx successfully, frontend available at http://localhost:3000/report/"
-    echo -e "✅ Backend API available at http://localhost:3000/tud_backend/api"
+    echo -e "Started nginx successfully, frontend available at http://localhost:3000/report/"
+    echo -e "Backend API available at http://localhost:3000/tud_backend/api"
     echo -e "INFO nginx is running in the background with configuration from $FULL_NGINX_CONF_PATH"
     echo -e "INFO Press CTRL+C to stop the FastAPI backend, and then run 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)' to stop nginx"
 else
-    echo -e "❌ Failed to start nginx"
+    echo -e "ERROR: Failed to start nginx"
     exit 1
 fi
 
