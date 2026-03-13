@@ -1,6 +1,8 @@
 # o-timeusediary-backend
 The fastpi backend for the custom o-timeusediary (TUD) fork of MPIAE.
 
+[![Backend Tests](https://github.com/dfsp-spirit/o-timeusediary-backend/actions/workflows/backend_tests.yml/badge.svg)](https://github.com/dfsp-spirit/o-timeusediary-backend/actions/workflows/backend_tests.yml)
+
 See the [mpiae_adapt branch here](https://github.com/dfsp-spirit/o-timeusediary/tree/mpiae_adapt) for the frontend.
 
 Releases of the frontend and backend that are compatible with each other are tagged with the same version in git.
