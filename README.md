@@ -23,7 +23,7 @@ What we did is we modified the frontend to also support:
 
 ```bash
 git clone https://github.com/dfsp-spirit/o-timeusediary-backend
-cd o-timeusediary-backend
+cd o-timeusediary-backend/
 
 # Create virtual environment and install dependencies
 uv venv
@@ -31,14 +31,16 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 uv sync --dev
 
 # Run tests to verify setup
-pytest
+uv run pytest
 ```
 
 Then run the backend:
 
 ```bash
-uv run uvicorn o_timeusediary_backend.api:app --reload --host 127.0.0.1 --port 8000
+./run_dev_backend_minimal.sh        # will use Python's built-in web server, nothing else required.
 ```
+
+To run both the frontend and backend, check out the frontend on the same file system level and run [./run_dev_nginx_both.bash](./run_dev_nginx_both.bash) if you have nginx installed.
 
 Now connect via curl, e.g., `curl http://localhost:8000/entries/`, or setup and run the frontend: see the [frontend repo](https://github.com/dfsp-spirit/o-timeusediary/tree/mpiae_adapt), and make sure you use the `mpiae_adapt` branch.
 
