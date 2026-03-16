@@ -44,6 +44,6 @@ jobs:
 
     - name: Run tests
       run: |
-        uv run pytest tests/ -v --tb=short
+        uv run pytest tests/unit -v --tb=short
 
 

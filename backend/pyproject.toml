@@ -25,9 +25,18 @@ dev = [
     "isort>=5.12.0",
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest-asyncio>=1.3.0",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/o_timeusediary_backend"]

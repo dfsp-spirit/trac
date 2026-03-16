@@ -1,0 +1,65 @@
+name: Backend Integration Tests
+on: [push, pull_request]
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+
+    # Step 1: Spin up Postgres
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: tud_db
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nginx
+        run: sudo apt-get update && sudo apt-get install -y nginx
+
+      - name: Setup uv and Python
+        uses: astral-sh/setup-uv@v3
+
+      # Step 2: Use your existing template logic (Simplified for CI)
+      - name: Configure Nginx
+        run: |
+          # We use the runner's workspace variable to replace your placeholders
+          # Nginx runs as root in CI, so we use standard /var/log paths
+          sed -e "s|USERHOME|/tmp|g" \
+              -e "s|FRONTENDREPOPATH|$GITHUB_WORKSPACE/frontend|g" \
+              -e "s|BACKENDREPOPATH|$GITHUB_WORKSPACE/backend|g" \
+              ./dev_tools/local_nginx/webserver_config/dev.nginx.conf.template > ci.nginx.conf
+
+          # Apply the config
+          sudo cp ci.nginx.conf /etc/nginx/sites-available/default
+          sudo nginx -t && sudo systemctl restart nginx
+
+      # Step 3: Run the Backend
+      - name: Start FastAPI Backend
+        env:
+          DATABASE_URL: postgresql://user:password@localhost:5432/tud_db
+        run: |
+          cd backend
+          # Start in background
+          uv run uvicorn o_timeusediary_backend.api:app --host 127.0.0.1 --port 8000 &
+          # Wait for it to be alive
+          timeout 60s bash -c 'until curl -s http://127.0.0.1:8000/docs > /dev/null; do sleep 3; done'
+
+      # Step 4: Run the Tests
+      - name: Run Pytest
+        env:
+          # Point tests to the NGINX port, not the Uvicorn port
+          BASE_URL: http://localhost:3000/tud_backend
+        run: |
+          cd backend
+          uv run pytest tests/integration
