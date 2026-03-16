@@ -22,7 +22,7 @@ jobs:
 
           # Save the app files
           mkdir -p /tmp/app-deploy
-          rsync -av --exclude='.git' --exclude='node_modules' --exclude='docs/' --exclude='mkdocs.yml' --exclude='requirements-docs.txt' --exclude='.github' . /tmp/app-deploy/
+          rsync -av --exclude='.git' --exclude='.github' . /tmp/app-deploy/
 
           # Fetch and checkout gh-pages branch
           git fetch origin gh-pages:refs/remotes/origin/gh-pages || true
