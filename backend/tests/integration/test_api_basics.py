@@ -19,9 +19,8 @@ async def test_api_root_through_proxy():
     root_path configuration and Nginx routing.
     """
     # Construct the full URL
-    # Note: If your endpoint is @app.get("/api"),
-    # it is reachable at /tud_backend/api
     url = f"{BASE_URL}/api"
+    print(f"Trying to reach backend at: {url} (rootpath is set to: '{settings.rootpath}')")
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
@@ -31,4 +30,4 @@ async def test_api_root_through_proxy():
     data = response.json()
     assert "message" in data
     assert "is running" in data["message"]
-    print(f"Successfully reached proxy at: {url}")
+    print(f"Successfully reached proxy at: {url} (rootpath is set to: '{settings.rootpath}')")
