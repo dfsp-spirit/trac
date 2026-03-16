@@ -10,9 +10,9 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: tud_db
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: password
+          POSTGRES_DB: timeusediary_db
+          POSTGRES_USER: timeusediary_user
+          POSTGRES_PASSWORD: timeusediary_password
         ports:
           - 5432:5432
         options: >-
