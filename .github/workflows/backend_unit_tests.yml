@@ -1,15 +1,10 @@
 name: TUD Backend Unit Tests
 
+
 on:
   push:
     branches: [ main, develop ]
-    paths:
-      - 'backend/src/**'  # Only run when backend files change
-  pull_request:
-    branches: [ main, develop ]
-    paths:
-      - 'backend/src/**'
-  workflow_dispatch:  # Allow manual triggering
+  workflow_dispatch:   # allow manual triggering
 
 jobs:
 
