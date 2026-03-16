@@ -50,8 +50,7 @@ async def test_admin_interface_reachable_through_proxy_with_auth():
     # We expect 200 for a successful authenticated request
     assert response.status_code == 200, f"Expected 200, got {response.status_code}"
 
-    data = response.json()
-    assert "status" in data
-    assert data["status"] == "authorized"
+    # We expect to receive HTML page content for the admin interface
+    assert "text/html" in response.headers.get("Content-Type", ""), "Expected HTML content"
 
     print(f"Successfully reached protected admin endpoint at: {url}")
