@@ -1,0 +1,83 @@
+{
+  "instructions": {
+    "title": "Instruktioner",
+    "mainInstruction": "Tänk på de aktiviteter du gjorde <span class=\"emphasis\">igår</span>. Fyll sedan i hela tidslinjen med de aktiviteter du gjorde.",
+    "step1": {
+      "title": "Välj och placera en aktivitet",
+      "horizontal": "Välj en aktivitet från menyn längst ner på skärmen och placera den på tidslinjen.",
+      "vertical": "Tryck på (+) knappen i det nedre högra hörnet för att öppna aktivitetsmenyn, välj sedan en aktivitet och tryck där du vill placera den på tidslinjen."
+    },
+    "step2": {
+      "title": "Justera aktivitetens längd",
+      "horizontal": "Klicka och dra kanterna horisontellt för att ställa in längden.",
+      "vertical": "Dra kanterna vertikalt för att ställa in längden."
+    },
+    "step3": {
+      "title": "Skicka in din dagbok",
+      "description": "När du har registrerat alla dina aktiviteter för dagen, klicka på Skicka-knappen för att slutföra din dagbok.",
+      "submitHelp": "Klicka för att skicka in din ifyllda dagbok"
+    },
+    "helpfulTools": "Användbara verktyg",
+    "undoHelp": "Gjorde du ett misstag? Ångra din senaste åtgärd",
+    "cleanRowHelp": "Vill du börja om? Rensa raden",
+    "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet"
+  },
+  "buttons": {
+    "submit": "Skicka dagen",
+    "start": "Starta",
+    "undo": "Ångra",
+    "cleanRow": "Rensa rad",
+    "next": "Nästa tidslinje",
+    "back": "Tillbaka",
+    "backToInstructions": "Tillbaka till instruktioner",
+    "ok": "OK",
+    "cancel": "Avbryt",
+    "save": "Spara",
+    "close": "Stäng",
+    "confirm": "Bekräfta",
+    "yes": "Ja",
+    "no": "Nej"
+  },
+  "modals": {
+    "customActivity": {
+      "title": "Ange egen aktivitet",
+      "childItemTitle": "Ange eget värde för: {parentActivity}",
+      "placeholder": "Ange din aktivitet (max 30 tecken)"
+    },
+    "addActivity": {
+      "title": "Lägg till aktivitet"
+    },
+    "childItems": {
+      "title": "Välj ett alternativ",
+      "titleFor": "Välj ett alternativ för \"{activityName}\""
+    },
+    "confirmSubmit": {
+      "title": "Skicka in den här dagen?",
+      "message": "Du kommer inte att kunna ändra dina svar för den här dagen."
+    },
+    "loading": {
+      "title": "Skickar din dagbok...",
+      "message": "Var god vänta medan vi sparar dina svar."
+    }
+  },
+  "messages": {
+    "loading": "Laddar...",
+    "saving": "Sparar...",
+    "saved": "Sparat framgångsrikt",
+    "error": "Ett fel uppstod",
+    "noActivities": "Inga aktiviteter hittades",
+    "fillRequired": "Fyll i alla obligatoriska aktiviteter",
+    "submitSuccess": "Dagbok inskickad framgångsrikt",
+    "submitError": "Fel vid inskickning av dagbok",
+    "timelineMissing": "Det saknas information på den här tidslinjen. Vill du lägga till något?"
+  },
+  "activities": {
+    "otherNotListed": "Annat som inte finns med (ange)"
+  },
+  "thankYou": {
+    "title": "Tack - O-ELIDDI",
+    "heading": "Tack!",
+    "subtitle": "Din inskickning har slutförts framgångsrikt.",
+    "message": "Tack för att du deltar i vår <span class=\"app-name\">O-ELIDDI</span>-studie. Dina svar har registrerats och kommer att bidra till värdefull forskning."
+  }
+}

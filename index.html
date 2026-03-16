@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Loading...</title>
+
+    <!-- Favicons -->
+    <link rel="shortcut icon" href="favicon/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="favicon/android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="favicon/android-chrome-512x512.png">
+    <link rel="stylesheet" href="styles/fontawesome/all.min.css">
+    <link rel="stylesheet" href="styles/styles.css">
+</head>
+<body>
+    <div id="instructionBanner" class="instruction-banner">
+        <div class="banner-content">
+            <span class="banner-text">
+                Usage Instructions: First select an activity from the list below. Then click and drag on the timeline to place it. To delete an activity, long-press it. On desktop, you can also hover over it and press the DEL key.
+            </span>
+            <button class="banner-close">&times;</button>
+        </div>
+    </div>
+    <div class="header-section">
+        <div class="controls" style="padding-top: 4px; padding-left: 4px; padding-bottom: 4px; padding-right: 4px;">
+
+        <button class="btn back-btn" id="backBtn" data-is-active="false" disabled>
+            <i class="fas fa-arrow-left"></i>
+            <span data-i18n="buttons.back">Back</span>
+        </button>
+
+        <button class="btn clean-row-btn" id="cleanRowBtn" data-is-active="false" disabled>
+            <i class="fas fa-trash-alt"></i>
+            <span data-i18n="buttons.cleanRow">Clean Row</span>
+        </button>
+
+        <button class="btn undo-btn" id="undoBtn" data-is-active="false" disabled>
+            <i class="fas fa-undo"></i>
+            <span data-i18n="buttons.undo">Undo</span>
+        </button>
+
+        <button class="btn next-btn" id="nextBtn" data-is-active="false" disabled>
+            <i class="fas fa-arrow-right"></i>
+            <span data-i18n="buttons.next">Next</span>
+        </button>
+
+        <button class="btn save-btn" id="saveBtn" data-is-active="true" style="display: none;">
+            <i class="fas fa-check"></i>
+            <span data-i18n="buttons.submit">Submit</span>
+        </button>
+        </div>
+
+        <div class="timeline-header">
+            <h1 class="timeline-title">Primary Activity</h1>
+            <p class="timeline-description"></p>
+        </div>
+    </div>
+
+    <div class="timeline-canvas">
+        <div class="timelines-wrapper">
+            <div class="past-initialized-timelines-wrapper"></div>
+            <div class="last-initialized-timeline-wrapper"></div>
+        </div>
+        <div class="gradient-bar"></div>
+    </div>
+
+    <div class="activities-container" id="activitiesContainer">
+        <div class="activities-accordion"></div>
+    </div>
+
+    <!-- Debug overlay element -->
+    <div id="debugOverlay" class="debugOverlay"></div>
+
+    <!-- Load i18n (internationalization) module -->
+    <script src="js/i18n.js" type="module"></script>
+
+    <!-- Load Bowser and other scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bowser/2.11.0/bundled.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="settings/tud_settings.js"></script>
+    <script src="js/study_config_manager.js" type="module"></script>
+    <script src="js/timeline_marker.js" type="module"></script>
+    <script src="js/timeline.js" type="module"></script>
+    <script src="js/utils.js" type="module"></script>
+    <script src="js/autoscroll.js" type="module"></script>
+    <script src="js/script.js" type="module"></script>
+    <!-- <script src="tests/timeline_test.js" type="module"></script> -->
+    <!-- <script type="module">
+        import { testTimelineMarkerPositioning } from './tests/timeline_test.js';
+
+        // Run tests after page load
+        window.addEventListener('load', () => {
+            const testResult = testTimelineMarkerPositioning();
+            if (!testResult.success) {
+                console.error('Timeline marker positioning test failed:', testResult.errors);
+            } else {
+                console.log('Timeline marker positioning test passed');
+            }
+        });
+    </script> -->
+
+    <!-- Attribute Tracker Script -->
+    <script src="js/attributeTracker.js"></script>
+
+    <div id="instructionsFooter" style="padding: 20px; background: white; border-top: 1px solid #ddd; text-align: left; margin-top: 20px;">
+        <div style="display: flex; justify-content: flex-end; align-items: center;">
+            <!--
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <button onclick="window.location.href='./pages/instructions.html'" class="navigation-btn">
+                <i class="fas fa-chevron-left"></i>
+                <span data-i18n="buttons.backToInstructions">Back to Instructions</span>
+            </button>
+            -->
+            <button id="navSubmitBtn" class="nav-submit-btn">
+                <i class="fas fa-check"></i>
+                <span data-i18n="buttons.submit">Submit</span>
+            </button>
+        </div>
+    </div>
+</body>
+</html>

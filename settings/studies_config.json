@@ -1,0 +1,16 @@
+{
+  "studies": [
+    {
+      "name": "Default Study",
+      "name_short": "default",
+      "description": "Default open study for time use research for two days",
+      "day_labels": [ {"name": "default", "display_order": 0, "display_name": "Monday"}, {"name": "day2", "display_order": 1, "display_name": "Tuesday"} ],
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "en",
+      "activities_json_file": "activities.json",
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
+    }
+  ]
+}
