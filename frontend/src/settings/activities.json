@@ -138,23 +138,7 @@
                 "color": "#FFA07A",
                 "childItems": [
                   {
-                    "name": "Primary school (Grundskola)",
-                    "code": 1122,
-                    "label": "primary school",
-                    "short": "primary",
-                    "vshort": "pri",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Middle School (Grundskola högstadium)",
-                    "code": 1123,
-                    "label": "middle school",
-                    "short": "middle",
-                    "vshort": "mid",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Upper Secondary School/High School (Gymnasieskola)",
+                    "name": "Upper Secondary School/High School",
                     "code": 1124,
                     "label": "upper secondary school/high school",
                     "short": "upper secondary",
@@ -162,7 +146,7 @@
                     "color": "#FFA07A"
                   },
                   {
-                    "name": "Apprenticeship at Upper Secondary Level (Lärlingsutbildning)",
+                    "name": "Apprenticeship at Upper Secondary Level",
                     "code": 1125,
                     "label": "apprenticeship at upper secondary level",
                     "short": "apprenticeship",
@@ -170,7 +154,7 @@
                     "color": "#FFA07A"
                   },
                   {
-                    "name": "Higher Vocational Education (Yrkeshögskola)",
+                    "name": "Higher Vocational Education",
                     "code": 1126,
                     "label": "higher vocational education",
                     "short": "vocational education",
@@ -178,7 +162,7 @@
                     "color": "#FFA07A"
                   },
                   {
-                    "name": "University College (Högskola)",
+                    "name": "University College",
                     "code": 1127,
                     "label": "university college",
                     "short": "college",
@@ -246,9 +230,9 @@
                 "childItems": []
               },
               {
-                "name": "Playing instrument / Creating music",
+                "name": "Playing instrument or singing",
                 "code": 1142,
-                "label": "playing instrument or creating music",
+                "label": "playing instrument or singing",
                 "short": "play music",
                 "vshort": "music",
                 "color": "#EE82EE"

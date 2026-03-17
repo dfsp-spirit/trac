@@ -1,10 +1,18 @@
 {
   "studies": [
     {
-      "name": "Default Study",
+      "name": "Default Weekly Study for Adults",
       "name_short": "default",
-      "description": "Default open study for time use research for two days",
-      "day_labels": [ {"name": "default", "display_order": 0, "display_name": "Monday"}, {"name": "day2", "display_order": 1, "display_name": "Tuesday"} ],
+      "description": "Default Study for Adults at KI, filled out by themselves",
+      "day_labels": [
+          { "name": "monday", "display_order": 0, "display_name": "Monday" },
+          { "name": "tuesday", "display_order": 1, "display_name": "Tuesday" },
+          { "name": "wednesday", "display_order": 2, "display_name": "Wednesday" },
+          { "name": "thursday", "display_order": 3, "display_name": "Thursday" },
+          { "name": "friday", "display_order": 4, "display_name": "Friday" },
+          { "name": "saturday", "display_order": 5, "display_name": "Saturday" },
+          { "name": "sunday", "display_order": 6, "display_name": "Sunday" }
+        ],
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "en",
