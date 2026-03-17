@@ -30,10 +30,11 @@ def report_on_db_contents():
             return
 
         for study in studies:
-            logger.info(f"Study: {study.name} (short: {study.name_short}, id: {study.id})")
+            logger.info(f"* Study: {study.name} (short: {study.name_short}, id: {study.id})")
             logger.info(f"  Description: {study.description}")
             logger.info(f"  Allow unlisted: {study.allow_unlisted_participants}")
             logger.info(f"  Default language: {study.default_language}")
+            logger.info(f"  Activities JSON file: {study.activities_json_url}")
             logger.info(f"  Data collection: {study.data_collection_start} to {study.data_collection_end}")
 
             # Report day labels
@@ -61,32 +62,39 @@ def report_on_db_contents():
                 participant = session.get(Participant, sp.participant_id)
                 logger.info(f"    - {participant.id} (joined: {participant.created_at})")
 
+            # Report activities count in database for this study
+            activities = session.exec(select(Activity).where(Activity.study_id == study.id)).all()
+            activities_count = len(activities)
+            logger.info(f"  Total activities recorded for this study: {activities_count}")
+
         # Report activities
+        logger.info("-- Study-specific reporting done. All activities in database:")
         activities = session.exec(select(Activity)).all()
         logger.info(f"Total activities in database: {len(activities)}")
 
         # Report sample activities (limit to 10 to avoid too much output)
-        sample_activities = activities[:10]
-        logger.info(f"Sample activities (showing first {len(sample_activities)}):")
+        if len(activities) > 0:
+            sample_activities = activities[:10]
+            logger.info(f"Sample activities (showing first {len(sample_activities)}):")
 
-        for activity in sample_activities:
-            study = session.get(Study, activity.study_id)
-            participant = session.get(Participant, activity.participant_id)
-            day_label = session.get(DayLabel, activity.day_label_id)
-            timeline = session.get(Timeline, activity.timeline_id)
+            for activity in sample_activities:
+                study = session.get(Study, activity.study_id)
+                participant = session.get(Participant, activity.participant_id)
+                day_label = session.get(DayLabel, activity.day_label_id)
+                timeline = session.get(Timeline, activity.timeline_id)
 
-            study_name_short = study.name_short if study else "Unknown"
-            participant_id = participant.id if participant else "Unknown"
-            day_label_name = day_label.name if day_label else "Unknown"
-            timeline_name = timeline.name if timeline else "Unknown"
+                study_name_short = study.name_short if study else "Unknown"
+                participant_id = participant.id if participant else "Unknown"
+                day_label_name = day_label.name if day_label else "Unknown"
+                timeline_name = timeline.name if timeline else "Unknown"
 
-            logger.info(f"  Activity: participant='{participant_id}', study='{study_name_short}', "
-                       f"day='{day_label_name}', timeline='{timeline_name}', "
-                       f"activity_code={activity.activity_code}, time={activity.start_minutes}-{activity.end_minutes}min, "
-                       f"activity_name='{activity.activity_name}'")
+                logger.info(f"  Activity: participant='{participant_id}', study='{study_name_short}', "
+                        f"day='{day_label_name}', timeline='{timeline_name}', "
+                        f"activity_code={activity.activity_code}, time={activity.start_minutes}-{activity.end_minutes}min, "
+                        f"activity_name='{activity.activity_name}'")
 
-        if len(activities) > 10:
-            logger.info(f"  ... and {len(activities) - 10} more activities")
+            if len(activities) > 10:
+                logger.info(f"  ... and {len(activities) - 10} more activities")
 
 
 def get_timelines_for_study(study_id: int) -> list[Timeline]:
