@@ -5,6 +5,15 @@ TRAC MPIAE Changes
 Current WIP
 -----------
 
+Version 0.9.0 -- Small fixes
+-----------------------------
+* NEW: on startup, report for each study the JSON activities file URL and the number of activities in DB for this study.
+* FIX: remove swedish words in brackets from English activities version
+* NEW: in frontend, add new page footer with new backend status indicator message
+* NEW: development: add integration tests running on CI server
+* CHG: update activities and studies files
+
+
 Version 0.8.0 -- Unify FE + BE repos, make integration tests work on CI
 ------------------------------------------------------------------------
 * NEW: Move the frontend code into this repo under new frontend/ sub dir
