@@ -3,6 +3,11 @@ import { Timeline } from './timeline.js';
 import { TimelineContainer } from './timeline_container.js';
 import i18n from './i18n.js';
 import {
+    loadActivitiesConfig,
+    getCachedActivitiesConfig,
+    getTimelineCategories,
+} from './activities_config.js';
+import {
     getCurrentTimelineData,
     getCurrentTimelineKey,
     createTimelineDataFrame,
@@ -61,6 +66,24 @@ window.customInputContext = {
     parentActivity: null,
     categoryName: null
 };
+
+function clearSelectedActivityButtons() {
+    document.querySelectorAll('.activity-button.selected').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+}
+
+function clearActiveActivitySelection() {
+    clearSelectedActivityButtons();
+    window.selectedActivity = null;
+}
+
+function setSingleActiveActivityButton(activityButton) {
+    clearSelectedActivityButtons();
+    if (activityButton) {
+        activityButton.classList.add('selected');
+    }
+}
 
 // Function to calculate timeline coverage in minutes
 window.getTimelineCoverage = getTimelineCoverage;
@@ -766,11 +789,7 @@ async function addNextTimeline() {
     }
 
     // Clear selected activity before switching timelines to prevent user from placing primary activity on secondary timeline
-    window.selectedActivity = null;
-    // Also remove visual selection from any activity buttons
-    document.querySelectorAll('.activity-button.selected').forEach(btn => {
-        btn.classList.remove('selected');
-    });
+        clearActiveActivitySelection();
     console.log('Cleared selected activity before switching timeline to next timeline');
 
     // Get the next timeline key before incrementing
@@ -958,11 +977,7 @@ async function goToPreviousTimeline() {
     }
 
     // Clear selected activity before switching timelines to prevent user from placing primary activity on secondary timeline
-    window.selectedActivity = null;
-    // Also remove visual selection from any activity buttons
-    document.querySelectorAll('.activity-button.selected').forEach(btn => {
-        btn.classList.remove('selected');
-    });
+        clearActiveActivitySelection();
     console.log('Cleared selected activity before going to previous timeline');
 
     // Get the previous timeline key
@@ -1144,16 +1159,10 @@ async function fetchActivities(key) {
     console.log(`Fetching activities configuration for timeline key: ${key}`);
 
     // Check if we have cached config
-    if (!window.activitiesConfigCache) {
+    const configData = getCachedActivitiesConfig();
+    if (!configData) {
         // This should never happen if init succeeded
         throw new Error('Activities configuration cache is empty. Application was not properly initialized.');
-    }
-
-    const configData = window.activitiesConfigCache;
-
-    // Validate the timeline exists
-    if (!configData.timeline || !configData.timeline[key]) {
-        throw new Error(`Timeline "${key}" not found in activities config from backend`);
     }
 
     // Validate min_coverage
@@ -1168,19 +1177,16 @@ async function fetchActivities(key) {
         throw new Error(errorMessage);
     }
 
-    const timeline = configData.timeline[key];
-    if (!timeline || !timeline.categories) {
-        throw new Error(`Invalid timeline data for key: ${key} in backend config`);
-    }
+    const categories = getTimelineCategories(key, configData);
 
     // Mark timeline as initialized
     window.timelineManager.initialized.add(key);
 
     if (DEBUG_MODE) {
-        console.log(`Returning cached activities for ${key} with ${timeline.categories.length} categories`);
+        console.log(`Returning cached activities for ${key} with ${categories.length} categories`);
     }
 
-    return timeline.categories;
+    return categories;
 }
 
 
@@ -1563,7 +1569,7 @@ function renderActivities(categories, container = document.getElementById('activ
                                             codes: selectedButtons.map(btn => btn === activityButton ? null : btn.dataset.code),
                                         };
                                     } else {
-                                        categoryButtons.forEach(b => b.classList.remove('selected'));
+                                        clearSelectedActivityButtons();
                                         window.selectedActivity = {
                                             name: customText,
                                             parentName: null,
@@ -1576,7 +1582,7 @@ function renderActivities(categories, container = document.getElementById('activ
                                             mode: 'single-choice',
                                             code: activity.code,
                                         };
-                                        activityButton.classList.add('selected');
+                                        setSingleActiveActivityButton(activityButton);
                                     }
                                 }
 
@@ -1614,8 +1620,7 @@ function renderActivities(categories, container = document.getElementById('activ
 
                     // Check if activity has child items
                     if (activity.childItems && activity.childItems.length > 0) {
-                        categoryButtons.forEach(b => b.classList.remove('selected'));
-                        activityButton.classList.add('selected');
+                        setSingleActiveActivityButton(activityButton);
 
                         // Show child items modal
                         renderChildItems(activity, category.name);
@@ -1654,14 +1659,14 @@ function renderActivities(categories, container = document.getElementById('activ
                             const isInModal = activityButton.closest('#modalActivitiesContainer');
                             if (!isInModal) {
                                 console.log('[ACTIVITY] Clearing window.selectedActivity - not in modal');
-                                window.selectedActivity = null;
+                                clearActiveActivitySelection();
                             } else {
                                 console.log('[ACTIVITY] NOT clearing window.selectedActivity - in modal');
                             }
                         }
                     } else {
                         // Single choice mode
-                        categoryButtons.forEach(b => b.classList.remove('selected'));
+                        clearSelectedActivityButtons();
                         window.selectedActivity = {
                             name: activity.name,
                             parentName: null,
@@ -1675,7 +1680,7 @@ function renderActivities(categories, container = document.getElementById('activ
                             code: activity.code,
                         };
                         console.log('[ACTIVITY] Selected activity:', window.selectedActivity);
-                        activityButton.classList.add('selected');
+                        setSingleActiveActivityButton(activityButton);
                     }
                     // Only close modal in single-choice mode
                     if (!isMultipleChoice) {
@@ -1851,7 +1856,7 @@ function renderActivities(categories, container = document.getElementById('activ
                                             codes: selectedButtons.map(btn => btn.dataset.code)
                                         };
                                     } else {
-                                        categoryButtons.forEach(b => b.classList.remove('selected'));
+                                        clearSelectedActivityButtons();
                                         window.selectedActivity = {
                                             name: customText,
                                             parentName: null,
@@ -1864,7 +1869,7 @@ function renderActivities(categories, container = document.getElementById('activ
                                             isCustomInput: true,
                                             code: activity.code,
                                         };
-                                        activityButton.classList.add('selected');
+                                        setSingleActiveActivityButton(activityButton);
                                     }
                                 }
 
@@ -1902,8 +1907,7 @@ function renderActivities(categories, container = document.getElementById('activ
 
                     // Check if activity has child items
                     if (activity.childItems && activity.childItems.length > 0) {
-                        categoryButtons.forEach(b => b.classList.remove('selected'));
-                        activityButton.classList.add('selected');
+                        setSingleActiveActivityButton(activityButton);
 
                         // Show child items modal
                         console.log('>>>>[ACTIVITY] Activity has child items, rendering child items modal');
@@ -1955,7 +1959,7 @@ function renderActivities(categories, container = document.getElementById('activ
                             const isInModal = activityButton.closest('#modalActivitiesContainer');
                             if (!isInModal) {
                                 console.log('[ACTIVITY] Clearing window.selectedActivity - not in modal');
-                                window.selectedActivity = null;
+                                clearActiveActivitySelection();
                             } else {
                                 console.log('[ACTIVITY] NOT clearing window.selectedActivity - in modal');
                             }
@@ -1964,7 +1968,7 @@ function renderActivities(categories, container = document.getElementById('activ
                     } else {
                         // Single choice mode
                         console.log('>>>>[ACTIVITY] non-custom Single-choice mode active');
-                        categoryButtons.forEach(b => b.classList.remove('selected'));
+                        clearSelectedActivityButtons();
                         window.selectedActivity = {
                             name: activity.name,
                             parentName: null,
@@ -1978,7 +1982,7 @@ function renderActivities(categories, container = document.getElementById('activ
                             code: activity.code,
                         };
                         console.log('[ACTIVITY] Selected activity after single-choice selection:', window.selectedActivity);
-                        activityButton.classList.add('selected');
+                        setSingleActiveActivityButton(activityButton);
                     }
                     // Only close modal in single-choice mode
                     if (!isMultipleChoice) {
@@ -2801,9 +2805,8 @@ function initTimelineInteraction(timeline) {
         timeLabel.style.display = 'block'; // Ensure the new label is visible
 
         // Deselect the activity button after successful placement
-        document.querySelectorAll('.activity-button').forEach(btn => btn.classList.remove('selected'));
         console.log('[ACTIVITY] Clearing window.selectedActivity after successful placement');
-        window.selectedActivity = null;
+        clearActiveActivitySelection();
 
         // Store in timelineManager
         getCurrentTimelineData().push(result.activityData);
@@ -3231,33 +3234,15 @@ async function init() {
         const footerStatus = document.getElementById('footer_backend_status');
 
         try {
-            // Fetch the activities configuration from backend
-            // This endpoint should return the full activities.json structure
-            // with proper language for this study
-            const configUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/activities-config?participant_id=${participantId}`;
-            console.log(`Fetching activities config from backend: ${configUrl}`);
-
-            const response = await fetch(configUrl, {
-                headers: {
-                    'Accept': 'application/json',
-                }
+            configData = await loadActivitiesConfig({
+                participantId,
+                studyName,
+                apiBaseUrl: TUD_SETTINGS.API_BASE_URL,
+                settingsBasePath: 'settings',
+                preferBackend: true,
+                requireBackend: true,
+                useCache: true,
             });
-
-            if (!response.ok) {
-                // set the text of span with id "footer_backend_status" to i18n.backend_status_error
-
-                configLoadBackendSuccess = false;
-                if(footerStatus) {
-                    footerStatus.textContent = "Backend error"; // i18n not available yet
-                    footerStatus.style.color = 'red';
-                } else {
-                    console.warn('Footer status element not found, cannot display backend error status');
-                }
-
-                throw new Error(`Backend returned ${response.status} for activities config`);
-            }
-
-            configData = await response.json();
             console.log('Successfully loaded activities config from backend');
             document.title = configData.general.app_name || 'Time Use Diary';
             configLoadBackendSuccess = true;
@@ -3274,9 +3259,6 @@ async function init() {
             document.title = 'Time Use Diary';
             throw new Error(`Cannot load activities configuration: ${error.message}. The application requires backend configuration to run.`);
         }
-
-        // ===== STORE THE CONFIG IN CACHE =====
-        window.activitiesConfigCache = configData;
 
         // Save global configuration
         window.timelineManager.general = configData.general;

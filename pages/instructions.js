@@ -1,5 +1,6 @@
 import { getIsMobile, updateIsMobile } from '../js/globals.js';
 import i18n from '../js/i18n.js';
+import { loadActivitiesConfig } from '../js/activities_config.js';
 
 // Add the missing updateLayout function
 function updateLayout() {
@@ -16,20 +17,17 @@ function updateLayout() {
 // Initialize i18n when the module loads
 (async () => {
     try {
-        // Load activities.json to get language setting
-        const response = await fetch('../settings/activities.json');
-        if (response.ok) {
-            const data = await response.json();
-            const language = data.general?.language || 'en';
-            console.log('Loading language:', language);
-            await i18n.init(language);
-            i18n.applyTranslations();
-            console.log('i18n initialized successfully');
-        } else {
-            console.warn('Could not load activities.json, defaulting to English');
-            await i18n.init('en');
-            i18n.applyTranslations();
-        }
+        const activitiesConfig = await loadActivitiesConfig({
+            settingsBasePath: '../settings',
+            preferBackend: true,
+            requireBackend: false,
+            useCache: true,
+        });
+        const language = activitiesConfig?.general?.language || 'en';
+        console.log('Loading language:', language);
+        await i18n.init(language);
+        i18n.applyTranslations();
+        console.log('i18n initialized successfully');
     } catch (error) {
         console.error('Error initializing i18n:', error);
         // Fallback to English if there's any error

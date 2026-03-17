@@ -36,11 +36,20 @@ if (window.i18n) {
     console.log('Available globals:', Object.keys(window).filter(key => key.includes('i18n')));
 }
 
-// Check if activities.json was loaded with Spanish
-fetch('./settings/activities.json').then(response => response.json()).then(data => {
-    console.log('Activities.json language setting:', data.general?.language);
-}).catch(error => {
-    console.log('Error loading activities.json:', error);
-});
+// Check study-specific activities config language from studies_config.json
+const debugStudyName = new URLSearchParams(window.location.search).get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+fetch('./settings/studies_config.json')
+    .then(response => response.json())
+    .then(studiesConfig => {
+        const study = studiesConfig?.studies?.find(s => s.name_short === debugStudyName) || studiesConfig?.studies?.[0];
+        const activitiesFile = study?.activities_json_file || 'activities_default.json';
+        return fetch(`./settings/${activitiesFile}`).then(response => response.json());
+    })
+    .then(data => {
+        console.log('Study-specific activities language setting:', data.general?.language);
+    })
+    .catch(error => {
+        console.log('Error loading study-specific activities config:', error);
+    });
 
 console.log('=== End Debug Test ===');

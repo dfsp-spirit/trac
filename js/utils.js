@@ -515,7 +515,7 @@ export function createTimelineJSON(stringify = false) {
                 //available_options: activity.availableOptions || null,
                 //count: activity.count || 1,   // number of selections for multiple-choice
 
-                // Unique identifier from frontend, defined in activities.json file for whatever reason
+                // Unique identifier from frontend, defined in activities config file for whatever reason
                 // frontend_activity_id: activity.id
             };
             activity_data.push(row);

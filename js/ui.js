@@ -738,6 +738,9 @@ const handleNextButtonAction = () => {
         // For other timelines, proceed to next timeline
         addNextTimeline();
         window.selectedActivity = null;
+        document.querySelectorAll('.activity-button.selected').forEach(btn => {
+            btn.classList.remove('selected');
+        });
     }
 };
 
