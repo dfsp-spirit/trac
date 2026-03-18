@@ -58,6 +58,8 @@ jobs:
           export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
           envsubst '$FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
           cp dev_tools/ci/frontend_settings/tud_settings.ci.js frontend/src/settings/tud_settings.js
+          # Allow nginx worker processes (www-data) to read the checked-out frontend files
+          chmod -R a+rX "$GITHUB_WORKSPACE/frontend/src/"
           sudo nginx -c /tmp/nginx.conf -p /tmp/
 
       - name: Run backend and Playwright tests
