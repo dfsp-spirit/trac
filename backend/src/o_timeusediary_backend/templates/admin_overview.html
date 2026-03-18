@@ -382,17 +382,17 @@
                 <div class="export-buttons" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef;">
                     <strong style="display: block; margin-bottom: 0.5rem; color: #495057;">Export Activities:</strong>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <a href="/admin/export/{{ study_data.study.name_short }}/activities?format=csv"
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study_data.study.name_short }}/activities?format=csv"
                         class="export-btn"
                         style="display: inline-block; padding: 0.5rem 1rem; background: #28a745; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
                             📥 Download CSV
                         </a>
-                        <a href="/admin/export/{{ study_data.study.name_short }}/activities?format=json"
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study_data.study.name_short }}/activities?format=json"
                         class="export-btn"
                         style="display: inline-block; padding: 0.5rem 1rem; background: #17a2b8; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
                             📥 Download JSON
                         </a>
-                        <a href="/admin/export/{{ study_data.study.name_short }}/activities?format=csv&include_metadata=false"
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study_data.study.name_short }}/activities?format=csv&include_metadata=false"
                         class="export-btn"
                         style="display: inline-block; padding: 0.5rem 1rem; background: #6c757d; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
                             📥 CSV (Clean)

@@ -688,7 +688,7 @@ def submit_activities(
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_overview(
-    request: Request,  # Add this parameter
+    request: Request,
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session)
 ):
@@ -865,7 +865,7 @@ async def admin_overview(
     return templates.TemplateResponse(
         "admin_overview.html",
         {
-            "request": request,  # This should be the request parameter, not Request class
+            "request": request,
             "current_admin": current_admin,
             "studies_data": studies_data,
             "total_studies": total_studies,
@@ -876,7 +876,7 @@ async def admin_overview(
         }
     )
 
-@app.get("/admin/export/{study_name_short}/activities")
+@app.get("/api/admin/export/{study_name_short}/activities")
 async def export_study_activities(
     request: Request,
     study_name_short: str,
