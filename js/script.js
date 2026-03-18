@@ -669,6 +669,18 @@ function formatTimelineEnd(minutes) {
     return formatTimeHHMM(modMinutes, addNextDayMarker);
 }
 
+function isDesktopFixedTimelineOrdering() {
+    return !getIsMobile();
+}
+
+function setTimelineActiveState(timelineElement, isActive) {
+    if (!timelineElement) return;
+    timelineElement.setAttribute('data-active', isActive ? 'true' : 'false');
+    if (timelineElement.parentElement) {
+        timelineElement.parentElement.setAttribute('data-active', isActive ? 'true' : 'false');
+    }
+}
+
 // Function to restore an existing timeline from past-initialized-timelines-wrapper
 async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
     // Increment the current index
@@ -702,6 +714,37 @@ async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
 
         const activeTimelineWrapper = document.querySelector('.last-initialized-timeline-wrapper');
         const pastTimelinesWrapper = document.querySelector('.past-initialized-timelines-wrapper');
+
+        if (isDesktopFixedTimelineOrdering()) {
+            const currentTimeline = window.timelineManager.activeTimeline;
+            setTimelineActiveState(currentTimeline, false);
+
+            const nextTimelineElement = document.getElementById(nextTimelineKey);
+            if (!nextTimelineElement) {
+                throw new Error(`Timeline element '${nextTimelineKey}' not found`);
+            }
+
+            setTimelineActiveState(nextTimelineElement, true);
+            window.timelineManager.activeTimeline = nextTimelineElement;
+            initTimelineInteraction(window.timelineManager.activeTimeline);
+
+            renderActivities(categories);
+            updateButtonStates();
+            scrollToActiveTimeline();
+
+            const backButton = document.getElementById('backBtn');
+            if (backButton) {
+                backButton.disabled = false;
+            }
+
+            const activitiesContainerElement = document.querySelector("#activitiesContainer");
+            if (activitiesContainerElement) {
+                activitiesContainerElement.setAttribute('data-mode', window.timelineManager.metadata[nextTimelineKey].mode);
+            }
+
+            updateFloatingButtonPosition();
+            return;
+        }
 
         // Move current timeline to past wrapper
         const currentTimeline = window.timelineManager.activeTimeline;
@@ -857,6 +900,60 @@ async function addNextTimeline() {
         // Clear any existing timeline containers to prevent duplicates
         const activeTimelineWrapper = document.querySelector('.last-initialized-timeline-wrapper');
         const inactiveTimelinesWrapper = document.querySelector('.past-initialized-timelines-wrapper');
+
+        if (isDesktopFixedTimelineOrdering()) {
+            if (window.timelineManager.currentIndex === 0) {
+                activeTimelineWrapper.innerHTML = '';
+                inactiveTimelinesWrapper.innerHTML = '';
+                console.log('Cleared all timeline wrappers for first timeline initialization');
+            }
+
+            const previousTimeline = window.timelineManager.activeTimeline;
+            setTimelineActiveState(previousTimeline, false);
+
+            const newTimelineContainer = document.createElement('div');
+            newTimelineContainer.className = 'timeline-container';
+
+            const titleDiv = document.createElement('div');
+            titleDiv.className = 'title';
+            titleDiv.textContent = window.timelineManager.metadata[nextTimelineKey].name;
+            newTimelineContainer.appendChild(titleDiv);
+
+            const newTimeline = document.createElement('div');
+            newTimeline.className = 'timeline';
+            newTimelineContainer.appendChild(newTimeline);
+
+            inactiveTimelinesWrapper.appendChild(newTimelineContainer);
+
+            newTimeline.id = nextTimelineKey;
+            newTimeline.setAttribute('data-timeline-type', nextTimelineKey);
+            newTimeline.setAttribute('data-mode', window.timelineManager.metadata[nextTimelineKey].mode);
+            setTimelineActiveState(newTimeline, true);
+
+            window.timelineManager.activeTimeline = newTimeline;
+            window.timelineManager.activities[nextTimelineKey] = window.timelineManager.activities[nextTimelineKey] || [];
+
+            initTimeline(window.timelineManager.activeTimeline);
+            renderActivities(categories);
+            initTimelineInteraction(window.timelineManager.activeTimeline);
+
+            updateButtonStates();
+            scrollToActiveTimeline();
+
+            const backButton = document.getElementById('backBtn');
+            if (backButton) {
+                backButton.disabled = false;
+            }
+
+            const activitiesContainerElement = document.querySelector("#activitiesContainer");
+            if (activitiesContainerElement) {
+                activitiesContainerElement.setAttribute('data-mode', window.timelineManager.metadata[nextTimelineKey].mode);
+            }
+
+            updateFloatingButtonPosition();
+            initPastTimelineClickHandlers();
+            return;
+        }
 
         // For the first timeline, clear everything to ensure a clean start
         if (window.timelineManager.currentIndex === 0) {
@@ -1023,6 +1120,33 @@ async function goToPreviousTimeline() {
 
         const activeTimelineWrapper = document.querySelector('.last-initialized-timeline-wrapper');
         const inactiveTimelinesWrapper = document.querySelector('.past-initialized-timelines-wrapper');
+
+        if (isDesktopFixedTimelineOrdering()) {
+            const currentTimeline = window.timelineManager.activeTimeline;
+            setTimelineActiveState(currentTimeline, false);
+
+            const previousTimelineElement = document.getElementById(previousTimelineKey);
+            if (!previousTimelineElement) {
+                throw new Error(`Previous timeline element '${previousTimelineKey}' not found`);
+            }
+
+            setTimelineActiveState(previousTimelineElement, true);
+            window.timelineManager.activeTimeline = previousTimelineElement;
+            initTimelineInteraction(window.timelineManager.activeTimeline);
+
+            renderActivities(categories);
+            updateButtonStates();
+            scrollToActiveTimeline();
+
+            const activitiesContainerElement = document.querySelector("#activitiesContainer");
+            if (activitiesContainerElement) {
+                activitiesContainerElement.setAttribute('data-mode', window.timelineManager.metadata[previousTimelineKey].mode);
+            }
+
+            updateFloatingButtonPosition();
+            initPastTimelineClickHandlers();
+            return;
+        }
 
         // Move all future timelines to past wrapper (so they can be restored later)
         const currentTimelineIndex = window.timelineManager.currentIndex + 1; // +1 because we already decremented
