@@ -6,6 +6,14 @@ Current WIP
 -----------
 
 
+Version 0.9.3 -- Fix more frontend issues, prevent regression with E2E tests
+----------------------------------------------------------------------------
+* NEW: development only: fix E2E test CI workflow and make tests work. Add various E2E tests.
+* NEW: add test that ensures template activities for both timelines are kept on submitting a day
+* FIX: fix issue #42 'Shrinking browser window to below desktop size removes activity display' by persisting unsaved activity items to local storage on view switch desktop/mobile, and re-using them if appropriate
+* NEW: make timelines stay in place, no matter whether active or not. implements #45.
+
+
 Version 0.9.2 -- Admin interface overhaul
 ------------------------------------------
 * FIX: Disable activities download button for study if it has no activities recorded yet
