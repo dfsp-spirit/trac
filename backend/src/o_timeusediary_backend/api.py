@@ -86,12 +86,22 @@ app.add_middleware(
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
+    """Serve the favicon.ico file.
+
+    Returns:
+        FileResponse: The favicon.ico file if it exists, otherwise a 204 No Content response.
+    """
     favicon_path = static_dir / "favicon.ico"
     if favicon_path.exists():
         return FileResponse(favicon_path)
     return Response(status_code=204)
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    """Verify admin credentials using HTTP Basic Auth. Raises HTTP 401 if authentication fails.
+
+    @param credentials: HTTPBasicCredentials object containing the username and password provided by the client
+    @return: The username of the authenticated admin
+    """
     correct_username = secrets.compare_digest(
         credentials.username,
         settings.admin_username
@@ -234,10 +244,19 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 
 @app.get("/api")
 def root():
+    """Root endpoint of the API.
+
+    Returns:
+        dict: A message indicating the API version.
+    """
     return {"message": f"TUD API version {tud_version} is running"}
 
 @app.get("/api/health")
 def health_check(session: Session = Depends(get_session)):
+    """Health check endpoint to verify that the API is running and can connect to the database.
+
+    @return: A JSON object containing the health status, counts of studies, and API version.
+    """
     all_studies = session.exec(select(Study)).all()
     open_studies = session.exec(select(Study).where(Study.allow_unlisted_participants == True)).all()
     return {"status": "healthy", "all_studies_count": len(all_studies), "open_studies_count": len(open_studies), "tud_version": tud_version}
@@ -245,6 +264,9 @@ def health_check(session: Session = Depends(get_session)):
 
 @app.get("/api/docs")
 async def redirect_to_docs(request: Request):
+    """Redirect the root API endpoint to the automatically generated API documentation at /docs.
+    @return: A RedirectResponse to the /docs endpoint, with proper handling of root_path for deployments under subpaths.
+    """
     root_path = request.scope.get("root_path", "")
     # Ensure no double slashes
     redirect_url = f"{root_path}/docs".replace("//", "/")
@@ -286,6 +308,10 @@ def get_study_activities_config(
 
     - For restricted study:
       GET /api/studies/restricted-study/activities-config?participant_id=user123
+
+    @param study_name_short: The short name of the study to retrieve the activities config for.
+    @param participant_id: (Optional) The participant ID for authorization check. Required if the study is not open for everyone.
+    @return: The activities configuration for the study.
     """
     # Find the study
     study = session.exec(
@@ -388,6 +414,9 @@ class ActivitiesSubmitRequest(BaseModel):
 
 
 def compute_activity_path(activity_item: ActivitySubmitItem) -> str:
+    """Compute the activity path for frontend display based on the activity item details.
+    @return A string representing the activity path, e.g. "timeline:Morning > category:Sport > parent:Running > activity:Running (outdoor) > custom_input_prompt:Other sport, please specify". The path includes timeline, category, parent activity (if applicable), the actual activity, and custom input prompt (if applicable).
+    """
     parts = []
 
     # Always include timeline
@@ -426,6 +455,12 @@ def submit_activities(
     Handles both single-choice and multiple-choice timelines.
     Rejects entire submission if any activity code is invalid (frontend-backend config mismatch).
     If activities already exist for this user-study-day_label combination, they are deleted first.
+
+    @param study_name_short: The short name of the study.
+    @param participant_id: The participant ID submitting the activities.
+    @param day_label_name: The name of the day label these activities belong to.
+    @param activities_data: The list of activities being submitted, including timeline keys, activity names, codes, and time intervals.
+    @return A JSON response indicating success, number of activities created, and any relevant information about the operation.
     """
     # Validate study exists
     study = session.exec(
@@ -694,7 +729,7 @@ def submit_activities(
     }
 
 
-@app.get("/admin", response_class=HTMLResponse)
+@app.get("/admin", name="Admin Overview Page", response_class=HTMLResponse)
 async def admin_overview(
     request: Request,
     current_admin: str = Depends(verify_admin),
@@ -703,6 +738,7 @@ async def admin_overview(
     """
     Admin overview page showing database contents.
     Shows studies, participants, timelines, and activities.
+    @return An HTML page rendered with Jinja2 templates containing an overview of the studies, participants, timelines, and activities in the database. Access to this page is restricted to authenticated admins using HTTP Basic Auth.
     """
 
     logger.info(f"Admin '{current_admin}' accessed the admin overview page.")
@@ -897,6 +933,13 @@ async def export_study_activities(
     """
     Export activities for a specific study in CSV or JSON format.
     Defaults to CSV format for scientific analysis.
+
+    @param study_name_short: Short name of the study to export
+    @param format: Output format, either 'csv' or 'json' (default: 'csv')
+    @param include_metadata: Whether to include metadata columns (default: True)
+    @param include_path: Whether to include activity path columns (default: True)
+
+    @return A Response object containing the exported data in the requested format, with appropriate headers for file download. Access to this endpoint is restricted to authenticated admins using HTTP Basic Auth.
     """
 
     logger.info(f"Admin '{current_admin}' requested export of activities for study '{study_name_short}' in format '{format}'")
@@ -1014,12 +1057,15 @@ async def export_study_activities(
     if format.lower() == "json":
         return export_json(export_data, filename)
     else:
-        return export_csv(export_data, filename, include_metadata, include_path)
+        return export_csv(export_data, filename)
 
 
-def export_csv(data: list, filename: str, include_metadata: bool, include_path: bool) -> Response:
+def export_csv(data: list, filename: str) -> Response:
     """
     Export data as CSV with proper headers. Used in admin interface.
+    @param data: List of records to export
+    @param filename: Base filename without extension (timestamp and extension will be added)
+    @return A Response object containing the CSV data with appropriate headers for file download.
     """
     if not data:
         raise HTTPException(status_code=404, detail="No data to export")
@@ -1053,6 +1099,10 @@ def export_csv(data: list, filename: str, include_metadata: bool, include_path: 
 def export_json(data: list, filename: str) -> Response:
     """
     Export data as JSON with pretty formatting. Used in admin interface.
+
+    @param data: List of records to export
+    @param filename: Base filename without extension (timestamp and extension will be added)
+    @return A Response object containing the JSON data with appropriate headers for file download.
     """
     if not data:
         raise HTTPException(status_code=404, detail="No data to export")
@@ -1077,7 +1127,11 @@ def export_json(data: list, filename: str) -> Response:
 
 
 def timelines_to_json(timelines: List[Timeline]) -> List[dict]:
-    """Convert list of Timeline objects to JSON list with selected fields."""
+    """Convert list of Timeline objects to JSON list with selected fields.
+
+    @param timelines: List of Timeline objects to convert
+    @return: List of dictionaries with timeline data for frontend
+    """
     return [
         timeline.dict(include={"name", "display_name", "mode", "min_coverage"})
         for timeline in timelines
@@ -1098,6 +1152,13 @@ def get_participant_day_activities(
     Returns activities across all timelines for the specified day.
 
     Either day_label_name or day_label_index must be provided to identify the target day.
+
+    @param study_name_short: Short name of the study
+    @param participant_id: ID of the participant
+    @param day_label_name: (Optional) Name of the day label to retrieve activities for
+    @param day_label_index: (Optional) Display order/index of the day label to retrieve activities for
+    @param template_from_day_index: (Optional) Day index to use as template source. If not provided, defaults to previous day (current_day_index - 1). Used to
+    @return A JSON response containing the list of activities for the specified participant and day, along with metadata about the timelines and an optional template of activities from a previous day. The response is structured to facilitate frontend display and editing of the activities.
 
     Optionally include activities from a previous day as a template:
     - If template_from_day_index is not provided, defaults to previous day (current_day_index - 1)
@@ -1337,6 +1398,8 @@ async def get_active_open_study_names(
 
     Each study object includes name_short, name, and description fields.
     Returns empty list if no studies match criteria.
+
+    @return A JSON response containing a list of active open studies, where each study includes its short name, full name, and description. This endpoint is publicly accessible without authentication and is intended for participants to discover which studies are currently open for enrollment and data collection.
     """
     try:
         # Get current UTC time
@@ -1418,6 +1481,10 @@ def get_study_config(
 
     - For restricted study:
       GET /api/studies/restricted-study/study-config?participant_id=user123
+
+    @param study_name_short: Short name of the study to retrieve config for
+    @param participant_id: (Optional) Participant ID for authorization check. Required if study is not open for everyone.
+    @return A JSON response containing the study configuration, including timelines and day labels. Access to this endpoint is restricted based on study settings and participant authorization.
     """
     # Find the study
     study = session.exec(
