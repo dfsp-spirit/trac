@@ -185,18 +185,53 @@ export function formatTimeHHMM(minutes, isEndTime = false) {
 
 export function timeToMinutes(timeStr) {
     if (typeof timeStr === 'number') return Math.round(timeStr);
+    if (timeStr === null || timeStr === undefined) return NaN;
 
-    const isNextDay = timeStr.includes('(+1)');
-    const timeOnly = timeStr.replace('(+1)', '').trim();
+    const raw = String(timeStr).trim();
+    if (!raw) return NaN;
+
+    if (/^\d+$/.test(raw)) {
+        return parseInt(raw, 10);
+    }
+
+    const isNextDay = raw.includes('(+1)');
+    const timeToken = raw.includes(' ') ? raw.split(' ').pop() : raw;
+    const timeOnly = timeToken.replace('(+1)', '').trim();
     const [hours, minutes] = timeOnly.split(':').map(Number);
 
-    // Calculate absolute minutes since midnight
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return NaN;
+
     let totalMinutes = (hours * 60) + minutes;
 
-    // Adjust for next day notation
     if (isNextDay) totalMinutes += 1440;
 
     return totalMinutes;
+}
+
+/**
+ * Returns normalized start/end minute values for an activity.
+ *
+ * @param {Object} activity Activity object from timeline state.
+ * @returns {{startMinutes: number, endMinutes: number} | null} Normalized minute range or null when invalid.
+ */
+export function getActivityTimeRangeMinutes(activity) {
+    if (!activity) return null;
+
+    let startMinutes = Number.isFinite(Number(activity.startMinutes))
+        ? Number(activity.startMinutes)
+        : timeToMinutes(activity.startTime);
+    let endMinutes = Number.isFinite(Number(activity.endMinutes))
+        ? Number(activity.endMinutes)
+        : timeToMinutes(activity.endTime);
+
+    if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+        return null;
+    }
+
+    startMinutes = Math.round(startMinutes);
+    endMinutes = Math.round(endMinutes);
+
+    return { startMinutes, endMinutes };
 }
 
 export function findNearestMarkers(minutes, isMobile = false) {
@@ -277,14 +312,11 @@ export function hasOverlap(startMinutes, endMinutes, excludeBlock = null) {
     return currentData.some(activity => {
         if (excludeBlock && activity.id === excludeBlock) return false;
 
-        // Convert activity times to minutes since midnight
-        const activityStartTime = activity.startTime.split(' ')[1];
-        const activityEndTime = activity.endTime.split(' ')[1];
-        const [startHour, startMin] = activityStartTime.split(':').map(Number);
-        const [endHour, endMin] = activityEndTime.split(':').map(Number);
+        const range = getActivityTimeRangeMinutes(activity);
+        if (!range) return false;
 
-        const activityStartMinutes = normalizeMinutes(startHour * 60 + startMin);
-        const activityEndMinutes = normalizeMinutes(endHour * 60 + endMin);
+        const activityStartMinutes = normalizeMinutes(range.startMinutes);
+        const activityEndMinutes = normalizeMinutes(range.endMinutes);
 
         // Check for overlap considering the normalized timeline
         const hasOverlap = (
@@ -301,8 +333,8 @@ export function hasOverlap(startMinutes, endMinutes, excludeBlock = null) {
                     normalizedEnd
                 },
                 existing: {
-                    start: startHour * 60 + startMin,
-                    end: endHour * 60 + endMin,
+                    start: range.startMinutes,
+                    end: range.endMinutes,
                     normalizedStart: activityStartMinutes,
                     normalizedEnd: activityEndMinutes
                 },
@@ -316,6 +348,14 @@ export function hasOverlap(startMinutes, endMinutes, excludeBlock = null) {
 
 // ... [Other imports and code]
 
+/**
+ * Determines whether an activity can be placed without overlapping existing activities.
+ *
+ * @param {number} newStart Start minute (absolute timeline minute).
+ * @param {number} newEnd End minute (absolute timeline minute).
+ * @param {string|null} excludeId Optional activity id to exclude (during resize/move).
+ * @returns {boolean} True when placement is valid, otherwise false.
+ */
 export function canPlaceActivity(newStart, newEnd, excludeId = null) {
     // Get current timeline key and activities
     const currentKey = getCurrentTimelineKey();
@@ -340,15 +380,11 @@ export function canPlaceActivity(newStart, newEnd, excludeId = null) {
     const hasOverlap = activities.some(activity => {
         if (excludeId && activity.id === excludeId) return false;
 
-        // Extract and normalize existing activity times
-        const [activityStartHour, activityStartMin] = activity.startTime.split(' ')[1].split(':').map(Number);
-        const [activityEndHour, activityEndMin] = activity.endTime.split(' ')[1].split(':').map(Number);
+        const range = getActivityTimeRangeMinutes(activity);
+        if (!range) return false;
 
-        const activityStart = activityStartHour * 60 + activityStartMin;
-        const activityEnd = activityEndHour * 60 + activityEndMin;
-
-        const normalizedActivityStart = normalizeMinutes(activityStart);
-        const normalizedActivityEnd = normalizeMinutes(activityEnd);
+        const normalizedActivityStart = normalizeMinutes(range.startMinutes);
+        const normalizedActivityEnd = normalizeMinutes(range.endMinutes);
 
         // Check for overlap considering normalized times and 10-minute increments
         const overlaps = (
@@ -375,6 +411,11 @@ export function canPlaceActivity(newStart, newEnd, excludeId = null) {
 }
 
 
+/**
+ * Checks whether current timeline has full-day coverage.
+ *
+ * @returns {boolean} True when covered minutes are at least 1440.
+ */
 export function isTimelineFull() {
     const currentKey = getCurrentTimelineKey();
     const currentData = getCurrentTimelineData();
@@ -382,9 +423,15 @@ export function isTimelineFull() {
     // Calculate total covered minutes
     const coveredMinutes = currentData.reduce((total, activity) => {
         console.log('in isTimelineFull, computing coveredMinutes for activity:', activity);
-        const startMinutes = timeToMinutes(activity.startTime.split(' ')[1]);
-        const endMinutes = timeToMinutes(activity.endTime.split(' ')[1]);
-        return total + (endMinutes - startMinutes);
+        const range = getActivityTimeRangeMinutes(activity);
+        if (!range) return total;
+
+        let duration = range.endMinutes - range.startMinutes;
+        if (duration < 0) {
+            duration += MINUTES_PER_DAY;
+        }
+
+        return total + duration;
     }, 0);
 
     // Get timeline metadata

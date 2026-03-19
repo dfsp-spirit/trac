@@ -89,7 +89,6 @@ function setSingleActiveActivityButton(activityButton) {
 window.getTimelineCoverage = getTimelineCoverage;
 
 import {
-    formatTimeDDMMYYYYHHMM,
     formatTimeHHMM,
     timeToMinutes,
     findNearestMarkers,
@@ -616,13 +615,16 @@ function recreateActivityBlockFromTemplate(activityData) {
     console.log('Activity block created:', currentBlock);
     console.log('Activity data result:', result.activityData);
 
+    const targetTimelineKey = activityData.timelineKey || getCurrentTimelineKey();
+    const targetTimelineElement = document.getElementById(targetTimelineKey) || window.timelineManager.activeTimeline;
+
     // Get or create activities container
-    let activitiesContainer = window.timelineManager.activeTimeline.querySelector('.activities');
+    let activitiesContainer = targetTimelineElement.querySelector('.activities');
     if (!activitiesContainer) {
         console.log('Creating new activities container');
         activitiesContainer = document.createElement('div');
         activitiesContainer.className = 'activities';
-        window.timelineManager.activeTimeline.appendChild(activitiesContainer);
+        targetTimelineElement.appendChild(activitiesContainer);
     }
 
     console.log('Activities container:', activitiesContainer);
@@ -635,19 +637,20 @@ function recreateActivityBlockFromTemplate(activityData) {
     updateTimeLabel(timeLabel, activityData.startTime, activityData.endTime, currentBlock);
 
     // Ensure the activity data in the manager matches
-    const currentKey = getCurrentTimelineKey();
-    console.log('Current timeline key:', currentKey);
+    console.log('Current timeline key:', getCurrentTimelineKey(), 'target timeline key:', targetTimelineKey);
+
+    window.timelineManager.activities[targetTimelineKey] = window.timelineManager.activities[targetTimelineKey] || [];
 
     // Check if this activity already exists in the manager
-    const existingIndex = window.timelineManager.activities[currentKey].findIndex(a => a.id === activityData.id);
+    const existingIndex = window.timelineManager.activities[targetTimelineKey].findIndex(a => a.id === activityData.id);
     if (existingIndex === -1) {
         console.log('Adding activity to manager');
-        window.timelineManager.activities[currentKey].push(result.activityData);
+        window.timelineManager.activities[targetTimelineKey].push(result.activityData);
     } else {
         console.log('Activity already exists in manager at index', existingIndex);
     }
 
-    console.log('Activities in manager:', window.timelineManager.activities[currentKey].map(a => a.id));
+    console.log('Activities in manager:', window.timelineManager.activities[targetTimelineKey].map(a => a.id));
     console.log('=== RECREATE ACTIVITY BLOCK END ===');
 
     return result;
@@ -2699,12 +2702,8 @@ function initTimelineInteraction(timeline) {
                     const activityIndex = currentData.findIndex(activity => activity.id === activityId);
 
                     if (activityIndex !== -1) {
-                        const times = formatTimeDDMMYYYYHHMM(newStartTime, newEndTime);
-                        if (!times.startTime || !times.endTime) {
-                            throw new Error('Activity start time and end time must be defined');
-                        }
-                        currentData[activityIndex].startTime = times.startTime;
-                        currentData[activityIndex].endTime = times.endTime;
+                        currentData[activityIndex].startTime = newStartTime;
+                        currentData[activityIndex].endTime = newEndTime;
                         currentData[activityIndex].blockLength = parseInt(target.dataset.length);
 
                         // Update the minutes in the activity data
@@ -3153,11 +3152,15 @@ export function loadTimelineFromJSONOldAndCurrentlyUnused(jsonData) {
 }
 
 
-/// Construct a time String like "2025-11-06 06:30" or "06:30" from minutes since midnight, with optional prefix for date. This is used to convert backend times (which are in minutes since midnight) to the format we use in the frontend.
-function minutesSinceMidnightToHHMM(minutes, prefix="2025-11-06 ") {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return `${prefix}${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+/**
+ * Converts absolute minutes since midnight to frontend HH:MM/(+1) notation.
+ *
+ * @param {number} minutes Absolute minutes value.
+ * @param {boolean} isEndTime Whether the value is an end time.
+ * @returns {string} Formatted frontend time string (e.g. `14:10` or `00:50(+1)`).
+ */
+function minutesSinceMidnightToHHMM(minutes, isEndTime = false) {
+    return formatTimeHHMM(minutes, isEndTime);
 }
 
 /// Transform backend activities response to frontend format.
@@ -3170,8 +3173,8 @@ function transformBackendActivitiesResponse(backendData) {
             timelineKey: activity.timeline_key,
             activity: activity.activity,
             category: activity.category || "Travel & Transit",
-            startTime: minutesSinceMidnightToHHMM(activity.start_minutes),
-            endTime: minutesSinceMidnightToHHMM(activity.end_minutes),
+            startTime: minutesSinceMidnightToHHMM(activity.start_minutes, false),
+            endTime: minutesSinceMidnightToHHMM(activity.end_minutes, true),
             blockLength: activity.duration,
             color: activity.color || '#cccccc',
             parentName: activity.parent_activity || null,
@@ -3688,7 +3691,8 @@ async function init() {
 
                     if (activitiesToLoad && activitiesToLoad.length > 0) {
                         loadedActivitiesFromBackend = true;
-                        const loadedTimelineKeys = [...new Set(activitiesToLoad.map(a => a.timelineKey))];
+                        const loadedTimelineKeySet = new Set(activitiesToLoad.map(a => a.timelineKey));
+                        const loadedTimelineKeys = window.timelineManager.keys.filter(key => loadedTimelineKeySet.has(key));
 
                         // Create timelines for each loaded timeline
                         for (let i = 0; i < loadedTimelineKeys.length; i++) {
