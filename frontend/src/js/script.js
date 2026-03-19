@@ -85,6 +85,10 @@ function setSingleActiveActivityButton(activityButton) {
     }
 }
 
+function activityIdsEqual(leftId, rightId) {
+    return String(leftId) === String(rightId);
+}
+
 // Function to calculate timeline coverage in minutes
 window.getTimelineCoverage = getTimelineCoverage;
 
@@ -194,7 +198,7 @@ function deleteActivityBlock(activityBlock) {
     // Remove from timeline manager data
     const timelineActivities = window.timelineManager.activities[timelineKey];
     if (timelineActivities) {
-        const index = timelineActivities.findIndex(activity => activity.id === activityId);
+        const index = timelineActivities.findIndex(activity => activityIdsEqual(activity.id, activityId));
         if (index !== -1) {
             timelineActivities.splice(index, 1);
 
@@ -650,7 +654,7 @@ function recreateActivityBlockFromTemplate(activityData) {
     window.timelineManager.activities[targetTimelineKey] = window.timelineManager.activities[targetTimelineKey] || [];
 
     // Check if this activity already exists in the manager
-    const existingIndex = window.timelineManager.activities[targetTimelineKey].findIndex(a => a.id === activityData.id);
+    const existingIndex = window.timelineManager.activities[targetTimelineKey].findIndex(a => activityIdsEqual(a.id, activityData.id));
     if (existingIndex === -1) {
         console.log('Adding activity to manager');
         window.timelineManager.activities[targetTimelineKey].push(result.activityData);
@@ -2707,7 +2711,7 @@ function initTimelineInteraction(timeline) {
                     // Update the activity data in timelineManager
                     const activityId = target.dataset.id;
                     const currentData = getCurrentTimelineData();
-                    const activityIndex = currentData.findIndex(activity => activity.id === activityId);
+                    const activityIndex = currentData.findIndex(activity => activityIdsEqual(activity.id, activityId));
 
                     if (activityIndex !== -1) {
                         currentData[activityIndex].startTime = newStartTime;
@@ -2996,7 +3000,7 @@ function initTimelineInteraction(timeline) {
         if (target.dataset.id && !target.hasAttribute('data-selected')) {
             const activityId = target.dataset.id;
             const currentData = getCurrentTimelineData();
-            const activityData = currentData.find(a => a.id === activityId);
+            const activityData = currentData.find(a => activityIdsEqual(a.id, activityId));
 
             if (activityData) {
                 // If block has parentName but no selected attribute
@@ -3645,10 +3649,15 @@ async function init() {
         window.timelineManager.currentIndex = -1; // Start at -1 so first addNextTimeline() sets to 0
         await addNextTimeline(); // Only add first timeline initially
 
-        let loadedActivitiesFromBackend = false;
+        const restoredPendingState = await tryRestorePendingTimelineState(participantId, studyName, dayIndex);
+        if (restoredPendingState) {
+            console.log('Successfully restored pending timeline activities from session state.');
+        }
+
+        let loadedActivitiesFromBackend = restoredPendingState;
 
         // Load existing activities from backend if available
-        if (participantId && studyName) {
+        if (participantId && studyName && !restoredPendingState) {
             console.log(`Attempting to load existing activities for participant ${participantId}, study ${studyName}, day index ${dayIndex}`);
 
             try {
@@ -3756,13 +3765,6 @@ async function init() {
                 }
             } catch (error) {
                 console.warn('Error fetching existing activities from backend, continuing without preload:', error.message);
-            }
-        }
-
-        if (!loadedActivitiesFromBackend) {
-            const restoredPendingState = await tryRestorePendingTimelineState(participantId, studyName, dayIndex);
-            if (restoredPendingState) {
-                console.log('Successfully restored pending timeline activities from session state.');
             }
         }
 
