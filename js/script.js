@@ -109,29 +109,37 @@ function initInstructionBanner() {
     const banner = document.getElementById('instructionBanner');
     if (!banner) return;
 
+    const bannerStorageKey = getInstructionBannerStorageKey();
+
+    if (getCurrentDayIndex() !== 0) {
+        banner.remove();
+        return;
+    }
+
     // Check if user has already closed the banner (using localStorage)
-    const bannerClosed = localStorage.getItem('instructionBannerClosed');
+    const bannerClosed = localStorage.getItem(bannerStorageKey);
     if (bannerClosed === 'true') {
         banner.remove();
         return;
     }
+
+    banner.style.display = 'block';
 
     // Set up close button
     const closeBtn = banner.querySelector('.banner-close');
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
             banner.style.display = 'none';
-            localStorage.setItem('instructionBannerClosed', 'true');
+            localStorage.setItem(bannerStorageKey, 'true');
         });
     }
+}
 
-    // Auto-close after 10 seconds
-    setTimeout(() => {
-        if (banner.parentNode) { // Check if banner still exists
-            banner.style.display = 'none';
-            localStorage.setItem('instructionBannerClosed', 'true');
-        }
-    }, 10000);
+function getInstructionBannerStorageKey() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const pid = urlParams.get('pid') || 'anonymous';
+    const studyName = urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME || 'default';
+    return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 
 
@@ -3293,12 +3301,6 @@ function showTemplateBanner(templateSourceDay) {
         document.body.insertBefore(banner, document.body.firstChild);
     }
 
-    // Auto-close after 15 seconds
-    setTimeout(() => {
-        if (banner.parentNode) {
-            banner.style.display = 'none';
-        }
-    }, 15000);
 }
 
 function getCurrentDayIndex() {
