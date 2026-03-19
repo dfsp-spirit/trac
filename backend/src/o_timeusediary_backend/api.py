@@ -88,8 +88,7 @@ app.add_middleware(
 async def favicon():
     """Serve the favicon.ico file.
 
-    Returns:
-        FileResponse: The favicon.ico file if it exists, otherwise a 204 No Content response.
+    @returns The `favicon.ico` file when present, otherwise a 204 No Content response.
     """
     favicon_path = static_dir / "favicon.ico"
     if favicon_path.exists():
@@ -246,8 +245,7 @@ async def validation_exception_handler(request: Request, exc: ValidationError):
 def root():
     """Root endpoint of the API.
 
-    Returns:
-        dict: A message indicating the API version.
+    @returns A JSON object with a backend status/version message.
     """
     return {"message": f"TUD API version {tud_version} is running"}
 
@@ -255,7 +253,8 @@ def root():
 def health_check(session: Session = Depends(get_session)):
     """Health check endpoint to verify that the API is running and can connect to the database.
 
-    @return: A JSON object containing the health status, counts of studies, and API version.
+    @param session Database session dependency.
+    @returns A JSON object containing health status, study counters, and backend version.
     """
     all_studies = session.exec(select(Study)).all()
     open_studies = session.exec(select(Study).where(Study.allow_unlisted_participants == True)).all()
@@ -265,7 +264,9 @@ def health_check(session: Session = Depends(get_session)):
 @app.get("/api/docs")
 async def redirect_to_docs(request: Request):
     """Redirect the root API endpoint to the automatically generated API documentation at /docs.
-    @return: A RedirectResponse to the /docs endpoint, with proper handling of root_path for deployments under subpaths.
+
+    @param request Incoming request used to resolve `root_path`.
+    @returns A redirect response to the `/docs` endpoint with root-path awareness.
     """
     root_path = request.scope.get("root_path", "")
     # Ensure no double slashes
@@ -309,9 +310,10 @@ def get_study_activities_config(
     - For restricted study:
       GET /api/studies/restricted-study/activities-config?participant_id=user123
 
-    @param study_name_short: The short name of the study to retrieve the activities config for.
-    @param participant_id: (Optional) The participant ID for authorization check. Required if the study is not open for everyone.
-    @return: The activities configuration for the study.
+    @param study_name_short The short name of the study to retrieve the activities config for.
+    @param participant_id (Optional) Participant ID for authorization checks on restricted studies.
+    @param session Database session dependency.
+    @returns The activities configuration object for the requested study.
     """
     # Find the study
     study = session.exec(
@@ -456,11 +458,12 @@ def submit_activities(
     Rejects entire submission if any activity code is invalid (frontend-backend config mismatch).
     If activities already exist for this user-study-day_label combination, they are deleted first.
 
-    @param study_name_short: The short name of the study.
-    @param participant_id: The participant ID submitting the activities.
-    @param day_label_name: The name of the day label these activities belong to.
-    @param activities_data: The list of activities being submitted, including timeline keys, activity names, codes, and time intervals.
-    @return A JSON response indicating success, number of activities created, and any relevant information about the operation.
+    @param study_name_short The short name of the study.
+    @param participant_id The participant ID submitting the activities.
+    @param day_label_name The day label these activities belong to.
+    @param activities_data The submitted activities payload.
+    @param session Database session dependency.
+    @returns A JSON response indicating success and submission metadata.
     """
     # Validate study exists
     study = session.exec(
@@ -738,7 +741,10 @@ async def admin_overview(
     """
     Admin overview page showing database contents.
     Shows studies, participants, timelines, and activities.
-    @return An HTML page rendered with Jinja2 templates containing an overview of the studies, participants, timelines, and activities in the database. Access to this page is restricted to authenticated admins using HTTP Basic Auth.
+    @param request FastAPI request object for template rendering.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
+    @returns An HTML admin overview page with studies, participants, timelines, and activities.
     """
 
     logger.info(f"Admin '{current_admin}' accessed the admin overview page.")
@@ -934,12 +940,14 @@ async def export_study_activities(
     Export activities for a specific study in CSV or JSON format.
     Defaults to CSV format for scientific analysis.
 
-    @param study_name_short: Short name of the study to export
-    @param format: Output format, either 'csv' or 'json' (default: 'csv')
-    @param include_metadata: Whether to include metadata columns (default: True)
-    @param include_path: Whether to include activity path columns (default: True)
-
-    @return A Response object containing the exported data in the requested format, with appropriate headers for file download. Access to this endpoint is restricted to authenticated admins using HTTP Basic Auth.
+    @param request FastAPI request object.
+    @param study_name_short Short name of the study to export.
+    @param format Output format, either `csv` or `json`.
+    @param include_metadata Whether metadata columns are included.
+    @param include_path Whether activity path columns are included.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
+    @returns A file-download response containing exported activities for the study.
     """
 
     logger.info(f"Admin '{current_admin}' requested export of activities for study '{study_name_short}' in format '{format}'")
@@ -1153,12 +1161,13 @@ def get_participant_day_activities(
 
     Either day_label_name or day_label_index must be provided to identify the target day.
 
-    @param study_name_short: Short name of the study
-    @param participant_id: ID of the participant
-    @param day_label_name: (Optional) Name of the day label to retrieve activities for
-    @param day_label_index: (Optional) Display order/index of the day label to retrieve activities for
-    @param template_from_day_index: (Optional) Day index to use as template source. If not provided, defaults to previous day (current_day_index - 1). Used to
-    @return A JSON response containing the list of activities for the specified participant and day, along with metadata about the timelines and an optional template of activities from a previous day. The response is structured to facilitate frontend display and editing of the activities.
+    @param study_name_short Short name of the study.
+    @param participant_id ID of the participant.
+    @param day_label_name (Optional) Day-label name for activity retrieval.
+    @param day_label_index (Optional) Day-label index/display order for activity retrieval.
+    @param template_from_day_index (Optional) Source day index for template activities.
+    @param session Database session dependency.
+    @returns A JSON response containing activities, timeline metadata, and optional template activities.
 
     Optionally include activities from a previous day as a template:
     - If template_from_day_index is not provided, defaults to previous day (current_day_index - 1)
@@ -1399,7 +1408,8 @@ async def get_active_open_study_names(
     Each study object includes name_short, name, and description fields.
     Returns empty list if no studies match criteria.
 
-    @return A JSON response containing a list of active open studies, where each study includes its short name, full name, and description. This endpoint is publicly accessible without authentication and is intended for participants to discover which studies are currently open for enrollment and data collection.
+    @param session Database session dependency.
+    @returns A JSON list of currently active open studies with `name_short`, `name`, and `description`.
     """
     try:
         # Get current UTC time
@@ -1484,7 +1494,8 @@ def get_study_config(
 
     @param study_name_short: Short name of the study to retrieve config for
     @param participant_id: (Optional) Participant ID for authorization check. Required if study is not open for everyone.
-    @return A JSON response containing the study configuration, including timelines and day labels. Access to this endpoint is restricted based on study settings and participant authorization.
+    @param session Database session dependency.
+    @returns A JSON response containing study configuration, timelines, and day labels.
     """
     # Find the study
     study = session.exec(
