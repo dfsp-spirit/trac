@@ -2316,6 +2316,7 @@ body {
     color: white;
     padding: 12px 20px;
     position: relative;
+    display: none;
     z-index: 1000;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
