@@ -509,7 +509,7 @@
                         </table>
                     </div>
                     <div class="pagination">
-                        <span>Showing first 10 of {{ study_data.total_activities_logged }} activities</span>
+                        <span>Showing the most recent 10 of {{ study_data.total_activities_logged }} activities</span>
                     </div>
                     {% else %}
                     <div class="empty-state">
@@ -549,7 +549,7 @@
         <div class="study-section">
             <div class="study-header">
                 <h2>📊 Recently Logged Activities (Across All Studies)</h2>
-                <p>These are the last 20 activities recorded across all studies. See the Activities tab of each study to see results specific to that study.</p>
+                <p>These are the most recent {{ recent_activities|length }} out of total {{ total_activities_all }} activities recorded across all studies. See the Activities tab of each study to see only results specific to that study.</p>
             </div>
             <div class="tab-content">
                 <div class="table-container">
