@@ -322,7 +322,8 @@ def compute_activity_path_from_config(
     category_name: str,
     activity: 'ActivityItem',
     parent_name: Optional[str] = None,
-    short: bool = False
+    short: bool = False,
+    no_duplicate_parts: bool = False
 ) -> str:
     """Compute the frontend_path string for an ActivityItem from the config file.
 
@@ -334,27 +335,36 @@ def compute_activity_path_from_config(
     @param activity      The ActivityItem.
     @param parent_name   Parent activity name if this is a child item, otherwise None.
     @param short         Whether to omit the "timeline:" and "category:" prefixes for a more concise path (e.g. "primary > General Activities > activity:Sleeping").
+    @param no_duplicate_parts Whether to avoid duplicate parts in the path. Forces short mode.
     @return Path string in the same format as activity_path_frontend on DB rows.
     """
-    parts = [timeline_key] if short else [f"timeline:{timeline_key}"]
+
+    timeline_key_part = "" if no_duplicate_parts else timeline_key
+    parts = [timeline_key_part] if short else [f"timeline:{timeline_key}"]
     if category_name and category_name.strip():
+        category_name_part = "" if no_duplicate_parts else category_name
         if short:
-            parts.append(category_name)
+            parts.append(category_name_part)
         else:
             parts.append(f"category:{category_name}")
     if parent_name:
+        parent_name_part = "" if no_duplicate_parts else parent_name
         if short:
-            parts.append(parent_name)
+            parts.append(parent_name_part)
         else:
             parts.append(f"parent:{parent_name}")
     if short:
         parts.append(activity.name)
     else:
         parts.append(f"activity:{activity.name}")
+
+    # remove all empty parts (like "") to avoid " >  > " in the path
+    parts = [part for part in parts if part]
+
     return " > ".join(parts)
 
 
-def get_activities_cfg_text(config: ActivitiesConfig, short: bool = False) -> str:
+def get_activities_cfg_text(config: ActivitiesConfig, short: bool = False, no_duplicate_parts: bool = False) -> str:
     """Build a condensed multi-line text representation of all activities in the config.
 
     Format::
@@ -378,17 +388,17 @@ def get_activities_cfg_text(config: ActivitiesConfig, short: bool = False) -> st
         for category in timeline_cfg.categories:
             lines.append(f"  Category: {category.name}")
             for activity in category.activities:
-                path = compute_activity_path_from_config(timeline_key, category.name, activity, short=short)
+                path = compute_activity_path_from_config(timeline_key, category.name, activity, short=short, no_duplicate_parts=no_duplicate_parts)
                 lines.append(f"    {activity.code}  {path}")
                 for child in activity.childItems:
                     child_path = compute_activity_path_from_config(
-                        timeline_key, category.name, child, parent_name=activity.name, short=short
+                        timeline_key, category.name, child, parent_name=activity.name, short=short, no_duplicate_parts=no_duplicate_parts
                     )
                     lines.append(f"      {child.code}  {child_path}")
     return "\n".join(lines)
 
 
-def get_activities_cfg_text_for_path(config_path: str, short: bool = False) -> str:
+def get_activities_cfg_text_for_path(config_path: str, short: bool = False, no_duplicate_parts: bool = False) -> str:
     """Convenience wrapper: load (cached) config from *config_path* and return its condensed text.
 
     @param config_path Path to the activities JSON configuration file.
@@ -396,4 +406,4 @@ def get_activities_cfg_text_for_path(config_path: str, short: bool = False) -> s
     @return Multi-line condensed text of all activities.
     """
     config = get_cached_activities_config(config_path)
-    return get_activities_cfg_text(config, short=short)
+    return get_activities_cfg_text(config, short=short, no_duplicate_parts = no_duplicate_parts)

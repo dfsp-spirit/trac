@@ -876,7 +876,7 @@ async def admin_overview(
                 "min_coverage": timeline.min_coverage
             })
 
-        activities_cfg_text = get_activities_cfg_text_for_path(study.activities_json_url, short=True)
+        activities_cfg_text = get_activities_cfg_text_for_path(study.activities_json_url, short=True, no_duplicate_parts=True)
 
         studies_data.append({
             "study": study,
