@@ -1,13 +1,16 @@
 const { test, expect } = require('@playwright/test');
 
-test.use({ viewport: { width: 1600, height: 900 } });
-
 const MOBILE_VIEWPORT = { width: 390, height: 844 };
 
-async function switchToMobileView(page) {
-  await page.setViewportSize(MOBILE_VIEWPORT);
-  await page.waitForLoadState('domcontentloaded');
-  await expect(page).toHaveURL(/index\.html/);
+test.use({ viewport: MOBILE_VIEWPORT });
+
+async function waitForActiveTimelineLayout(page, expectedLayout) {
+  await expect
+    .poll(
+      async () => page.locator('.timeline-container[data-active="true"] .timeline').first().getAttribute('data-layout'),
+      { timeout: 30000, message: `Waiting for active timeline layout=${expectedLayout}` }
+    )
+    .toBe(expectedLayout);
 }
 
 async function waitForActivitiesLoaded(page) {
@@ -40,10 +43,24 @@ async function expandGeneralActivitiesInModal(page) {
 
 async function closeActivitiesModal(page) {
   const modal = page.locator('#activitiesModal');
-  if (await modal.isVisible()) {
-    await page.locator('#activitiesModal .modal-close').first().click();
-    await expect(modal).toBeHidden();
+  if (!(await modal.isVisible())) {
+    return;
   }
+
+  try {
+    await modal.waitFor({ state: 'hidden', timeout: 1000 });
+    return;
+  } catch {
+    // Fall through: in some mobile flows the app auto-closes the modal shortly
+    // after selection, but if it does not, close it explicitly.
+  }
+
+  const closeButton = page.locator('#activitiesModal .modal-close').first();
+  if (await closeButton.isVisible()) {
+    await closeButton.click({ force: true });
+  }
+
+  await expect(modal).toBeHidden({ timeout: 10000 });
 }
 
 async function ensureSleepingActivityAvailable(page) {
@@ -164,7 +181,7 @@ test('mobile: instructions -> add Sleeping at ~50% -> next timeline/day shows Tu
   await page.locator('#continueBtn').click();
 
   await expect(page).toHaveURL(/index\.html/);
-  await switchToMobileView(page);
+  await waitForActiveTimelineLayout(page, 'vertical');
 
   const currentDayDisplay = page.locator('#currentDayDisplay');
   await expect(currentDayDisplay).toHaveAttribute('title', /Monday/);
