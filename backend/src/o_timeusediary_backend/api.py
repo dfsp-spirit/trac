@@ -675,6 +675,7 @@ def submit_activities(
                 activity_path_frontend=compute_activity_path(activity_item),
                 color=activity_item.color,
                 category=activity_item.category,
+                parent_activity_code=activity_item.parent_activity_code
 
             )
             session.add(activity)
@@ -694,6 +695,8 @@ def submit_activities(
                     activity_path_frontend=compute_activity_path(activity_item),
                     color=activity_item.color,
                     category=activity_item.category,
+                    parent_activity_code=activity_item.parent_activity_code
+
                 )
                 session.add(activity)
                 created_activities.append(activity)
@@ -1019,7 +1022,6 @@ async def export_study_activities(
         end_minute = activity.end_minutes % 60
 
         duration_minutes = activity.end_minutes - activity.start_minutes
-        duration_hours = duration_minutes / 60.0
 
         # Base data that everyone wants
         record = {
@@ -1032,7 +1034,6 @@ async def export_study_activities(
             "start_minutes": activity.start_minutes,
             "end_minutes": activity.end_minutes,
             "duration_minutes": duration_minutes,
-            "duration_hours": round(duration_hours, 2),
             "category": activity.category,
 
             # Context data
@@ -1062,7 +1063,7 @@ async def export_study_activities(
                 "data_collection_end": study.data_collection_end.isoformat(),
                 "participant_created_at": participant.created_at.isoformat(),
                 "timeline_description": timeline.description or "",
-                "timeline_min_coverage": timeline.min_coverage or "",
+                "timeline_min_coverage": timeline.min_coverage or 0,
             })
 
         # Add activity path components if requested
