@@ -572,12 +572,13 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>DB ID</th>
                                 <th>Study</th>
                                 <th>Participant</th>
                                 <th>Day</th>
                                 <th>Timeline</th>
                                 <th>Activity</th>
+                                <th>Code</th>
                                 <th>Time</th>
                                 <th>Created</th>
                             </tr>
@@ -591,6 +592,7 @@
                                 <td>{{ activity.day_label }}</td>
                                 <td>{{ activity.timeline }}</td>
                                 <td>{{ activity.activity_name }}</td>
+                                <td>{{ activity.activity_code }}</td>
                                 <td class="time-cell">{{ activity.time_range }}</td>
                                 <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             </tr>

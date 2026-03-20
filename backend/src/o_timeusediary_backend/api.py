@@ -934,6 +934,7 @@ async def admin_overview(
             "category": activity.category if activity else "Unknown",
             "timeline": timeline.name if timeline else "Unknown",
             "activity_name": activity.activity_name,
+            "activity_code": activity.activity_code,
             "time_range": f"{activity.start_minutes//60:02d}:{activity.start_minutes%60:02d} - {activity.end_minutes//60:02d}:{activity.end_minutes%60:02d}",
             "created_at": activity.created_at
         })
