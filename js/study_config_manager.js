@@ -26,8 +26,61 @@ function getLangFromUrl() {
     return urlParams.get('lang');
 }
 
+function normalizeLanguageCode(language) {
+    if (typeof language !== 'string') {
+        return null;
+    }
+    const normalized = language.trim().toLowerCase();
+    if (!normalized) {
+        return null;
+    }
+    const primarySubtag = normalized.split('-')[0];
+    return primarySubtag || null;
+}
+
+function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') {
+    const normalizedSupported = (Array.isArray(supportedLanguages) ? supportedLanguages : [])
+        .map((language) => normalizeLanguageCode(language))
+        .filter(Boolean);
+
+    const uniqueSupported = [...new Set(normalizedSupported)];
+    const normalizedFallback = normalizeLanguageCode(fallbackLanguage) || 'en';
+
+    const pickIfSupported = (candidate) => {
+        const normalizedCandidate = normalizeLanguageCode(candidate);
+        if (!normalizedCandidate) {
+            return null;
+        }
+        if (uniqueSupported.length === 0 || uniqueSupported.includes(normalizedCandidate)) {
+            return normalizedCandidate;
+        }
+        return null;
+    };
+
+    // Always trust explicit URL language, even if local fallback config is stale.
+    // Backend remains authoritative and can validate/fallback if unsupported.
+    const fromUrl = normalizeLanguageCode(getLangFromUrl());
+    if (fromUrl) {
+        return fromUrl;
+    }
+
+    const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+        ? navigator.languages
+        : [navigator.language];
+
+    for (const browserLanguage of browserLanguages) {
+        const picked = normalizeLanguageCode(browserLanguage) || pickIfSupported(browserLanguage);
+        if (picked) {
+            return picked;
+        }
+    }
+
+    return pickIfSupported(normalizedFallback) || normalizedFallback;
+}
+
 function normalizeDayLabels(study, language = null) {
-    const targetLanguage = language || study?.default_language || 'en';
+    const targetLanguage = normalizeLanguageCode(language) || normalizeLanguageCode(study?.default_language) || 'en';
+    const defaultLanguage = normalizeLanguageCode(study?.default_language) || 'en';
     const dayLabels = Array.isArray(study?.day_labels) ? study.day_labels : [];
 
     return dayLabels.map((label) => {
@@ -36,8 +89,16 @@ function normalizeDayLabels(study, language = null) {
         }
 
         let displayName = label.display_name;
+        if (!displayName && label.display_names && typeof label.display_names === 'object') {
+            displayName = label.display_names;
+        }
+
         if (displayName && typeof displayName === 'object') {
-            displayName = displayName[targetLanguage] || displayName[study?.default_language] || displayName.en || label.name;
+            displayName = displayName[targetLanguage]
+                || displayName[defaultLanguage]
+                || displayName.en
+                || Object.values(displayName).find((value) => typeof value === 'string')
+                || label.name;
         }
 
         return {
@@ -63,6 +124,28 @@ function resolveLocalizedStudyText(textValue, selectedLanguage, defaultLanguage 
         || null;
 }
 
+function getLocalizedDayLabelDisplayName(label, selectedLanguage, defaultLanguage = 'en') {
+    if (!label || typeof label !== 'object') {
+        return null;
+    }
+
+    const displayNames = (label.display_names && typeof label.display_names === 'object')
+        ? label.display_names
+        : (label.display_name && typeof label.display_name === 'object' ? label.display_name : null);
+
+    if (displayNames) {
+        return displayNames[selectedLanguage]
+            || displayNames[defaultLanguage]
+            || displayNames.en
+            || Object.values(displayNames).find((value) => typeof value === 'string')
+            || null;
+    }
+
+    // Do not override backend-localized labels with plain string fallback labels.
+    // A plain string usually means language-specific context is unknown.
+    return null;
+}
+
 // Load studies config from JSON file (fallback)
 async function loadStudiesConfigFromFile() {
     try {
@@ -80,12 +163,29 @@ async function loadStudiesConfigFromFile() {
             throw new Error(`Study "${studyName}" not found in ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}`);
         }
 
-        const selectedLanguage = getLangFromUrl() || CURRENT_STUDY_CACHE.default_language || 'en';
-        CURRENT_STUDY_CACHE.supported_languages = Object.keys(
+        const supportedLanguages = Object.keys(
             CURRENT_STUDY_CACHE.activities_json_files || CURRENT_STUDY_CACHE.activities_json_file || { en: 'activities_default.json' }
         );
+        const selectedLanguage = getPreferredLanguage(supportedLanguages, CURRENT_STUDY_CACHE.default_language || 'en');
+        CURRENT_STUDY_CACHE.supported_languages = supportedLanguages;
         CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
         CURRENT_STUDY_CACHE.day_labels = normalizeDayLabels(CURRENT_STUDY_CACHE, selectedLanguage);
+
+        CURRENT_STUDY_CACHE.study_text_intro = resolveLocalizedStudyText(
+            CURRENT_STUDY_CACHE.study_text_intro,
+            selectedLanguage,
+            CURRENT_STUDY_CACHE.default_language || 'en'
+        );
+        CURRENT_STUDY_CACHE.study_text_end_completed = resolveLocalizedStudyText(
+            CURRENT_STUDY_CACHE.study_text_end_completed,
+            selectedLanguage,
+            CURRENT_STUDY_CACHE.default_language || 'en'
+        );
+        CURRENT_STUDY_CACHE.study_text_end_skipped = resolveLocalizedStudyText(
+            CURRENT_STUDY_CACHE.study_text_end_skipped,
+            selectedLanguage,
+            CURRENT_STUDY_CACHE.default_language || 'en'
+        );
 
         console.log(`Loaded study from file: ${CURRENT_STUDY_CACHE.name} with ${CURRENT_STUDY_CACHE.day_labels.length} days`);
         return CURRENT_STUDY_CACHE;
@@ -114,7 +214,10 @@ async function syncWithBackendConfig() {
     try {
         const studyName = TUD_SETTINGS.STUDY_NAME;
         const apiUrl = new URL(`${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`, window.location.origin);
-        const selectedLanguage = getLangFromUrl();
+        const selectedLanguage = getPreferredLanguage(
+            CURRENT_STUDY_CACHE?.supported_languages || [],
+            CURRENT_STUDY_CACHE?.default_language || 'en'
+        );
         if (selectedLanguage) {
             apiUrl.searchParams.set('lang', selectedLanguage);
         }
@@ -127,8 +230,54 @@ async function syncWithBackendConfig() {
             console.log('Backend study config received');
 
             // Update current study cache with backend data
+            const selectedLanguageFromConfig = normalizeLanguageCode(backendConfig.selected_language)
+                || selectedLanguage
+                || CURRENT_STUDY_CACHE.selected_language
+                || CURRENT_STUDY_CACHE.default_language
+                || 'en';
+            const defaultLanguageFromConfig = normalizeLanguageCode(backendConfig.default_language)
+                || normalizeLanguageCode(CURRENT_STUDY_CACHE.default_language)
+                || 'en';
+
             if (backendConfig.day_labels && backendConfig.day_labels.length > 0) {
-                CURRENT_STUDY_CACHE.day_labels = backendConfig.day_labels;
+                const fallbackDayLabels = Array.isArray(CURRENT_STUDY_CACHE.day_labels)
+                    ? CURRENT_STUDY_CACHE.day_labels
+                    : [];
+
+                const normalizedBackendDayLabels = normalizeDayLabels(
+                    {
+                        day_labels: backendConfig.day_labels,
+                        default_language: defaultLanguageFromConfig
+                    },
+                    selectedLanguageFromConfig
+                );
+
+                CURRENT_STUDY_CACHE.day_labels = normalizedBackendDayLabels.map((backendLabel) => {
+                    if (!backendLabel || typeof backendLabel !== 'object') {
+                        return backendLabel;
+                    }
+
+                    const fallbackLabel = fallbackDayLabels.find((candidateLabel) =>
+                        candidateLabel
+                        && typeof candidateLabel === 'object'
+                        && candidateLabel.name === backendLabel.name
+                    );
+
+                    const localizedDisplayName = getLocalizedDayLabelDisplayName(
+                        fallbackLabel,
+                        selectedLanguageFromConfig,
+                        defaultLanguageFromConfig
+                    );
+
+                    if (!localizedDisplayName) {
+                        return backendLabel;
+                    }
+
+                    return {
+                        ...backendLabel,
+                        display_name: localizedDisplayName
+                    };
+                });
             }
 
             if (backendConfig.default_language) {
@@ -143,8 +292,11 @@ async function syncWithBackendConfig() {
                 CURRENT_STUDY_CACHE.selected_language = backendConfig.selected_language;
             }
 
-            const selectedLanguage = backendConfig.selected_language
-                || getLangFromUrl()
+            const selectedLanguage = normalizeLanguageCode(backendConfig.selected_language)
+                || getPreferredLanguage(
+                    backendConfig.supported_languages || CURRENT_STUDY_CACHE.supported_languages || [],
+                    backendConfig.default_language || CURRENT_STUDY_CACHE.default_language || 'en'
+                )
                 || CURRENT_STUDY_CACHE.selected_language
                 || CURRENT_STUDY_CACHE.default_language
                 || 'en';
@@ -157,7 +309,7 @@ async function syncWithBackendConfig() {
                 selectedLanguage,
                 defaultLanguage
             );
-            if (resolvedIntro) {
+            if (resolvedIntro && !CURRENT_STUDY_CACHE.study_text_intro) {
                 CURRENT_STUDY_CACHE.study_text_intro = resolvedIntro;
             }
 
@@ -166,7 +318,7 @@ async function syncWithBackendConfig() {
                 selectedLanguage,
                 defaultLanguage
             );
-            if (resolvedCompleted) {
+            if (resolvedCompleted && !CURRENT_STUDY_CACHE.study_text_end_completed) {
                 CURRENT_STUDY_CACHE.study_text_end_completed = resolvedCompleted;
             }
 
@@ -175,7 +327,7 @@ async function syncWithBackendConfig() {
                 selectedLanguage,
                 defaultLanguage
             );
-            if (resolvedSkipped) {
+            if (resolvedSkipped && !CURRENT_STUDY_CACHE.study_text_end_skipped) {
                 CURRENT_STUDY_CACHE.study_text_end_skipped = resolvedSkipped;
             }
 
@@ -223,6 +375,13 @@ function getSelectedLanguage() {
         return 'en';
     }
     return CURRENT_STUDY_CACHE.selected_language || CURRENT_STUDY_CACHE.default_language || 'en';
+}
+
+function getDayLabels() {
+    if (!CURRENT_STUDY_CACHE || !Array.isArray(CURRENT_STUDY_CACHE.day_labels)) {
+        return [];
+    }
+    return CURRENT_STUDY_CACHE.day_labels;
 }
 
 function getStudyByShortName(nameShort) {
@@ -289,6 +448,16 @@ function getDayDisplayLabel(dayIndex) {
     const label = CURRENT_STUDY_CACHE.day_labels[dayIndex];
 
     if (label && typeof label === 'object') {
+        if (label.display_names && typeof label.display_names === 'object') {
+            const selectedLanguage = getSelectedLanguage();
+            const defaultLanguage = CURRENT_STUDY_CACHE.default_language || 'en';
+            return label.display_names[selectedLanguage]
+                || label.display_names[defaultLanguage]
+                || label.display_names.en
+                || label.display_name
+                || label.name
+                || `day_${dayIndex + 1}`;
+        }
         return label.display_name || label.name || `day_${dayIndex + 1}`;
     }
 
@@ -312,6 +481,7 @@ window.studyConfigManager = {
     getCurrentStudy,
     getSupportedLanguages,
     getSelectedLanguage,
+    getDayLabels,
     getStudyByShortName,
     initializeStudyConfig,
     syncWithBackendConfig,
@@ -324,6 +494,7 @@ export {
     getCurrentStudy,
     getSupportedLanguages,
     getSelectedLanguage,
+    getDayLabels,
     getStudyByShortName,
     initializeStudyConfig,
     syncWithBackendConfig,

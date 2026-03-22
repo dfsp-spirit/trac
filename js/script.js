@@ -3342,6 +3342,54 @@ function getCurrentDayIndex() {
     return parseInt(urlParams.get('day_label_index')) || 0;
 }
 
+function normalizeLanguageCode(language) {
+    if (typeof language !== 'string') {
+        return null;
+    }
+    const normalized = language.trim().toLowerCase();
+    if (!normalized) {
+        return null;
+    }
+    return normalized.split('-')[0] || null;
+}
+
+function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') {
+    const normalizedSupported = (Array.isArray(supportedLanguages) ? supportedLanguages : [])
+        .map((language) => normalizeLanguageCode(language))
+        .filter(Boolean);
+    const supportedSet = new Set(normalizedSupported);
+
+    const pickIfSupported = (candidate) => {
+        const normalizedCandidate = normalizeLanguageCode(candidate);
+        if (!normalizedCandidate) {
+            return null;
+        }
+        if (supportedSet.size === 0 || supportedSet.has(normalizedCandidate)) {
+            return normalizedCandidate;
+        }
+        return null;
+    };
+
+    const urlLanguage = new URLSearchParams(window.location.search).get('lang');
+    const fromUrl = pickIfSupported(urlLanguage);
+    if (fromUrl) {
+        return fromUrl;
+    }
+
+    const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+        ? navigator.languages
+        : [navigator.language];
+
+    for (const browserLanguage of browserLanguages) {
+        const picked = pickIfSupported(browserLanguage);
+        if (picked) {
+            return picked;
+        }
+    }
+
+    return pickIfSupported(fallbackLanguage) || normalizeLanguageCode(fallbackLanguage) || 'en';
+}
+
 const PENDING_TIMELINE_STATE_KEY = 'trac.pendingTimelineState.v1';
 
 function getPendingTimelineContext() {
@@ -3576,7 +3624,10 @@ async function init() {
         const urlParams = new URLSearchParams(window.location.search);
         const participantId = urlParams.get('pid');
         const studyName = urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME;
-        const selectedLanguage = urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en';
+        const selectedLanguage = getPreferredLanguage(
+            currentStudy.supported_languages || [],
+            urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en'
+        );
 
         try {
             await i18n.init(selectedLanguage);

@@ -10,6 +10,53 @@ function getCurrentLanguageFromUrl() {
     return getUrlParams().get('lang');
 }
 
+function normalizeLanguageCode(language) {
+    if (typeof language !== 'string') {
+        return null;
+    }
+    const normalized = language.trim().toLowerCase();
+    if (!normalized) {
+        return null;
+    }
+    return normalized.split('-')[0] || null;
+}
+
+function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') {
+    const normalizedSupported = (Array.isArray(supportedLanguages) ? supportedLanguages : [])
+        .map((language) => normalizeLanguageCode(language))
+        .filter(Boolean);
+    const supportedSet = new Set(normalizedSupported);
+
+    const pickIfSupported = (candidate) => {
+        const normalizedCandidate = normalizeLanguageCode(candidate);
+        if (!normalizedCandidate) {
+            return null;
+        }
+        if (supportedSet.size === 0 || supportedSet.has(normalizedCandidate)) {
+            return normalizedCandidate;
+        }
+        return null;
+    };
+
+    const fromUrl = pickIfSupported(getCurrentLanguageFromUrl());
+    if (fromUrl) {
+        return fromUrl;
+    }
+
+    const browserLanguages = Array.isArray(navigator.languages) && navigator.languages.length > 0
+        ? navigator.languages
+        : [navigator.language];
+
+    for (const browserLanguage of browserLanguages) {
+        const picked = pickIfSupported(browserLanguage);
+        if (picked) {
+            return picked;
+        }
+    }
+
+    return pickIfSupported(fallbackLanguage) || normalizeLanguageCode(fallbackLanguage) || 'en';
+}
+
 function setLanguageInUrl(language) {
     const url = new URL(window.location.href);
     url.searchParams.set('lang', language);
@@ -127,6 +174,7 @@ function applyStudyIntroText(studyConfig) {
 
     if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
         introElement.innerHTML = resolvedText;
+        introElement.removeAttribute('data-i18n-html');
     }
 }
 
@@ -146,7 +194,7 @@ function updateLayout() {
 (async () => {
     try {
         let studyConfig = null;
-        const requestedLanguage = getCurrentLanguageFromUrl();
+        const requestedLanguage = getCurrentLanguageFromUrl() || getPreferredLanguage();
 
         try {
             studyConfig = await loadStudyConfigForInstructions(requestedLanguage || undefined);
@@ -154,7 +202,10 @@ function updateLayout() {
             console.warn('Could not load study-config for instructions page:', studyConfigError.message);
         }
 
-        const selectedLanguage = requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en';
+        const selectedLanguage = getPreferredLanguage(
+            studyConfig?.supported_languages || [],
+            requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en'
+        );
         if (!requestedLanguage && selectedLanguage) {
             setLanguageInUrl(selectedLanguage);
         }
