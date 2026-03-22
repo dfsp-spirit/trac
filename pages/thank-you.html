@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="thankYou.title">Thank You - O-ELIDDI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="/assets/fonts/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/fonts/fontawesome/css/all.min.css">
     <style>
         :root {
             --primary-color: #2563eb;
@@ -139,13 +139,13 @@
         <div class="success-icon">
             <i class="fas fa-check"></i>
         </div>
-        
+
         <h1 data-i18n="thankYou.heading">Thank You!</h1>
-        
+
         <p class="subtitle" data-i18n="thankYou.subtitle">Your submission has been completed successfully.</p>
-        
+
         <p class="message" data-i18n-html="thankYou.message">
-            Thank you for participating in our <span class="app-name">O-ELIDDI</span> study. 
+            Thank you for participating in our <span class="app-name">O-ELIDDI</span> study.
             Your responses have been recorded and will contribute to valuable research.
         </p>
     </div>
@@ -157,13 +157,13 @@
             // Get language from URL parameters or default to 'en'
             const urlParams = new URLSearchParams(window.location.search);
             const language = urlParams.get('lang') || 'en';
-            
+
             // Initialize i18n
             await window.i18n.init(language);
-            
+
             // Apply translations to the page
             window.i18n.applyTranslations();
         });
     </script>
 </body>
-</html> 
+</html>
