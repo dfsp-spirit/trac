@@ -1,0 +1,131 @@
+{
+  "instructions": {
+    "pageTitle": "Instrukcje | Dziennik Czasu Użycia",
+    "title": "Instrukcje",
+    "welcomeTitle": "Witaj w Twoim cotygodniowym dzienniku czasu. Dziękujemy za udział!",
+    "generalInfoTitle": "Ogólne informacje o badaniu",
+    "studyIntroDefault": "To jest nasze badanie dotyczące wykorzystania czasu.<br><br>Prosimy, abyś <b>odtworzył typowy tydzień</b> swoich codziennych aktywności przy użyciu naszego narzędzia do rejestrowania czasu.<br><br>Który tydzień powinienem wybrać? Proszę pomyśleć o minionym tygodniu (ostatnie 7 dni).<br>Wyjątek: Jeśli byłeś chory lub na urlopie w zeszłym tygodniu, wybierz inny, niedawny tydzień, który lepiej odzwierciedla Twój normalny plan dnia.",
+    "timeSavingFeature": "Funkcja oszczędzania czasu: Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.",
+    "howToFillTitle": "Jak wypełnić dziennik",
+    "howToFillDescription": "Na dole ekranu zobaczysz listę aktywności. Możesz przeciągnąć i upuścić te aktywności na osi czasu, aby wskazać, co robiłeś przez cały dzień.",
+    "howToFillTwoSteps": "Wprowadzisz informacje w dwóch krokach dla każdego dnia:",
+    "mainActivityHelp": "<b>Główna aktywność (Poziom 1)</b> Przeciągnij i upuść aktywności z listy na osi czasu, aby pokazać swoją główną aktywność.",
+    "secondaryActivityHelp": "<b>Aktywność poboczna (Poziom 2)</b> Użyj tej drugiej osi czasu tylko wtedy, gdy robiłeś dwie rzeczy jednocześnie. Jest to dla aktywności, które działy się w tle lub równolegle z Twoją główną aktywnością, np.:",
+    "secondaryExamples": {
+      "media": "Multitasking medialny: Jeśli używałeś drugiego medium (np. słuchanie podcastu podczas grania, lub sprawdzanie mediów społecznościowych podczas oglądania telewizji).",
+      "other": "Inny multitasking: Jeśli wykonywałeś jednocześnie aktywność niedigitalną (np. czytanie podczas podróży, lub robienie na drutach podczas oglądania telewizji).",
+      "note": "Uwaga: Jeśli skupiłeś się tylko na jednej rzeczy, pozostaw ten poziom pusty dla tego okresu czasu."
+    },
+    "visualGuideTitle": "Wizualne instrukcje korzystania z interfejsu",
+    "startPrompt": "Kliknij niebieski przycisk 'Rozpocznij', aby rozpocząć wypełnianie dziennika.",
+    "mainInstruction": "Pomyśl o aktywnościach, które wykonywałeś <span class=\"emphasis\">wczoraj</span>. Następnie wypełnij całą oś czasu swoimi aktywnościami.",
+    "step1": {
+      "title": "Wybierz i umieść aktywność",
+      "horizontal": "Wybierz aktywność z menu na dole ekranu, a następnie umieść ją na osi czasu.",
+      "vertical": "Kliknij przycisk (+) w prawym dolnym rogu, aby otworzyć menu aktywności, wybierz aktywność i kliknij miejsce na osi czasu, gdzie chcesz ją umieścić."
+    },
+    "step2": {
+      "title": "Dostosuj czas trwania aktywności",
+      "horizontal": "Kliknij i przeciągnij krawędzie poziomo, aby ustawić czas trwania.",
+      "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania."
+    },
+    "step3": {
+      "title": "Wyślij dziennik",
+      "description": "Po zapisaniu wszystkich swoich aktywności na dany dzień, kliknij przycisk 'Wyślij', aby zakończyć wypełnianie dziennika.",
+      "submitHelp": "Kliknij, aby wysłać wypełniony dziennik"
+    },
+    "helpfulTools": "Pomocne narzędzia",
+    "undoHelp": "Cofnij ostatnią akcję",
+    "cleanRowHelp": "Chcesz zacząć od nowa? Wyczyść rząd",
+    "customActivityHelp": "Brak aktywności na liście? Dodaj własną aktywność",
+    "customActivityName": "Inne (wpisz)"
+  },
+  "common": {
+    "language": "Język",
+    "chooseLanguage": "Wybierz język",
+    "day": "Dzień"
+  },
+  "buttons": {
+    "submit": "Wyślij dzień",
+    "start": "Rozpocznij",
+    "undo": "Cofnij",
+    "cleanRow": "Wyczyść rząd",
+    "next": "Następna oś czasu",
+    "skipReporting": "Pomiń raportowanie czasu",
+    "back": "Wstecz",
+    "backToInstructions": "Wróć do instrukcji",
+    "ok": "OK",
+    "cancel": "Anuluj",
+    "save": "Zapisz",
+    "close": "Zamknij",
+    "confirm": "Potwierdź",
+    "yes": "Tak",
+    "no": "Nie"
+  },
+  "modals": {
+    "customActivity": {
+      "title": "Wprowadź własną aktywność",
+      "childItemTitle": "Wprowadź własną wartość dla: {parentActivity}",
+      "placeholder": "Wpisz swoją aktywność (max 30 znaków)"
+    },
+    "addActivity": {
+      "title": "Dodaj aktywność"
+    },
+    "childItems": {
+      "title": "Wybierz opcję",
+      "titleFor": "Wybierz opcję dla \"{activityName}\""
+    },
+    "confirmSubmit": {
+      "title": "Wysłać ten dzień?",
+      "message": "Nie będziesz mógł zmienić swoich odpowiedzi dla tego dnia."
+    },
+    "confirmSkip": {
+      "title": "Czy na pewno chcesz pominąć raportowanie czasu?",
+      "message": "Zostaniesz przeniesiony bezpośrednio na stronę z podziękowaniami."
+    },
+    "loading": {
+      "title": "Wysyłanie dziennika...",
+      "message": "Proszę czekać, podczas gdy zapisujemy Twoje odpowiedzi."
+    }
+  },
+  "messages": {
+    "loading": "Ładowanie...",
+    "saving": "Zapisuję...",
+    "saved": "Zapisano pomyślnie",
+    "error": "Wystąpił błąd",
+    "noActivities": "Brak aktywności",
+    "fillRequired": "Proszę wypełnić wszystkie wymagane aktywności",
+    "submitSuccess": "Dziennik został pomyślnie wysłany",
+    "submitError": "Błąd przy wysyłaniu dziennika",
+    "timelineMissing": "Brakuje informacji na tej osi czasu. Chcesz dodać coś?",
+    "invalidPlacement": "Nie można umieścić aktywności w tym miejscu z powodu niewłaściwej pozycji.",
+    "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
+    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności.",
+    "reportingForDay": "Raportowanie dla dnia:",
+    "studyDayOf": "Dzień badania {{current}} z {{total}}",
+    "currentDayTooltip": "Aktualny: {{dayName}} (Dzień {{current}} z {{total}})"
+  },
+  "errors": {
+    "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",
+    "loadingActivitiesConfigurationHelp": "Aplikacja wymaga prawidłowego połączenia z backendem, aby załadować odpowiednie aktywności dla Twojego badania.",
+    "loadingActivitiesShort": "Błąd ładowania aktywności. Proszę odświeżyć stronę, aby spróbować ponownie. Błąd:"
+  },
+  "banner": {
+    "dayOneInstructions": "Instrukcje użytkowania: Najpierw wybierz aktywność z poniższej listy. Następnie kliknij na oś czasu, aby ją umieścić, a następnie przeciągnij krawędzie, aby ją rozciągnąć. Aby usunąć aktywność na urządzeniu mobilnym, przytrzymaj ją przez 2 sekundy. Na komputerze możesz również najechać na nią kursorem i nacisnąć klawisz 'd' lub klawisz DEL."
+  },
+  "activities": {
+    "otherNotListed": "Inne (wpisz)"
+  },
+  "thankYou": {
+    "title": "Dziękujemy - O-ELIDDI",
+    "heading": "Dziękujemy!",
+    "subtitle": "Twoje zgłoszenie zostało pomyślnie zakończone.",
+    "message": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">O-ELIDDI</span>. Twoje odpowiedzi zostały zapisane i będą miały wartość w badaniach naukowych."
+  },
+  "footer": {
+    "title": "TRAC",
+    "backend_status_connecting": "Łączenie z backendem...",
+    "backend_status_connected": "Połączono z backendem",
+    "backend_status_error": "Błąd przy łączeniu z backendem"
+  }
+}
