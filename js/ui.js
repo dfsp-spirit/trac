@@ -718,6 +718,7 @@ function updateButtonStates() {
 function redirectToThankYouPage() {
     const redirectUrl = window.timelineManager?.general?.primary_redirect_url || 'thank-you.html';
     const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('completion_status', 'skipped');
     const separator = redirectUrl.includes('?') ? '&' : '?';
     const finalUrl = redirectUrl + (currentParams.toString() ? separator + currentParams.toString() : '');
     window.location.href = finalUrl;

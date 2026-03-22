@@ -21,6 +21,32 @@ if (!TUD_SETTINGS) {
 let STUDIES_CONFIG_CACHE = null;
 let CURRENT_STUDY_CACHE = null;
 
+function getLangFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('lang');
+}
+
+function normalizeDayLabels(study, language = null) {
+    const targetLanguage = language || study?.default_language || 'en';
+    const dayLabels = Array.isArray(study?.day_labels) ? study.day_labels : [];
+
+    return dayLabels.map((label) => {
+        if (!label || typeof label !== 'object') {
+            return label;
+        }
+
+        let displayName = label.display_name;
+        if (displayName && typeof displayName === 'object') {
+            displayName = displayName[targetLanguage] || displayName[study?.default_language] || displayName.en || label.name;
+        }
+
+        return {
+            ...label,
+            display_name: displayName || label.name
+        };
+    });
+}
+
 // Load studies config from JSON file (fallback)
 async function loadStudiesConfigFromFile() {
     try {
@@ -38,6 +64,13 @@ async function loadStudiesConfigFromFile() {
             throw new Error(`Study "${studyName}" not found in ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}`);
         }
 
+        const selectedLanguage = getLangFromUrl() || CURRENT_STUDY_CACHE.default_language || 'en';
+        CURRENT_STUDY_CACHE.supported_languages = Object.keys(
+            CURRENT_STUDY_CACHE.activities_json_files || CURRENT_STUDY_CACHE.activities_json_file || { en: 'activities_default.json' }
+        );
+        CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
+        CURRENT_STUDY_CACHE.day_labels = normalizeDayLabels(CURRENT_STUDY_CACHE, selectedLanguage);
+
         console.log(`Loaded study from file: ${CURRENT_STUDY_CACHE.name} with ${CURRENT_STUDY_CACHE.day_labels.length} days`);
         return CURRENT_STUDY_CACHE;
     } catch (error) {
@@ -50,7 +83,9 @@ async function loadStudiesConfigFromFile() {
             day_labels: ['default'],
             study_participant_ids: [],
             allow_unlisted_participants: true,
-            activities_json_file: 'activities_default.json',
+            activities_json_files: { en: 'activities_default.json' },
+            supported_languages: ['en'],
+            selected_language: 'en',
             data_collection_start: '2024-01-01T00:00:00Z',
             data_collection_end: '2026-12-31T23:59:59Z'
         };
@@ -62,10 +97,14 @@ async function loadStudiesConfigFromFile() {
 async function syncWithBackendConfig() {
     try {
         const studyName = TUD_SETTINGS.STUDY_NAME;
-        const apiUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`;
+        const apiUrl = new URL(`${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`, window.location.origin);
+        const selectedLanguage = getLangFromUrl();
+        if (selectedLanguage) {
+            apiUrl.searchParams.set('lang', selectedLanguage);
+        }
 
-        console.log(`Attempting to sync study config from backend: ${apiUrl}`);
-        const response = await fetch(apiUrl);
+        console.log(`Attempting to sync study config from backend: ${apiUrl.toString()}`);
+        const response = await fetch(apiUrl.toString());
 
         if (response.ok) {
             const backendConfig = await response.json();
@@ -74,6 +113,30 @@ async function syncWithBackendConfig() {
             // Update current study cache with backend data
             if (backendConfig.day_labels && backendConfig.day_labels.length > 0) {
                 CURRENT_STUDY_CACHE.day_labels = backendConfig.day_labels;
+            }
+
+            if (backendConfig.default_language) {
+                CURRENT_STUDY_CACHE.default_language = backendConfig.default_language;
+            }
+
+            if (Array.isArray(backendConfig.supported_languages) && backendConfig.supported_languages.length > 0) {
+                CURRENT_STUDY_CACHE.supported_languages = backendConfig.supported_languages;
+            }
+
+            if (backendConfig.selected_language) {
+                CURRENT_STUDY_CACHE.selected_language = backendConfig.selected_language;
+            }
+
+            if (typeof backendConfig.study_text_intro === 'string') {
+                CURRENT_STUDY_CACHE.study_text_intro = backendConfig.study_text_intro;
+            }
+
+            if (typeof backendConfig.study_text_end_completed === 'string') {
+                CURRENT_STUDY_CACHE.study_text_end_completed = backendConfig.study_text_end_completed;
+            }
+
+            if (typeof backendConfig.study_text_end_skipped === 'string') {
+                CURRENT_STUDY_CACHE.study_text_end_skipped = backendConfig.study_text_end_skipped;
             }
 
             if (backendConfig.study_days_count) {
@@ -106,6 +169,20 @@ async function syncWithBackendConfig() {
 // Public API
 function getCurrentStudy() {
     return CURRENT_STUDY_CACHE;
+}
+
+function getSupportedLanguages() {
+    if (!CURRENT_STUDY_CACHE) {
+        return [];
+    }
+    return CURRENT_STUDY_CACHE.supported_languages || [];
+}
+
+function getSelectedLanguage() {
+    if (!CURRENT_STUDY_CACHE) {
+        return 'en';
+    }
+    return CURRENT_STUDY_CACHE.selected_language || CURRENT_STUDY_CACHE.default_language || 'en';
 }
 
 function getStudyByShortName(nameShort) {
@@ -173,6 +250,8 @@ function getStudyDaysCount() {
 // Make everything available globally
 window.studyConfigManager = {
     getCurrentStudy,
+    getSupportedLanguages,
+    getSelectedLanguage,
     getStudyByShortName,
     initializeStudyConfig,
     syncWithBackendConfig,
@@ -182,6 +261,8 @@ window.studyConfigManager = {
 
 export {
     getCurrentStudy,
+    getSupportedLanguages,
+    getSelectedLanguage,
     getStudyByShortName,
     initializeStudyConfig,
     syncWithBackendConfig,

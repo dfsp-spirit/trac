@@ -10,12 +10,37 @@ export function getCurrentParticipantId() {
     return getUrlParams().get('pid');
 }
 
+export function getCurrentLanguage() {
+    return getUrlParams().get('lang') || null;
+}
+
 export function getApiBaseUrl() {
     return window.TUD_SETTINGS?.API_BASE_URL || '/api';
 }
 
 export function getCachedActivitiesConfig() {
     return window.activitiesConfigCache || null;
+}
+
+function getActivitiesCacheKey(studyName, lang) {
+    return `${studyName || 'default'}::${lang || 'default'}`;
+}
+
+function getActivitiesConfigFromCache(studyName, lang) {
+    const key = getActivitiesCacheKey(studyName, lang);
+    if (!window.activitiesConfigCacheByKey) {
+        window.activitiesConfigCacheByKey = {};
+    }
+    return window.activitiesConfigCacheByKey[key] || null;
+}
+
+function setActivitiesConfigCache(studyName, lang, configData) {
+    const key = getActivitiesCacheKey(studyName, lang);
+    if (!window.activitiesConfigCacheByKey) {
+        window.activitiesConfigCacheByKey = {};
+    }
+    window.activitiesConfigCacheByKey[key] = configData;
+    window.activitiesConfigCache = configData;
 }
 
 async function fetchJson(url, errorMessage, fetchOptions = {}) {
@@ -35,11 +60,25 @@ export async function loadStudiesConfig(settingsBasePath = 'settings') {
 
 export async function loadLocalActivitiesConfig({
     studyName = getCurrentStudyName(),
+    lang = getCurrentLanguage(),
     settingsBasePath = 'settings'
 } = {}) {
     const studiesConfig = await loadStudiesConfig(settingsBasePath);
     const study = studiesConfig?.studies?.find(s => s.name_short === studyName) || studiesConfig?.studies?.[0];
-    const activitiesFile = study?.activities_json_file || study?.activities_json_url || 'activities_default.json';
+    const filesByLang = study?.activities_json_files || study?.activities_json_file || null;
+
+    let activitiesFile = null;
+    if (filesByLang && typeof filesByLang === 'object' && !Array.isArray(filesByLang)) {
+        const defaultLanguage = study?.default_language || 'en';
+        const selectedLang = lang || defaultLanguage;
+        activitiesFile = filesByLang[selectedLang] || filesByLang[defaultLanguage] || filesByLang.en;
+    } else if (typeof filesByLang === 'string') {
+        activitiesFile = filesByLang;
+    }
+
+    if (!activitiesFile) {
+        activitiesFile = study?.activities_json_url || 'activities_default.json';
+    }
 
     return await fetchJson(
         `${settingsBasePath}/${activitiesFile}`,
@@ -50,14 +89,22 @@ export async function loadLocalActivitiesConfig({
 export async function loadActivitiesConfig({
     participantId = getCurrentParticipantId(),
     studyName = getCurrentStudyName(),
+    lang = getCurrentLanguage(),
     apiBaseUrl = getApiBaseUrl(),
     settingsBasePath = 'settings',
     preferBackend = true,
     requireBackend = false,
     useCache = true
 } = {}) {
-    if (useCache && window.activitiesConfigCache) {
-        return window.activitiesConfigCache;
+    if (useCache) {
+        const cached = getActivitiesConfigFromCache(studyName, lang);
+        if (cached) {
+            return cached;
+        }
+
+        if (window.activitiesConfigCache && !lang) {
+            return window.activitiesConfigCache;
+        }
     }
 
     let lastBackendError = null;
@@ -66,6 +113,9 @@ export async function loadActivitiesConfig({
         const backendUrl = new URL(`${apiBaseUrl}/studies/${studyName}/activities-config`, window.location.origin);
         if (participantId) {
             backendUrl.searchParams.set('participant_id', participantId);
+        }
+        if (lang) {
+            backendUrl.searchParams.set('lang', lang);
         }
 
         try {
@@ -78,7 +128,7 @@ export async function loadActivitiesConfig({
                     }
                 }
             );
-            window.activitiesConfigCache = backendConfig;
+            setActivitiesConfigCache(studyName, lang, backendConfig);
             return backendConfig;
         } catch (error) {
             lastBackendError = error;
@@ -92,9 +142,10 @@ export async function loadActivitiesConfig({
 
     const localConfig = await loadLocalActivitiesConfig({
         studyName,
+        lang,
         settingsBasePath,
     });
-    window.activitiesConfigCache = localConfig;
+    setActivitiesConfigCache(studyName, lang, localConfig);
     return localConfig;
 }
 

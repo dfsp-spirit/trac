@@ -2,12 +2,114 @@ import { getIsMobile, updateIsMobile } from '../js/globals.js';
 import i18n from '../js/i18n.js';
 import { loadActivitiesConfig } from '../js/activities_config.js';
 
+function getUrlParams() {
+    return new URLSearchParams(window.location.search);
+}
+
+function getCurrentLanguageFromUrl() {
+    return getUrlParams().get('lang');
+}
+
+function setLanguageInUrl(language) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', language);
+    window.history.replaceState({}, '', url.toString());
+}
+
+async function loadStudyConfigForInstructions(language) {
+    const urlParams = getUrlParams();
+    const studyName = urlParams.get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+    const participantId = urlParams.get('pid');
+    const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+    const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);
+
+    if (participantId) {
+        endpointUrl.searchParams.set('participant_id', participantId);
+    }
+    if (language) {
+        endpointUrl.searchParams.set('lang', language);
+    }
+
+    const response = await fetch(endpointUrl.toString(), {
+        headers: {
+            'Accept': 'application/json',
+        }
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to load study-config from backend: ${response.status}`);
+    }
+
+    return await response.json();
+}
+
+function renderLanguageSelector(studyConfig, selectedLanguage) {
+    const supportedLanguages = studyConfig?.supported_languages || [];
+    if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+        return;
+    }
+
+    const existingSelector = document.getElementById('languageSelect');
+    if (existingSelector) {
+        return;
+    }
+
+    const selectorContainer = document.createElement('div');
+    selectorContainer.className = 'language-selector-container';
+    selectorContainer.style.marginBottom = '1rem';
+
+    const label = document.createElement('label');
+    label.setAttribute('for', 'languageSelect');
+    label.textContent = 'Language';
+    label.style.marginRight = '0.5rem';
+
+    const select = document.createElement('select');
+    select.id = 'languageSelect';
+    select.setAttribute('aria-label', 'Choose language');
+
+    supportedLanguages.forEach((language) => {
+        const option = document.createElement('option');
+        option.value = language;
+        option.textContent = language.toUpperCase();
+        if (language === selectedLanguage) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+
+    select.addEventListener('change', () => {
+        const newLanguage = select.value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', newLanguage);
+        window.location.href = url.toString();
+    });
+
+    selectorContainer.appendChild(label);
+    selectorContainer.appendChild(select);
+
+    const bodyFirstDiv = document.body.querySelector('div');
+    if (bodyFirstDiv) {
+        bodyFirstDiv.insertBefore(selectorContainer, bodyFirstDiv.firstChild);
+    }
+}
+
+function applyStudyIntroText(studyConfig) {
+    const introElement = document.getElementById('study-custom-message-intro');
+    if (!introElement) {
+        return;
+    }
+
+    if (typeof studyConfig?.study_text_intro === 'string' && studyConfig.study_text_intro.trim() !== '') {
+        introElement.innerHTML = studyConfig.study_text_intro;
+    }
+}
+
 // Add the missing updateLayout function
 function updateLayout() {
     const isMobile = getIsMobile();
     document.body.classList.toggle('mobile-layout', isMobile);
     document.body.classList.toggle('desktop-layout', !isMobile);
-    
+
     // Update orientation classes
     const isHorizontal = window.innerWidth > window.innerHeight;
     document.body.classList.toggle('is-horizontal', isHorizontal);
@@ -17,13 +119,33 @@ function updateLayout() {
 // Initialize i18n when the module loads
 (async () => {
     try {
+        let studyConfig = null;
+        const requestedLanguage = getCurrentLanguageFromUrl();
+
+        try {
+            studyConfig = await loadStudyConfigForInstructions(requestedLanguage || undefined);
+        } catch (studyConfigError) {
+            console.warn('Could not load study-config for instructions page:', studyConfigError.message);
+        }
+
+        const selectedLanguage = requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en';
+        if (!requestedLanguage && selectedLanguage) {
+            setLanguageInUrl(selectedLanguage);
+        }
+
+        if (studyConfig) {
+            renderLanguageSelector(studyConfig, selectedLanguage);
+            applyStudyIntroText(studyConfig);
+        }
+
         const activitiesConfig = await loadActivitiesConfig({
+            lang: selectedLanguage,
             settingsBasePath: '../settings',
             preferBackend: true,
             requireBackend: false,
             useCache: true,
         });
-        const language = activitiesConfig?.general?.language || 'en';
+        const language = selectedLanguage || activitiesConfig?.general?.language || 'en';
         console.log('Loading language:', language);
         await i18n.init(language);
         i18n.applyTranslations();
@@ -39,12 +161,12 @@ function updateLayout() {
 document.addEventListener('DOMContentLoaded', () => {
     const continueBtn = document.getElementById('continueBtn');
     const progressBar = document.getElementById('progressBar');
-    
+
     // Function to create URL with preserved parameters
     function createUrlWithParams(targetPath) {
         const currentUrl = new URL(window.location.href);
         const redirectUrl = new URL(targetPath, currentUrl.origin + currentUrl.pathname.replace(/[^/]*$/, ''));
-        
+
         // Preserve all existing URL parameters
         currentUrl.searchParams.forEach((value, key) => {
             // Don't override 'instructions' param if it's the target destination
@@ -53,15 +175,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             redirectUrl.searchParams.set(key, value);
         });
-        
+
         // Add instructions=completed for final redirect
         if (targetPath === '../index.html') {
             redirectUrl.searchParams.set('instructions', 'completed');
         }
-        
+
         return redirectUrl.toString();
     }
-    
+
     // Update progress bar
     if (progressBar) {
         progressBar.style.transition = 'width 0.6s ease';

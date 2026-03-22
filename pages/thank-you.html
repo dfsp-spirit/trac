@@ -142,27 +142,82 @@
 
         <h1 data-i18n="thankYou.heading">Thank You!</h1>
 
-        <p class="subtitle" data-i18n="thankYou.subtitle">Your submission has been completed successfully.</p>
+        <p class="subtitle" data-i18n="thankYou.subtitle">Your submission has been saved successfully.</p>
 
-        <p class="message" data-i18n-html="thankYou.message">
+        <p id="study-custom-message-end" class="message">
             Thank you for participating in our <span class="app-name">O-ELIDDI</span> study.
             Your responses have been recorded and will contribute to valuable research.
         </p>
     </div>
 
-    <script src="../i18n.js"></script>
-    <script>
-        // Initialize i18n when page loads
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Get language from URL parameters or default to 'en'
+    <script src="../settings/tud_settings.js"></script>
+    <script type="module">
+        import i18n from '../js/i18n.js';
+
+        async function loadStudyConfig(language) {
             const urlParams = new URLSearchParams(window.location.search);
-            const language = urlParams.get('lang') || 'en';
+            const studyName = urlParams.get('study_name') || 'default';
+            const participantId = urlParams.get('pid');
+            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+            const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);
 
-            // Initialize i18n
-            await window.i18n.init(language);
+            if (participantId) {
+                endpointUrl.searchParams.set('participant_id', participantId);
+            }
+            if (language) {
+                endpointUrl.searchParams.set('lang', language);
+            }
 
-            // Apply translations to the page
-            window.i18n.applyTranslations();
+            const response = await fetch(endpointUrl.toString(), {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load study-config: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        function applyStudyOutroText(studyConfig, language) {
+            const customEndElement = document.getElementById('study-custom-message-end');
+            if (!customEndElement) {
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const completionStatus = urlParams.get('completion_status') || 'completed';
+            const selectedField = completionStatus === 'skipped'
+                ? 'study_text_end_skipped'
+                : 'study_text_end_completed';
+
+            const customText = studyConfig?.[selectedField];
+            if (typeof customText === 'string' && customText.trim() !== '') {
+                customEndElement.innerHTML = customText;
+            }
+
+            document.documentElement.lang = language;
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const requestedLanguage = urlParams.get('lang');
+
+            let studyConfig = null;
+            try {
+                studyConfig = await loadStudyConfig(requestedLanguage || undefined);
+            } catch (error) {
+                console.warn('Could not load study-config for thank-you page:', error.message);
+            }
+
+            const language = requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en';
+
+            await i18n.init(language);
+            i18n.applyTranslations();
+
+            applyStudyOutroText(studyConfig, language);
         });
     </script>
 </body>

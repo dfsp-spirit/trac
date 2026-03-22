@@ -1129,6 +1129,7 @@ async function handleDayNavigation(isLastDay, currentDayIndex) {
 
         // Preserve URL parameters if needed
         const currentParams = new URLSearchParams(window.location.search);
+        currentParams.set('completion_status', 'completed');
         const separator = redirectUrl.includes('?') ? '&' : '?';
         const finalUrl = redirectUrl + (currentParams.toString() ? separator + currentParams.toString() : '');
 

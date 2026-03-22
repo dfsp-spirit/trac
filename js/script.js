@@ -3448,6 +3448,57 @@ function isInstructionsPagePath(pathname = window.location.pathname) {
     return pathname.includes('/instructions/') || /\/pages\/instructions(?:\.html)?$/.test(pathname);
 }
 
+function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
+    if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+        return;
+    }
+
+    const controlsContainer = document.querySelector('.header-section .controls');
+    if (!controlsContainer) {
+        return;
+    }
+
+    const existingSelector = document.getElementById('languageSelectMain');
+    if (existingSelector) {
+        return;
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'inline-flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '0.4rem';
+    wrapper.style.marginLeft = '0.5rem';
+
+    const label = document.createElement('label');
+    label.setAttribute('for', 'languageSelectMain');
+    label.textContent = 'Language';
+    label.style.fontSize = '0.85rem';
+
+    const select = document.createElement('select');
+    select.id = 'languageSelectMain';
+    select.setAttribute('aria-label', 'Choose language');
+
+    supportedLanguages.forEach((language) => {
+        const option = document.createElement('option');
+        option.value = language;
+        option.textContent = language.toUpperCase();
+        if (language === selectedLanguage) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+
+    select.addEventListener('change', () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('lang', select.value);
+        window.location.href = url.toString();
+    });
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(select);
+    controlsContainer.appendChild(wrapper);
+}
+
 
 async function init() {
     console.log('==================== Initializing TUD frontend application... ====================');
@@ -3462,6 +3513,8 @@ async function init() {
         console.log(`Study: ${currentStudy.name} (${currentStudy.name_short})`);
         console.log(`Days: ${window.studyConfigManager.getStudyDaysCount()}`);
         console.log(`Source: ${currentStudy.source || 'file'}`);
+
+        ensureLanguageSelector(currentStudy.supported_languages || [], currentStudy.selected_language || currentStudy.default_language || 'en');
 
         // Reinitialize timelineManager with an empty study object
         window.timelineManager = {
@@ -3491,6 +3544,14 @@ async function init() {
         const urlParams = new URLSearchParams(window.location.search);
         const participantId = urlParams.get('pid');
         const studyName = urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME;
+        const selectedLanguage = urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en';
+
+        if (!urlParams.get('lang')) {
+            urlParams.set('lang', selectedLanguage);
+            window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
+            window.timelineManager.study.lang = selectedLanguage;
+        }
+
         const dayIndex = getCurrentDayIndex();
 
         // ===== FETCH ACTIVITIES CONFIG FROM BACKEND =====
@@ -3506,6 +3567,7 @@ async function init() {
             configData = await loadActivitiesConfig({
                 participantId,
                 studyName,
+                lang: selectedLanguage,
                 apiBaseUrl: TUD_SETTINGS.API_BASE_URL,
                 settingsBasePath: 'settings',
                 preferBackend: true,
@@ -3535,8 +3597,10 @@ async function init() {
         // Initialize i18n (internationalization) system
         let language = configData.general.language || 'en';
 
-        // Override with study config language if available
-        if (currentStudy.default_language) {
+        // Override with URL/study-selected language if available
+        if (selectedLanguage) {
+            language = selectedLanguage;
+        } else if (currentStudy.default_language) {
             language = currentStudy.default_language;
         }
 
