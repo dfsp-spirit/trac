@@ -759,6 +759,26 @@ async def admin_overview(
     studies_data = []
 
     for study in studies:
+        cfg_study = get_cfg_study_by_name_short(study.name_short, settings.studies_config_path)
+        supported_cfg_languages = cfg_study.get_supported_languages() if cfg_study else [study.default_language]
+        cfg_language_query_param = f"cfg_lang_{study.name_short}"
+        selected_cfg_language = request.query_params.get(cfg_language_query_param) or study.default_language
+        if selected_cfg_language not in supported_cfg_languages:
+            selected_cfg_language = study.default_language
+
+        selected_activities_cfg_path = study.activities_json_url
+        if cfg_study:
+            selected_activities_cfg_file = cfg_study.get_activities_json_file_for_language(selected_cfg_language)
+            if selected_activities_cfg_file:
+                selected_activities_cfg_path = selected_activities_cfg_file
+
+        selected_activities_cfg_path_obj = Path(selected_activities_cfg_path)
+        if not selected_activities_cfg_path_obj.is_absolute():
+            studies_config_parent = Path(settings.studies_config_path).resolve().parent
+            selected_activities_cfg_path_obj = (studies_config_parent / selected_activities_cfg_path_obj).resolve()
+
+        selected_activities_cfg_path_str = str(selected_activities_cfg_path_obj)
+
         # Get day labels for this study
         day_labels = session.exec(
             select(DayLabel)
@@ -860,10 +880,10 @@ async def admin_overview(
             .where(Activity.study_id == study.id)
         ).first() or 0
 
-        num_activities_in_cfgfile_by_timeline : Dict = get_num_activities_in_cfgfile_per_timeline(study.activities_json_url)
+        num_activities_in_cfgfile_by_timeline : Dict = get_num_activities_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
         num_activities_in_cfgfile_total = sum(num_activities_in_cfgfile_by_timeline.values())
 
-        num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfgfile_per_timeline(study.activities_json_url)
+        num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
         num_categories_in_cfgfile_total = sum(num_categories_in_cfgfile_per_timeline.values())
 
         # Get timeline statistics
@@ -891,7 +911,7 @@ async def admin_overview(
                 "min_coverage": timeline.min_coverage
             })
 
-        activities_cfg_text = get_activities_cfg_text_for_path(study.activities_json_url, short=True, no_duplicate_parts=True)
+        activities_cfg_text = get_activities_cfg_text_for_path(selected_activities_cfg_path_str, short=True, no_duplicate_parts=True)
 
         studies_data.append({
             "study": study,
@@ -905,6 +925,9 @@ async def admin_overview(
             "total_activities_cfg": num_activities_in_cfgfile_total,
             "total_categories_cfg": num_categories_in_cfgfile_total,
             "activities_cfg_text": activities_cfg_text,  # condensed text view of config-file activities
+            "supported_cfg_languages": supported_cfg_languages,
+            "selected_cfg_language": selected_cfg_language,
+            "cfg_language_query_param": cfg_language_query_param,
             "last_activity_time": last_study_activity_time, # when last activity was logged for this study by a user
             "last_activity_time_str_ago": last_activity_time_str_ago, # human readable "3h 15m ago"
             "participant_count": len(participants)

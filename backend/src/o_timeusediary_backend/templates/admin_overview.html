@@ -395,7 +395,7 @@
         </div>
 
         {% for study_data in studies_data %}
-        <div class="study-section">
+        <div class="study-section" id="study-section-{{ study_data.study.id }}" data-study-id="{{ study_data.study.id }}">
             <div class="study-header">
                 <h2>{{ study_data.study.name }} <span class="badge badge-study">{{ study_data.study.name_short }}</span></h2>
                 <p>{{ study_data.study.description }}</p>
@@ -577,6 +577,20 @@
 
                 <!-- Cfg Activities Tab -->
                 <div id="cfgactivities-{{ study_data.study.id }}" class="tab-panel">
+                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem;">
+                        <label for="cfg-lang-{{ study_data.study.id }}" style="font-weight: 600;">Language:</label>
+                        <select
+                            id="cfg-lang-{{ study_data.study.id }}"
+                            onchange="onCfgLanguageChange(this, '{{ study_data.cfg_language_query_param }}', '{{ study_data.study.id }}', 'cfgactivities-{{ study_data.study.id }}')"
+                            style="padding: 0.35rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff;">
+                            {% for lang in study_data.supported_cfg_languages %}
+                                <option value="{{ lang }}" {% if lang == study_data.selected_cfg_language %}selected{% endif %}>{{ lang|upper }}</option>
+                            {% endfor %}
+                        </select>
+                        <span style="color: #6c757d; font-size: 0.85rem;">
+                            Showing config preview for <strong>{{ study_data.selected_cfg_language|upper }}</strong>
+                        </span>
+                    </div>
                     <p style="margin-bottom: 0.75rem; color: #6c757d; font-size: 0.9rem;">
                         Activities defined in the config file for this study.
                         These are the activities that users can select when filling out their timelines in the app.
@@ -633,6 +647,17 @@
     </div>
 
     <script>
+        function updateAdminViewState(studyId, tabId) {
+            const url = new URL(window.location.href);
+            if (studyId) {
+                url.searchParams.set('admin_study_id', String(studyId));
+            }
+            if (tabId) {
+                url.searchParams.set('admin_tab', String(tabId));
+            }
+            window.history.replaceState({}, '', url.toString());
+        }
+
         function switchTab(tabId, button) {
             // Get all tabs and panels in the same study section
             const studySection = button.closest('.study-section');
@@ -653,7 +678,46 @@
             if (activePanel) {
                 activePanel.classList.add('active');
             }
+
+            const studyId = studySection ? studySection.dataset.studyId : null;
+            updateAdminViewState(studyId, tabId);
         }
+
+        function onCfgLanguageChange(selectEl, queryParamName, studyId, tabId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set(queryParamName, selectEl.value);
+            if (studyId) {
+                url.searchParams.set('admin_study_id', String(studyId));
+                url.hash = `study-section-${studyId}`;
+            }
+            if (tabId) {
+                url.searchParams.set('admin_tab', String(tabId));
+            }
+            window.location.href = url.toString();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const url = new URL(window.location.href);
+            const requestedStudyId = url.searchParams.get('admin_study_id');
+            const requestedTabId = url.searchParams.get('admin_tab');
+
+            if (requestedStudyId && requestedTabId) {
+                const section = document.getElementById(`study-section-${requestedStudyId}`);
+                if (section) {
+                    const tabButton = section.querySelector(`.tab[onclick*=\"'${requestedTabId}'\"]`);
+                    if (tabButton) {
+                        switchTab(requestedTabId, tabButton);
+                    }
+
+                    section.scrollIntoView({ behavior: 'auto', block: 'start' });
+                }
+            } else if (window.location.hash) {
+                const target = document.querySelector(window.location.hash);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'auto', block: 'start' });
+                }
+            }
+        });
 
         // Auto-refresh page every 5 minutes
         setTimeout(() => {
