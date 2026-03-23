@@ -735,6 +735,29 @@ function redirectToThankYouPage() {
     window.location.href = finalUrl;
 }
 
+function showSkipConfirmationModal() {
+    createModal();
+    const skipConfirmationModal = document.getElementById('skipConfirmationModal');
+    if (skipConfirmationModal) {
+        skipConfirmationModal.style.display = 'block';
+    }
+}
+
+let skipReportingButtonInitialized = false;
+function initSkipReportingButton() {
+    if (skipReportingButtonInitialized) {
+        return;
+    }
+
+    const skipReportingBtn = document.getElementById('skipReportingBtn');
+    if (!skipReportingBtn) {
+        return;
+    }
+
+    skipReportingBtn.addEventListener('click', showSkipConfirmationModal);
+    skipReportingButtonInitialized = true;
+}
+
 
 
 // Shared debounce variables for both Next button and navigation submit button
@@ -858,9 +881,10 @@ function initButtons() {
     if (buttonsInitialized) return;
     buttonsInitialized = true;
 
+    initSkipReportingButton();
+
     const cleanRowBtn = document.getElementById('cleanRowBtn');
     const navSubmitBtn = document.getElementById('navSubmitBtn');
-    const skipReportingBtn = document.getElementById('skipReportingBtn');
 
     // Initialize the navigation submit button with proper debounce
     if (navSubmitBtn) {
@@ -954,21 +978,14 @@ function initButtons() {
     // Add click handler for Back button using shared debounced function
     document.getElementById('backBtn').addEventListener('click', handleBackButtonAction);
 
-    if (skipReportingBtn) {
-        skipReportingBtn.addEventListener('click', () => {
-            const skipConfirmationModal = document.getElementById('skipConfirmationModal');
-            if (skipConfirmationModal) {
-                skipConfirmationModal.style.display = 'block';
-            }
-        });
-    }
-
     // Disable back button initially
     const backButton = document.getElementById('backBtn');
     if (backButton) {
         backButton.disabled = true;
     }
 }
+
+initSkipReportingButton();
 
 // Debug overlay functions
 function updateDebugOverlay(mouseX, mouseY, timelineRect) {
