@@ -45,7 +45,8 @@
       "default_language": "en",
       "activities_json_files": {
         "en": "activities_ki_adults_en.json",
-        "sv": "activities_ki_adults_sv.json"
+        "sv": "activities_ki_adults_sv.json",
+        "de": "activities_ki_adults_de.json"
       },
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z"
@@ -95,7 +96,8 @@
       "default_language": "en",
       "activities_json_files": {
         "en": "activities_ki_15yearolds_en.json",
-        "sv": "activities_ki_15yearolds_sv.json"
+        "sv": "activities_ki_15yearolds_sv.json",
+        "de": "activities_ki_15yearolds_de.json"
       },
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z"
@@ -145,7 +147,8 @@
       "default_language": "en",
       "activities_json_files": {
         "en": "activities_ki_9yearolds_en.json",
-        "sv": "activities_ki_9yearolds_sv.json"
+        "sv": "activities_ki_9yearolds_sv.json",
+        "de": "activities_ki_9yearolds_de.json"
       },
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z"
