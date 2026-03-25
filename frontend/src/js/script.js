@@ -3652,6 +3652,17 @@ async function init() {
         }
 
         const footerStatus = document.getElementById('footer_backend_status');
+        const updateFooterBackendStatus = (statusKey, color, fallbackText) => {
+            if (!footerStatus) {
+                return;
+            }
+
+            footerStatus.setAttribute('data-i18n', statusKey);
+            footerStatus.textContent = window.i18n && window.i18n.isReady()
+                ? i18n.t(statusKey)
+                : fallbackText;
+            footerStatus.style.color = color;
+        };
 
         try {
             configData = await loadActivitiesConfig({
@@ -3672,10 +3683,7 @@ async function init() {
             console.error('Failed to load activities config from backend:', error);
             configLoadBackendSuccess = false;
             if(footerStatus) {
-                    footerStatus.textContent = window.i18n && window.i18n.isReady()
-                        ? i18n.t('footer.backend_status_error')
-                        : 'Backend error';
-                    footerStatus.style.color = 'red';
+                    updateFooterBackendStatus('footer.backend_status_error', 'red', 'Backend error');
             } else {
                 console.warn('Footer status element not found, cannot display backend error status');
             }
@@ -3701,11 +3709,9 @@ async function init() {
 
         if (footerStatus) {
             if (configLoadBackendSuccess) {
-                footerStatus.textContent = i18n.t('footer.backend_status_connected');
-                footerStatus.style.color = '#ccc';
+                updateFooterBackendStatus('footer.backend_status_connected', '#ccc', 'Connected to backend');
             } else {
-                footerStatus.textContent = i18n.t('footer.backend_status_error');
-                footerStatus.style.color = 'red';
+                updateFooterBackendStatus('footer.backend_status_error', 'red', 'Backend error');
             }
         }
 
