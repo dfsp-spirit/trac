@@ -1,3 +1,5 @@
+import { fetchWithSmartRetry } from './utils.js';
+
 function getUrlParams() {
     return new URLSearchParams(window.location.search);
 }
@@ -43,18 +45,43 @@ function setActivitiesConfigCache(studyName, lang, configData) {
     window.activitiesConfigCache = configData;
 }
 
-async function fetchJson(url, errorMessage, fetchOptions = {}) {
-    const response = await fetch(url, fetchOptions);
-    if (!response.ok) {
-        throw new Error(`${errorMessage}: ${response.status}`);
+/**
+ * Fetch JSON with optional smart retry for transient errors
+ * @param {string} url - URL to fetch
+ * @param {string} errorMessage - Error message prefix
+ * @param {object} fetchOptions - fetch options
+ * @param {object} retryConfig - retry config { enableRetry: false, maxRetries: 2, delayMs: 1500 }
+ */
+async function fetchJson(url, errorMessage, fetchOptions = {}, retryConfig = {}) {
+    const { enableRetry = false, maxRetries = 2, delayMs = 1500 } = retryConfig;
+
+    if (enableRetry) {
+        // Use smart retry for transient errors (5xx retries, 4xx fast-fail)
+        const response = await fetchWithSmartRetry(url, fetchOptions, {
+            maxRetries,
+            delayMs,
+            skipRetryStatuses: [404]  // Don't retry 404s
+        });
+        if (!response.ok) {
+            throw new Error(`${errorMessage}: ${response.status}`);
+        }
+        return await response.json();
+    } else {
+        // Standard fetch without retry (for local files and config loading)
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) {
+            throw new Error(`${errorMessage}: ${response.status}`);
+        }
+        return await response.json();
     }
-    return await response.json();
 }
 
 export async function loadStudiesConfig(settingsBasePath = 'settings') {
     return await fetchJson(
         `${settingsBasePath}/studies_config.json`,
-        `Failed to load ${settingsBasePath}/studies_config.json`
+        `Failed to load ${settingsBasePath}/studies_config.json`,
+        {},
+        { enableRetry: false }  // Local file, no retry needed
     );
 }
 
@@ -82,7 +109,9 @@ export async function loadLocalActivitiesConfig({
 
     return await fetchJson(
         `${settingsBasePath}/${activitiesFile}`,
-        `Failed to load activities config file ${settingsBasePath}/${activitiesFile}`
+        `Failed to load activities config file ${settingsBasePath}/${activitiesFile}`,
+        {},
+        { enableRetry: false }  // Local files, no retry needed
     );
 }
 
@@ -126,7 +155,8 @@ export async function loadActivitiesConfig({
                     headers: {
                         'Accept': 'application/json',
                     }
-                }
+                },
+                { enableRetry: false }  // Don't retry - fall back to local config quickly
             );
             setActivitiesConfigCache(studyName, lang, backendConfig);
             return backendConfig;

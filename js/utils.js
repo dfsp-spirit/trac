@@ -1,6 +1,86 @@
 import { DEBUG_MODE, MINUTES_PER_DAY } from './constants.js';
 import { hideLoadingModal } from './ui.js';
 
+// ============================================================================
+// RETRY HELPER - Smart fetch with intelligent retry logic
+// ============================================================================
+/**
+ * Fetch with smart retries for transient errors (5xx, timeouts)
+ * Fast-fails on client errors (4xx) immediately - no retries
+ * @param {string} url - URL to fetch
+ * @param {object} options - fetch options (method, headers, body, etc.)
+ * @param {object} retryConfig - { maxRetries: 2, delayMs: 1500, skipRetryStatuses: [404] }
+ * @returns {Response} - The response object
+ * @throws {Error} - if all retries exhausted or client error encountered
+ */
+export async function fetchWithSmartRetry(url, options = {}, retryConfig = {}) {
+    const {
+        maxRetries = 2,
+        delayMs = 1500,
+        skipRetryStatuses = [404],  // Don't retry 404s by default
+        onRetry = null  // Optional callback for each retry attempt
+    } = retryConfig;
+
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+            const response = await fetch(url, options);
+
+            // Fast-fail on client errors (4xx) - except those in skipRetryStatuses
+            if (response.status >= 400 && response.status < 500) {
+                // If this is a skip-retry status (like 404), still return it for caller to handle
+                if (skipRetryStatuses.includes(response.status)) {
+                    // For 404s and similar, just return immediately - don't retry
+                    console.log(`Got ${response.status} (skipping retries), returning to caller`);
+                    return response;
+                }
+                // Other 4xx errors (400, 403, etc.) - throw immediately, no retry
+                throw new Error(`Client error: ${response.status} ${response.statusText}`);
+            }
+
+            // Success or server error - if success, return
+            if (response.ok) {
+                return response;
+            }
+
+            // Server error (5xx) - might be transient, retry
+            if (response.status >= 500) {
+                throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            }
+
+            // Status outside 4xx-5xx range but not ok (edge case)
+            return response;
+
+        } catch (error) {
+            lastError = error;
+
+            // If this was the last attempt, throw
+            if (attempt > maxRetries) {
+                console.error(`All ${maxRetries} retry attempts failed:`, error.message);
+                throw lastError;
+            }
+
+            // Calculate exponential backoff
+            const delay = delayMs * attempt;
+            console.warn(
+                `Attempt ${attempt}/${maxRetries + 1} failed (${error.message}). Retrying in ${delay}ms...`
+            );
+
+            // Call retry callback if provided (useful for UI updates)
+            if (onRetry) {
+                onRetry({ attempt, maxRetries, nextDelayMs: delay, error: error.message });
+            }
+
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+
+    // Should not reach here, but just in case
+    throw lastError || new Error('Fetch failed for unknown reason');
+}
+
 // Timeline state management functions
 export function getCurrentTimelineKey() {
     return window.timelineManager.keys[window.timelineManager.currentIndex];
@@ -1083,20 +1163,39 @@ export async function sendData(options = { mode: 'json', shouldRedirect: false, 
         console.log('Number of records:', activitiesDataJSON.length);
 
 
-        // Send JSON data to backend API
+        // Send JSON data to backend API with smart retry for transient errors
         try {
             console.log('Sending data to backend API at', api_submit_url);
-            const response = await fetch(api_submit_url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Accept: "application/json",
+
+            // Use smart retry: retry on server errors (5xx), don't retry on client errors (4xx)
+            const response = await fetchWithSmartRetry(
+                api_submit_url,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: jsonString,
                 },
-                body: jsonString,
-            });
+                {
+                    maxRetries: 2,
+                    delayMs: 2000,
+                    skipRetryStatuses: [],  // Retry all server errors (5xx)
+                    onRetry: ({ attempt, maxRetries, nextDelayMs }) => {
+                        // Show progress to user via toast
+                        const retryMsg = window.i18n
+                            ? window.i18n.t('messages.sending_retry', { attempt, maxRetries })
+                            : `Trying again to save your diary (attempt ${attempt}/${maxRetries + 1})...`;
+                        if (window.showToast) {
+                            window.showToast(retryMsg, 'info', nextDelayMs + 500);
+                        }
+                    }
+                }
+            );
 
             if (!response.ok) {
-                throw new Error(`Backend API request failed, received response but no OKAY: ${response.status} ${response.statusText}`);
+                throw new Error(`Backend API request failed: ${response.status} ${response.statusText}`);
             }
 
             const responseData = await response.json();
@@ -1109,7 +1208,7 @@ export async function sendData(options = { mode: 'json', shouldRedirect: false, 
             }
             return { success: true, data: responseData };
         } catch (error) {
-            console.error('Error sending data to backend API, did not receive any response:', error);
+            console.error('Error sending data to backend API:', error);
             console.log('Is the backend running and accessible at', api_submit_url, '?');
             return { success: false, error: error?.message || String(error) };
         } finally {

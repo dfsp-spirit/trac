@@ -2,17 +2,34 @@
 // settings/study_config_manager.js - IMPROVED
 console.log('=== Study Config Manager Loading ===');
 
-// Get TUD_SETTINGS from global with better fallback
-let TUD_SETTINGS = window.TUD_SETTINGS;
+// Simple retry helper for background sync operations
+async function fetchWithBackgroundRetry(url, maxRetries = 2, delayMs = 1500) {
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
+        try {
+            const response = await fetch(url);
+            if (response.ok) return response;
+            // Don't retry on client errors (4xx), but do on server errors (5xx)
+            if (response.status < 500) throw new Error(`HTTP ${response.status}`);
+        } catch (error) {
+            lastError = error;
+            if (attempt > maxRetries) throw lastError;
+            const delay = delayMs * attempt;
+            console.log(`Study config sync attempt ${attempt}/${maxRetries + 1} failed, retrying in ${delay}ms...`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+}
 
 if (!TUD_SETTINGS) {
-    console.warn('TUD_SETTINGS not found in window! Creating fallback...');
+
     TUD_SETTINGS = {
         API_BASE_URL: 'http://localhost:8000/api',
         ALLOW_NO_UID: true,
         STUDY_NAME: 'default',
         DEFAULT_STUDIES_FILE: 'settings/studies_config.json'
     };
+    console.warn('TUD_SETTINGS not found in window! Creating fallback and trying to reach API at http://localhost:8000/api. Please ensure TUD_SETTINGS is properly defined in your HTML template for production use.');
     // Also set it on window for other scripts
     window.TUD_SETTINGS = TUD_SETTINGS;
 }
@@ -223,7 +240,16 @@ async function syncWithBackendConfig() {
         }
 
         console.log(`Attempting to sync study config from backend: ${apiUrl.toString()}`);
-        const response = await fetch(apiUrl.toString());
+
+        // Use simple retry for background sync (silent backoff, no UI notifications)
+        let response;
+        try {
+            response = await fetchWithBackgroundRetry(apiUrl.toString(), 2, 1200);
+        } catch (error) {
+            console.log('Backend unavailable after retries, using file config:', error.message);
+            CURRENT_STUDY_CACHE.source = 'file';
+            return CURRENT_STUDY_CACHE;
+        }
 
         if (response.ok) {
             const backendConfig = await response.json();
