@@ -1153,6 +1153,7 @@ async def export_runtime_studies_config(
             "studies": exported_studies,
         },
         "activities": activities_by_study,
+        "tud_backend_version": tud_version,  # Export app version for traceability of exported data (not all versions will be able to import all exports due to potential format changes, so this is important metadata to include in the export)
     }
 
     export_date = utc_now().strftime("%Y-%m-%d")
