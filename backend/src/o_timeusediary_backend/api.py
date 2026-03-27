@@ -996,6 +996,155 @@ class AssignParticipantsRequest(BaseModel):
     must_be_new: bool = False
 
 
+def _load_json_file_with_studies_config_base(file_path: str) -> dict:
+    """Load a JSON file and resolve relative paths against the studies config directory."""
+    candidate = Path(file_path)
+    if not candidate.is_absolute():
+        studies_config_parent = Path(settings.studies_config_path).resolve().parent
+        candidate = (studies_config_parent / candidate).resolve()
+
+    with candidate.open("r", encoding="utf-8") as file_handle:
+        return json.load(file_handle)
+
+
+@app.get("/api/admin/export/studies-runtime-config")
+async def export_runtime_studies_config(
+    study_name: Optional[str] = Query(None, description="Optional study short name to export only one study"),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Export runtime study setup as a studies_config-like structure plus activities definitions.
+
+    The export contains two top-level keys:
+    - studies_config: compatible studies list with runtime participant IDs and logged activities by study day
+    - activities: map keyed by study_name_short with the loaded activities.json content per language
+    """
+    study_query = select(Study).order_by(Study.name_short)
+    if study_name:
+        study_query = study_query.where(Study.name_short == study_name)
+
+    studies = session.exec(study_query).all()
+    if study_name and not studies:
+        raise HTTPException(status_code=404, detail=f"Study '{study_name}' not found")
+
+    exported_studies = []
+    activities_by_study: Dict = {}
+
+    for study in studies:
+        cfg_study = get_cfg_study_by_name_short(study.name_short, settings.studies_config_path)
+
+        day_labels = session.exec(
+            select(DayLabel)
+            .where(DayLabel.study_id == study.id)
+            .order_by(DayLabel.display_order)
+        ).all()
+
+        if cfg_study:
+            day_label_lookup = {day_label.name: day_label for day_label in cfg_study.day_labels}
+        else:
+            day_label_lookup = {}
+
+        day_labels_export = []
+        for day_label in day_labels:
+            cfg_day_label = day_label_lookup.get(day_label.name)
+            if cfg_day_label:
+                display_names = cfg_day_label.get_display_names(study.default_language)
+            else:
+                display_names = {study.default_language: day_label.display_name}
+
+            day_labels_export.append(
+                {
+                    "name": day_label.name,
+                    "display_order": day_label.display_order,
+                    "display_names": display_names,
+                }
+            )
+
+        study_participants = session.exec(
+            select(StudyParticipant)
+            .where(StudyParticipant.study_id == study.id)
+            .order_by(StudyParticipant.participant_id)
+        ).all()
+        participant_ids = [association.participant_id for association in study_participants]
+
+        activity_rows = session.exec(
+            select(Activity, DayLabel, Timeline)
+            .join(DayLabel, Activity.day_label_id == DayLabel.id)
+            .join(Timeline, Activity.timeline_id == Timeline.id)
+            .where(Activity.study_id == study.id)
+            .order_by(DayLabel.display_order, Activity.participant_id, Activity.start_minutes)
+        ).all()
+
+        logged_activities: Dict = {day_label.name: [] for day_label in day_labels}
+        ratings: Dict = {day_label.name: [] for day_label in day_labels}
+        for activity, day_label, timeline in activity_rows:
+            day_key = day_label.name
+            logged_activities[day_key].append(
+                {
+                    "participant_id": activity.participant_id,
+                    "activity_code": activity.activity_code,
+                    "timeline": timeline.name,
+                    "start_minutes": activity.start_minutes,
+                    "end_minutes": activity.end_minutes,
+                }
+            )
+
+        if cfg_study:
+            activities_json_files = cfg_study.get_activities_json_files()
+            study_text_intro = cfg_study.study_text_intro
+            study_text_end_completed = cfg_study.study_text_end_completed
+            study_text_end_skipped = cfg_study.study_text_end_skipped
+        else:
+            activities_json_files = {study.default_language: study.activities_json_url}
+            study_text_intro = None
+            study_text_end_completed = None
+            study_text_end_skipped = None
+
+        exported_studies.append(
+            {
+                "name": study.name,
+                "name_short": study.name_short,
+                "description": study.description,
+                "day_labels": day_labels_export,
+                "study_participant_ids": participant_ids,
+                "allow_unlisted_participants": study.allow_unlisted_participants,
+                "default_language": study.default_language,
+                "activities_json_files": activities_json_files,
+                "study_text_intro": study_text_intro,
+                "study_text_end_completed": study_text_end_completed,
+                "study_text_end_skipped": study_text_end_skipped,
+                "data_collection_start": study.data_collection_start,
+                "data_collection_end": study.data_collection_end,
+                "logged_activities": logged_activities,
+                "ratings": ratings,
+            }
+        )
+
+        activity_configs_for_study: Dict = {}
+        for lang, activity_file_path in activities_json_files.items():
+            try:
+                activity_configs_for_study[lang] = _load_json_file_with_studies_config_base(activity_file_path)
+            except Exception as error:
+                activity_configs_for_study[lang] = {
+                    "error": f"Could not load activities file '{activity_file_path}': {error}"
+                }
+
+        activities_by_study[study.name_short] = activity_configs_for_study
+
+    logger.info(
+        "Admin '%s' exported runtime studies config%s",
+        current_admin,
+        f" for study '{study_name}'" if study_name else " for all studies",
+    )
+
+    return {
+        "studies_config": {
+            "studies": exported_studies,
+        },
+        "activities": activities_by_study,
+    }
+
+
 @app.get("/admin/participant-management", name="Admin Participant Management Page", response_class=HTMLResponse)
 async def admin_participant_management(
     request: Request,

@@ -197,3 +197,21 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(pr
         export_data = export_response.json()
         for key in ["metadata", "data"]:
             assert key in export_data
+
+        runtime_config_export_response = await client.get(
+            f"{BASE_URL}/api/admin/export/studies-runtime-config",
+            params={"study_name": study_name_short},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert runtime_config_export_response.status_code == 200
+        runtime_config_export_data = runtime_config_export_response.json()
+        assert "studies_config" in runtime_config_export_data
+        assert "activities" in runtime_config_export_data
+        assert "studies" in runtime_config_export_data["studies_config"]
+        assert len(runtime_config_export_data["studies_config"]["studies"]) == 1
+
+        exported_study = runtime_config_export_data["studies_config"]["studies"][0]
+        for key in ["name", "name_short", "logged_activities", "ratings", "study_participant_ids"]:
+            assert key in exported_study
+
+        assert study_name_short in runtime_config_export_data["activities"]
