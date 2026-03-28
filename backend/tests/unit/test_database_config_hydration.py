@@ -1,9 +1,8 @@
 import json
+import importlib
 
 import pytest
 from sqlmodel import SQLModel, create_engine
-
-from o_timeusediary_backend import database as database_module
 
 
 def _write_activities_file(tmp_path, codes: list[int]) -> str:
@@ -68,14 +67,18 @@ def _write_studies_config(
 
 
 @pytest.fixture
-def isolated_test_db(monkeypatch, tmp_path):
+def database_module(monkeypatch, tmp_path):
+    monkeypatch.setenv("TUD_DATABASE_URL", f"sqlite:///{tmp_path / 'module_import.db'}")
+    imported_module = importlib.import_module("o_timeusediary_backend.database")
+    imported_module = importlib.reload(imported_module)
+
     test_engine = create_engine(f"sqlite:///{tmp_path / 'test.db'}")
-    monkeypatch.setattr(database_module, "engine", test_engine)
+    monkeypatch.setattr(imported_module, "engine", test_engine)
     SQLModel.metadata.create_all(test_engine)
-    return test_engine
+    return imported_module
 
 
-def test_create_config_file_studies_in_database_fails_for_invalid_logged_activity_code(tmp_path, isolated_test_db):
+def test_create_config_file_studies_in_database_fails_for_invalid_logged_activity_code(tmp_path, database_module):
     activities_file = _write_activities_file(tmp_path, codes=[100])
     config_path = _write_studies_config(
         tmp_path,
@@ -99,8 +102,7 @@ def test_create_config_file_studies_in_database_fails_for_invalid_logged_activit
     with pytest.raises(ValueError, match="Invalid studies_config JSON.*activity codes"):
         database_module.create_config_file_studies_in_database(config_path)
 
-
-def test_create_config_file_studies_in_database_fails_for_unauthorized_logged_user_in_closed_study(tmp_path, isolated_test_db):
+def test_create_config_file_studies_in_database_fails_for_unauthorized_logged_user_in_closed_study(tmp_path, database_module):
     activities_file = _write_activities_file(tmp_path, codes=[100])
     config_path = _write_studies_config(
         tmp_path,
