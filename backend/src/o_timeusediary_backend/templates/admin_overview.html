@@ -462,9 +462,9 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('timelines-{{ study_data.study.id }}', this)">Timelines ({{ study_data.timeline_stats|length }})</button>
                 <button class="tab" onclick="switchTab('participants-{{ study_data.study.id }}', this)">Participants ({{ study_data.participant_count }})</button>
-                <button class="tab" onclick="switchTab('activities-{{ study_data.study.id }}', this)">DB Activities ({{ study_data.total_activities_logged }})</button>
+                <button class="tab" onclick="switchTab('activities-{{ study_data.study.id }}', this)">DB Logged Activities ({{ study_data.total_activities_logged }})</button>
                 <button class="tab" onclick="switchTab('daylabels-{{ study_data.study.id }}', this)">Day Labels ({{ study_data.day_labels|length }})</button>
-                <button class="tab" onclick="switchTab('cfgactivities-{{ study_data.study.id }}', this)">Cfg Activities ({{ study_data.total_activities_cfg }})</button>
+                <button class="tab" onclick="switchTab('cfgactivities-{{ study_data.study.id }}', this)">Cfg File Activities ({{ study_data.total_activities_cfg }})</button>
             </div>
 
             <div class="tab-content">
