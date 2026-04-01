@@ -2,6 +2,21 @@ TRAC MPIAE Changes
 ===================
 
 
+Version 0.10.0 -- Template data from other users, switch to submitted days
+---------------------------------------------------------------------------
+* NEW: allow deleting activities via long-press on desktop, show red animation before delete on desktop and mobile
+* NEW: allow copying activities from another user as template via template_user=X url argument, and add tests for it. see #51
+* FIX show i18n weekday correctly in first supported language
+* NEW: implement buttons to edit previously submitted days, implements #44
+* FIX: prevent user from deleting activities in inactive timelines, fixes #50
+* NEW: allow selecting timelines with keyboard/TAB
+* CHG: rename setting STUDY_NAME to DEFAULT_STUDY_NAME
+* NEW: allow downloading studies_config per study in admin interface
+* NEW: allow re-creating ratings from downloaded studies_config file in db at backend startup
+* NEW: add retry on backend errors, and proper error reporting on final fail
+* FIX: show correct backend status message in footer in frontend when connected
+
+
 Version 0.9.7 -- DE language support, bug fixes, dev improvements
 -------------------------------------------------------------------
 * NEW: Add German translation

@@ -7,5 +7,5 @@ export const TIMELINE_HOURS = 24;
 
 // Debug mode
 export const DEBUG_MODE = true;
-export const TUD_FRONTEND_VERSION = '0.9.7';
+export const TUD_FRONTEND_VERSION = '0.10.0';
 
