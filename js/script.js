@@ -142,7 +142,7 @@ function initInstructionBanner() {
 function getInstructionBannerStorageKey() {
     const urlParams = new URLSearchParams(window.location.search);
     const pid = urlParams.get('pid') || 'anonymous';
-    const studyName = urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME || 'default';
+    const studyName = urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default';
     return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 
@@ -3396,7 +3396,7 @@ function getPendingTimelineContext() {
     const urlParams = new URLSearchParams(window.location.search);
     return {
         pid: urlParams.get('pid') || '',
-        study_name: urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME || 'default',
+        study_name: urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default',
         day_label_index: String(parseInt(urlParams.get('day_label_index')) || 0),
     };
 }
@@ -3623,7 +3623,7 @@ async function init() {
         // Get URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const participantId = urlParams.get('pid');
-        const studyName = urlParams.get('study_name') || TUD_SETTINGS.STUDY_NAME;
+        const studyName = urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
         const selectedLanguage = getPreferredLanguage(
             currentStudy.supported_languages || [],
             urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en'

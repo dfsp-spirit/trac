@@ -5,7 +5,7 @@ function getUrlParams() {
 }
 
 export function getCurrentStudyName() {
-    return getUrlParams().get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+    return getUrlParams().get('study_name') || window.TUD_SETTINGS?.DEFAULT_STUDY_NAME || 'default';
 }
 
 export function getCurrentParticipantId() {

@@ -1124,7 +1124,7 @@ export async function sendData(options = { mode: 'json', shouldRedirect: false, 
         }
 
         const { pid, studyData } = createCombinedData();
-        const study_name_short = studyData.study_name || TUD_SETTINGS.STUDY_NAME;
+        const study_name_short = studyData.study_name || TUD_SETTINGS.DEFAULT_STUDY_NAME;
         const day_label_index = studyData.day_label_index || 0;
         console.log('Participant ID (pid):', pid, 'Study Name:', study_name_short, 'Day Label Index:', day_label_index);
 

@@ -173,7 +173,7 @@ async function loadStudiesConfigFromFile() {
         STUDIES_CONFIG_CACHE = await response.json();
 
         // Find current study
-        const studyName = TUD_SETTINGS.STUDY_NAME;
+        const studyName = TUD_SETTINGS.DEFAULT_STUDY_NAME;
         CURRENT_STUDY_CACHE = STUDIES_CONFIG_CACHE.studies.find(s => s.name_short === studyName);
 
         if (!CURRENT_STUDY_CACHE) {
@@ -211,7 +211,7 @@ async function loadStudiesConfigFromFile() {
         // Create a minimal default study as last resort
         CURRENT_STUDY_CACHE = {
             name: 'Default Fallback',
-            name_short: TUD_SETTINGS.STUDY_NAME,
+            name_short: TUD_SETTINGS.DEFAULT_STUDY_NAME,
             description: 'Fallback study config',
             day_labels: ['default'],
             study_participant_ids: [],
@@ -229,7 +229,7 @@ async function loadStudiesConfigFromFile() {
 // Sync with backend (preferred source)
 async function syncWithBackendConfig() {
     try {
-        const studyName = TUD_SETTINGS.STUDY_NAME;
+        const studyName = TUD_SETTINGS.DEFAULT_STUDY_NAME;
         const apiUrl = new URL(`${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`, window.location.origin);
         const selectedLanguage = getPreferredLanguage(
             CURRENT_STUDY_CACHE?.supported_languages || [],
