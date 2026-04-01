@@ -165,6 +165,9 @@ function initKeyboardShortcuts() {
         const hoveredActivity = document.querySelector('.activity-block:hover');
         if (!hoveredActivity) return;
 
+        // Only allow deleting from the currently active timeline
+        if (hoveredActivity.dataset.timelineKey !== getCurrentTimelineKey()) return;
+
         // Prevent browser default behavior for Delete key (like navigating back in some browsers)
         if (isDeleteKey) {
             event.preventDefault();
@@ -286,6 +289,9 @@ function initMobileDelete() {
         // Find activity block
         const activityBlock = e.target.closest('.activity-block');
         if (!activityBlock) return;
+
+        // Only allow editing the currently active timeline
+        if (activityBlock.dataset.timelineKey !== getCurrentTimelineKey()) return;
 
         // Prevent default for touch events
         if (e.type === 'touchstart') {
@@ -492,6 +498,93 @@ function createActivityBlock(activityData, isFromTemplate = false) {
         currentBlock.setAttribute('title', `${activityData.parentName}: ${activityData.activity}`);
     }
 
+    // Make block keyboard-focusable for arrow-key resize
+    currentBlock.tabIndex = 0;
+    currentBlock.addEventListener('keydown', (event) => {
+        const isLeft  = event.key === 'ArrowLeft';
+        const isRight = event.key === 'ArrowRight';
+        const isUp    = event.key === 'ArrowUp';
+        const isDown  = event.key === 'ArrowDown';
+        if (!isLeft && !isRight && !isUp && !isDown) return;
+
+        event.preventDefault();
+
+        const block = event.currentTarget;
+        const timelineKey = block.dataset.timelineKey;
+
+        // Only allow editing the currently active timeline
+        if (timelineKey !== getCurrentTimelineKey()) return;
+        const isMobile = getIsMobile();
+        const STEP = 10; // minutes per key press
+        const TIMELINE_MIN = 240;  // 04:00
+        const TIMELINE_MAX = 1680; // 04:00(+1)
+
+        let startMinutes = parseInt(block.dataset.startMinutes, 10);
+        let endMinutes   = parseInt(block.dataset.endMinutes,   10);
+
+        // Arrow semantics:
+        //   Desktop: Left/Right => move right edge (end time); Up/Down => move left edge (start time)
+        //   Mobile:  Up/Down   => move bottom edge (end time); Left/Right => move top edge (start time)
+        let newStart = startMinutes;
+        let newEnd   = endMinutes;
+
+        if (!isMobile) {
+            if (isRight) newEnd   = Math.min(TIMELINE_MAX, endMinutes   + STEP);
+            if (isLeft)  newEnd   = Math.max(startMinutes + STEP, endMinutes - STEP);
+            if (isDown)  newStart = Math.max(TIMELINE_MIN, startMinutes + STEP);
+            if (isUp)    newStart = Math.min(endMinutes   - STEP, startMinutes - STEP);
+        } else {
+            if (isDown)  newEnd   = Math.min(TIMELINE_MAX, endMinutes   + STEP);
+            if (isUp)    newEnd   = Math.max(startMinutes + STEP, endMinutes - STEP);
+            if (isRight) newStart = Math.max(TIMELINE_MIN, startMinutes + STEP);
+            if (isLeft)  newStart = Math.min(endMinutes   - STEP, startMinutes - STEP);
+        }
+
+        // Basic sanity check
+        if (newStart < TIMELINE_MIN || newEnd > TIMELINE_MAX || newEnd <= newStart) return;
+
+        // Overlap check
+        if (!canPlaceActivity(newStart, newEnd, block.dataset.id)) {
+            block.classList.add('invalid');
+            setTimeout(() => block.classList.remove('invalid'), 400);
+            return;
+        }
+
+        // Commit the change
+        const newStartTime = formatTimelineStart(newStart);
+        const newEndTime   = formatTimelineEnd(newEnd);
+
+        block.dataset.startMinutes = newStart;
+        block.dataset.endMinutes   = newEnd;
+        block.dataset.start        = newStartTime;
+        block.dataset.end          = newEndTime;
+        block.dataset.length       = newEnd - newStart;
+
+        if (!isMobile) {
+            block.style.left  = `${minutesToPercentage(newStart)}%`;
+            block.style.width = `${((newEnd - newStart) / MINUTES_PER_DAY) * 100}%`;
+        } else {
+            block.style.top    = `${minutesToPercentage(newStart)}%`;
+            block.style.height = `${((newEnd - newStart) / MINUTES_PER_DAY) * 100}%`;
+        }
+
+        const timeLabel = block.querySelector('.time-label');
+        if (timeLabel) {
+            updateTimeLabel(timeLabel, newStartTime, newEndTime, block);
+        }
+
+        // Sync to timelineManager
+        const currentData = window.timelineManager.activities[timelineKey] || [];
+        const activityEntry = currentData.find(a => activityIdsEqual(a.id, block.dataset.id));
+        if (activityEntry) {
+            activityEntry.startTime    = newStartTime;
+            activityEntry.endTime      = newEndTime;
+            activityEntry.startMinutes = newStart;
+            activityEntry.endMinutes   = newEnd;
+            activityEntry.blockLength  = newEnd - newStart;
+        }
+    });
+
     // Positioning logic
     const startPositionPercent = minutesToPercentage(activityData.startMinutes);
     const blockSize = ((activityData.endMinutes - activityData.startMinutes) / MINUTES_PER_DAY) * 100;
@@ -579,36 +672,43 @@ function initPastTimelineClickHandlers() {
         const timelineElement = timelineContainer.querySelector('.timeline');
         if (!timelineElement) return;
 
-        const clickedTimelineKey = timelineElement.id;
-        const currentTimelineKey = getCurrentTimelineKey();
-
-        // Quick check - if same, ignore
-        if (clickedTimelineKey === currentTimelineKey) {
-            console.log('Clicked current timeline');
-            return;
-        }
-
-        console.log(`Navigating to ${clickedTimelineKey} from ${currentTimelineKey}`);
-
-        // Find indices
-        const targetIndex = window.timelineManager.keys.indexOf(clickedTimelineKey);
-        const currentIndex = window.timelineManager.keys.indexOf(currentTimelineKey);
-
-        if (targetIndex === -1 || currentIndex === -1) return;
-
-        // Navigate
-        if (targetIndex < currentIndex) {
-            const stepsBack = currentIndex - targetIndex;
-            for (let i = 0; i < stepsBack; i++) {
-                await goToPreviousTimeline();
-            }
-        } else {
-            const stepsForward = targetIndex - currentIndex;
-            for (let i = 0; i < stepsForward; i++) {
-                await addNextTimeline();
-            }
-        }
+        await navigateToTimelineByKey(timelineElement.id);
     });
+}
+
+async function navigateToTimelineByKey(targetTimelineKey) {
+    const currentTimelineKey = getCurrentTimelineKey();
+
+    if (!targetTimelineKey || targetTimelineKey === currentTimelineKey) {
+        return;
+    }
+
+    console.log(`Navigating to ${targetTimelineKey} from ${currentTimelineKey}`);
+
+    const targetIndex = window.timelineManager.keys.indexOf(targetTimelineKey);
+    const currentIndex = window.timelineManager.keys.indexOf(currentTimelineKey);
+
+    if (targetIndex === -1 || currentIndex === -1) {
+        console.warn('Cannot navigate timeline: index not found', {
+            targetTimelineKey,
+            currentTimelineKey,
+            targetIndex,
+            currentIndex
+        });
+        return;
+    }
+
+    if (targetIndex < currentIndex) {
+        const stepsBack = currentIndex - targetIndex;
+        for (let i = 0; i < stepsBack; i++) {
+            await goToPreviousTimeline();
+        }
+    } else {
+        const stepsForward = targetIndex - currentIndex;
+        for (let i = 0; i < stepsForward; i++) {
+            await addNextTimeline();
+        }
+    }
 }
 
 
@@ -2285,6 +2385,18 @@ function initTimelineInteraction(timeline) {
         timelineElement.tabIndex = 0;
         const timelineName = window.timelineManager?.metadata?.[timelineElement.id]?.name || 'Timeline';
         timelineElement.setAttribute('aria-label', timelineName);
+
+        if (!timelineElement.dataset.spaceKeyActivationBound) {
+            timelineElement.addEventListener('keydown', async (event) => {
+                if (event.code !== 'Space' && event.key !== ' ' && event.key !== 'Spacebar') {
+                    return;
+                }
+
+                event.preventDefault();
+                await navigateToTimelineByKey(timelineElement.id);
+            });
+            timelineElement.dataset.spaceKeyActivationBound = 'true';
+        }
     });
 
     // Initialize interact.js resizable

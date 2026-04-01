@@ -2277,6 +2277,19 @@ body {
     .activity-block:hover {
         z-index: 999;
     }
+
+    /* Thin hover outline on active-timeline blocks only */
+    .timeline-container[data-active="true"] .activity-block:hover {
+        outline: 1px solid rgba(0, 0, 0, 0.25);
+        outline-offset: 0;
+    }
+
+    /* Keyboard focus ring */
+    .activity-block:focus-visible {
+        outline: 2px solid var(--primary-color);
+        outline-offset: 1px;
+        z-index: 1000;
+    }
 }
 
 /* Desktop hover tooltip for activity blocks - INACTIVE TIMELINES */
