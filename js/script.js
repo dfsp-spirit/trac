@@ -3322,6 +3322,8 @@ function transformBackendActivitiesResponse(backendData) {
             count: activity.selections ? activity.selections.length : 1,
             id: activity.activity_id_backend || generateUniqueId(),
             code: activity.activity_code,
+            day_label_index: activity.day_label_index,
+            day_label: activity.day_label || null,
         });
 
         const backendJson = backendData;
@@ -3875,6 +3877,7 @@ async function init() {
         const urlParams = new URLSearchParams(window.location.search);
         const participantId = urlParams.get('pid');
         const studyName = urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+        const templateUser = (urlParams.get('template_user') || '').trim() || null;
         const selectedLanguage = getPreferredLanguage(
             currentStudy.supported_languages || [],
             urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en'
@@ -4083,12 +4086,97 @@ async function init() {
 
         let loadedActivitiesFromBackend = restoredPendingState;
 
+        // Helper to load a list of activities (already transformed to frontend format)
+        // into the currently initialized timeline manager.
+        const loadActivitiesIntoTimelineManager = async (activitiesToLoad) => {
+            if (!activitiesToLoad || activitiesToLoad.length === 0) {
+                return false;
+            }
+
+            const loadedTimelineKeySet = new Set(activitiesToLoad.map(a => a.timelineKey));
+            const loadedTimelineKeys = window.timelineManager.keys.filter(key => loadedTimelineKeySet.has(key));
+
+            for (let i = 0; i < loadedTimelineKeys.length; i++) {
+                const timelineKey = loadedTimelineKeys[i];
+
+                if (i === 0) {
+                    const firstTimelineActivities = activitiesToLoad.filter(
+                        a => a.timelineKey === timelineKey
+                    );
+                    window.timelineManager.activities[timelineKey] = firstTimelineActivities;
+
+                    firstTimelineActivities.forEach(activityData => {
+                        recreateActivityBlockFromTemplate(activityData);
+                    });
+                } else {
+                    console.log(`Creating timeline ${timelineKey} (${i + 1}/${loadedTimelineKeys.length})`);
+
+                    const originalIndex = window.timelineManager.currentIndex;
+                    const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
+
+                    if (targetIndex > originalIndex) {
+                        while (window.timelineManager.currentIndex < targetIndex) {
+                            await addNextTimeline();
+                        }
+
+                        const timelineActivities = activitiesToLoad.filter(
+                            a => a.timelineKey === timelineKey
+                        );
+
+                        if (timelineActivities.length > 0) {
+                            window.timelineManager.activities[timelineKey] = timelineActivities;
+
+                            timelineActivities.forEach(activityData => {
+                                recreateActivityBlockFromTemplate(activityData);
+                            });
+                        }
+
+                        while (window.timelineManager.currentIndex > 0) {
+                            await goToPreviousTimeline();
+                        }
+                    }
+                }
+            }
+
+            updateButtonStates();
+            return true;
+        };
+
+        // Cross-user template copy: POST to DB BEFORE the normal GET so the GET returns the
+        // copied activities as regular data.  The operation is idempotent – days that already
+        // have target data are skipped by the backend.
+        if (templateUser && participantId && studyName && !restoredPendingState) {
+            try {
+                const copyUrl = new URL(`${TUD_SETTINGS.API_BASE_URL}/template-activities`, window.location.origin);
+                copyUrl.searchParams.set('study', studyName);
+                copyUrl.searchParams.set('source_user', templateUser);
+                copyUrl.searchParams.set('target_user', participantId);
+
+                console.log(`Copying cross-user template activities via POST: ${copyUrl.toString()}`);
+                const copyResponse = await fetch(copyUrl.toString(), {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                });
+
+                if (copyResponse.ok) {
+                    const copyPayload = await copyResponse.json();
+                    console.log('Cross-user template copy result:', copyPayload);
+                    if (copyPayload.copied_days_count > 0) {
+                        showTemplateBanner(templateUser);
+                    }
+                } else {
+                    console.warn(`Template copy endpoint returned ${copyResponse.status}; source data may not be available yet.`);
+                }
+            } catch (error) {
+                console.warn('Error during cross-user template copy, continuing without template:', error.message);
+            }
+        }
+
         // Load existing activities from backend if available
         if (participantId && studyName && !restoredPendingState) {
             console.log(`Attempting to load existing activities for participant ${participantId}, study ${studyName}, day index ${dayIndex}`);
 
             try {
-                // Build the backend URL for fetching existing activities
                 const backendUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/participants/${participantId}/activities?day_label_index=${dayIndex}`;
 
                 console.log(`Fetching existing activities from: ${backendUrl}`);
@@ -4108,90 +4196,29 @@ async function init() {
                         : [];
                     renderPreviousDaysSwitchRow();
 
-                    // Transform the backend response to frontend format
                     const transformedData = transformBackendActivitiesResponse(backendData);
-
                     console.log('Transformed backend activities data:', transformedData);
 
                     let activitiesToLoad = null;
-                    let isUsingTemplate = false;
 
-                    // Load the data into the timeline
                     if (transformedData && transformedData.activities && transformedData.activities.length > 0) {
                         console.log('Existing activities found in backend data, will load these.');
                         activitiesToLoad = transformedData.activities;
-                        isUsingTemplate = false;
-                    } else if (transformedData.template_activities && transformedData.template_activities.length > 0) {
+                    } else if (!loadedActivitiesFromBackend && transformedData.template_activities && transformedData.template_activities.length > 0) {
                         console.log('No existing activities found, but template activities are available. Will load template activities.');
                         activitiesToLoad = transformedData.template_activities;
-                        isUsingTemplate = true;
 
-                        // Show template banner if using template
                         if (transformedData.template_source_day_label) {
                             const displayTemplateDayLabel = resolveDisplayDayLabel(transformedData.template_source_day_label);
                             showTemplateBanner(displayTemplateDayLabel);
                         }
                     }
 
-                    if (activitiesToLoad && activitiesToLoad.length > 0) {
+                    if (await loadActivitiesIntoTimelineManager(activitiesToLoad)) {
                         loadedActivitiesFromBackend = true;
-                        const loadedTimelineKeySet = new Set(activitiesToLoad.map(a => a.timelineKey));
-                        const loadedTimelineKeys = window.timelineManager.keys.filter(key => loadedTimelineKeySet.has(key));
-
-                        // Create timelines for each loaded timeline
-                        for (let i = 0; i < loadedTimelineKeys.length; i++) {
-                            const timelineKey = loadedTimelineKeys[i];
-
-                            // First timeline is already created
-                            if (i === 0) {
-                                // Load activities into existing timeline
-                                const firstTimelineActivities = activitiesToLoad.filter(
-                                    a => a.timelineKey === timelineKey
-                                );
-                                window.timelineManager.activities[timelineKey] = firstTimelineActivities;
-
-                                firstTimelineActivities.forEach(activityData => {
-                                    recreateActivityBlockFromTemplate(activityData);
-                                });
-                            } else {
-                                // For additional timelines, force create them
-                                console.log(`Creating timeline ${timelineKey} (${i + 1}/${loadedTimelineKeys.length})`);
-
-                                // Temporarily set current index to create this timeline
-                                const originalIndex = window.timelineManager.currentIndex;
-                                const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
-
-                                if (targetIndex > originalIndex) {
-                                    // Create all timelines up to target
-                                    while (window.timelineManager.currentIndex < targetIndex) {
-                                        await addNextTimeline();
-                                    }
-
-                                    // Load activities for this timeline
-                                    const timelineActivities = activitiesToLoad.filter(
-                                        a => a.timelineKey === timelineKey
-                                    );
-
-                                    if (timelineActivities.length > 0) {
-                                        window.timelineManager.activities[timelineKey] = timelineActivities;
-
-                                        timelineActivities.forEach(activityData => {
-                                            recreateActivityBlockFromTemplate(activityData);
-                                        });
-                                    }
-
-                                    // Switch back to first timeline
-                                    while (window.timelineManager.currentIndex > 0) {
-                                        await goToPreviousTimeline();
-                                    }
-                                }
-                            }
-                        }
-                        updateButtonStates();
                     }
 
                 } else if (response.status === 404) {
-                    // No existing data found - this is normal for first-time participants
                     console.log(`No existing data found for participant ${participantId}, study ${studyName}, day index ${dayIndex}. Starting fresh.`);
                 } else {
                     console.warn(`Backend returned ${response.status} for existing data request, continuing without preload`);
