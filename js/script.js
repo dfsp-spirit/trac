@@ -142,7 +142,7 @@ function initInstructionBanner() {
 function getInstructionBannerStorageKey() {
     const urlParams = new URLSearchParams(window.location.search);
     const pid = urlParams.get('pid') || 'anonymous';
-    const studyName = urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default';
+    const studyName = urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
     return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 
@@ -2281,6 +2281,12 @@ function initTimelineInteraction(timeline) {
     }
     const targetTimeline = timeline;
 
+    document.querySelectorAll('.timeline').forEach((timelineElement) => {
+        timelineElement.tabIndex = 0;
+        const timelineName = window.timelineManager?.metadata?.[timelineElement.id]?.name || 'Timeline';
+        timelineElement.setAttribute('aria-label', timelineName);
+    });
+
     // Initialize interact.js resizable
     interact('.activity-block').resizable({
         onstart: function(event) {
@@ -3396,7 +3402,7 @@ function getPendingTimelineContext() {
     const urlParams = new URLSearchParams(window.location.search);
     return {
         pid: urlParams.get('pid') || '',
-        study_name: urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default',
+        study_name: urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME,
         day_label_index: String(parseInt(urlParams.get('day_label_index')) || 0),
     };
 }

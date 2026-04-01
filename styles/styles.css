@@ -404,6 +404,11 @@ body {
     overflow: visible;
 }
 
+.timeline:focus-visible {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
 .timeline[data-active="false"] {
     opacity: 0.4;
     pointer-events: none;
