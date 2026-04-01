@@ -52,7 +52,10 @@ function normalizeLanguageCode(language) {
         return null;
     }
     const primarySubtag = normalized.split('-')[0];
-    return primarySubtag || null;
+    if (!/^[a-z]{2}$/.test(primarySubtag)) {
+        return null;
+    }
+    return primarySubtag;
 }
 
 function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') {
@@ -77,7 +80,7 @@ function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') 
     // Always trust explicit URL language, even if local fallback config is stale.
     // Backend remains authoritative and can validate/fallback if unsupported.
     const fromUrl = normalizeLanguageCode(getLangFromUrl());
-    if (fromUrl) {
+    if (fromUrl && (uniqueSupported.length === 0 || uniqueSupported.includes(fromUrl))) {
         return fromUrl;
     }
 
@@ -86,13 +89,15 @@ function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') 
         : [navigator.language];
 
     for (const browserLanguage of browserLanguages) {
-        const picked = normalizeLanguageCode(browserLanguage) || pickIfSupported(browserLanguage);
+        const picked = pickIfSupported(browserLanguage);
         if (picked) {
             return picked;
         }
     }
 
-    return pickIfSupported(normalizedFallback) || normalizedFallback;
+    return pickIfSupported(normalizedFallback)
+        || uniqueSupported[0]
+        || normalizedFallback;
 }
 
 function normalizeDayLabels(study, language = null) {
@@ -120,7 +125,12 @@ function normalizeDayLabels(study, language = null) {
 
         return {
             ...label,
-            display_name: displayName || label.name
+            display_name: displayName || label.name,
+            // Preserve the full translations map so syncWithBackendConfig() and
+            // getDayDisplayLabel() can re-resolve for any language later.
+            ...(label.display_names && typeof label.display_names === 'object'
+                ? { display_names: label.display_names }
+                : {})
         };
     });
 }
@@ -254,6 +264,13 @@ async function syncWithBackendConfig() {
         if (response.ok) {
             const backendConfig = await response.json();
             console.log('Backend study config received');
+            console.log('[TRAC day-label-debug] backend study-config language/day-labels', {
+                selected_language: backendConfig.selected_language,
+                default_language: backendConfig.default_language,
+                supported_languages: backendConfig.supported_languages,
+                first_day_label: backendConfig.day_labels?.[0] || null,
+                day_labels_count: Array.isArray(backendConfig.day_labels) ? backendConfig.day_labels.length : 0,
+            });
 
             // Update current study cache with backend data
             const selectedLanguageFromConfig = normalizeLanguageCode(backendConfig.selected_language)
@@ -289,19 +306,14 @@ async function syncWithBackendConfig() {
                         && candidateLabel.name === backendLabel.name
                     );
 
-                    const localizedDisplayName = getLocalizedDayLabelDisplayName(
-                        fallbackLabel,
-                        selectedLanguageFromConfig,
-                        defaultLanguageFromConfig
-                    );
-
-                    if (!localizedDisplayName) {
-                        return backendLabel;
-                    }
-
                     return {
                         ...backendLabel,
-                        display_name: localizedDisplayName
+                        // Always trust backend-localized display_name for the requested language.
+                        // Local fallback translations may be stale on deployed frontend assets and
+                        // must never override backend response text.
+                        // Preserve all translations so getDayDisplayLabel() can re-resolve
+                        // for any language change without a page reload.
+                        ...(fallbackLabel?.display_names ? { display_names: fallbackLabel.display_names } : {})
                     };
                 });
             }
@@ -326,6 +338,10 @@ async function syncWithBackendConfig() {
                 || CURRENT_STUDY_CACHE.selected_language
                 || CURRENT_STUDY_CACHE.default_language
                 || 'en';
+
+            // Keep cache language in sync with the actual effective language used in UI.
+            CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
+
             const defaultLanguage = backendConfig.default_language
                 || CURRENT_STUDY_CACHE.default_language
                 || 'en';
@@ -369,6 +385,14 @@ async function syncWithBackendConfig() {
             // Store full backend config for reference
             CURRENT_STUDY_CACHE.backend_config = backendConfig;
             CURRENT_STUDY_CACHE.source = 'backend';
+
+            console.log('[TRAC day-label-debug] study cache after backend sync', {
+                selected_language: CURRENT_STUDY_CACHE.selected_language,
+                default_language: CURRENT_STUDY_CACHE.default_language,
+                supported_languages: CURRENT_STUDY_CACHE.supported_languages,
+                first_day_label: CURRENT_STUDY_CACHE.day_labels?.[0] || null,
+                day_labels_count: Array.isArray(CURRENT_STUDY_CACHE.day_labels) ? CURRENT_STUDY_CACHE.day_labels.length : 0,
+            });
 
             console.log(`Synced with backend: ${CURRENT_STUDY_CACHE.day_labels.length} days`);
             return CURRENT_STUDY_CACHE;
@@ -473,24 +497,55 @@ function getDayDisplayLabel(dayIndex) {
 
     const label = CURRENT_STUDY_CACHE.day_labels[dayIndex];
 
+    console.log('[TRAC day-label-debug] getDayDisplayLabel input', {
+        dayIndex,
+        selected_language: getSelectedLanguage(),
+        default_language: CURRENT_STUDY_CACHE.default_language || 'en',
+        label,
+    });
+
     if (label && typeof label === 'object') {
         if (label.display_names && typeof label.display_names === 'object') {
             const selectedLanguage = getSelectedLanguage();
             const defaultLanguage = CURRENT_STUDY_CACHE.default_language || 'en';
-            return label.display_names[selectedLanguage]
+
+            // Prefer exact selected-language match from display_names first.
+            // If missing, trust backend-provided display_name before falling back
+            // to default/en values from possibly stale fallback display_names.
+            const selectedDisplay = label.display_names[selectedLanguage];
+            const backendDisplayName = typeof label.display_name === 'string' ? label.display_name : null;
+
+            const resolvedDisplay = selectedDisplay
+                || backendDisplayName
                 || label.display_names[defaultLanguage]
                 || label.display_names.en
-                || label.display_name
                 || label.name
                 || `day_${dayIndex + 1}`;
+
+            console.log('[TRAC day-label-debug] getDayDisplayLabel resolved from display_names', {
+                dayIndex,
+                selectedLanguage,
+                defaultLanguage,
+                available_languages: Object.keys(label.display_names),
+                resolvedDisplay,
+            });
+
+            return resolvedDisplay;
         }
-        return label.display_name || label.name || `day_${dayIndex + 1}`;
+        const fallbackDisplay = label.display_name || label.name || `day_${dayIndex + 1}`;
+        console.log('[TRAC day-label-debug] getDayDisplayLabel resolved from display_name/name', {
+            dayIndex,
+            fallbackDisplay,
+        });
+        return fallbackDisplay;
     }
 
     if (typeof label === 'string') {
+        console.log('[TRAC day-label-debug] getDayDisplayLabel string label', { dayIndex, label });
         return label;
     }
 
+    console.log('[TRAC day-label-debug] getDayDisplayLabel fallback placeholder', { dayIndex });
     return `day_${dayIndex + 1}`;
 }
 

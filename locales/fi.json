@@ -104,7 +104,7 @@
     "reportingForDay": "Raportointi päivälle:",
     "studyDayOf": "Tutkimuspäivä {{current}} / {{total}}",
     "currentDayTooltip": "Nykyinen: {{dayName}} (päivä {{current}} / {{total}})",
-    "goBackToEditPreviousDays": "Palaa muokkaamaan aiempia päiviä"
+    "goBackToEditPreviousDays": "Vaihda päivään:"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",

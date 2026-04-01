@@ -104,7 +104,7 @@
     "reportingForDay": "Raportowanie dla dnia:",
     "studyDayOf": "Dzień badania {{current}} z {{total}}",
     "currentDayTooltip": "Aktualny: {{dayName}} (Dzień {{current}} z {{total}})",
-    "goBackToEditPreviousDays": "Wróć, aby edytować poprzednie dni"
+    "goBackToEditPreviousDays": "Przełącz na dzień:"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",

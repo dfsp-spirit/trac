@@ -3468,7 +3468,11 @@ function normalizeLanguageCode(language) {
     if (!normalized) {
         return null;
     }
-    return normalized.split('-')[0] || null;
+    const primarySubtag = normalized.split('-')[0];
+    if (!/^[a-z]{2}$/.test(primarySubtag)) {
+        return null;
+    }
+    return primarySubtag;
 }
 
 function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') {
@@ -3505,7 +3509,10 @@ function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') 
         }
     }
 
-    return pickIfSupported(fallbackLanguage) || normalizeLanguageCode(fallbackLanguage) || 'en';
+    return pickIfSupported(fallbackLanguage)
+        || normalizedSupported[0]
+        || normalizeLanguageCode(fallbackLanguage)
+        || 'en';
 }
 
 const PENDING_TIMELINE_STATE_KEY = 'trac.pendingTimelineState.v1';
@@ -3654,8 +3661,10 @@ function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
         return;
     }
 
+    const normalizedSelectedLanguage = normalizeLanguageCode(selectedLanguage);
     const existingSelector = document.getElementById('languageSelectMain');
     if (existingSelector) {
+        existingSelector.value = normalizedSelectedLanguage || existingSelector.value;
         return;
     }
 
@@ -3677,10 +3686,11 @@ function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
     select.setAttribute('data-i18n-aria-label', 'common.chooseLanguage');
 
     supportedLanguages.forEach((language) => {
+        const normalizedLanguage = normalizeLanguageCode(language) || language;
         const option = document.createElement('option');
-        option.value = language;
-        option.textContent = language.toUpperCase();
-        if (language === selectedLanguage) {
+        option.value = normalizedLanguage;
+        option.textContent = normalizedLanguage.toUpperCase();
+        if (normalizedLanguage === normalizedSelectedLanguage) {
             option.selected = true;
         }
         select.appendChild(option);
@@ -3789,7 +3799,7 @@ function renderPreviousDaysSwitchRow() {
     label.setAttribute('data-i18n', 'messages.goBackToEditPreviousDays');
     label.textContent = window.i18n && window.i18n.isReady()
         ? i18n.t('messages.goBackToEditPreviousDays')
-        : 'Go back to edit previous days';
+        : 'Switch to day:';
     existingRow.appendChild(label);
 
     for (const dayIndex of switchTargetDayIndices) {
@@ -3820,6 +3830,15 @@ async function init() {
         if (!currentStudy) {
             throw new Error('Failed to load study configuration');
         }
+
+        console.log('[TRAC day-label-debug] after initializeStudyConfig', {
+            selected_language: currentStudy.selected_language,
+            default_language: currentStudy.default_language,
+            supported_languages: currentStudy.supported_languages,
+            first_day_label: currentStudy.day_labels?.[0] || null,
+            day_labels_count: Array.isArray(currentStudy.day_labels) ? currentStudy.day_labels.length : 0,
+            url_lang: new URLSearchParams(window.location.search).get('lang'),
+        });
 
         console.log(`Study: ${currentStudy.name} (${currentStudy.name_short})`);
         console.log(`Days: ${window.studyConfigManager.getStudyDaysCount()}`);
@@ -3861,6 +3880,18 @@ async function init() {
             urlParams.get('lang') || currentStudy.selected_language || currentStudy.default_language || 'en'
         );
 
+        // Keep shared study cache aligned with effective language choice.
+        currentStudy.selected_language = selectedLanguage;
+        ensureLanguageSelector(currentStudy.supported_languages || [], selectedLanguage);
+
+        console.log('[TRAC day-label-debug] selected language before i18n/backend activities fetch', {
+            selectedLanguage,
+            url_lang: urlParams.get('lang'),
+            currentStudy_selected_language: currentStudy.selected_language,
+            currentStudy_default_language: currentStudy.default_language,
+            supported_languages: currentStudy.supported_languages,
+        });
+
         try {
             await i18n.init(selectedLanguage);
             i18n.applyTranslations();
@@ -3868,7 +3899,8 @@ async function init() {
             console.warn('Failed to preload i18n before backend config fetch:', i18nPreloadError);
         }
 
-        if (!urlParams.get('lang')) {
+        const urlLangNormalized = normalizeLanguageCode(urlParams.get('lang'));
+        if (!urlLangNormalized || urlLangNormalized !== selectedLanguage) {
             urlParams.set('lang', selectedLanguage);
             window.history.replaceState({}, '', `${window.location.pathname}?${urlParams.toString()}`);
             window.timelineManager.study.lang = selectedLanguage;

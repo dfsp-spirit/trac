@@ -490,13 +490,24 @@ export function updateCurrentDayDisplay() {
                           window.studyConfigManager?.getStudyDaysCount() ||
                           1;
 
-    // Determine day name
-    let dayName = window.i18n ? window.i18n.t('common.day') : 'Day';
-    if (dayLabels.length > dayIndex) {
-        dayName = dayLabels[dayIndex].display_name || dayLabels[dayIndex].name || `${window.i18n ? window.i18n.t('common.day') : 'Day'} ${dayIndex + 1}`;
-    } else {
-        dayName = `${window.i18n ? window.i18n.t('common.day') : 'Day'} ${dayIndex + 1}`;
+    // Determine day name — use getDayDisplayLabel so display_names translations
+    // from studies_config.json are respected for the current language.
+    const fallbackDayWord = window.i18n ? window.i18n.t('common.day') : 'Day';
+    let dayName = window.studyConfigManager?.getDayDisplayLabel(dayIndex);
+    if (!dayName || /^day_\d+$/i.test(String(dayName))) {
+        // getDayDisplayLabel returned a generic placeholder — try raw label as last resort
+        dayName = (dayLabels.length > dayIndex)
+            ? (dayLabels[dayIndex]?.display_name || dayLabels[dayIndex]?.name || `${fallbackDayWord} ${dayIndex + 1}`)
+            : `${fallbackDayWord} ${dayIndex + 1}`;
     }
+
+    console.log('[TRAC day-label-debug] updateCurrentDayDisplay resolved', {
+        dayIndex,
+        dayName,
+        selected_language: window.studyConfigManager?.getSelectedLanguage?.(),
+        dayLabelRaw: dayLabels[dayIndex] || null,
+        dayLabelsCount: Array.isArray(dayLabels) ? dayLabels.length : 0,
+    });
 
     console.log('############################ Current day index:', dayIndex, " Current Day Name:", dayName, 'Total study days:', studyDaysCount);
 

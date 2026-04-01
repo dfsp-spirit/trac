@@ -104,7 +104,7 @@
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Study Day {{current}} of {{total}}",
     "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
-    "goBackToEditPreviousDays": "Go back to edit previous days"
+    "goBackToEditPreviousDays": "Switch to day:"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",

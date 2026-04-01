@@ -888,6 +888,12 @@ body {
     min-width: auto;
     padding: 6px 10px;
     font-size: 0.85rem;
+    background-color: var(--secondary-color);
+    color: #ffffff;
+}
+
+.previous-day-btn:hover:not(:disabled) {
+    background-color: #334155;
 }
 
 .previous-day-btn.current-day {
@@ -956,7 +962,7 @@ body {
     border: 2px solid transparent;
     box-sizing: border-box;
     cursor: pointer;
-    transition: outline 0.3s ease-out;
+    transition: none;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -2305,8 +2311,7 @@ body {
 
     /* Thin hover outline on active-timeline blocks only */
     .timeline-container[data-active="true"] .activity-block:hover {
-        outline: 1px solid rgba(0, 0, 0, 0.25);
-        outline-offset: 0;
+        border-color: rgba(0, 0, 0, 0.25);
     }
 
     /* Keyboard focus ring */

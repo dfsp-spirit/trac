@@ -104,7 +104,7 @@
     "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Studiedag {{current}} av {{total}}",
     "currentDayTooltip": "Nuvarande: {{dayName}} (Dag {{current}} av {{total}})",
-    "goBackToEditPreviousDays": "Gå tillbaka för att redigera tidigare dagar"
+    "goBackToEditPreviousDays": "Byt till dag:"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",

@@ -104,7 +104,7 @@
     "reportingForDay": "Bericht für Tag:",
     "studyDayOf": "Studientag {{current}} von {{total}}",
     "currentDayTooltip": "Aktuell: {{dayName}} (Tag {{current}} von {{total}})",
-    "goBackToEditPreviousDays": "Zurückgehen, um vorherige Tage zu bearbeiten"
+    "goBackToEditPreviousDays": "Zu Tag wechseln:"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",
