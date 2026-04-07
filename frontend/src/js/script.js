@@ -1102,10 +1102,17 @@ function updateTimelineHeader(title, description) {
     }
 }
 
-function appendTimelineCanvasLabels(containerElement, timelineMeta) {
+function appendTimelineCanvasLabels(containerElement, timelineKey, timelineMeta) {
     const titleDiv = document.createElement('div');
     titleDiv.className = 'title';
     titleDiv.textContent = timelineMeta?.name || '';
+
+    const coverageIndicator = document.createElement('span');
+    coverageIndicator.className = 'timeline-coverage-indicator';
+    coverageIndicator.dataset.timelineKey = timelineKey;
+    coverageIndicator.textContent = '✓';
+    titleDiv.appendChild(coverageIndicator);
+
     containerElement.appendChild(titleDiv);
 
     const descriptionDiv = document.createElement('div');
@@ -1342,7 +1349,7 @@ async function addNextTimeline() {
 
             const newTimelineContainer = document.createElement('div');
             newTimelineContainer.className = 'timeline-container';
-            appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[nextTimelineKey]);
+            appendTimelineCanvasLabels(newTimelineContainer, nextTimelineKey, window.timelineManager.metadata[nextTimelineKey]);
 
             const newTimeline = document.createElement('div');
             newTimeline.className = 'timeline';
@@ -1406,7 +1413,7 @@ async function addNextTimeline() {
         // Desktop mode - create new timeline container
         const newTimelineContainer = document.createElement('div');
         newTimelineContainer.className = 'timeline-container';
-        appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[nextTimelineKey]);
+        appendTimelineCanvasLabels(newTimelineContainer, nextTimelineKey, window.timelineManager.metadata[nextTimelineKey]);
 
         const newTimeline = document.createElement('div');
         newTimeline.className = 'timeline';
@@ -1612,7 +1619,7 @@ async function goToPreviousTimeline() {
             // If timeline doesn't exist in inactive wrapper, recreate it
             const newTimelineContainer = document.createElement('div');
             newTimelineContainer.className = 'timeline-container';
-            appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[previousTimelineKey]);
+            appendTimelineCanvasLabels(newTimelineContainer, previousTimelineKey, window.timelineManager.metadata[previousTimelineKey]);
 
             const newTimeline = document.createElement('div');
             newTimeline.className = 'timeline';

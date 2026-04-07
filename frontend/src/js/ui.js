@@ -472,6 +472,50 @@ function updateFloatingButtonPosition() {
     }
 }
 
+function getCoverageForTimelineKey(timelineKey) {
+    const activities = window.timelineManager.activities[timelineKey] || [];
+    return activities.reduce((total, activity) => {
+        const blockLength = parseInt(activity?.blockLength) || 0;
+        return total + blockLength;
+    }, 0);
+}
+
+function updateTimelineCoverageIndicators() {
+    const coverageIndicators = document.querySelectorAll('.timeline-coverage-indicator[data-timeline-key]');
+
+    coverageIndicators.forEach((indicator) => {
+        const timelineKey = indicator.dataset.timelineKey;
+        const timelineMetadata = window.timelineManager.metadata[timelineKey] || {};
+        const requiredMinutes = parseInt(timelineMetadata?.minCoverage) || 0;
+        const coveredMinutes = getCoverageForTimelineKey(timelineKey);
+        const meetsCoverage = coveredMinutes >= requiredMinutes;
+
+        if (meetsCoverage) {
+            const metText = window.i18n
+                ? window.i18n.t('messages.timelineCoverageMet')
+                : '✓';
+            indicator.textContent = metText;
+            indicator.classList.remove('is-missing');
+            indicator.classList.add('is-met');
+            const metAriaLabel = window.i18n
+                ? window.i18n.t('messages.timelineCoverageMetAria')
+                : 'Minimum coverage met';
+            indicator.setAttribute('aria-label', metAriaLabel);
+        } else {
+            const missingText = window.i18n
+                ? window.i18n.t('messages.timelineCoverageMissing', {
+                    covered: coveredMinutes,
+                    required: requiredMinutes
+                })
+                : `${coveredMinutes} of ${requiredMinutes} required minutes covered`;
+            indicator.textContent = missingText;
+            indicator.classList.remove('is-met');
+            indicator.classList.add('is-missing');
+            indicator.setAttribute('aria-label', missingText);
+        }
+    });
+}
+
 
 // Add this function to update the day display
 export function updateCurrentDayDisplay() {
@@ -676,22 +720,16 @@ function updateButtonStates() {
     //console.log('Total timelines:', totalTimelines);
     //console.log('Is last timeline:', isLastTimeline);
 
-    const getCoverageForTimeline = (timelineKey) => {
-        const activities = window.timelineManager.activities[timelineKey] || [];
-        return activities.reduce((total, activity) => {
-            const blockLength = parseInt(activity?.blockLength) || 0;
-            return total + blockLength;
-        }, 0);
-    };
-
     const allTimelinesMeetMinCoverage = window.timelineManager.keys.every((timelineKey) => {
         const timelineMetadata = window.timelineManager.metadata[timelineKey];
         const timelineMinCoverage = parseInt(timelineMetadata?.minCoverage) || 0;
-        const timelineCoverage = getCoverageForTimeline(timelineKey);
+        const timelineCoverage = getCoverageForTimelineKey(timelineKey);
         return timelineCoverage >= timelineMinCoverage;
     });
 
     const canProceed = isLastTimeline ? allTimelinesMeetMinCoverage : meetsMinCoverage;
+
+    updateTimelineCoverageIndicators();
 
     // Get text values for buttons
     const nextTextTopBarButton = window.i18n ? window.i18n.t('buttons.next') : 'Next Timeline';

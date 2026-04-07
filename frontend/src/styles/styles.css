@@ -277,11 +277,29 @@ body {
     left: 0;
     width: 100%;
     text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 14px;
     color: #666;
     padding: 6px 6px 0 6px;
     font-weight: bold;
     pointer-events: none;
+}
+
+.timeline-coverage-indicator {
+    margin-left: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.timeline-coverage-indicator.is-met {
+    color: #2e7d32;
+}
+
+.timeline-coverage-indicator.is-missing {
+    color: #c62828;
 }
 
 .timeline-container[data-active="false"] .title {
