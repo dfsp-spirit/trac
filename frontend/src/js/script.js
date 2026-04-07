@@ -778,6 +778,12 @@ function createActivityBlock(activityData, isFromTemplate = false) {
 
     currentBlock.appendChild(textDiv);
 
+    const bottomTooltip = document.createElement('div');
+    bottomTooltip.className = 'activity-tooltip-bottom';
+    bottomTooltip.setAttribute('aria-hidden', 'true');
+    bottomTooltip.textContent = currentBlock.dataset.tooltipText || '';
+    currentBlock.appendChild(bottomTooltip);
+
     // Add tooltip to show the selected child item when hovering
     if (activityData.parentName && activityData.parentName !== activityData.activity) {
         currentBlock.setAttribute('title', `${activityData.parentName}: ${activityData.activity}`);
