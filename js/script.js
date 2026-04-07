@@ -1081,6 +1081,35 @@ function setTimelineActiveState(timelineElement, isActive) {
     }
 }
 
+function updateTimelineHeader(title, description) {
+    const timelineTitle = document.querySelector('.timeline-title');
+    const timelineDescription = document.querySelector('.timeline-description');
+
+    if (timelineTitle) {
+        timelineTitle.textContent = title || '';
+    }
+
+    if (timelineDescription) {
+        const descriptionText = (description || '').trim();
+        timelineDescription.textContent = descriptionText;
+        timelineDescription.classList.toggle('is-empty', descriptionText.length === 0);
+    }
+}
+
+function appendTimelineCanvasLabels(containerElement, timelineMeta) {
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'title';
+    titleDiv.textContent = timelineMeta?.name || '';
+    containerElement.appendChild(titleDiv);
+
+    const descriptionDiv = document.createElement('div');
+    descriptionDiv.className = 'timeline-canvas-description';
+    const descriptionText = (timelineMeta?.description || '').trim();
+    descriptionDiv.textContent = descriptionText;
+    descriptionDiv.classList.toggle('is-empty', descriptionText.length === 0);
+    containerElement.appendChild(descriptionDiv);
+}
+
 // Function to restore an existing timeline from past-initialized-timelines-wrapper
 async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
     // Increment the current index
@@ -1093,8 +1122,6 @@ async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
         // Update UI for next timeline with animation
         const nextTimeline = window.timelineManager.metadata[nextTimelineKey];
         const timelineHeader = document.querySelector('.timeline-header');
-        const timelineTitle = document.querySelector('.timeline-title');
-        const timelineDescription = document.querySelector('.timeline-description');
 
         // Animation setup
         timelineHeader.classList.remove('flip-animation');
@@ -1102,8 +1129,7 @@ async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
         timelineHeader.classList.add('flip-animation');
 
         // Update content
-        timelineTitle.textContent = nextTimeline.name;
-        timelineDescription.textContent = nextTimeline.description;
+        updateTimelineHeader(nextTimeline.name, nextTimeline.description);
 
         void timelineHeader.offsetWidth;
         timelineHeader.classList.add('flip-animation');
@@ -1270,8 +1296,6 @@ async function addNextTimeline() {
         // Update UI for next timeline with animation
         const nextTimeline = window.timelineManager.metadata[nextTimelineKey];
         const timelineHeader = document.querySelector('.timeline-header');
-        const timelineTitle = document.querySelector('.timeline-title');
-        const timelineDescription = document.querySelector('.timeline-description');
 
         // First remove any existing animation
         timelineHeader.classList.remove('flip-animation');
@@ -1283,8 +1307,7 @@ async function addNextTimeline() {
         timelineHeader.classList.add('flip-animation');
 
         // Update content immediately
-        timelineTitle.textContent = nextTimeline.name;
-        timelineDescription.textContent = nextTimeline.description;
+        updateTimelineHeader(nextTimeline.name, nextTimeline.description);
 
         // Trigger reflow to ensure animation plays
         void timelineHeader.offsetWidth;
@@ -1313,11 +1336,7 @@ async function addNextTimeline() {
 
             const newTimelineContainer = document.createElement('div');
             newTimelineContainer.className = 'timeline-container';
-
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'title';
-            titleDiv.textContent = window.timelineManager.metadata[nextTimelineKey].name;
-            newTimelineContainer.appendChild(titleDiv);
+            appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[nextTimelineKey]);
 
             const newTimeline = document.createElement('div');
             newTimeline.className = 'timeline';
@@ -1381,12 +1400,7 @@ async function addNextTimeline() {
         // Desktop mode - create new timeline container
         const newTimelineContainer = document.createElement('div');
         newTimelineContainer.className = 'timeline-container';
-
-        // Add title element
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'title';
-        titleDiv.textContent = window.timelineManager.metadata[nextTimelineKey].name;
-        newTimelineContainer.appendChild(titleDiv);
+        appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[nextTimelineKey]);
 
         const newTimeline = document.createElement('div');
         newTimeline.className = 'timeline';
@@ -1491,8 +1505,6 @@ async function goToPreviousTimeline() {
         // Update UI for previous timeline with animation
         const previousTimeline = window.timelineManager.metadata[previousTimelineKey];
         const timelineHeader = document.querySelector('.timeline-header');
-        const timelineTitle = document.querySelector('.timeline-title');
-        const timelineDescription = document.querySelector('.timeline-description');
 
         // First remove any existing animation
         timelineHeader.classList.remove('flip-animation');
@@ -1504,8 +1516,7 @@ async function goToPreviousTimeline() {
         timelineHeader.classList.add('flip-animation');
 
         // Update content immediately
-        timelineTitle.textContent = previousTimeline.name;
-        timelineDescription.textContent = previousTimeline.description;
+        updateTimelineHeader(previousTimeline.name, previousTimeline.description);
 
         // Trigger reflow to ensure animation plays
         void timelineHeader.offsetWidth;
@@ -1595,12 +1606,7 @@ async function goToPreviousTimeline() {
             // If timeline doesn't exist in inactive wrapper, recreate it
             const newTimelineContainer = document.createElement('div');
             newTimelineContainer.className = 'timeline-container';
-
-            // Add title element
-            const titleDiv = document.createElement('div');
-            titleDiv.className = 'title';
-            titleDiv.textContent = window.timelineManager.metadata[previousTimelineKey].name;
-            newTimelineContainer.appendChild(titleDiv);
+            appendTimelineCanvasLabels(newTimelineContainer, window.timelineManager.metadata[previousTimelineKey]);
 
             const newTimeline = document.createElement('div');
             newTimeline.className = 'timeline';
@@ -3472,11 +3478,7 @@ export function loadTimelineFromJSON(jsonData) {
 
                     // Update UI to reflect the switch
                     const timeline = window.timelineManager.metadata[timelineKey];
-                    const timelineTitle = document.querySelector('.timeline-title');
-                    const timelineDescription = document.querySelector('.timeline-description');
-
-                    if (timelineTitle) timelineTitle.textContent = timeline.name;
-                    if (timelineDescription) timelineDescription.textContent = timeline.description;
+                    updateTimelineHeader(timeline.name, timeline.description);
 
                     // Update activities container mode
                     const activitiesContainer = document.querySelector("#activitiesContainer");
@@ -3507,11 +3509,7 @@ export function loadTimelineFromJSON(jsonData) {
 
             // Update UI
             const timeline = window.timelineManager.metadata[firstTimelineKey];
-            const timelineTitle = document.querySelector('.timeline-title');
-            const timelineDescription = document.querySelector('.timeline-description');
-
-            if (timelineTitle) timelineTitle.textContent = timeline.name;
-            if (timelineDescription) timelineDescription.textContent = timeline.description;
+            updateTimelineHeader(timeline.name, timeline.description);
 
             // Update activities container
             const activitiesContainer = document.querySelector("#activitiesContainer");

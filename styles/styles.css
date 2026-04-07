@@ -215,7 +215,14 @@ body {
 
 .timeline-header {
     text-align: center;
-    margin: clamp(4px, 1.5vw, 8px) 0;
+    margin: clamp(4px, 1.5vw, 8px) 0 clamp(8px, 1.8vw, 14px) 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.header-section .timeline-description {
+    display: none;
 }
 
 .timeline-title {
@@ -227,17 +234,27 @@ body {
 }
 
 .timeline-description {
-    color: var(--secondary-color);
-    font-size: clamp(14px, 1.8vw, 16px);
-    margin: 0;
-    font-style: italic;
+    color: #808080;
+    font-size: clamp(11px, 1.25vw, 13px);
+    margin: 2px 0 clamp(8px, 1.4vw, 12px) 0;
+    font-style: normal;
+    line-height: 1.3;
+    min-height: 1.3em;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.timeline-description.is-empty {
+    visibility: hidden;
 }
 
 /* Base timeline styles */
 .timeline-container {
     position: relative;
     background: #f5f5f5;
-    margin: 2px 0;
+    margin: 36px 0 2px 0;
     border: 1px solid #ccc;
     border-radius: 4px;
     overflow: visible;
@@ -251,7 +268,7 @@ body {
 
 .timeline-container .title {
     position: absolute;
-    top: -25px;
+    top: -34px;
     left: 0;
     width: 100%;
     text-align: center;
@@ -259,6 +276,30 @@ body {
     color: #666;
     padding: 6px 6px 0 6px;
     font-weight: bold;
+    pointer-events: none;
+}
+
+.timeline-container .timeline-canvas-description {
+    position: absolute;
+    top: -14px;
+    left: 0;
+    width: 100%;
+    box-sizing: border-box;
+    color: #808080;
+    font-size: 11px;
+    line-height: 1.3;
+    margin: 0;
+    min-height: 1.3em;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    pointer-events: none;
+}
+
+.timeline-container .timeline-canvas-description.is-empty {
+    visibility: hidden;
 }
 
 .hour-labels {
@@ -279,13 +320,14 @@ body {
         height: 80px;
     }
 
-    /* Horizontal layout for timeline header - title and description side by side */
+    /* Keep title and description stacked on desktop */
     .timeline-header {
         display: flex;
-        align-items: baseline;
+        flex-direction: column;
+        align-items: center;
         justify-content: center;
-        gap: 12px;
-        margin: clamp(4px, 1vw, 6px) 0;
+        gap: 0;
+        margin: clamp(4px, 1vw, 6px) 0 clamp(8px, 1vw, 12px) 0;
     }
 
     .timeline-title {
@@ -293,7 +335,7 @@ body {
     }
 
     .timeline-description {
-        margin: 0;
+        margin: 2px 0 clamp(8px, 1vw, 10px) 0;
     }
 
     /* Improve text wrapping for desktop view */
@@ -372,17 +414,29 @@ body {
         padding-top: 2px; /* Small padding for last initialized timeline */
     }
 
+    .timeline-container {
+        margin: 0;
+        padding-top: 0;
+    }
+
     /* Position timeline titles properly in mobile layout */
     .timeline-container .title {
         position: relative;
         top: 0;
-        margin-bottom: 5px;
+        margin-bottom: 4px;
         flex-shrink: 0;
         text-align: center;
         font-size: 14px;
         color: #666;
         padding: 6px 6px 0 6px;
         font-weight: bold;
+    }
+
+    .timeline-container .timeline-canvas-description {
+        position: relative;
+        top: 0;
+        margin: 0 0 10px 0;
+        font-size: 10px;
     }
 
     .timeline-container[data-active="false"] {
@@ -1644,7 +1698,8 @@ body {
     }
 
     .timeline-description {
-        font-size: clamp(12px, 3vw, 14px);
+        font-size: clamp(10px, 2.8vw, 12px);
+        margin: 2px 0 8px 0;
     }
 }
 
@@ -1675,7 +1730,8 @@ body {
     }
 
     .timeline-description {
-        font-size: clamp(11px, 3.2vw, 13px);
+        font-size: clamp(10px, 3vw, 11px);
+        margin: 2px 0 8px 0;
     }
 }
 
