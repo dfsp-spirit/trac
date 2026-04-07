@@ -875,8 +875,8 @@ body {
 @media (min-width: 1440px) {
     .time-label {
         bottom: -20px;
-        left: 50%;
-        transform: translateX(-50%);
+        left: 0;
+        transform: none;
         white-space: nowrap;
     }
 }
@@ -2446,8 +2446,39 @@ body {
         transition-delay: 0.5s;
     }
 
+    .activity-tooltip-bottom {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(100, 100, 100, 0.7);
+        color: white;
+        padding: 1px 6px;
+        border-radius: 2px;
+        font-size: 11px;
+        white-space: nowrap;
+        z-index: 1000;
+        pointer-events: none;
+        min-width: 80px;
+        max-width: 250px;
+        width: auto;
+        text-align: center;
+        box-sizing: border-box;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s ease;
+        line-height: 1;
+        height: auto;
+    }
+
     /* When resizing, hide the tooltip immediately */
     .activity-block.resizing:hover::before {
+        opacity: 0;
+        visibility: hidden;
+        transition-delay: 0s;
+    }
+
+    .activity-block.resizing:hover .activity-tooltip-bottom {
         opacity: 0;
         visibility: hidden;
         transition-delay: 0s;
@@ -2508,6 +2539,13 @@ body {
     /* Optional: Make tooltip slightly more visible on inactive timelines */
     .timeline-container[data-active="false"] .activity-block:hover::before {
         background-color: rgba(80, 80, 80, 0.9); /* Darker background */
+    }
+
+    .timeline-container[data-active="false"] .activity-block:hover .activity-tooltip-bottom {
+        opacity: 1 !important;
+        visibility: visible !important;
+        background-color: rgba(80, 80, 80, 0.9);
+        transition: none;
     }
 }
 
