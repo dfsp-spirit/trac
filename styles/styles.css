@@ -2388,6 +2388,9 @@ body {
     color: rgba(0, 0, 0, 0.8);
 }
 
+.activity-tooltip-bottom {
+    display: none;
+}
 
 /* Desktop hover tooltip for activity blocks */
 @media (min-width: 1440px) {
@@ -2456,6 +2459,7 @@ body {
     }
 
     .activity-tooltip-bottom {
+        display: block;
         position: absolute;
         top: calc(100% + 4px);
         left: 50%;
