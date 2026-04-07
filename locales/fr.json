@@ -133,7 +133,8 @@
     "title": "Merci - TRAC",
     "heading": "Merci !",
     "subtitle": "Votre soumission a été complétée avec succès.",
-    "message": "Merci de participer à notre étude <span class=\"app-name\">TRAC</span>. Vos réponses ont été enregistrées et contribueront à des recherches précieuses."
+    "message": "Merci de participer à notre étude <span class=\"app-name\">TRAC</span>. Vos réponses ont été enregistrées et contribueront à des recherches précieuses.",
+    "continueLink": "Cliquez ici pour continuer."
   },
   "footer": {
     "title": "TRAC",
