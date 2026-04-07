@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Säädä toiminnon kestoa",
-      "horizontal": "Klikkaa ja vedä reunoja vaakasuunnassa asettaaksesi keston.",
+      "horizontal": "Klikkaa ja vedä reunoja vaakasuunnassa asettaaksesi keston. Tietokoneella voit myös napsauttaa toimintoa hiiren oikealla ja valita \"Näytä tiedot\" tai \"Poista\".",
       "vertical": "Vedä reunoja pystysuunnassa asettaaksesi keston."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Päiväkirjaa lähetetään...",
       "message": "Odota, kun tallennamme vastauksesi."
+    },
+    "activityContext": {
+      "showInfo": "Näytä tiedot",
+      "delete": "Poista",
+      "infoTitle": "Toiminnon tiedot",
+      "start": "Alku",
+      "end": "Loppu",
+      "duration": "Kesto",
+      "name": "Nimi",
+      "code": "Koodi"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "Aikajanalta puuttuu tietoja. Haluatko lisätä jotain?",
     "invalidPlacement": "Toimintoa ei voi sijoittaa tähän virheellisen sijainnin vuoksi.",
     "timelineValidationError": "Aikajanan validointivirhe: {{message}}",
-    "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Voit poistaa yksittäisen toiminnon painamalla sitä pitkään, tai tietokoneella pitämällä hiiren osoitin sen päällä ja painamalla DEL- tai 'd'-näppäintä.",
+    "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
     "reportingForDay": "Raportointi päivälle:",
     "studyDayOf": "Tutkimuspäivä {{current}} / {{total}}",
     "currentDayTooltip": "Nykyinen: {{dayName}} (päivä {{current}} / {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Virhe toimintojen latauksessa. Päivitä sivu ja yritä uudelleen. Virhe:"
   },
   "banner": {
-    "dayOneInstructions": "Käyttöohjeet: Valitse ensin toiminto alla olevasta listasta. Klikkaa sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi sitä. Poistaaksesi toiminnon mobiilissa, pidä sitä painettuna 2 sekuntia. Tietokoneella voit myös viedä hiiren sen päälle ja painaa 'd'-näppäintä tai Delete-näppäintä."
+    "dayOneInstructions": "Käyttöohjeet: Valitse ensin toiminto alla olevasta listasta. Klikkaa sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi sitä. Poistaaksesi toiminnon mobiilissa, pidä sitä painettuna 2 sekuntia. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse 'Poista' (tai vie hiiri sen päälle ja paina 'd'- tai Delete-näppäintä). Hiiren oikea painike tarjoaa myös vaihtoehdon 'Näytä tiedot'."
   },
   "activities": {
     "otherNotListed": "Muu (kirjoita)"

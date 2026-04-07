@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Ajuster la Durée de l'Activité",
-      "horizontal": "Cliquez et faites glisser les bords horizontalement pour définir la durée.",
+      "horizontal": "Cliquez et faites glisser les bords horizontalement pour définir la durée. Sur ordinateur, vous pouvez aussi faire un clic droit sur une activité et choisir \"Afficher les infos\" ou \"Supprimer\".",
       "vertical": "Faites glisser les bords verticalement pour définir la durée."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Soumission de votre journal...",
       "message": "Veuillez patienter pendant que nous sauvegardons vos réponses."
+    },
+    "activityContext": {
+      "showInfo": "Afficher les infos",
+      "delete": "Supprimer",
+      "infoTitle": "Détails de l'activité",
+      "start": "Début",
+      "end": "Fin",
+      "duration": "Durée",
+      "name": "Nom",
+      "code": "Code"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "Il manque des informations dans cette chronologie. Souhaitez-vous ajouter quelque chose ?",
     "invalidPlacement": "Cannot place activity here due to invalid position.",
     "timelineValidationError": "Timeline validation error: {{message}}",
-    "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Vous pouvez supprimer une activité en appuyant longuement dessus, ou sur ordinateur en passant le curseur de la souris dessus et en appuyant sur la touche DEL ou 'd'.",
+    "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Study Day {{current}} of {{total}}",
     "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
-    "dayOneInstructions": "Usage Instructions: First select an activity from the list below. Then click on the timeline to place it, and drag its borders to extend. To delete an activity on mobile, long-press it for 2 seconds. On desktop, you can also hover over it and press the 'd' key or the DEL key."
+    "dayOneInstructions": "Instructions d'utilisation : sélectionnez d'abord une activité dans la liste ci-dessous. Cliquez ensuite sur la chronologie pour la placer, puis faites glisser ses bords pour ajuster la durée. Pour supprimer une activité sur mobile, faites un appui long de 2 secondes. Sur ordinateur, faites un clic droit sur une activité et choisissez 'Supprimer' (ou survolez-la et appuyez sur 'd' ou DEL). Le clic droit propose aussi 'Afficher les infos'."
   },
   "activities": {
     "otherNotListed": "Autre non listé (entrer)"

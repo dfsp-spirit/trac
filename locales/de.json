@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Dauer der Aktivität anpassen",
-      "horizontal": "Klicken und ziehen Sie die Ränder horizontal, um die Dauer festzulegen.",
+      "horizontal": "Klicken und ziehen Sie die Ränder horizontal, um die Dauer festzulegen. Auf dem Desktop können Sie außerdem mit der rechten Maustaste auf eine Aktivität klicken und \"Info anzeigen\" oder \"Löschen\" wählen.",
       "vertical": "Ziehen Sie die Ränder vertikal, um die Dauer festzulegen."
     },
     "step3": {
@@ -87,6 +87,16 @@
       "title": "Ihr Tagebuch wird übermittelt...",
       "message": "Bitte warten Sie, während Ihre Antworten gespeichert werden."
     }
+    "activityContext": {
+      "showInfo": "Info anzeigen",
+      "delete": "Löschen",
+      "infoTitle": "Aktivitätsdetails",
+      "start": "Start",
+      "end": "Ende",
+      "duration": "Dauer",
+      "name": "Name",
+      "code": "Code"
+    }
   },
   "messages": {
     "loading": "Lädt...",
@@ -100,7 +110,7 @@
     "timelineMissing": "In dieser Zeitleiste fehlen noch Angaben. Möchten Sie etwas hinzufügen?",
     "invalidPlacement": "Aktivität kann aufgrund einer ungültigen Position hier nicht platziert werden.",
     "timelineValidationError": "Fehler bei der Zeitleistenvalidierung: {{message}}",
-    "templateLoadedBanner": "Wir haben Ihre Aktivitäten von <strong>{{day}}</strong> als Ausgangspunkt geladen. Klicken Sie auf <strong>'Zeile leeren'</strong>, um neu zu beginnen, oder bearbeiten Sie die untenstehenden Aktivitäten. Eine einzelne Aktivität können Sie löschen, indem Sie sie gedrückt halten, oder am Computer, indem Sie den Mauszeiger darüber halten und die DEL- oder 'd'-Taste drücken.",
+    "templateLoadedBanner": "Wir haben Ihre Aktivitäten von <strong>{{day}}</strong> als Ausgangspunkt geladen. Klicken Sie auf <strong>'Zeile leeren'</strong>, um neu zu beginnen, oder bearbeiten Sie die untenstehenden Aktivitäten. Auf dem Handy löschen Sie eine einzelne Aktivität durch langes Drücken. Auf dem Desktop klicken Sie mit der rechten Maustaste auf eine Aktivität und wählen <strong>'Löschen'</strong> (oder fahren mit der Maus darüber und drücken DEL oder 'd').",
     "reportingForDay": "Bericht für Tag:",
     "studyDayOf": "Studientag {{current}} von {{total}}",
     "currentDayTooltip": "Aktuell: {{dayName}} (Tag {{current}} von {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Fehler beim Laden der Aktivitäten. Bitte laden Sie die Seite neu und versuchen Sie es erneut. Fehler:"
   },
   "banner": {
-    "dayOneInstructions": "Nutzungshinweise: Wählen Sie zuerst eine Aktivität aus der untenstehenden Liste. Klicken Sie dann auf die Zeitleiste, um sie zu platzieren, und ziehen Sie die Ränder, um sie zu verlängern. Um eine Aktivität auf dem Handy zu löschen, halten Sie sie 2 Sekunden lang gedrückt. Auf dem Desktop können Sie auch mit der Maus darüber fahren und die Taste 'd' oder die Entf-Taste drücken."
+    "dayOneInstructions": "Nutzungshinweise: Wählen Sie zuerst eine Aktivität aus der untenstehenden Liste. Klicken Sie dann auf die Zeitleiste, um sie zu platzieren, und ziehen Sie die Ränder, um sie zu verlängern. Um eine Aktivität auf dem Handy zu löschen, halten Sie sie 2 Sekunden lang gedrückt. Auf dem Desktop klicken Sie mit der rechten Maustaste auf eine Aktivität und wählen 'Löschen' (oder fahren mit der Maus darüber und drücken 'd' oder Entf). Per Rechtsklick ist auch 'Info anzeigen' verfügbar."
   },
   "activities": {
     "otherNotListed": "Sonstiges (eingeben)"

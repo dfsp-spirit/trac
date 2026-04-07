@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Dostosuj czas trwania aktywności",
-      "horizontal": "Kliknij i przeciągnij krawędzie poziomo, aby ustawić czas trwania.",
+      "horizontal": "Kliknij i przeciągnij krawędzie poziomo, aby ustawić czas trwania. Na komputerze możesz też kliknąć aktywność prawym przyciskiem myszy i wybrać \"Pokaż informacje\" lub \"Usuń\".",
       "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Wysyłanie dziennika...",
       "message": "Proszę czekać, podczas gdy zapisujemy Twoje odpowiedzi."
+    },
+    "activityContext": {
+      "showInfo": "Pokaż informacje",
+      "delete": "Usuń",
+      "infoTitle": "Szczegóły aktywności",
+      "start": "Początek",
+      "end": "Koniec",
+      "duration": "Czas trwania",
+      "name": "Nazwa",
+      "code": "Kod"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "Brakuje informacji na tej osi czasu. Chcesz dodać coś?",
     "invalidPlacement": "Nie można umieścić aktywności w tym miejscu z powodu niewłaściwej pozycji.",
     "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
-    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Możesz usunąć pojedynczą aktywność przez długie naciśnięcie lub na komputerze, najeżdżając na nią kursorem myszy i naciskając klawisz DEL lub 'd'.",
+    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
     "reportingForDay": "Raportowanie dla dnia:",
     "studyDayOf": "Dzień badania {{current}} z {{total}}",
     "currentDayTooltip": "Aktualny: {{dayName}} (Dzień {{current}} z {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Błąd ładowania aktywności. Proszę odświeżyć stronę, aby spróbować ponownie. Błąd:"
   },
   "banner": {
-    "dayOneInstructions": "Instrukcje użytkowania: Najpierw wybierz aktywność z poniższej listy. Następnie kliknij na oś czasu, aby ją umieścić, a następnie przeciągnij krawędzie, aby ją rozciągnąć. Aby usunąć aktywność na urządzeniu mobilnym, przytrzymaj ją przez 2 sekundy. Na komputerze możesz również najechać na nią kursorem i nacisnąć klawisz 'd' lub klawisz DEL."
+    "dayOneInstructions": "Instrukcje użytkowania: Najpierw wybierz aktywność z poniższej listy. Następnie kliknij na oś czasu, aby ją umieścić, a następnie przeciągnij krawędzie, aby ją rozciągnąć. Aby usunąć aktywność na urządzeniu mobilnym, przytrzymaj ją przez 2 sekundy. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz 'Usuń' (lub najedź kursorem i naciśnij 'd' albo DEL). Menu pod prawym przyciskiem zawiera też opcję 'Pokaż informacje'."
   },
   "activities": {
     "otherNotListed": "Inne (wpisz)"

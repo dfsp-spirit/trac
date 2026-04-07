@@ -422,6 +422,241 @@ function initMobileDelete() {
     }
 }
 
+function translateOrFallback(key, fallback) {
+    if (!window.i18n?.isReady()) {
+        return fallback;
+    }
+
+    const translation = window.i18n.t(key);
+    return translation === key ? fallback : translation;
+}
+
+function formatDurationForInfo(minutes) {
+    if (!Number.isFinite(minutes) || minutes < 0) {
+        return '—';
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    const hh = String(hours).padStart(2, '0');
+    const mm = String(mins).padStart(2, '0');
+
+    return `${minutes} min (${hh}:${mm})`;
+}
+
+function getActivityBlockInfo(activityBlock) {
+    const timelineKey = activityBlock.dataset.timelineKey;
+    const activityId = activityBlock.dataset.id;
+    const timelineActivities = window.timelineManager.activities[timelineKey] || [];
+    const storedActivity = timelineActivities.find(activity => activityIdsEqual(activity.id, activityId));
+
+    const start = storedActivity?.startTime || activityBlock.dataset.start || '—';
+    const end = storedActivity?.endTime || activityBlock.dataset.end || '—';
+    const durationMinutes = Number.isFinite(Number(storedActivity?.blockLength))
+        ? Number(storedActivity.blockLength)
+        : calculateTimeDifference(start, end);
+
+    return {
+        start,
+        end,
+        duration: formatDurationForInfo(durationMinutes),
+        name: storedActivity?.activity || activityBlock.dataset.tooltipText || '—',
+        code: storedActivity?.codes || storedActivity?.code || activityBlock.dataset.codes || activityBlock.dataset.code || '—'
+    };
+}
+
+function ensureActivityInfoModal() {
+    let modalOverlay = document.getElementById('activityInfoModal');
+    if (modalOverlay) {
+        return modalOverlay;
+    }
+
+    modalOverlay = document.createElement('div');
+    modalOverlay.id = 'activityInfoModal';
+    modalOverlay.className = 'modal-overlay';
+    modalOverlay.innerHTML = `
+        <div class="modal activity-info-modal">
+            <div class="modal-header">
+                <h3>${translateOrFallback('modals.activityContext.infoTitle', 'Activity details')}</h3>
+                <button class="modal-close" type="button" aria-label="${translateOrFallback('buttons.close', 'Close')}">&times;</button>
+            </div>
+            <div class="modal-content">
+                <table class="activity-info-table">
+                    <tbody id="activityInfoTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    const closeModal = () => {
+        modalOverlay.style.cssText = 'display: none !important';
+    };
+
+    modalOverlay.querySelector('.modal-close').addEventListener('click', closeModal);
+    modalOverlay.addEventListener('click', (event) => {
+        if (event.target === modalOverlay) {
+            closeModal();
+        }
+    });
+
+    document.body.appendChild(modalOverlay);
+    return modalOverlay;
+}
+
+function showActivityInfoModal(activityBlock) {
+    if (!activityBlock || !activityBlock.isConnected) {
+        return;
+    }
+
+    const modalOverlay = ensureActivityInfoModal();
+    const tableBody = modalOverlay.querySelector('#activityInfoTableBody');
+    const info = getActivityBlockInfo(activityBlock);
+
+    const rows = [
+        { label: translateOrFallback('modals.activityContext.start', 'Start'), value: info.start },
+        { label: translateOrFallback('modals.activityContext.end', 'End'), value: info.end },
+        { label: translateOrFallback('modals.activityContext.duration', 'Duration'), value: info.duration },
+        { label: translateOrFallback('modals.activityContext.name', 'Name'), value: info.name },
+        { label: translateOrFallback('modals.activityContext.code', 'Code'), value: info.code }
+    ];
+
+    tableBody.innerHTML = '';
+    rows.forEach((rowData) => {
+        const row = document.createElement('tr');
+        const labelCell = document.createElement('th');
+        const valueCell = document.createElement('td');
+
+        labelCell.textContent = rowData.label;
+        valueCell.textContent = rowData.value;
+
+        row.appendChild(labelCell);
+        row.appendChild(valueCell);
+        tableBody.appendChild(row);
+    });
+
+    modalOverlay.style.display = 'block';
+}
+
+function initDesktopActivityContextMenu() {
+    const MENU_ID = 'activityContextMenu';
+    let targetBlock = null;
+
+    function ensureMenu() {
+        let menu = document.getElementById(MENU_ID);
+        if (menu) {
+            return menu;
+        }
+
+        menu = document.createElement('div');
+        menu.id = MENU_ID;
+        menu.className = 'activity-context-menu';
+        menu.innerHTML = `
+            <button type="button" class="activity-context-menu-item" data-action="show-info">${translateOrFallback('modals.activityContext.showInfo', 'Show info')}</button>
+            <button type="button" class="activity-context-menu-item danger" data-action="delete">${translateOrFallback('modals.activityContext.delete', 'Delete')}</button>
+        `;
+
+        menu.addEventListener('click', (event) => {
+            const actionButton = event.target.closest('.activity-context-menu-item');
+            if (!actionButton) {
+                return;
+            }
+
+            const action = actionButton.dataset.action;
+            const blockForAction = targetBlock;
+            hideMenu();
+
+            if (!blockForAction || !blockForAction.isConnected) {
+                return;
+            }
+
+            if (action === 'show-info') {
+                showActivityInfoModal(blockForAction);
+            } else if (action === 'delete') {
+                deleteActivityBlock(blockForAction);
+            }
+        });
+
+        document.body.appendChild(menu);
+        return menu;
+    }
+
+    function hideMenu() {
+        const menu = document.getElementById(MENU_ID);
+        if (!menu) {
+            return;
+        }
+
+        menu.style.display = 'none';
+        targetBlock = null;
+    }
+
+    function showMenu(clientX, clientY, activityBlock) {
+        const menu = ensureMenu();
+        targetBlock = activityBlock;
+
+        menu.style.display = 'block';
+
+        const menuRect = menu.getBoundingClientRect();
+        const margin = 8;
+        let left = clientX;
+        let top = clientY;
+
+        if (left + menuRect.width + margin > window.innerWidth) {
+            left = window.innerWidth - menuRect.width - margin;
+        }
+        if (top + menuRect.height + margin > window.innerHeight) {
+            top = window.innerHeight - menuRect.height - margin;
+        }
+
+        left = Math.max(margin, left);
+        top = Math.max(margin, top);
+
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+    }
+
+    document.addEventListener('contextmenu', (event) => {
+        if (getIsMobile()) {
+            hideMenu();
+            return;
+        }
+
+        const activityBlock = event.target.closest('.activity-block');
+        if (!activityBlock) {
+            hideMenu();
+            return;
+        }
+
+        if (activityBlock.dataset.timelineKey !== getCurrentTimelineKey()) {
+            hideMenu();
+            return;
+        }
+
+        event.preventDefault();
+        showMenu(event.clientX, event.clientY, activityBlock);
+    });
+
+    document.addEventListener('pointerdown', (event) => {
+        const menu = document.getElementById(MENU_ID);
+        if (!menu || menu.style.display !== 'block') {
+            return;
+        }
+
+        if (!event.target.closest('.activity-context-menu')) {
+            hideMenu();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            hideMenu();
+        }
+    });
+
+    window.addEventListener('resize', hideMenu);
+    document.addEventListener('scroll', hideMenu, true);
+}
+
 
 
 // Add this after the imports and before other functions
@@ -4331,6 +4566,7 @@ async function init() {
         initKeyboardShortcuts();
         initInstructionBanner();
         initMobileDelete();
+        initDesktopActivityContextMenu();
 
         // Initialize header and footer heights early
         updateHeaderHeight();

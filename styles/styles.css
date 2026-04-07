@@ -1360,6 +1360,35 @@ body {
     background-color: #1a1e21;  /* Even darker on hover */
 }
 
+.activity-info-modal {
+    width: clamp(280px, 50vw, 420px);
+}
+
+.activity-info-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+
+.activity-info-table th,
+.activity-info-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.activity-info-table th {
+    width: 35%;
+    text-align: left;
+    color: var(--secondary-color);
+    font-weight: 600;
+}
+
+.activity-info-table td {
+    text-align: left;
+    color: var(--text-color);
+    word-break: break-word;
+}
+
 /* Mobile specific adjustments */
 @media (max-width: 480px) {
     .modal {
@@ -2297,6 +2326,38 @@ body {
 
 /* Desktop hover tooltip for activity blocks */
 @media (min-width: 1440px) {
+    .activity-context-menu {
+        position: fixed;
+        display: none;
+        min-width: 150px;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+        z-index: 3000;
+        padding: 4px;
+    }
+
+    .activity-context-menu-item {
+        width: 100%;
+        border: none;
+        background: transparent;
+        text-align: left;
+        padding: 8px 10px;
+        font-size: 14px;
+        color: var(--text-color);
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .activity-context-menu-item:hover {
+        background: var(--background-color);
+    }
+
+    .activity-context-menu-item.danger {
+        color: var(--danger-color);
+    }
+
     .activity-block:hover::before {
         content: attr(data-tooltip-text);
         position: absolute;

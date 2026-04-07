@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Adjust Activity Duration",
-      "horizontal": "Click and drag the edges horizontally to set the duration.",
+      "horizontal": "Click and drag the edges horizontally to set the duration. On desktop, you can also right-click an activity and choose \"Show info\" or \"Delete\".",
       "vertical": "Drag the edges vertically to set the duration."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Submitting your diary...",
       "message": "Please wait while we save your responses."
+    },
+    "activityContext": {
+      "showInfo": "Show info",
+      "delete": "Delete",
+      "infoTitle": "Activity details",
+      "start": "Start",
+      "end": "End",
+      "duration": "Duration",
+      "name": "Name",
+      "code": "Code"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "There is information missing from this timeline. Would you like to add anything?",
     "invalidPlacement": "Cannot place activity here due to invalid position.",
     "timelineValidationError": "Timeline validation error: {{message}}",
-    "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. You can delete a single activity by long-pressing it, or on desktop by hovering the mouse pointer over it and pressing the DEL or 'd' key.",
+    "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Study Day {{current}} of {{total}}",
     "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
-    "dayOneInstructions": "Usage Instructions: First select an activity from the list below. Then click on the timeline to place it, and drag its borders to extend. To delete an activity on mobile, long-press it for 2 seconds. On desktop, you can also hover over it and press the 'd' key or the DEL key."
+    "dayOneInstructions": "Usage Instructions: First select an activity from the list below. Then click on the timeline to place it, and drag its borders to extend. To delete an activity on mobile, long-press it for 2 seconds. On desktop, right-click an activity and choose 'Delete' (or hover and press the 'd' key or the DEL key). Right-click also provides 'Show info'."
   },
   "activities": {
     "otherNotListed": "Other not listed (enter)"

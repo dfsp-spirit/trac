@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Ajustar la Duración de la Actividad",
-      "horizontal": "Haz clic y arrastra los bordes horizontalmente para establecer la duración.",
+      "horizontal": "Haz clic y arrastra los bordes horizontalmente para establecer la duración. En escritorio también puedes hacer clic derecho sobre una actividad y elegir \"Mostrar información\" o \"Eliminar\".",
       "vertical": "Arrastra los bordes verticalmente para establecer la duración."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Enviando tu diario...",
       "message": "Por favor espera mientras guardamos tus respuestas."
+      },
+      "activityContext": {
+        "showInfo": "Mostrar información",
+        "delete": "Eliminar",
+        "infoTitle": "Detalles de la actividad",
+        "start": "Inicio",
+        "end": "Fin",
+        "duration": "Duración",
+        "name": "Nombre",
+        "code": "Código"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "Falta información en esta línea de tiempo. ¿Te gustaría añadir algo?",
     "invalidPlacement": "Cannot place activity here due to invalid position.",
     "timelineValidationError": "Timeline validation error: {{message}}",
-    "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación. Puedes eliminar una actividad individual manteniéndola pulsada, o en el escritorio pasando el cursor del ratón por encima y pulsando la tecla DEL o 'd'.",
+    "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Study Day {{current}} of {{total}}",
     "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
-    "dayOneInstructions": "Usage Instructions: First select an activity from the list below. Then click on the timeline to place it, and drag its borders to extend. To delete an activity on mobile, long-press it for 2 seconds. On desktop, you can also hover over it and press the 'd' key or the DEL key."
+    "dayOneInstructions": "Instrucciones de uso: primero selecciona una actividad de la lista de abajo. Luego haz clic en la línea de tiempo para colocarla y arrastra sus bordes para ampliar su duración. Para eliminar una actividad en móvil, mantenla pulsada durante 2 segundos. En escritorio, haz clic derecho sobre una actividad y elige 'Eliminar' (o pasa el cursor por encima y pulsa 'd' o DEL). El clic derecho también ofrece 'Mostrar información'."
   },
   "activities": {
     "otherNotListed": "Otro no listado (ingresar)"

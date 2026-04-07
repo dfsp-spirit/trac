@@ -26,7 +26,7 @@
     },
     "step2": {
       "title": "Justera aktivitetens längd",
-      "horizontal": "Klicka och dra kanterna horisontellt för att ställa in längden.",
+      "horizontal": "Klicka och dra kanterna horisontellt för att ställa in längden. På dator kan du också högerklicka på en aktivitet och välja \"Visa info\" eller \"Ta bort\".",
       "vertical": "Dra kanterna vertikalt för att ställa in längden."
     },
     "step3": {
@@ -86,6 +86,16 @@
     "loading": {
       "title": "Skickar din dagbok...",
       "message": "Var god vänta medan vi sparar dina svar."
+    },
+    "activityContext": {
+      "showInfo": "Visa info",
+      "delete": "Ta bort",
+      "infoTitle": "Aktivitetsdetaljer",
+      "start": "Start",
+      "end": "Slut",
+      "duration": "Varaktighet",
+      "name": "Namn",
+      "code": "Kod"
     }
   },
   "messages": {
@@ -100,7 +110,7 @@
     "timelineMissing": "Det saknas information på den här tidslinjen. Vill du lägga till något?",
     "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
-    "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. Du kan ta bort en enskild aktivitet genom att hålla länge på den, eller på dator genom att hålla muspekaren över den och trycka på DEL- eller 'd'-tangenten.",
+    "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
     "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Studiedag {{current}} av {{total}}",
     "currentDayTooltip": "Nuvarande: {{dayName}} (Dag {{current}} av {{total}})",
@@ -112,7 +122,7 @@
     "loadingActivitiesShort": "Fel vid laddning av aktiviteter. Uppdatera sidan och försök igen. Fel:"
   },
   "banner": {
-    "dayOneInstructions": "Instruktioner: Välj först en aktivitet från listan nedan. Klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet på mobil, håll ned den i 2 sekunder. På dator kan du också hovra över den och trycka på tangenten 'd' eller DEL."
+    "dayOneInstructions": "Instruktioner: Välj först en aktivitet från listan nedan. Klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet på mobil, håll ned den i 2 sekunder. På dator högerklickar du på en aktivitet och väljer 'Ta bort' (eller hovrar över den och trycker på 'd' eller DEL). Via högerklick finns också 'Visa info'."
   },
   "activities": {
     "otherNotListed": "Annat som inte finns med (ange)"
