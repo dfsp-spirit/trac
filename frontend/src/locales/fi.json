@@ -133,7 +133,8 @@
     "title": "Kiitos - TRAC",
     "heading": "Kiitos!",
     "subtitle": "Lähetys on suoritettu onnistuneesti.",
-    "message": "Kiitos osallistumisestasi <span class=\"app-name\">TRAC</span>-tutkimukseen. Vastauksesi on tallennettu ja ne edistävät arvokasta tutkimusta."
+    "message": "Kiitos osallistumisestasi <span class=\"app-name\">TRAC</span>-tutkimukseen. Vastauksesi on tallennettu ja ne edistävät arvokasta tutkimusta.",
+    "continueLink": "Jatka napsauttamalla tästä."
   },
   "footer": {
     "title": "TRAC",

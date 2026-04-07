@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUD Admin - Tools</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 1100px; margin: 0 auto; }
+        .admin-nav {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .admin-nav-link {
+            display: inline-block;
+            padding: 0.55rem 0.9rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #374151;
+            background: #e5e7eb;
+        }
+        .admin-nav-link.active { color: white; background: #4f46e5; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        h2 { margin-bottom: 0.75rem; }
+        p, li { color: #4b5563; }
+        textarea, input {
+            width: 100%;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+        textarea { min-height: 110px; resize: vertical; }
+        .row { display: grid; grid-template-columns: 1fr; gap: 1rem; }
+        .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; }
+        button {
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            padding: 0.7rem 1rem;
+        }
+        .btn-primary { background: #4f46e5; color: white; }
+        .btn-secondary { background: #e5e7eb; color: #374151; }
+        .hint {
+            margin-top: 0.6rem;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        code {
+            background: #f3f4f6;
+            border-radius: 4px;
+            padding: 0.15rem 0.35rem;
+        }
+        .example {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            border-left: 4px solid #4f46e5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="admin-nav">
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin">Overview</a>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/participant-management">Participant Management</a>
+            <a class="admin-nav-link active" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
+        </nav>
+
+        <div class="header">
+            <h1>Admin Tools</h1>
+            <p>Utilities for study integration and invitation-link setup</p>
+            <div class="header-info">
+                <div><strong>Admin:</strong> {{ current_admin }}</div>
+                <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>URL encoder for <code>return_url</code></h2>
+            <p>Paste the raw destination URL below. The tool encodes it as a single query-parameter value so it can be safely appended to invitation links as <code>return_url=...</code>.</p>
+
+            <div class="row" style="margin-top: 1rem;">
+                <div>
+                    <label for="rawUrl"><strong>Raw destination URL</strong></label>
+                    <textarea id="rawUrl" placeholder="https://example.org/finish?token=abc123&source=trac"></textarea>
+                </div>
+                <div>
+                    <label for="encodedUrl"><strong>Encoded value for the invitation link</strong></label>
+                    <textarea id="encodedUrl" readonly placeholder="Encoded value will appear here"></textarea>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button type="button" class="btn-primary" id="encodeBtn">Encode URL</button>
+                <button type="button" class="btn-secondary" id="copyBtn">Copy encoded value</button>
+                <button type="button" class="btn-secondary" id="clearBtn">Clear</button>
+            </div>
+
+            <div class="example">
+                <strong>Encoding rule</strong>
+                <p>Use standard percent-encoding for one query-parameter value. Recommended methods:</p>
+                <ul style="margin: 0.5rem 0 0 1.25rem;">
+                    <li>JavaScript: <code>encodeURIComponent(rawReturnUrl)</code></li>
+                    <li>Python: <code>urllib.parse.quote(raw_return_url, safe='')</code></li>
+                </ul>
+                <p style="margin-top: 0.75rem;">Example invitation link:</p>
+                <code id="exampleLink">index.html?study_name=default&amp;pid=PARTICIPANT_ID&amp;return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123</code>
+                <p class="hint">Do not double-encode the value. Encode only the raw destination URL once.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const rawUrl = document.getElementById('rawUrl');
+        const encodedUrl = document.getElementById('encodedUrl');
+        const exampleLink = document.getElementById('exampleLink');
+
+        function updateEncodedValue() {
+            const value = rawUrl.value.trim();
+            const encoded = value ? encodeURIComponent(value) : '';
+            encodedUrl.value = encoded;
+            exampleLink.textContent = encoded
+                ? `index.html?study_name=default&pid=PARTICIPANT_ID&return_url=${encoded}`
+                : 'index.html?study_name=default&pid=PARTICIPANT_ID&return_url=';
+        }
+
+        document.getElementById('encodeBtn').addEventListener('click', updateEncodedValue);
+        rawUrl.addEventListener('input', updateEncodedValue);
+
+        document.getElementById('copyBtn').addEventListener('click', async () => {
+            if (!encodedUrl.value) {
+                return;
+            }
+            await navigator.clipboard.writeText(encodedUrl.value);
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            rawUrl.value = '';
+            encodedUrl.value = '';
+            exampleLink.textContent = 'index.html?study_name=default&pid=PARTICIPANT_ID&return_url=';
+        });
+    </script>
+</body>
+</html>

@@ -15,3 +15,26 @@ When using the software in this repo, please also cite [Andrei Tamas Foldes' pap
 
 NOTE: Recently the frontend and backend repos were united into this one repo, so for now, you will have to see the [frontend](./frontend/) and [backend](./backend/) directories, and the README files in there, for more details.
 
+## Invitation links and `return_url`
+
+TRAC invitation links can include an optional query parameter named `return_url`.
+
+Example:
+
+`index.html?study_name=default&pid=PARTICIPANT_ID&return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123`
+
+Behavior:
+
+- TRAC preserves `return_url` while users move from instructions to diary pages, across day navigation, and through final submission/skip flows.
+- If `return_url` is present on the final thank-you page, TRAC shows a link with the text `Click here to continue.` instead of the default generic end message.
+
+Encoding rule:
+
+- Encode `return_url` as one query-parameter value using standard percent-encoding.
+- Recommended encoders:
+	- JavaScript: `encodeURIComponent(rawReturnUrl)`
+	- Python: `urllib.parse.quote(raw_return_url, safe='')`
+- Do not double-encode the value.
+
+For admins, the backend admin interface also provides a small URL encoder tool at `/admin/tools`.
+

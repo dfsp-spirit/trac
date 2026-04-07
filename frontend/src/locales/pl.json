@@ -133,7 +133,8 @@
     "title": "Dziękujemy - O-ELIDDI",
     "heading": "Dziękujemy!",
     "subtitle": "Twoje zgłoszenie zostało pomyślnie zakończone.",
-    "message": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">O-ELIDDI</span>. Twoje odpowiedzi zostały zapisane i będą miały wartość w badaniach naukowych."
+    "message": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">O-ELIDDI</span>. Twoje odpowiedzi zostały zapisane i będą miały wartość w badaniach naukowych.",
+    "continueLink": "Kliknij tutaj, aby kontynuować."
   },
   "footer": {
     "title": "TRAC",

@@ -133,7 +133,8 @@
     "title": "Thank You - TRAC",
     "heading": "Thank You!",
     "subtitle": "Your submission has been completed successfully.",
-    "message": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research."
+    "message": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research.",
+    "continueLink": "Click here to continue."
   },
   "footer": {
     "title": "TRAC",

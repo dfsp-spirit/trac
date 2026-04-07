@@ -1261,6 +1261,28 @@ async def admin_participant_management(
     )
 
 
+@app.get("/admin/tools", name="Admin Tools Page", response_class=HTMLResponse)
+async def admin_tools(
+    request: Request,
+    current_admin: str = Depends(verify_admin),
+):
+    """Render a small admin tools page with utilities for integration tasks.
+
+    Uses direct Jinja rendering to avoid TemplateResponse caching issues when the package is
+    installed from a wheel (Starlette/Jinja template cache bug).
+    """
+    logger.info("Admin '%s' accessed the admin tools page.", current_admin)
+
+    context_dict = {
+        "request": request,
+        "current_admin": current_admin,
+        "current_time": utc_now(),
+    }
+    template = templates.get_template("admin_tools.html")
+    html_content = template.render(context_dict)
+    return HTMLResponse(content=html_content)
+
+
 @app.post("/api/admin/studies/{study_name_short}/assign-participants")
 async def assign_participants_to_study(
     study_name_short: str,

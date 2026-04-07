@@ -104,6 +104,17 @@
             margin: 0;
         }
 
+        .continue-link {
+            color: var(--primary-color);
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .continue-link:hover,
+        .continue-link:focus {
+            text-decoration: underline;
+        }
+
         .app-name {
             font-weight: 600;
             color: var(--primary-color);
@@ -201,6 +212,48 @@
             document.documentElement.lang = language;
         }
 
+        function getSafeReturnUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawReturnUrl = (urlParams.get('return_url') || '').trim();
+
+            if (!rawReturnUrl) {
+                return null;
+            }
+
+            try {
+                const parsed = new URL(rawReturnUrl, window.location.origin);
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                    return null;
+                }
+                return parsed.toString();
+            } catch (error) {
+                console.warn('Invalid return_url provided on thank-you page:', error);
+                return null;
+            }
+        }
+
+        function applyReturnUrlLink() {
+            const customEndElement = document.getElementById('study-custom-message-end');
+            if (!customEndElement) {
+                return;
+            }
+
+            const safeReturnUrl = getSafeReturnUrl();
+            if (!safeReturnUrl) {
+                return;
+            }
+
+            const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
+            customEndElement.innerHTML = '';
+
+            const link = document.createElement('a');
+            link.href = safeReturnUrl;
+            link.className = 'continue-link';
+            link.textContent = linkText;
+
+            customEndElement.appendChild(link);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
             const requestedLanguage = urlParams.get('lang');
@@ -218,6 +271,7 @@
             i18n.applyTranslations();
 
             applyStudyOutroText(studyConfig, language);
+            applyReturnUrlLink();
         });
     </script>
 </body>

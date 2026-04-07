@@ -133,7 +133,8 @@
     "title": "Tack - TRAC",
     "heading": "Tack!",
     "subtitle": "Din inskickning har slutförts framgångsrikt.",
-    "message": "Tack för att du deltar i vår <span class=\"app-name\">TRAC</span>-studie. Dina svar har registrerats och kommer att bidra till värdefull forskning."
+    "message": "Tack för att du deltar i vår <span class=\"app-name\">TRAC</span>-studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
+    "continueLink": "Klicka här för att fortsätta."
   },
   "footer": {
     "title": "TRAC",
