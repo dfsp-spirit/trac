@@ -455,11 +455,18 @@ function getActivityBlockInfo(activityBlock) {
     const durationMinutes = Number.isFinite(Number(storedActivity?.blockLength))
         ? Number(storedActivity.blockLength)
         : calculateTimeDifference(start, end);
+    const label = storedActivity?.parentName
+        || activityBlock.querySelector('div[class^="activity-block-text"]')?.textContent?.trim()
+        || activityBlock.dataset.tooltipText
+        || storedActivity?.activity
+        || '—';
 
     return {
         start,
         end,
         duration: formatDurationForInfo(durationMinutes),
+        label,
+        category: storedActivity?.category || activityBlock.dataset.category || '—',
         name: storedActivity?.activity || activityBlock.dataset.tooltipText || '—',
         code: storedActivity?.codes || storedActivity?.code || activityBlock.dataset.codes || activityBlock.dataset.code || '—'
     };
@@ -516,6 +523,8 @@ function showActivityInfoModal(activityBlock) {
         { label: translateOrFallback('modals.activityContext.start', 'Start'), value: info.start },
         { label: translateOrFallback('modals.activityContext.end', 'End'), value: info.end },
         { label: translateOrFallback('modals.activityContext.duration', 'Duration'), value: info.duration },
+        { label: translateOrFallback('modals.activityContext.label', 'Label'), value: info.label },
+        { label: translateOrFallback('modals.activityContext.category', 'Category'), value: info.category },
         { label: translateOrFallback('modals.activityContext.name', 'Name'), value: info.name },
         { label: translateOrFallback('modals.activityContext.code', 'Code'), value: info.code }
     ];

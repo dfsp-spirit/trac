@@ -94,6 +94,8 @@
       "start": "Start",
       "end": "End",
       "duration": "Duration",
+      "label": "Label",
+      "category": "Category",
       "name": "Name",
       "code": "Code"
     }

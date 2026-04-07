@@ -94,6 +94,8 @@
       "start": "Start",
       "end": "Slut",
       "duration": "Varaktighet",
+      "label": "Etikett",
+      "category": "Kategori",
       "name": "Namn",
       "code": "Kod"
     }

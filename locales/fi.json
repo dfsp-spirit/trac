@@ -94,6 +94,8 @@
       "start": "Alku",
       "end": "Loppu",
       "duration": "Kesto",
+      "label": "Nimike",
+      "category": "Kategoria",
       "name": "Nimi",
       "code": "Koodi"
     }
