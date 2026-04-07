@@ -1201,6 +1201,10 @@ export async function sendData(options = { mode: 'json', shouldRedirect: false, 
             const responseData = await response.json();
             console.log('Data sent to backend API successfully:', responseData);
 
+            if (typeof window.__TRAC_CLEAR_PENDING_STATE === 'function') {
+                window.__TRAC_CLEAR_PENDING_STATE();
+            }
+
             // Handle redirect if needed
             if (options.shouldRedirect) {
                 console.log('Handling day navigation after successful data submission. isLastDay:', options.isLastDay, 'currentDayIndex:', options.currentDayIndex);

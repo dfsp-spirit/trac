@@ -262,6 +262,7 @@ function deleteActivityBlock(activityBlock) {
 
     // Update button states (coverage might have changed)
     updateButtonStates();
+    persistPendingTimelineStateSoon();
 
     console.log(`=== DELETION COMPLETE ===`);
 }
@@ -3380,6 +3381,7 @@ function initTimelineInteraction(timeline) {
         }
 
         updateButtonStates();
+        persistPendingTimelineStateSoon();
 
         console.log(`[Drag & Resize] Added event listeners for activity block: ${result.activityData.id}`);
 
@@ -3427,6 +3429,8 @@ function initTimelineInteraction(timeline) {
                 }
             }
         }
+
+        persistPendingTimelineStateSoon();
     });
 }
 
@@ -3802,6 +3806,8 @@ function getPreferredLanguage(supportedLanguages = [], fallbackLanguage = 'en') 
 }
 
 const PENDING_TIMELINE_STATE_KEY = 'trac.pendingTimelineState.v1';
+const DRAFT_TIMELINE_STATE_KEY = 'trac.timelineDraftState.v1';
+const DRAFT_TIMELINE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 function getPendingTimelineContext() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -3818,6 +3824,45 @@ function hasAnyLocalActivities() {
     );
 }
 
+function clearStoredTimelineState() {
+    sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+    localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
+}
+
+function storeTimelineState(storage, key, payload) {
+    try {
+        storage.setItem(key, JSON.stringify(payload));
+        return true;
+    } catch (error) {
+        console.warn(`Failed to store timeline state in ${key}:`, error);
+        return false;
+    }
+}
+
+function readStoredTimelineState(storage, key) {
+    const raw = storage.getItem(key);
+    if (!raw) {
+        return null;
+    }
+
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        console.warn(`Invalid stored timeline state payload for ${key}, clearing it:`, error);
+        storage.removeItem(key);
+        return null;
+    }
+}
+
+function isStoredTimelineStateFresh(payload) {
+    const savedAt = Number(payload?.savedAt);
+    if (!Number.isFinite(savedAt)) {
+        return false;
+    }
+
+    return Date.now() - savedAt <= DRAFT_TIMELINE_MAX_AGE_MS;
+}
+
 window.__TRAC_CAPTURE_PENDING_STATE = function capturePendingTimelineState() {
     try {
         if (!window.timelineManager || !window.timelineManager.activities) {
@@ -3829,7 +3874,7 @@ window.__TRAC_CAPTURE_PENDING_STATE = function capturePendingTimelineState() {
             .filter(activity => activity && activity.timelineKey);
 
         if (!allActivities.length) {
-            sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+            clearStoredTimelineState();
             return false;
         }
 
@@ -3840,26 +3885,39 @@ window.__TRAC_CAPTURE_PENDING_STATE = function capturePendingTimelineState() {
             activities: JSON.parse(JSON.stringify(allActivities)),
         };
 
-        sessionStorage.setItem(PENDING_TIMELINE_STATE_KEY, JSON.stringify(payload));
-        return true;
+        const storedInSession = storeTimelineState(sessionStorage, PENDING_TIMELINE_STATE_KEY, payload);
+        const storedInLocal = storeTimelineState(localStorage, DRAFT_TIMELINE_STATE_KEY, payload);
+        return storedInSession || storedInLocal;
     } catch (error) {
         console.warn('Failed to store pending timeline state:', error);
         return false;
     }
 };
 
+window.__TRAC_CLEAR_PENDING_STATE = clearStoredTimelineState;
+
+function persistPendingTimelineStateSoon() {
+    window.clearTimeout(window.__TRAC_PERSIST_DRAFT_TIMER);
+    window.__TRAC_PERSIST_DRAFT_TIMER = window.setTimeout(() => {
+        if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+            window.__TRAC_CAPTURE_PENDING_STATE();
+        }
+    }, 100);
+}
+
 async function tryRestorePendingTimelineState(participantId, studyName, dayIndex) {
-    const raw = sessionStorage.getItem(PENDING_TIMELINE_STATE_KEY);
-    if (!raw) {
-        return false;
+    const sessionPayload = readStoredTimelineState(sessionStorage, PENDING_TIMELINE_STATE_KEY);
+    const localPayload = readStoredTimelineState(localStorage, DRAFT_TIMELINE_STATE_KEY);
+
+    let payload = sessionPayload;
+    if (!payload && localPayload && isStoredTimelineStateFresh(localPayload)) {
+        payload = localPayload;
     }
 
-    let payload;
-    try {
-        payload = JSON.parse(raw);
-    } catch (error) {
-        console.warn('Invalid pending timeline state payload, clearing it:', error);
-        sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+    if (!payload) {
+        if (localPayload && !isStoredTimelineStateFresh(localPayload)) {
+            localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
+        }
         return false;
     }
 
@@ -3875,17 +3933,20 @@ async function tryRestorePendingTimelineState(participantId, studyName, dayIndex
         payload?.day_label_index === expected.day_label_index;
 
     if (!sameContext) {
+        if (localPayload && payload === localPayload) {
+            localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
+        }
         return false;
     }
 
     if (hasAnyLocalActivities()) {
-        sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+        clearStoredTimelineState();
         return false;
     }
 
     const restoredActivities = Array.isArray(payload.activities) ? payload.activities : [];
     if (!restoredActivities.length) {
-        sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+        clearStoredTimelineState();
         return false;
     }
 
@@ -3898,11 +3959,11 @@ async function tryRestorePendingTimelineState(participantId, studyName, dayIndex
     ];
 
     if (!restoredKeys.length) {
-        sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+        clearStoredTimelineState();
         return false;
     }
 
-    console.log(`Restoring ${restoredActivities.length} pending activities after breakpoint reload.`);
+    console.log(`Restoring ${restoredActivities.length} pending activities after reload.`);
 
     for (const timelineKey of restoredKeys) {
         const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
@@ -3929,7 +3990,9 @@ async function tryRestorePendingTimelineState(participantId, studyName, dayIndex
     }
 
     updateButtonStates();
-    sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
+    if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+        window.__TRAC_CAPTURE_PENDING_STATE();
+    }
     return true;
 }
 
@@ -4625,6 +4688,18 @@ init().catch(error => {
         : 'Error loading activities. Please refresh the page to try again. Error:';
     document.getElementById('activitiesContainer').innerHTML =
         `<p style="color: red;">${shortError} ${error.message}</p>`;
+});
+
+window.addEventListener('beforeunload', () => {
+    if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+        window.__TRAC_CAPTURE_PENDING_STATE();
+    }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+        window.__TRAC_CAPTURE_PENDING_STATE();
+    }
 });
 
 // Export addNextTimeline, goToPreviousTimeline and renderActivities for ui.js
