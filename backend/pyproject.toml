@@ -1,10 +1,25 @@
 [project]
 name = "o-timeusediary-backend"
 dynamic = ["version"] # see [tool.hatch.version] section below
-description = "Backend for the o-timeusediary web form for time use research."
+description = "Backend for the o-timeusediary/TRAC web app for time use research."
 authors = [
     {name = "Tim Schäfer", email = "ts+code@rcmd.org"},
 ]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "Framework :: FastAPI",
+    "Programming Language :: Python :: 3",
+    "Natural Language :: English",
+    "Natural Language :: German",
+    "Natural Language :: French",
+    "Natural Language :: Spanish",
+    "Natural Language :: Swedish",
+    "Topic :: Internet :: WWW/HTTP :: WSGI :: Application"
+]
+keywords = ["research", "computational-biology", "data-analysis"]
+
+
 dependencies = [
     "fastapi>=0.104.0",
     "uvicorn[standard]>=0.24.0", # Development server
@@ -44,3 +59,9 @@ packages = ["src/o_timeusediary_backend"]
 
 [tool.hatch.version]
 path = "src/o_timeusediary_backend/__init__.py"  # reads __version__ variable from this file
+
+[project.urls]
+"Homepage" = "https://github.com/dfsp-spirit/trac"
+"Repository" = "https://github.com/dfsp-spirit/trac.git"
+"Bug Reports" = "https://github.com/dfsp-spirit/trac/issues"
+"Documentation" = "https://github.com/dfsp-spirit/trac"
