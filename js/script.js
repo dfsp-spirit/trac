@@ -768,10 +768,14 @@ function createActivityBlock(activityData, isFromTemplate = false) {
     currentBlock.dataset.endMinutes = activityData.endMinutes;
     currentBlock.dataset.code = activityData.code;
 
-    if (activityData.parentName && activityData.parentName !== activityData.activity) {
-        currentBlock.dataset.tooltipText = activityData.parentName; // What's displayed
-    } else if (activityData.selections) {
+    if (activityData.selections) {
         currentBlock.dataset.tooltipText = activityData.selections.map(s => s.name).join(' | ');
+    } else if (activityData.isCustomInput) {
+        const _trueParent = (activityData.parentName && activityData.parentName !== activityData.activity) ? activityData.parentName : null;
+        const _prefix = _trueParent || activityData.originalSelection || '';
+        currentBlock.dataset.tooltipText = _prefix ? `${_prefix}: ${activityData.activity}` : activityData.activity;
+    } else if (activityData.parentName && activityData.parentName !== activityData.activity) {
+        currentBlock.dataset.tooltipText = activityData.parentName;
     } else {
         currentBlock.dataset.tooltipText = activityData.activity;
     }
@@ -819,15 +823,19 @@ function createActivityBlock(activityData, isFromTemplate = false) {
         textDiv.innerHTML = activityData.selections.map(s => s.name).join('<br>');
         // But join with vertical separator for storing in timelineManager
         combinedActivityText = activityData.selections.map(s => s.name).join(' | ');
+    } else if (activityData.isCustomInput) {
+        // Custom input activity: show "<Category>: <custom text>" as the label
+        const trueParent = (activityData.parentName && activityData.parentName !== activityData.activity) ? activityData.parentName : null;
+        const prefix = trueParent || activityData.originalSelection || '';
+        textDiv.textContent = prefix ? `${prefix}: ${activityData.activity}` : activityData.activity;
+        combinedActivityText = activityData.activity;
+    } else if (activityData.parentName && activityData.parentName !== activityData.activity) {
+        // Regular child item: display the parent name, store the child name
+        textDiv.textContent = activityData.parentName;
+        combinedActivityText = activityData.activity;
     } else {
-        // If this is a child item, display the parent name instead, but store both
-        if (activityData.parentName && activityData.parentName !== activityData.activity) {
-            textDiv.textContent = activityData.parentName;
-            combinedActivityText = activityData.activity;
-        } else {
-            textDiv.textContent = activityData.activity;
-            combinedActivityText = activityData.activity;
-        }
+        textDiv.textContent = activityData.activity;
+        combinedActivityText = activityData.activity;
     }
 
     textDiv.style.maxWidth = '90%';
@@ -849,10 +857,7 @@ function createActivityBlock(activityData, isFromTemplate = false) {
     bottomTooltip.textContent = currentBlock.dataset.tooltipText || '';
     currentBlock.appendChild(bottomTooltip);
 
-    // Add tooltip to show the selected child item when hovering
-    if (activityData.parentName && activityData.parentName !== activityData.activity) {
-        currentBlock.setAttribute('title', `${activityData.parentName}: ${activityData.activity}`);
-    }
+    // No extra title attribute - child/custom label is shown inline in the block
 
     // Make block keyboard-focusable for arrow-key resize
     currentBlock.tabIndex = 0;
