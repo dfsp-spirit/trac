@@ -3456,10 +3456,13 @@ function initTimelineInteraction(timeline) {
             return container;
         })();
 
-        // Hide all existing time labels
-        activitiesContainer.querySelectorAll('.time-label').forEach(label => {
-            label.style.display = 'none';
-        });
+        // On mobile, only the most-recently placed label is shown (narrow vertical blocks).
+        // On desktop, all time labels remain visible simultaneously.
+        if (getIsMobile()) {
+            activitiesContainer.querySelectorAll('.time-label').forEach(label => {
+                label.style.display = 'none';
+            });
+        }
 
         activitiesContainer.appendChild(currentBlock);
 
@@ -3467,6 +3470,13 @@ function initTimelineInteraction(timeline) {
         const timeLabel = createTimeLabel(currentBlock);
         updateTimeLabel(timeLabel, formattedStartTime, formattedEndTime, currentBlock);
         timeLabel.style.display = 'block'; // Ensure the new label is visible
+
+        // On desktop, also re-show any labels that were hidden by earlier placements.
+        if (!getIsMobile()) {
+            activitiesContainer.querySelectorAll('.time-label').forEach(label => {
+                label.style.display = 'block';
+            });
+        }
 
         // Deselect the activity button after successful placement
         console.log('[ACTIVITY] Clearing window.selectedActivity after successful placement');
