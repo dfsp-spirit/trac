@@ -41,7 +41,8 @@ import {
     INCREMENT_MINUTES,
     DEFAULT_ACTIVITY_LENGTH,
     TIMELINE_START_HOUR,
-    TIMELINE_HOURS
+    TIMELINE_HOURS,
+    TUD_FRONTEND_VERSION
 } from './constants.js';
 import { checkAndRequestPID } from './utils.js';
 
@@ -4388,6 +4389,11 @@ async function init() {
 
         if (!participantId || !studyName) {
             throw new Error('Missing participant ID or study name in URL parameters');
+        }
+
+        const footerVersionEl = document.getElementById('footer_app_version');
+        if (footerVersionEl) {
+            footerVersionEl.textContent = `v${TUD_FRONTEND_VERSION}`;
         }
 
         const footerStatus = document.getElementById('footer_backend_status');
