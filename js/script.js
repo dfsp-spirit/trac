@@ -89,6 +89,70 @@ function activityIdsEqual(leftId, rightId) {
     return String(leftId) === String(rightId);
 }
 
+function ensureTimelineHoverTooltipElement() {
+    let tooltipElement = document.getElementById('timeline-hover-tooltip');
+    if (tooltipElement) {
+        return tooltipElement;
+    }
+
+    tooltipElement = document.createElement('div');
+    tooltipElement.id = 'timeline-hover-tooltip';
+    tooltipElement.className = 'timeline-hover-tooltip';
+    tooltipElement.setAttribute('role', 'tooltip');
+    document.body.appendChild(tooltipElement);
+    return tooltipElement;
+}
+
+function hideTimelineHoverTooltip() {
+    const tooltipElement = document.getElementById('timeline-hover-tooltip');
+    if (!tooltipElement) return;
+
+    tooltipElement.classList.remove('visible');
+}
+
+function getTimelineHoverTooltipMessage(timelineElement) {
+    const t = window.i18n?.t?.bind(window.i18n);
+    const isActiveTimeline = timelineElement?.getAttribute('data-active') === 'true';
+
+    if (!isActiveTimeline) {
+        return t
+            ? t('messages.timelineHoverInactive')
+            : 'Click to switch to this timeline';
+    }
+
+    if (!window.selectedActivity) {
+        return t
+            ? t('messages.timelineHoverActiveNoSelection')
+            : 'Select an activity below, then place it here.';
+    }
+
+    return t
+        ? t('messages.timelineHoverActiveWithSelection')
+        : 'Click to place the selected activity here.';
+}
+
+function showTimelineHoverTooltip(event, timelineElement) {
+    if (getIsMobile() || !timelineElement) {
+        hideTimelineHoverTooltip();
+        return;
+    }
+
+    const hoverTarget = event?.target;
+    if (hoverTarget && hoverTarget.closest('.activity-block')) {
+        hideTimelineHoverTooltip();
+        return;
+    }
+
+    const tooltipElement = ensureTimelineHoverTooltipElement();
+    tooltipElement.textContent = getTimelineHoverTooltipMessage(timelineElement);
+
+    const offsetX = 14;
+    const offsetY = 18;
+    tooltipElement.style.left = `${event.clientX + offsetX}px`;
+    tooltipElement.style.top = `${event.clientY + offsetY}px`;
+    tooltipElement.classList.add('visible');
+}
+
 // Function to calculate timeline coverage in minutes
 window.getTimelineCoverage = getTimelineCoverage;
 
@@ -2701,6 +2765,46 @@ function initTimelineInteraction(timeline) {
             });
             timelineElement.dataset.spaceKeyActivationBound = 'true';
         }
+
+        if (!timelineElement.dataset.hoverTooltipBound) {
+            timelineElement.addEventListener('mouseenter', (event) => {
+                showTimelineHoverTooltip(event, timelineElement);
+            });
+
+            timelineElement.addEventListener('mousemove', (event) => {
+                showTimelineHoverTooltip(event, timelineElement);
+            });
+
+            timelineElement.addEventListener('mouseleave', () => {
+                hideTimelineHoverTooltip();
+            });
+
+            timelineElement.dataset.hoverTooltipBound = 'true';
+        }
+    });
+
+    document.querySelectorAll('.timeline-container').forEach((timelineContainerElement) => {
+        if (timelineContainerElement.dataset.hoverTooltipBound) {
+            return;
+        }
+
+        timelineContainerElement.addEventListener('mouseenter', (event) => {
+            const timelineElement = timelineContainerElement.querySelector('.timeline');
+            if (!timelineElement || timelineElement.getAttribute('data-active') !== 'false') return;
+            showTimelineHoverTooltip(event, timelineElement);
+        });
+
+        timelineContainerElement.addEventListener('mousemove', (event) => {
+            const timelineElement = timelineContainerElement.querySelector('.timeline');
+            if (!timelineElement || timelineElement.getAttribute('data-active') !== 'false') return;
+            showTimelineHoverTooltip(event, timelineElement);
+        });
+
+        timelineContainerElement.addEventListener('mouseleave', () => {
+            hideTimelineHoverTooltip();
+        });
+
+        timelineContainerElement.dataset.hoverTooltipBound = 'true';
     });
 
     // Initialize interact.js resizable
