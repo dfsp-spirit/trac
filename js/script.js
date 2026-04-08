@@ -4251,6 +4251,9 @@ function renderPreviousDaysSwitchRow() {
         .filter((value) => Number.isInteger(value) && value >= 0 && value !== currentDayIndex)
         .sort((left, right) => left - right);
 
+    const rowDayIndices = [...new Set([...switchTargetDayIndices, currentDayIndex])]
+        .sort((left, right) => left - right);
+
     const shouldShow = Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS) && switchTargetDayIndices.length > 0;
 
     let existingRow = document.getElementById('previousDaysSwitchRow');
@@ -4278,15 +4281,24 @@ function renderPreviousDaysSwitchRow() {
         : 'Switch to day:';
     existingRow.appendChild(label);
 
-    for (const dayIndex of switchTargetDayIndices) {
+    for (const dayIndex of rowDayIndices) {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'btn previous-day-btn';
         button.textContent = getDayButtonDisplayLabel(dayIndex);
 
-        button.addEventListener('click', async () => {
-            await saveAndSwitchToDay(dayIndex);
-        });
+        const isCurrentDay = dayIndex === currentDayIndex;
+        if (isCurrentDay) {
+            button.disabled = true;
+            button.classList.add('current-day');
+            button.setAttribute('aria-current', 'date');
+        }
+
+        if (!isCurrentDay) {
+            button.addEventListener('click', async () => {
+                await saveAndSwitchToDay(dayIndex);
+            });
+        }
 
         existingRow.appendChild(button);
     }
