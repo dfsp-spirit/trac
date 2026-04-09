@@ -139,6 +139,47 @@ In a typical production setup a single web server (or reverse proxy) handles all
 Make sure the proxy passes the correct `X-Forwarded-*` headers so that the backend can construct correct URLs, and configure `TUD_ROOTPATH` and `TUD_ALLOWED_ORIGINS` accordingly.
 
 
+### 6. Admin Interface
+
+TRAC includes a small server-rendered admin interface implemented in the backend using FastAPI templates. It is separate from the participant frontend and is intended for researchers or administrators who need to inspect studies, manage participants, and export collected data.
+
+Access is protected with HTTP Basic Auth using the credentials configured in the backend `.env` file via `TUD_API_ADMIN_USERNAME` and `TUD_API_ADMIN_PASSWORD`.
+
+The main entry point is:
+
+```text
+https://your.domain.example.com/<TUD_ROOTPATH>/admin
+```
+
+For example, if `TUD_ROOTPATH=/tud_backend`, the admin overview page will be available at:
+
+```text
+https://your.domain.example.com/tud_backend/admin
+```
+
+Because the admin interface is part of the backend application, it must be exposed through the same reverse-proxy setup as the API. As with the rest of the backend, it should only be made available over HTTPS.
+
+
+### 7. API and Automation
+
+The backend exposes a REST API and also serves FastAPI's live interactive API documentation. A convenient entry point is:
+
+```text
+https://your.domain.example.com/<TUD_ROOTPATH>/api/docs
+```
+
+This redirects to the automatically generated FastAPI docs for the running backend instance.
+
+Some endpoints are especially useful for automation, monitoring, backup, and integration with other systems:
+
+- `GET /api/health` checks that the backend is running and can reach the database. This is useful for uptime monitoring and health checks.
+- `GET /api/admin/export/studies-runtime-config` exports the full runtime study configuration together with participant assignments and logged activities. This is useful for backups and server-to-server synchronization.
+- `GET /api/admin/export/{study_name_short}/activities` exports all recorded activities for one study in CSV or JSON, which is useful for data pipelines and integration with external systems.
+- `POST /api/admin/studies/{study_name_short}/assign-participants` assigns one or more participants to a study and can create participant records when needed, which is useful for automated invitation workflows.
+
+The `/api/admin/...` endpoints are protected with the same admin authentication as the admin interface.
+
+
 ### Security
 
 Because TRAC collects research data from study participants over the internet, you **must** secure the deployment:
