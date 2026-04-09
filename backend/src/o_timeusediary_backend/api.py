@@ -158,9 +158,13 @@ async def global_exception_handler(request: Request, exc: Exception):
     # Log the actual error
     logger.error(f"Unhandled exception ID {error_id}: {str(exc)}", exc_info=True)
 
-    # Determine status code based on exception type
+    # Determine status code based on exception type.
+    # Some framework-level errors (e.g., HTTPBasic auth failures) are raised as
+    # Starlette HTTP exceptions, so we honor any exception carrying a status_code.
     status_code = 500
-    if isinstance(exc, HTTPException):
+    if hasattr(exc, "status_code") and isinstance(getattr(exc, "status_code"), int):
+        status_code = getattr(exc, "status_code")
+    elif isinstance(exc, HTTPException):
         status_code = exc.status_code
 
     # Create response with CORS headers
@@ -813,12 +817,16 @@ async def admin_overview(
             if selected_activities_cfg_file:
                 selected_activities_cfg_path = selected_activities_cfg_file
 
-        selected_activities_cfg_path_obj = Path(selected_activities_cfg_path)
-        if not selected_activities_cfg_path_obj.is_absolute():
-            studies_config_parent = Path(settings.studies_config_path).resolve().parent
-            selected_activities_cfg_path_obj = (studies_config_parent / selected_activities_cfg_path_obj).resolve()
+        selected_activities_cfg_path_str = selected_activities_cfg_path
+        selected_activities_cfg_is_db_blob = isinstance(selected_activities_cfg_path_str, str) and selected_activities_cfg_path_str.startswith("db_blob://")
 
-        selected_activities_cfg_path_str = str(selected_activities_cfg_path_obj)
+        if not selected_activities_cfg_is_db_blob:
+            selected_activities_cfg_path_obj = Path(selected_activities_cfg_path_str)
+            if not selected_activities_cfg_path_obj.is_absolute():
+                studies_config_parent = Path(settings.studies_config_path).resolve().parent
+                selected_activities_cfg_path_obj = (studies_config_parent / selected_activities_cfg_path_obj).resolve()
+
+            selected_activities_cfg_path_str = str(selected_activities_cfg_path_obj)
 
         # Get day labels for this study
         day_labels = session.exec(
@@ -921,10 +929,65 @@ async def admin_overview(
             .where(Activity.study_id == study.id)
         ).first() or 0
 
-        num_activities_in_cfgfile_by_timeline : Dict = get_num_activities_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
-        num_activities_in_cfgfile_total = sum(num_activities_in_cfgfile_by_timeline.values())
+        num_activities_in_cfgfile_by_timeline: Dict = {}
+        num_categories_in_cfgfile_per_timeline: Dict = {}
+        activities_cfg_text = ""
 
-        num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
+        if selected_activities_cfg_is_db_blob:
+            blob_rows = session.exec(
+                select(StudyActivityConfigBlob).where(StudyActivityConfigBlob.study_id == study.id)
+            ).all()
+            blob_by_lang = {
+                _normalize_language_code(blob.language): blob
+                for blob in blob_rows
+                if _normalize_language_code(blob.language)
+            }
+
+            lookup_languages: List[str] = []
+            for language_candidate in [selected_cfg_language, study.default_language, "en"]:
+                normalized_candidate = _normalize_language_code(language_candidate)
+                if normalized_candidate and normalized_candidate not in lookup_languages:
+                    lookup_languages.append(normalized_candidate)
+
+            selected_blob = None
+            selected_blob_lang = None
+            for language_candidate in lookup_languages:
+                selected_blob = blob_by_lang.get(language_candidate)
+                if selected_blob:
+                    selected_blob_lang = language_candidate
+                    break
+
+            if selected_blob:
+                parsed_activities_cfg = ActivitiesConfig(**selected_blob.activities_json_data)
+
+                def _count_activity_items(activity_items: List) -> int:
+                    count = 0
+                    for activity_item in activity_items:
+                        count += 1
+                        if activity_item.childItems:
+                            count += _count_activity_items(activity_item.childItems)
+                    return count
+
+                for timeline_name, timeline_cfg in parsed_activities_cfg.timeline.items():
+                    timeline_activity_count = 0
+                    timeline_category_count = len(timeline_cfg.categories)
+                    for category_cfg in timeline_cfg.categories:
+                        timeline_activity_count += _count_activity_items(category_cfg.activities)
+
+                    num_activities_in_cfgfile_by_timeline[timeline_name] = timeline_activity_count
+                    num_categories_in_cfgfile_per_timeline[timeline_name] = timeline_category_count
+
+                activities_cfg_text = (
+                    f"Activities config is stored in DB blob for language '{selected_blob_lang}'."
+                )
+            else:
+                activities_cfg_text = "Activities config blob not found for selected study/language."
+        else:
+            num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
+            num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfgfile_per_timeline(selected_activities_cfg_path_str)
+            activities_cfg_text = get_activities_cfg_text_for_path(selected_activities_cfg_path_str, short=True, no_duplicate_parts=True)
+
+        num_activities_in_cfgfile_total = sum(num_activities_in_cfgfile_by_timeline.values())
         num_categories_in_cfgfile_total = sum(num_categories_in_cfgfile_per_timeline.values())
 
         # Get timeline statistics
@@ -951,8 +1014,6 @@ async def admin_overview(
                 "description": timeline.description,
                 "min_coverage": timeline.min_coverage
             })
-
-        activities_cfg_text = get_activities_cfg_text_for_path(selected_activities_cfg_path_str, short=True, no_duplicate_parts=True)
 
         studies_data.append({
             "study": study,
