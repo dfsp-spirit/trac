@@ -64,7 +64,7 @@ run_e2e_tests() {
     echo "Running E2E tests..."
     echo "---"
     check_containers
-    docker compose -f "$COMPOSE_FILE" run --rm e2e
+    docker compose --profile e2e -f "$COMPOSE_FILE" run --rm e2e
     echo ""
 }
 

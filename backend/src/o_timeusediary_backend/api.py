@@ -19,7 +19,14 @@ from sqlmodel import Session, select
 from urllib.parse import urlparse
 import sys, argparse
 from fastapi.templating import Jinja2Templates
-from .parsers.activities_config import get_num_categories_in_cfgfile_per_timeline, load_activities_config, get_num_activities_in_cfgfile_per_timeline, get_activities_cfg_text_for_path
+from .parsers.activities_config import (
+    ActivitiesConfig,
+    get_activity_codes_set,
+    get_num_categories_in_cfgfile_per_timeline,
+    load_activities_config,
+    get_num_activities_in_cfgfile_per_timeline,
+    get_activities_cfg_text_for_path,
+)
 from .parsers.studies_config import get_cfg_study_by_name_short
 import secrets
 from .logging_config import setup_logging
@@ -27,9 +34,10 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 from .settings import settings
-from .models import Activity, Study, Timeline, DayLabel, StudyParticipant, Participant
+from .models import Activity, Study, Timeline, DayLabel, StudyParticipant, Participant, StudyActivityConfigBlob
 from .database import get_session, create_db_and_tables, get_timelines_for_study
 from pathlib import Path
+import hashlib
 from .api_deps.activities import (
     validate_activity_code_dependency,
     get_activity_info_dependency,
@@ -373,9 +381,29 @@ def get_study_activities_config(
             if not participant:
                 logger.debug(f"Provided participant_id '{participant_id}' doesn't exist for open study '{study_name_short}'")
 
-    cfg_study = get_cfg_study_by_name_short(study_name_short, settings.studies_config_path)
-
     normalized_lang = _normalize_language_code(lang)
+
+    blob_rows = session.exec(
+        select(StudyActivityConfigBlob).where(StudyActivityConfigBlob.study_id == study.id)
+    ).all()
+    blob_by_lang = {
+        _normalize_language_code(blob.language): blob
+        for blob in blob_rows
+        if _normalize_language_code(blob.language)
+    }
+
+    lookup_languages: List[str] = []
+    for language_candidate in [normalized_lang, study.default_language, "en"]:
+        normalized_candidate = _normalize_language_code(language_candidate)
+        if normalized_candidate and normalized_candidate not in lookup_languages:
+            lookup_languages.append(normalized_candidate)
+
+    for language_candidate in lookup_languages:
+        blob = blob_by_lang.get(language_candidate)
+        if blob:
+            return blob.activities_json_data
+
+    cfg_study = get_cfg_study_by_name_short(study_name_short, settings.studies_config_path)
 
     file_path_for_lang = None
     if cfg_study:
@@ -1010,6 +1038,127 @@ class AssignParticipantsRequest(BaseModel):
     must_be_new: bool = False
 
 
+class ImportStudiesConfigStudy(BaseModel):
+    name: str
+    name_short: str
+    description: Optional[str] = None
+    day_labels: List[Dict]
+    study_participant_ids: List[str] = []
+    allow_unlisted_participants: bool = True
+    default_language: str = "en"
+    supported_languages: List[str]
+    activities_json_data: Dict[str, Dict]
+    study_text_intro: Optional[Dict[str, str]] = None
+    study_text_end_completed: Optional[Dict[str, str]] = None
+    study_text_end_skipped: Optional[Dict[str, str]] = None
+    data_collection_start: datetime
+    data_collection_end: datetime
+
+
+class ImportStudiesConfigRequest(BaseModel):
+    mode: str = "create_only"
+    transaction_mode: str = "all_or_nothing"
+    studies: List[ImportStudiesConfigStudy]
+
+
+def _normalize_languages(languages: List[str]) -> List[str]:
+    normalized: List[str] = []
+    seen = set()
+    for language in languages:
+        normalized_lang = _normalize_language_code(language)
+        if not normalized_lang:
+            continue
+        if normalized_lang not in seen:
+            seen.add(normalized_lang)
+            normalized.append(normalized_lang)
+    return normalized
+
+
+def _collect_codes_from_activities(activities: List) -> List[int]:
+    codes: List[int] = []
+    for activity in activities:
+        codes.append(activity.code)
+        if activity.childItems:
+            codes.extend(_collect_codes_from_activities(activity.childItems))
+    return codes
+
+
+def _build_activity_structure_signature(activities_cfg: ActivitiesConfig) -> Dict:
+    timeline_signature: Dict[str, Dict] = {}
+    for timeline_name, timeline_cfg in sorted(activities_cfg.timeline.items()):
+        codes: List[int] = []
+        for category in timeline_cfg.categories:
+            codes.extend(_collect_codes_from_activities(category.activities))
+
+        timeline_signature[timeline_name] = {
+            "mode": timeline_cfg.mode,
+            "min_coverage": timeline_cfg.min_coverage,
+            "codes": sorted(set(codes)),
+        }
+
+    return timeline_signature
+
+
+def _compute_blob_hash(payload: Dict) -> str:
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> Dict:
+    if study_payload.data_collection_start >= study_payload.data_collection_end:
+        raise ValueError("data_collection_start must be earlier than data_collection_end")
+
+    supported_languages = _normalize_languages(study_payload.supported_languages)
+    if not supported_languages:
+        raise ValueError("supported_languages must contain at least one valid language code")
+
+    default_language = _normalize_language_code(study_payload.default_language)
+    if default_language not in supported_languages:
+        raise ValueError("default_language must be included in supported_languages")
+
+    missing_activity_languages = sorted(
+        set(supported_languages) - set(study_payload.activities_json_data.keys())
+    )
+    if missing_activity_languages:
+        raise ValueError(
+            f"activities_json_data is missing required languages: {missing_activity_languages}"
+        )
+
+    for day_label in study_payload.day_labels:
+        day_label_name = day_label.get("name", "")
+        display_names = day_label.get("display_names")
+        if not isinstance(display_names, dict):
+            raise ValueError(f"day_label '{day_label_name}' is missing display_names object")
+        missing_day_label_languages = sorted(set(supported_languages) - set(display_names.keys()))
+        if missing_day_label_languages:
+            raise ValueError(
+                f"day_label '{day_label_name}' is missing display_names for languages: {missing_day_label_languages}"
+            )
+
+    parsed_activities_by_lang: Dict[str, ActivitiesConfig] = {}
+    signature_by_lang: Dict[str, Dict] = {}
+
+    for language in supported_languages:
+        raw_activities = study_payload.activities_json_data[language]
+        parsed_activities = ActivitiesConfig(**raw_activities)
+        parsed_activities_by_lang[language] = parsed_activities
+        signature_by_lang[language] = _build_activity_structure_signature(parsed_activities)
+
+    reference_signature = signature_by_lang[default_language]
+    for language, signature in signature_by_lang.items():
+        if signature != reference_signature:
+            raise ValueError(
+                f"activities_json_data structure mismatch between language '{default_language}' and '{language}'"
+            )
+
+    return {
+        "supported_languages": supported_languages,
+        "default_language": default_language,
+        "parsed_activities_by_lang": parsed_activities_by_lang,
+    }
+
+
 def _load_json_file_with_studies_config_base(file_path: str) -> dict:
     """Load a JSON file and resolve relative paths against the studies config directory."""
     candidate = Path(file_path)
@@ -1019,6 +1168,248 @@ def _load_json_file_with_studies_config_base(file_path: str) -> dict:
 
     with candidate.open("r", encoding="utf-8") as file_handle:
         return json.load(file_handle)
+
+
+def _create_study_from_import_payload(
+    session: Session,
+    study_payload: ImportStudiesConfigStudy,
+    validated_data: Dict,
+) -> Study:
+    default_language = validated_data["default_language"]
+    parsed_default_activities: ActivitiesConfig = validated_data["parsed_activities_by_lang"][default_language]
+
+    study = Study(
+        name=study_payload.name,
+        name_short=study_payload.name_short,
+        description=study_payload.description or "",
+        allow_unlisted_participants=study_payload.allow_unlisted_participants,
+        default_language=default_language,
+        activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
+        data_collection_start=study_payload.data_collection_start,
+        data_collection_end=study_payload.data_collection_end,
+    )
+    session.add(study)
+    session.flush()
+
+    for day_label_data in sorted(study_payload.day_labels, key=lambda row: row.get("display_order", 0)):
+        display_names = day_label_data.get("display_names", {})
+        display_name = display_names.get(default_language) or display_names.get("en") or day_label_data.get("name")
+        day_label = DayLabel(
+            study_id=study.id,
+            name=day_label_data["name"],
+            display_order=day_label_data.get("display_order", 0),
+            display_name=display_name,
+        )
+        session.add(day_label)
+
+    for timeline_name, timeline_cfg in parsed_default_activities.timeline.items():
+        session.add(
+            Timeline(
+                study_id=study.id,
+                name=timeline_name,
+                display_name=timeline_cfg.name,
+                description=timeline_cfg.description,
+                mode=timeline_cfg.mode,
+                min_coverage=int(timeline_cfg.min_coverage) if timeline_cfg.min_coverage is not None else None,
+            )
+        )
+
+    for participant_id in study_payload.study_participant_ids:
+        normalized_participant_id = (participant_id or "").strip()
+        if not normalized_participant_id:
+            continue
+
+        participant = session.get(Participant, normalized_participant_id)
+        if not participant:
+            participant = Participant(id=normalized_participant_id)
+            session.add(participant)
+            session.flush()
+
+        existing_association = session.exec(
+            select(StudyParticipant).where(
+                StudyParticipant.study_id == study.id,
+                StudyParticipant.participant_id == normalized_participant_id,
+            )
+        ).first()
+        if not existing_association:
+            session.add(
+                StudyParticipant(
+                    study_id=study.id,
+                    participant_id=normalized_participant_id,
+                )
+            )
+
+    for language in validated_data["supported_languages"]:
+        raw_blob = study_payload.activities_json_data[language]
+        session.add(
+            StudyActivityConfigBlob(
+                study_id=study.id,
+                language=language,
+                activities_json_data=raw_blob,
+                content_hash=_compute_blob_hash(raw_blob),
+            )
+        )
+
+    return study
+
+
+@app.post("/api/admin/studies/import-config")
+async def import_studies_config(
+    payload: ImportStudiesConfigRequest,
+    dry_run: bool = Query(False, description="Validate only, no database writes"),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Import one or multiple studies with embedded multilingual activities JSON data.
+
+    This endpoint is designed for remote study management without requiring server-side
+    activities JSON files. It validates multilingual activity structures and stores each
+    language variant in `study_activity_config_blobs`.
+    """
+    allowed_modes = {"create_only"}
+    allowed_transaction_modes = {"all_or_nothing", "per_study"}
+
+    if payload.mode not in allowed_modes:
+        raise HTTPException(status_code=400, detail=f"Unsupported mode '{payload.mode}'. Allowed: {sorted(allowed_modes)}")
+
+    if payload.transaction_mode not in allowed_transaction_modes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported transaction_mode '{payload.transaction_mode}'. Allowed: {sorted(allowed_transaction_modes)}",
+        )
+
+    summary = {
+        "received": len(payload.studies),
+        "created": 0,
+        "updated": 0,
+        "skipped": 0,
+        "failed": 0,
+    }
+    results: List[Dict] = []
+
+    validation_cache: Dict[str, Dict] = {}
+
+    def _handle_single_study(study_payload: ImportStudiesConfigStudy) -> None:
+        existing_study = session.exec(
+            select(Study).where(Study.name_short == study_payload.name_short)
+        ).first()
+        if existing_study:
+            raise ValueError(f"Study '{study_payload.name_short}' already exists")
+
+        validated_data = _validate_import_study_payload(study_payload)
+        validation_cache[study_payload.name_short] = validated_data
+
+    if payload.transaction_mode == "all_or_nothing":
+        for study_payload in payload.studies:
+            try:
+                _handle_single_study(study_payload)
+            except Exception as error:
+                summary["failed"] += 1
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "failed",
+                        "errors": [str(error)],
+                    }
+                )
+
+        if summary["failed"] > 0:
+            summary["skipped"] = max(0, summary["received"] - summary["failed"])
+            for study_payload in payload.studies:
+                if study_payload.name_short in {result["study_name_short"] for result in results}:
+                    continue
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "skipped",
+                        "errors": ["Skipped because transaction_mode=all_or_nothing and at least one study failed validation"],
+                    }
+                )
+            return {
+                "dry_run": dry_run,
+                "mode": payload.mode,
+                "transaction_mode": payload.transaction_mode,
+                "summary": summary,
+                "results": results,
+            }
+
+        if not dry_run:
+            for study_payload in payload.studies:
+                validated_data = validation_cache[study_payload.name_short]
+                _create_study_from_import_payload(session, study_payload, validated_data)
+                summary["created"] += 1
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "created",
+                        "errors": [],
+                    }
+                )
+            session.commit()
+        else:
+            summary["created"] = len(payload.studies)
+            for study_payload in payload.studies:
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "validated",
+                        "errors": [],
+                    }
+                )
+    else:
+        for study_payload in payload.studies:
+            try:
+                _handle_single_study(study_payload)
+                if dry_run:
+                    summary["created"] += 1
+                    results.append(
+                        {
+                            "study_name_short": study_payload.name_short,
+                            "status": "validated",
+                            "errors": [],
+                        }
+                    )
+                    continue
+
+                validated_data = validation_cache[study_payload.name_short]
+                _create_study_from_import_payload(session, study_payload, validated_data)
+                session.commit()
+                summary["created"] += 1
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "created",
+                        "errors": [],
+                    }
+                )
+            except Exception as error:
+                session.rollback()
+                summary["failed"] += 1
+                results.append(
+                    {
+                        "study_name_short": study_payload.name_short,
+                        "status": "failed",
+                        "errors": [str(error)],
+                    }
+                )
+
+    logger.info(
+        "Admin '%s' imported studies config: received=%s created=%s failed=%s dry_run=%s transaction_mode=%s",
+        current_admin,
+        summary["received"],
+        summary["created"],
+        summary["failed"],
+        dry_run,
+        payload.transaction_mode,
+    )
+
+    return {
+        "dry_run": dry_run,
+        "mode": payload.mode,
+        "transaction_mode": payload.transaction_mode,
+        "summary": summary,
+        "results": results,
+    }
 
 
 @app.get("/api/admin/export/studies-runtime-config")
@@ -1114,15 +1505,35 @@ async def export_runtime_studies_config(
                 }
             )
 
+        blob_rows = session.exec(
+            select(StudyActivityConfigBlob)
+            .where(StudyActivityConfigBlob.study_id == study.id)
+            .order_by(StudyActivityConfigBlob.language)
+        ).all()
+        blob_by_lang = {blob.language: blob.activities_json_data for blob in blob_rows}
+
         if cfg_study:
             activities_json_files = cfg_study.get_supported_activities_json_files()
             supported_languages = cfg_study.get_supported_languages()
             study_text_intro = cfg_study.study_text_intro
             study_text_end_completed = cfg_study.study_text_end_completed
             study_text_end_skipped = cfg_study.study_text_end_skipped
+            if not activities_json_files and blob_by_lang:
+                activities_json_files = {
+                    language: f"db_blob://{study.name_short}/{language}"
+                    for language in sorted(blob_by_lang.keys())
+                }
+                supported_languages = sorted(blob_by_lang.keys())
         else:
-            activities_json_files = {study.default_language: study.activities_json_url}
-            supported_languages = [study.default_language]
+            if blob_by_lang:
+                activities_json_files = {
+                    language: f"db_blob://{study.name_short}/{language}"
+                    for language in sorted(blob_by_lang.keys())
+                }
+                supported_languages = sorted(blob_by_lang.keys())
+            else:
+                activities_json_files = {study.default_language: study.activities_json_url}
+                supported_languages = [study.default_language]
             study_text_intro = None
             study_text_end_completed = None
             study_text_end_skipped = None
@@ -1149,6 +1560,10 @@ async def export_runtime_studies_config(
 
         activity_configs_for_study: Dict = {}
         for lang, activity_file_path in activities_json_files.items():
+            if lang in blob_by_lang:
+                activity_configs_for_study[lang] = blob_by_lang[lang]
+                continue
+
             try:
                 activity_configs_for_study[lang] = _load_json_file_with_studies_config_base(activity_file_path)
             except Exception as error:

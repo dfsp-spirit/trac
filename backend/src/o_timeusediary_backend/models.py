@@ -2,7 +2,7 @@ from sqlmodel import SQLModel, Field, Relationship, JSON, Column
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timezone
 from pydantic import BaseModel
-from sqlalchemy import Text, DateTime
+from sqlalchemy import Text, DateTime, UniqueConstraint
 
 from .utils import utc_now
 
@@ -36,6 +36,29 @@ class Study(SQLModel, table=True):
     participants: List["StudyParticipant"] = Relationship(back_populates="study")
     timelines: List["Timeline"] = Relationship(back_populates="study")
     activities: List["Activity"] = Relationship(back_populates="study")
+    activity_config_blobs: List["StudyActivityConfigBlob"] = Relationship(back_populates="study")
+
+
+class StudyActivityConfigBlob(SQLModel, table=True):
+    """Language-specific activities config blob for a study.
+
+    This table stores the activities-config JSON payload as imported via admin APIs,
+    allowing fully remote study creation without depending on filesystem JSON files.
+    """
+    __tablename__ = "study_activity_config_blobs"
+    __table_args__ = (
+        UniqueConstraint("study_id", "language", name="uq_study_activity_blob_study_lang"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    study_id: int = Field(foreign_key="studies.id", index=True)
+    language: str = Field(index=True)
+    activities_json_data: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    content_hash: Optional[str] = Field(default=None, index=True)
+    created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    updated_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+
+    study: Study = Relationship(back_populates="activity_config_blobs")
 
 class DayLabel(SQLModel, table=True):
     """Valid day labels for a study (e.g., "monday", "tuesday", "typical_weekend")"""

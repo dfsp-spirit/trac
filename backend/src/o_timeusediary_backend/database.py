@@ -1,19 +1,80 @@
 # database.py
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
-from .models import Study, Participant, DayLabel, StudyParticipant, Timeline, Activity
+from .models import Study, Participant, DayLabel, StudyParticipant, Timeline, Activity, StudyActivityConfigBlob
 from .settings import settings
 from .parsers.studies_config import load_studies_config, CfgFileStudies
 from .parsers.activities_config import load_activities_config, ActivitiesConfig, get_activity_codes_set, get_all_activity_codes
 import logging
+from pathlib import Path
+import json
+import hashlib
+from sqlalchemy.exc import IntegrityError
 
 logger = logging.getLogger(__name__)
 
 engine = create_engine(settings.database_url)
 
 
+def _resolve_relative_to_studies_config(file_path: str) -> Path:
+    candidate = Path(file_path)
+    if candidate.is_absolute():
+        return candidate
+    studies_config_parent = Path(settings.studies_config_path).resolve().parent
+    return (studies_config_parent / candidate).resolve()
+
+
+def _load_json_dict_from_path(file_path: str) -> dict:
+    resolved_path = _resolve_relative_to_studies_config(file_path)
+    with resolved_path.open("r", encoding="utf-8") as file_handle:
+        return json.load(file_handle)
+
+
+def _upsert_study_activity_blob(session: Session, study_id: int, language: str, activities_json_data: dict) -> None:
+    content_hash = hashlib.sha256(
+        json.dumps(activities_json_data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+
+    existing_blob = session.exec(
+        select(StudyActivityConfigBlob).where(
+            StudyActivityConfigBlob.study_id == study_id,
+            StudyActivityConfigBlob.language == language,
+        )
+    ).first()
+
+    if existing_blob:
+        existing_blob.activities_json_data = activities_json_data
+        existing_blob.content_hash = content_hash
+    else:
+        session.add(
+            StudyActivityConfigBlob(
+                study_id=study_id,
+                language=language,
+                activities_json_data=activities_json_data,
+                content_hash=content_hash,
+            )
+        )
+
+
+def _ensure_activity_blobs_from_config(session: Session, study: Study, study_config) -> None:
+    """Ensure language-specific activity config blobs are present for a study from config file references."""
+    files_by_lang = study_config.get_supported_activities_json_files()
+    for language, activity_file in files_by_lang.items():
+        activities_json_data = _load_json_dict_from_path(activity_file)
+        _upsert_study_activity_blob(session, study.id, language, activities_json_data)
+
+
 def create_db_and_tables(do_report_contents: bool = False):
-    SQLModel.metadata.create_all(engine)
+    try:
+        SQLModel.metadata.create_all(engine)
+    except IntegrityError as error:
+        # In multi-worker startup (e.g. gunicorn), concurrent create_all calls can race,
+        # and one worker may see a duplicate PostgreSQL type/index creation error.
+        # If this specific race happens, continue; tables already exist.
+        if "pg_type_typname_nsp_index" in str(error):
+            logger.warning("Ignoring concurrent table creation race condition: %s", error)
+        else:
+            raise
     create_config_file_studies_in_database(settings.studies_config_path)
     if do_report_contents:
         report_on_db_contents()
@@ -139,6 +200,8 @@ def create_config_file_studies_in_database(config_path: str):
                 ).first()
 
                 if existing_study:
+                    _ensure_activity_blobs_from_config(session, existing_study, study_config)
+                    session.commit()
                     logger.info(
                         f"Study already exists: '{study_config.name_short}' with long name: '{study_config.name}'")
                     continue  # Skip to next study
@@ -234,6 +297,8 @@ def create_config_file_studies_in_database(config_path: str):
                 )
                 session.add(study)
                 session.commit()  # Commit immediately after each study
+
+                _ensure_activity_blobs_from_config(session, study, study_config)
 
                 # Create day labels
                 day_labels_by_name: dict[str, DayLabel] = {}

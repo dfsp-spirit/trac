@@ -47,6 +47,8 @@ services:
 
   e2e:
     image: mcr.microsoft.com/playwright:v1.55.0-jammy
+    profiles:
+      - e2e
     working_dir: /workspace/frontend
     depends_on:
       - web
