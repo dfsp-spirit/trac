@@ -191,3 +191,107 @@ async def test_admin_import_roundtrip_from_runtime_config_export_uses_embedded_a
         assert summary_data["available_category_count"] > 0
         assert summary_data["available_activity_count"] > 0
         assert summary_data["available_activity_i18n_count"] > 0
+
+
+@pytest.mark.asyncio
+async def test_admin_import_rejects_payload_with_both_activity_sources():
+    study_name_short = f"it_both_sources_{uuid.uuid4().hex[:8]}"
+    activities_payload = _load_activities_template()
+
+    payload = {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"Integration Import Study {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Integration test study with conflicting activity sources",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": True,
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {
+                    "en": activities_payload,
+                },
+                "activities_json_files": {
+                    "en": "activities_default.json",
+                },
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        import_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert import_response.status_code == 200
+        import_data = import_response.json()
+        assert import_data["summary"]["created"] == 0
+        assert import_data["summary"]["failed"] == 1
+        assert any(
+            "Provide exactly one of activities_json_data or activities_json_files, not both" in error
+            for result in import_data["results"]
+            for error in result.get("errors", [])
+        )
+
+
+@pytest.mark.asyncio
+async def test_admin_import_accepts_activities_json_files_only():
+    study_name_short = f"it_file_source_{uuid.uuid4().hex[:8]}"
+
+    payload = {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"Integration Import Study {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Integration test study using file-based activities references",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": True,
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_files": {
+                    "en": "activities_default.json",
+                },
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        import_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert import_response.status_code == 200
+        import_data = import_response.json()
+        assert import_data["summary"]["created"] == 1
+        assert import_data["summary"]["failed"] == 0
+
+        activities_response = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/activities-config",
+            params={"lang": "en"},
+        )
+        assert activities_response.status_code == 200
+        assert "timeline" in activities_response.json()

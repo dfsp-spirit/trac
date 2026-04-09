@@ -1005,7 +1005,8 @@ class ImportStudiesConfigStudy(BaseModel):
     allow_unlisted_participants: bool = True
     default_language: str = "en"
     supported_languages: List[str]
-    activities_json_data: Dict[str, Dict]
+    activities_json_data: Optional[Dict[str, Dict]] = None
+    activities_json_files: Optional[Dict[str, str]] = None
     study_text_intro: Optional[Dict[str, str]] = None
     study_text_end_completed: Optional[Dict[str, str]] = None
     study_text_end_skipped: Optional[Dict[str, str]] = None
@@ -1167,13 +1168,65 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     if default_language not in supported_languages:
         raise ValueError("default_language must be included in supported_languages")
 
-    missing_activity_languages = sorted(
-        set(supported_languages) - set(study_payload.activities_json_data.keys())
-    )
-    if missing_activity_languages:
+    has_embedded_data = bool(study_payload.activities_json_data)
+    has_file_refs = bool(study_payload.activities_json_files)
+    if has_embedded_data and has_file_refs:
         raise ValueError(
-            f"activities_json_data is missing required languages: {missing_activity_languages}"
+            "Provide exactly one of activities_json_data or activities_json_files, not both"
         )
+    if not has_embedded_data and not has_file_refs:
+        raise ValueError(
+            "Missing activities configuration: provide exactly one of activities_json_data or activities_json_files"
+        )
+
+    raw_activities_by_lang: Dict[str, Dict] = {}
+    if has_embedded_data:
+        normalized_data_by_lang: Dict[str, Dict] = {}
+        for language, raw_activities in study_payload.activities_json_data.items():
+            normalized_lang = _normalize_language_code(language)
+            if not normalized_lang:
+                continue
+            normalized_data_by_lang[normalized_lang] = raw_activities
+
+        missing_activity_languages = sorted(
+            set(supported_languages) - set(normalized_data_by_lang.keys())
+        )
+        if missing_activity_languages:
+            raise ValueError(
+                f"activities_json_data is missing required languages: {missing_activity_languages}"
+            )
+        raw_activities_by_lang = {
+            language: normalized_data_by_lang[language]
+            for language in supported_languages
+        }
+    else:
+        normalized_files_by_lang: Dict[str, str] = {}
+        for language, file_path in study_payload.activities_json_files.items():
+            normalized_lang = _normalize_language_code(language)
+            if not normalized_lang:
+                continue
+            normalized_files_by_lang[normalized_lang] = file_path
+
+        missing_activity_languages = sorted(
+            set(supported_languages) - set(normalized_files_by_lang.keys())
+        )
+        if missing_activity_languages:
+            raise ValueError(
+                f"activities_json_files is missing required languages: {missing_activity_languages}"
+            )
+
+        for language in supported_languages:
+            file_path = normalized_files_by_lang[language]
+            if not isinstance(file_path, str) or not file_path.strip():
+                raise ValueError(
+                    f"activities_json_files has invalid path for language '{language}'"
+                )
+            try:
+                raw_activities_by_lang[language] = _load_json_file_with_studies_config_base(file_path)
+            except Exception as error:
+                raise ValueError(
+                    f"Could not load activities_json_files for language '{language}' from '{file_path}': {error}"
+                ) from error
 
     for day_label in study_payload.day_labels:
         day_label_name = day_label.get("name", "")
@@ -1190,7 +1243,7 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     signature_by_lang: Dict[str, Dict] = {}
 
     for language in supported_languages:
-        raw_activities = study_payload.activities_json_data[language]
+        raw_activities = raw_activities_by_lang[language]
         parsed_activities = ActivitiesConfig(**raw_activities)
         parsed_activities_by_lang[language] = parsed_activities
         signature_by_lang[language] = _build_activity_structure_signature(parsed_activities)
@@ -1206,6 +1259,7 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
         "supported_languages": supported_languages,
         "default_language": default_language,
         "parsed_activities_by_lang": parsed_activities_by_lang,
+        "raw_activities_by_lang": raw_activities_by_lang,
     }
 
 
@@ -1290,7 +1344,7 @@ def _create_study_from_import_payload(
             )
 
     for language in validated_data["supported_languages"]:
-        raw_blob = study_payload.activities_json_data[language]
+        raw_blob = validated_data["raw_activities_by_lang"][language]
         session.add(
             StudyActivityConfigBlob(
                 study_id=study.id,
@@ -1352,11 +1406,11 @@ async def import_studies_config(
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Import one or multiple studies with embedded multilingual activities JSON data.
+    """Import one or multiple studies using exactly one activities source per study.
 
-    This endpoint is designed for remote study management without requiring server-side
-    activities JSON files. It validates multilingual activity structures and stores each
-    language variant in `study_activity_config_blobs`.
+    Each study payload must provide exactly one of:
+    - activities_json_data (embedded multilingual activity payloads), or
+    - activities_json_files (language -> file path references)
     """
     allowed_modes = {"create_only"}
     allowed_transaction_modes = {"all_or_nothing", "per_study"}
