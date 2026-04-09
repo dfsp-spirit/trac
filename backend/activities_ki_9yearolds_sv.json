@@ -11,358 +11,287 @@
   },
   "timeline": {
     "primary": {
-        "name": "Huvudaktivitet",
-        "description": "",
-        "mode": "single-choice",
-        "min_coverage": 10,
-        "categories": [
-          {
-            "name": "Allmänna aktiviteter",
-            "activities": [
-              {
-                "name": "Sova",
-                "code": 1101,
-                "label": "sleeping",
-                "short": "sleep",
-                "vshort": "slp",
-                "color": "#A8D8EA",
-                "childItems": []
-              },
-              {
-                "name": "Vardagssysslor",
-                "examples": "Äta, dricka, personlig hygien, hushållssysslor, husdjur, ...",
-                "code": 1104,
-                "label": "activities of daily living",
-                "short": "adl",
-                "vshort": "adl",
-                "color": "#87CEEB",
-                "childItems": []
-              },
-              {
-                "name": "Vila",
-                "examples": "Lunchrast, softa, ledig tid, ...",
-                "code": 1102,
-                "label": "resting",
-                "short": "rest",
-                "vshort": "rst",
-                "color": "#B0E0E6",
-                "childItems": []
-              }
-            ]
-          },
-          {
-            "name": "Resor & Förflyttning",
-            "activities": [
-              {
-                "name": "Resa",
-                "code": 1110,
-                "label": "travelling",
-                "short": "trv",
-                "vshort": "trv",
-                "color": "#98FB98",
-                "childItems": [
-
-                  {
-                    "name": "Resa: till fots",
-                    "code": 1111,
-                    "label": "travelling: walking",
-                    "short": "walk",
-                    "vshort": "wlk",
-                    "color": "#98FB98"
-                  },
-                  {
-                    "name": "Resa: cykel",
-                    "code": 1112,
-                    "label": "travelling: cycle",
-                    "short": "cycle",
-                    "vshort": "cyc",
-                    "color": "#90EE90"
-                  },
-                  {
-                    "name": "Resa: springa",
-                    "code": 1113,
-                    "label": "travelling: running",
-                    "short": "run",
-                    "vshort": "run",
-                    "color": "#9ACD32"
-                  },
-                  {
-                    "name": "Resa: bil, taxi eller liknande",
-                    "code": 1114,
-                    "label": "travelling: car, taxi or similar",
-                    "short": "car/taxi",
-                    "vshort": "car",
-                    "color": "#7CFC00"
-                  },
-                  {
-                    "name": "Resa: kollektivtrafik",
-                    "code": 1115,
-                    "label": "travelling: public transport",
-                    "short": "travel / public",
-                    "vshort": "bus+",
-                    "color": "#32CD32"
-                  },
-                  {
-                    "name": "Resa: annat",
-                    "code": 1116,
-                    "label": "travelling: other",
-                    "short": "other travel",
-                    "vshort": "trav",
-                    "color": "#00FA9A"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "name": "Skola / Studier",
-            "activities": [
-              {
-                "name": "Utbildning, Studerande, Lärande",
-                "examples": "Formell utbildning",
-                "code": 1121,
-                "label": "formal education",
-                "short": "education",
-                "vshort": "edu",
-                "color": "#FFA07A",
-                "childItems": [
-                  {
-                    "name": "Skola",
-                    "code": 5124,
-                    "label": "school",
-                    "short": "school",
-                    "vshort": "sch",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Skolrast",
-                    "code": 5125,
-                    "label": "school break",
-                    "short": "break",
-                    "vshort": "brk",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Självstudier / Extracurriculära skolaktiviteter",
-                    "examples": "Klubbar, etc",
-                    "code": 5126,
-                    "label": "self study",
-                    "short": "self study",
-                    "vshort": "self",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Läxor",
-                    "code": 5127,
-                    "label": "homework",
-                    "short": "homework",
-                    "vshort": "hw",
-                    "color": "#FFA07A"
-                  }
-                ]
-              },
-              {
-                "name": "Självstudier / Personlig utveckling",
-                "examples": "Rekreationskurser, lära sig en färdighet eller språk, ...",
-                "code": 1131,
-                "label": "recreational courses, study",
-                "short": "rec study",
-                "vshort": "stud",
-                "color": "#FFDAB9",
-                "childItems": []
-              }
-            ]
-          },
-          {
-            "name": "Aktiviteter Hemma (Icke-Digitala)",
-            "activities": [
-              {
-                "name": "Socialt umgänge",
-                "examples": "Träffa familj, vänner, telefonera",
-                "code": 1140,
-                "label": "socialising with family, friends, phone call",
-                "short": "socialise home",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Läsa",
-                "examples": "Fysisk bok, tidning, tidskrift",
-                "code": 1141,
-                "label": "reading physical",
-                "short": "read",
-                "vshort": "rea",
-                "color": "#DA70D6",
-                "childItems": []
-              },
-              {
-                "name": "Spela instrument / Sjunga",
-                "code": 1142,
-                "label": "playing instrument or singing",
-                "short": "play music",
-                "vshort": "music",
-                "color": "#EE82EE"
-              },
-              {
-                "name": "Religiös / Andlig utövning, Meditation",
-                "code": 1143,
-                "label": "religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Sport / Motion",
-                "code": 1144,
-                "label": "sports, exercise",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#BA55D3",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Laga mat",
-                "code": 1146,
-                "label": "preparing food",
-                "short": "preparing food",
-                "vshort": "cook",
-                "color": "#8A2BE2",
-                "childItems": []
-              },
-              {
-                "name": "Leka",
-                "code": 5146,
-                "label": "play",
-                "short": "play",
-                "vshort": "play",
-                "color": "#8A2BE2",
-                "childItems": []
-              },
-              {
-                "name": "Andra hemmaaktiviteter",
-                "examples": "Ange gärna.",
-                "code": 1147,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
-            "name": "Aktiviteter utanför Hemmet (Icke-Digitala)",
-            "activities": [
-              {
-                "name": "Socialt umgänge",
-                "examples": "träffa familj, vänner",
-                "code": 1160,
-                "label": "Socialising out of home with family, friends, phone call",
-                "short": "socialise out",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Religiös / Andlig utövning, Meditation",
-                "examples": "Kyrka, tempel, moské, synagoga, meditationscenter, besöka kyrkogård",
-                "code": 1161,
-                "label": "Religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Leka",
-                "code": 5162,
-                "label": "Play",
-                "short": "play",
-                "vshort": "play",
-                "color": "#EE82EE"
-              },
-              {
-                "name": "Evenemang / Nöjen",
-                "examples": "Bio, teater, konsert, sportevenemang",
-                "code": 1163,
-                "label": "events or entertainment outside",
-                "short": "events out",
-                "vshort": "events",
-                "color": "#DA70D6"
-              },
-              {
-                "name": "Hobby ej sport",
-                "examples": "Besöka museum, musiklektion, bokcirkel, ideellt arbete, etc. Ange gärna.",
-                "code": 1164,
-                "label": "hobby non-sports",
-                "short": "hobby non-sports",
-                "vshort": "hobby",
-                "color": "#BA55D3",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Sport / Motion utomhus",
-                "code": 1166,
-                "label": "sports outdoors",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#9370DB",
-                "childItems": [
-                  {
-                    "name": "Promenera",
-                    "code": 1167,
-                    "label": "Walking",
-                    "short": "walk",
-                    "vshort": "walk",
-                    "color": "#9370DB"
-                  },
-                  {
-                    "name": "Springa",
-                    "code": 1169,
-                    "label": "Running",
-                    "short": "run",
-                    "vshort": "run",
-                    "color": "#9370DB"
-                  },
-                  {
-                    "name": "Annan sport/motion utomhus",
-                    "examples": "Cykling, vandring, lagsport, etc",
-                    "code": 1171,
-                    "label": "sports outdoors other",
-                    "short": "other outdoor sports",
-                    "vshort": "other out sports",
-                    "color": "#9370DB",
-                    "is_custom_input": true
-                  }
-                ]
-              },
-              {
-                "name": "Sport / Motion inomhus",
-                "examples": "Gym, simning, träningspass, inomhusklättring, etc",
-                "code": 1172,
-                "label": "sports, exercise indoors",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#8A2BE2",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Andra aktiviteter utanför hemmet",
-                "code": 1173,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
+      "name": "Huvudaktivitet",
+      "description": "",
+      "mode": "single-choice",
+      "min_coverage": 10,
+      "categories": [
+        {
+          "name": "Allmänna aktiviteter",
+          "activities": [
+            {
+              "name": "Sova",
+              "code": 1101,
+              "label": "sleeping",
+              "color": "#A8D8EA",
+              "childItems": []
+            },
+            {
+              "name": "Vardagssysslor",
+              "examples": "Äta, dricka, personlig hygien, hushållssysslor, husdjur, ...",
+              "code": 1104,
+              "label": "activities of daily living",
+              "color": "#87CEEB",
+              "childItems": []
+            },
+            {
+              "name": "Vila",
+              "examples": "Lunchrast, softa, ledig tid, ...",
+              "code": 1102,
+              "label": "resting",
+              "color": "#B0E0E6",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "Resor & Förflyttning",
+          "activities": [
+            {
+              "name": "Resa",
+              "code": 1110,
+              "label": "travelling",
+              "color": "#98FB98",
+              "childItems": [
+                {
+                  "name": "Resa: till fots",
+                  "code": 1111,
+                  "label": "travelling: walking",
+                  "color": "#98FB98"
+                },
+                {
+                  "name": "Resa: cykel",
+                  "code": 1112,
+                  "label": "travelling: cycle",
+                  "color": "#90EE90"
+                },
+                {
+                  "name": "Resa: springa",
+                  "code": 1113,
+                  "label": "travelling: running",
+                  "color": "#9ACD32"
+                },
+                {
+                  "name": "Resa: bil, taxi eller liknande",
+                  "code": 1114,
+                  "label": "travelling: car, taxi or similar",
+                  "color": "#7CFC00"
+                },
+                {
+                  "name": "Resa: kollektivtrafik",
+                  "code": 1115,
+                  "label": "travelling: public transport",
+                  "color": "#32CD32"
+                },
+                {
+                  "name": "Resa: annat",
+                  "code": 1116,
+                  "label": "travelling: other",
+                  "color": "#00FA9A"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Skola / Studier",
+          "activities": [
+            {
+              "name": "Utbildning, Studerande, Lärande",
+              "examples": "Formell utbildning",
+              "code": 1121,
+              "label": "formal education",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "Skola",
+                  "code": 5124,
+                  "label": "school",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Skolrast",
+                  "code": 5125,
+                  "label": "school break",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Självstudier / Extracurriculära skolaktiviteter",
+                  "examples": "Klubbar, etc",
+                  "code": 5126,
+                  "label": "self study",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Läxor",
+                  "code": 5127,
+                  "label": "homework",
+                  "color": "#FFA07A"
+                }
+              ]
+            },
+            {
+              "name": "Självstudier / Personlig utveckling",
+              "examples": "Rekreationskurser, lära sig en färdighet eller språk, ...",
+              "code": 1131,
+              "label": "recreational courses, study",
+              "color": "#FFDAB9",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "Aktiviteter Hemma (Icke-Digitala)",
+          "activities": [
+            {
+              "name": "Socialt umgänge",
+              "examples": "Träffa familj, vänner, telefonera",
+              "code": 1140,
+              "label": "socialising with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Läsa",
+              "examples": "Fysisk bok, tidning, tidskrift",
+              "code": 1141,
+              "label": "reading physical",
+              "color": "#DA70D6",
+              "childItems": []
+            },
+            {
+              "name": "Spela instrument / Sjunga",
+              "code": 1142,
+              "label": "playing instrument or singing",
+              "color": "#EE82EE"
+            },
+            {
+              "name": "Religiös / Andlig utövning, Meditation",
+              "code": 1143,
+              "label": "religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Sport / Motion",
+              "code": 1144,
+              "label": "sports, exercise",
+              "color": "#BA55D3",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Laga mat",
+              "code": 1146,
+              "label": "preparing food",
+              "color": "#8A2BE2",
+              "childItems": []
+            },
+            {
+              "name": "Leka",
+              "code": 5146,
+              "label": "play",
+              "color": "#8A2BE2",
+              "childItems": []
+            },
+            {
+              "name": "Andra hemmaaktiviteter",
+              "examples": "Ange gärna.",
+              "code": 1147,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "Aktiviteter utanför Hemmet (Icke-Digitala)",
+          "activities": [
+            {
+              "name": "Socialt umgänge",
+              "examples": "träffa familj, vänner",
+              "code": 1160,
+              "label": "Socialising out of home with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Religiös / Andlig utövning, Meditation",
+              "examples": "Kyrka, tempel, moské, synagoga, meditationscenter, besöka kyrkogård",
+              "code": 1161,
+              "label": "Religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Leka",
+              "code": 5162,
+              "label": "Play",
+              "color": "#EE82EE"
+            },
+            {
+              "name": "Evenemang / Nöjen",
+              "examples": "Bio, teater, konsert, sportevenemang",
+              "code": 1163,
+              "label": "events or entertainment outside",
+              "color": "#DA70D6"
+            },
+            {
+              "name": "Hobby ej sport",
+              "examples": "Besöka museum, musiklektion, bokcirkel, ideellt arbete, etc. Ange gärna.",
+              "code": 1164,
+              "label": "hobby non-sports",
+              "color": "#BA55D3",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Sport / Motion utomhus",
+              "code": 1166,
+              "label": "sports outdoors",
+              "color": "#9370DB",
+              "childItems": [
+                {
+                  "name": "Promenera",
+                  "code": 1167,
+                  "label": "Walking",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Springa",
+                  "code": 1169,
+                  "label": "Running",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Annan sport/motion utomhus",
+                  "examples": "Cykling, vandring, lagsport, etc",
+                  "code": 1171,
+                  "label": "sports outdoors other",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Sport / Motion inomhus",
+              "examples": "Gym, simning, träningspass, inomhusklättring, etc",
+              "code": 1172,
+              "label": "sports, exercise indoors",
+              "color": "#8A2BE2",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Andra aktiviteter utanför hemmet",
+              "code": 1173,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
           "name": "Digitala Medier",
           "activities": [
             {
@@ -377,34 +306,28 @@
               "examples": "",
               "color": "#FFD700",
               "childItems": [
-                  {
-                    "name": "Scrolla / Konsumera innehåll",
-                    "code": 1211,
-                    "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook-flöde, Twitter-flöde, etc",
-                    "label": "Scrolling / Content Consumption",
-                    "short": "scroll",
-                    "vshort": "scroll",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Nätverka / Interagera med inlägg",
-                    "examples": "På Facebook, Instagram, Twitter, LinkedIn, etc",
-                    "code": 1212,
-                    "label": "Building networks / Engaging with posts",
-                    "short": "engage",
-                    "vshort": "engage",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Messenger / Chatt",
-                    "code": 1213,
-                    "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
-                    "label": "Messenger / Chatting",
-                    "short": "chat",
-                    "vshort": "chat",
-                    "color": "#FFD700"
-                  }
-                ]
+                {
+                  "name": "Scrolla / Konsumera innehåll",
+                  "code": 1211,
+                  "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook-flöde, Twitter-flöde, etc",
+                  "label": "Scrolling / Content Consumption",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Nätverka / Interagera med inlägg",
+                  "examples": "På Facebook, Instagram, Twitter, LinkedIn, etc",
+                  "code": 1212,
+                  "label": "Building networks / Engaging with posts",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / Chatt",
+                  "code": 1213,
+                  "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
+                  "label": "Messenger / Chatting",
+                  "color": "#FFD700"
+                }
+              ]
             },
             {
               "name": "Spela Spel",
@@ -412,67 +335,55 @@
               "examples": "",
               "color": "#FFA500",
               "childItems": [
-                  {
-                    "name": "Konsol, ensam",
-                    "code": 1221,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
-                    "label": "Console Gaming, alone",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Konsol, med andra",
-                    "code": 1222,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
-                    "label": "Console Gaming, with others",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Datorspel, ensam",
-                    "code": 1223,
-                    "examples": "PC, Mac, etc. Ange gärna spel.",
-                    "label": "Computer Gaming, alone",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Datorspel, med andra",
-                    "code": 1224,
-                    "examples": "PC, Mac, etc. Ange gärna spel.",
-                    "label": "Computer Gaming, with others",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobilspel, ensam",
-                    "code": 1225,
-                    "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
-                    "label": "Mobile Gaming, alone",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobilspel, med andra",
-                    "code": 1226,
-                    "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
-                    "label": "Mobile Gaming, with others",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  }
-                ]
+                {
+                  "name": "Konsol, ensam",
+                  "code": 1221,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
+                  "label": "Console Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Konsol, med andra",
+                  "code": 1222,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
+                  "label": "Console Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Datorspel, ensam",
+                  "code": 1223,
+                  "examples": "PC, Mac, etc. Ange gärna spel.",
+                  "label": "Computer Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Datorspel, med andra",
+                  "code": 1224,
+                  "examples": "PC, Mac, etc. Ange gärna spel.",
+                  "label": "Computer Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobilspel, ensam",
+                  "code": 1225,
+                  "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
+                  "label": "Mobile Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobilspel, med andra",
+                  "code": 1226,
+                  "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
+                  "label": "Mobile Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
             },
             {
               "name": "Lyssna på Ljud",
@@ -488,80 +399,72 @@
             }
           ]
         },
-          {
-            "name": "Annat",
-            "color": "#C0C0C0",
-            "activities": [
-              {
-                "name": "Annan Aktivitet",
-                "examples": "Ange gärna.",
-                "code": 1248,
-                "color": "#C0C0C0",
-                "is_custom_input": true,
-                "childItems": []
-              },
-              {
-                "name": "Glömt / Ospecificerat",
-                "label": "unspecified",
-                "code": 1249,
-                "color": "#C0C0C0",
-                "childItems": []
-              }
-            ]
-          }
-        ]
-      },
+        {
+          "name": "Annat",
+          "color": "#C0C0C0",
+          "activities": [
+            {
+              "name": "Annan Aktivitet",
+              "examples": "Ange gärna.",
+              "code": 1248,
+              "color": "#C0C0C0",
+              "is_custom_input": true,
+              "childItems": []
+            },
+            {
+              "name": "Glömt / Ospecificerat",
+              "label": "unspecified",
+              "code": 1249,
+              "color": "#C0C0C0",
+              "childItems": []
+            }
+          ]
+        }
+      ]
+    },
     "secondary": {
-        "name": "Sekundär Aktivitet",
-        "description": "",
-        "mode": "single-choice",
-        "min_coverage": 0,
-        "categories": [
-          {
-            "name": "Socialt, Fritid & Hobby",
-            "activities": [
-              {
-                "name": "Socialt umgänge",
-                "examples": "Träffa familj, vänner, telefonera",
-                "code": 2140,
-                "label": "socialising with family, friends, phone call",
-                "short": "socialise",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Läsa",
-                "examples": "Fysisk bok, tidning, tidskrift",
-                "code": 2141,
-                "label": "reading physical",
-                "short": "read",
-                "vshort": "rea",
-                "color": "#DA70D6",
-                "childItems": []
-              },
-              {
-                "name": "Religiös / Andlig utövning, Meditation",
-                "code": 2143,
-                "label": "religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Andra aktiviteter",
-                "examples": "Ange gärna.",
-                "code": 2147,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
+      "name": "Sekundär Aktivitet",
+      "description": "",
+      "mode": "single-choice",
+      "min_coverage": 0,
+      "categories": [
+        {
+          "name": "Socialt, Fritid & Hobby",
+          "activities": [
+            {
+              "name": "Socialt umgänge",
+              "examples": "Träffa familj, vänner, telefonera",
+              "code": 2140,
+              "label": "socialising with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Läsa",
+              "examples": "Fysisk bok, tidning, tidskrift",
+              "code": 2141,
+              "label": "reading physical",
+              "color": "#DA70D6",
+              "childItems": []
+            },
+            {
+              "name": "Religiös / Andlig utövning, Meditation",
+              "code": 2143,
+              "label": "religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Andra aktiviteter",
+              "examples": "Ange gärna.",
+              "code": 2147,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
           "name": "Digitala Medier",
           "activities": [
             {
@@ -576,34 +479,28 @@
               "examples": "",
               "color": "#FFD700",
               "childItems": [
-                  {
-                    "name": "Scrolla / Konsumera innehåll",
-                    "code": 2211,
-                    "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook-flöde, Twitter-flöde, etc",
-                    "label": "Scrolling / Content Consumption",
-                    "short": "scroll",
-                    "vshort": "scroll",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Nätverka / Interagera med inlägg",
-                    "examples": "På Facebook, Instagram, Twitter, LinkedIn, etc",
-                    "code": 2212,
-                    "label": "Building networks / Engaging with posts",
-                    "short": "engage",
-                    "vshort": "engage",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Messenger / Chatt",
-                    "code": 2213,
-                    "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
-                    "label": "Messenger / Chatting",
-                    "short": "chat",
-                    "vshort": "chat",
-                    "color": "#FFD700"
-                  }
-                ]
+                {
+                  "name": "Scrolla / Konsumera innehåll",
+                  "code": 2211,
+                  "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook-flöde, Twitter-flöde, etc",
+                  "label": "Scrolling / Content Consumption",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Nätverka / Interagera med inlägg",
+                  "examples": "På Facebook, Instagram, Twitter, LinkedIn, etc",
+                  "code": 2212,
+                  "label": "Building networks / Engaging with posts",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / Chatt",
+                  "code": 2213,
+                  "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
+                  "label": "Messenger / Chatting",
+                  "color": "#FFD700"
+                }
+              ]
             },
             {
               "name": "Spela Spel",
@@ -611,67 +508,55 @@
               "examples": "",
               "color": "#FFA500",
               "childItems": [
-                  {
-                    "name": "Konsol, ensam",
-                    "code": 2221,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
-                    "label": "Console Gaming, alone",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Konsol, med andra",
-                    "code": 2222,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
-                    "label": "Console Gaming, with others",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Datorspel, ensam",
-                    "code": 2223,
-                    "examples": "PC, Mac, etc. Ange gärna spel.",
-                    "label": "Computer Gaming, alone",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Datorspel, med andra",
-                    "code": 2224,
-                    "examples": "PC, Mac, etc. Ange gärna spel.",
-                    "label": "Computer Gaming, with others",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobilspel, ensam",
-                    "code": 2225,
-                    "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
-                    "label": "Mobile Gaming, alone",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobilspel, med andra",
-                    "code": 2226,
-                    "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
-                    "label": "Mobile Gaming, with others",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  }
-                ]
+                {
+                  "name": "Konsol, ensam",
+                  "code": 2221,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
+                  "label": "Console Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Konsol, med andra",
+                  "code": 2222,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Ange gärna spel.",
+                  "label": "Console Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Datorspel, ensam",
+                  "code": 2223,
+                  "examples": "PC, Mac, etc. Ange gärna spel.",
+                  "label": "Computer Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Datorspel, med andra",
+                  "code": 2224,
+                  "examples": "PC, Mac, etc. Ange gärna spel.",
+                  "label": "Computer Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobilspel, ensam",
+                  "code": 2225,
+                  "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
+                  "label": "Mobile Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobilspel, med andra",
+                  "code": 2226,
+                  "examples": "Telefon, surfplatta, etc. Ange gärna spel.",
+                  "label": "Mobile Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
             },
             {
               "name": "Lyssna på Ljud",
@@ -687,7 +572,7 @@
             }
           ]
         }
-        ]
-      }
+      ]
+    }
   }
 }

@@ -11,358 +11,287 @@
   },
   "timeline": {
     "primary": {
-        "name": "Main Activity",
-        "description": "Please cover the entire timeline.",
-        "mode": "single-choice",
-        "min_coverage": 10,
-        "categories": [
-          {
-            "name": "General Activities",
-            "activities": [
-              {
-                "name": "Sleeping",
-                "code": 1101,
-                "label": "sleeping",
-                "short": "sleep",
-                "vshort": "slp",
-                "color": "#A8D8EA",
-                "childItems": []
-              },
-              {
-                "name": "Activities of Daily Living",
-                "examples": "Eating, drinking, personal care, household routines, pets, ...",
-                "code": 1104,
-                "label": "activities of daily living",
-                "short": "adl",
-                "vshort": "adl",
-                "color": "#87CEEB",
-                "childItems": []
-              },
-              {
-                "name": "Resting",
-                "examples": "Lunch break, couch time, downtime, ...",
-                "code": 1102,
-                "label": "resting",
-                "short": "rest",
-                "vshort": "rst",
-                "color": "#B0E0E6",
-                "childItems": []
-              }
-            ]
-          },
-          {
-            "name": "Travel & Transit",
-            "activities": [
-              {
-                "name": "Travelling",
-                "code": 1110,
-                "label": "travelling",
-                "short": "trv",
-                "vshort": "trv",
-                "color": "#98FB98",
-                "childItems": [
-
-                  {
-                    "name": "Travelling: walking",
-                    "code": 1111,
-                    "label": "travelling: walking",
-                    "short": "walk",
-                    "vshort": "wlk",
-                    "color": "#98FB98"
-                  },
-                  {
-                    "name": "Travelling: cycle",
-                    "code": 1112,
-                    "label": "travelling: cycle",
-                    "short": "cycle",
-                    "vshort": "cyc",
-                    "color": "#90EE90"
-                  },
-                  {
-                    "name": "Travelling: running",
-                    "code": 1113,
-                    "label": "travelling: running",
-                    "short": "run",
-                    "vshort": "run",
-                    "color": "#9ACD32"
-                  },
-                  {
-                    "name": "Travelling: car, taxi or similar",
-                    "code": 1114,
-                    "label": "travelling: car, taxi or similar",
-                    "short": "car/taxi",
-                    "vshort": "car",
-                    "color": "#7CFC00"
-                  },
-                  {
-                    "name": "Travelling: public transport",
-                    "code": 1115,
-                    "label": "travelling: public transport",
-                    "short": "travel / public",
-                    "vshort": "bus+",
-                    "color": "#32CD32"
-                  },
-                  {
-                    "name": "Travelling: other",
-                    "code": 1116,
-                    "label": "travelling: other",
-                    "short": "other travel",
-                    "vshort": "trav",
-                    "color": "#00FA9A"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "name": "School / Study",
-            "activities": [
-              {
-                "name": "Education, Studying, Learning",
-                "examples": "Formal education",
-                "code": 1121,
-                "label": "formal education",
-                "short": "education",
-                "vshort": "edu",
-                "color": "#FFA07A",
-                "childItems": [
-                  {
-                    "name": "School",
-                    "code": 5124,
-                    "label": "school",
-                    "short": "school",
-                    "vshort": "sch",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "School break",
-                    "code": 5125,
-                    "label": "school break",
-                    "short": "break",
-                    "vshort": "brk",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Self Study / Extra-curricular School Activities",
-                    "examples": "Clubs, etc",
-                    "code": 5126,
-                    "label": "self study",
-                    "short": "self study",
-                    "vshort": "self",
-                    "color": "#FFA07A"
-                  },
-                  {
-                    "name": "Homework",
-                    "code": 5127,
-                    "label": "homework",
-                    "short": "homework",
-                    "vshort": "hw",
-                    "color": "#FFA07A"
-                  }
-                ]
-              },
-              {
-                "name": "Self-study / Personal Development",
-                "examples": "Recreational courses, learning a skill or language, ...",
-                "code": 1131,
-                "label": "recreational courses, study",
-                "short": "rec study",
-                "vshort": "stud",
-                "color": "#FFDAB9",
-                "childItems": []
-              }
-            ]
-          },
-          {
-            "name": "Activities At Home (Non-Digital)",
-            "activities": [
-              {
-                "name": "Socialising",
-                "examples": "Meeting family, friends, phone call",
-                "code": 1140,
-                "label": "socialising with family, friends, phone call",
-                "short": "socialise home",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Reading",
-                "examples": "Physical book, magazine, newspaper",
-                "code": 1141,
-                "label": "reading physical",
-                "short": "read",
-                "vshort": "rea",
-                "color": "#DA70D6",
-                "childItems": []
-              },
-              {
-                "name": "Playing instrument or singing",
-                "code": 1142,
-                "label": "playing instrument or singing",
-                "short": "play music",
-                "vshort": "music",
-                "color": "#EE82EE"
-              },
-              {
-                "name": "Religious / Spiritual Practice, Meditation",
-                "code": 1143,
-                "label": "religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Sports / Exercise",
-                "code": 1144,
-                "label": "sports, exercise",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#BA55D3",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Preparing food",
-                "code": 1146,
-                "label": "preparing food",
-                "short": "preparing food",
-                "vshort": "cook",
-                "color": "#8A2BE2",
-                "childItems": []
-              },
-              {
-                "name": "Play",
-                "code": 5146,
-                "label": "play",
-                "short": "play",
-                "vshort": "play",
-                "color": "#8A2BE2",
-                "childItems": []
-              },
-              {
-                "name": "Other home activities",
-                "examples": "Please specify.",
-                "code": 1147,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
-            "name": "Activities out of Home (Non-Digital)",
-            "activities": [
-              {
-                "name": "Socialising",
-                "examples": "meeting family, friends",
-                "code": 1160,
-                "label": "Socialising out of home with family, friends, phone call",
-                "short": "socialise out",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Religious / Spiritual Practice, Meditation",
-                "examples": "Church, temple, mosque, synagogue, meditation center, visit cemetery",
-                "code": 1161,
-                "label": "Religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Play",
-                "code": 5162,
-                "label": "Play",
-                "short": "play",
-                "vshort": "play",
-                "color": "#EE82EE"
-              },
-              {
-                "name": "Events / Entertainment",
-                "examples": "Cinema, theatre, concert, sports event",
-                "code": 1163,
-                "label": "events or entertainment outside",
-                "short": "events out",
-                "vshort": "events",
-                "color": "#DA70D6"
-              },
-              {
-                "name": "Hobby non-sports",
-                "examples": "Visiting a museum, music lesson, book club, voluntary work, etc. Please specify.",
-                "code": 1164,
-                "label": "hobby non-sports",
-                "short": "hobby non-sports",
-                "vshort": "hobby",
-                "color": "#BA55D3",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Sports / Exercise outdoors",
-                "code": 1166,
-                "label": "sports outdoors",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#9370DB",
-                "childItems": [
-                  {
-                    "name": "Walking",
-                    "code": 1167,
-                    "label": "Walking",
-                    "short": "walk",
-                    "vshort": "walk",
-                    "color": "#9370DB"
-                  },
-                  {
-                    "name": "Running",
-                    "code": 1169,
-                    "label": "Running",
-                    "short": "run",
-                    "vshort": "run",
-                    "color": "#9370DB"
-                  },
-                  {
-                    "name": "Other outdoor sports/exercise",
-                    "examples": "Cycling, hiking, team sports, etc",
-                    "code": 1171,
-                    "label": "sports outdoors other",
-                    "short": "other outdoor sports",
-                    "vshort": "other out sports",
-                    "color": "#9370DB",
-                    "is_custom_input": true
-                  }
-                ]
-              },
-              {
-                "name": "Sports / Exercise indoors",
-                "examples": "Gym, swimming, fitness classes, indoor climbing, etc",
-                "code": 1172,
-                "label": "sports, exercise indoors",
-                "short": "exercise",
-                "vshort": "ex",
-                "color": "#8A2BE2",
-                "childItems": [],
-                "is_custom_input": true
-              },
-              {
-                "name": "Other out of home activities",
-                "code": 1173,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
+      "name": "Main Activity",
+      "description": "Please cover the entire timeline.",
+      "mode": "single-choice",
+      "min_coverage": 10,
+      "categories": [
+        {
+          "name": "General Activities",
+          "activities": [
+            {
+              "name": "Sleeping",
+              "code": 1101,
+              "label": "sleeping",
+              "color": "#A8D8EA",
+              "childItems": []
+            },
+            {
+              "name": "Activities of Daily Living",
+              "examples": "Eating, drinking, personal care, household routines, pets, ...",
+              "code": 1104,
+              "label": "activities of daily living",
+              "color": "#87CEEB",
+              "childItems": []
+            },
+            {
+              "name": "Resting",
+              "examples": "Lunch break, couch time, downtime, ...",
+              "code": 1102,
+              "label": "resting",
+              "color": "#B0E0E6",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "Travel & Transit",
+          "activities": [
+            {
+              "name": "Travelling",
+              "code": 1110,
+              "label": "travelling",
+              "color": "#98FB98",
+              "childItems": [
+                {
+                  "name": "Travelling: walking",
+                  "code": 1111,
+                  "label": "travelling: walking",
+                  "color": "#98FB98"
+                },
+                {
+                  "name": "Travelling: cycle",
+                  "code": 1112,
+                  "label": "travelling: cycle",
+                  "color": "#90EE90"
+                },
+                {
+                  "name": "Travelling: running",
+                  "code": 1113,
+                  "label": "travelling: running",
+                  "color": "#9ACD32"
+                },
+                {
+                  "name": "Travelling: car, taxi or similar",
+                  "code": 1114,
+                  "label": "travelling: car, taxi or similar",
+                  "color": "#7CFC00"
+                },
+                {
+                  "name": "Travelling: public transport",
+                  "code": 1115,
+                  "label": "travelling: public transport",
+                  "color": "#32CD32"
+                },
+                {
+                  "name": "Travelling: other",
+                  "code": 1116,
+                  "label": "travelling: other",
+                  "color": "#00FA9A"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "School / Study",
+          "activities": [
+            {
+              "name": "Education, Studying, Learning",
+              "examples": "Formal education",
+              "code": 1121,
+              "label": "formal education",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "School",
+                  "code": 5124,
+                  "label": "school",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "School break",
+                  "code": 5125,
+                  "label": "school break",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Self Study / Extra-curricular School Activities",
+                  "examples": "Clubs, etc",
+                  "code": 5126,
+                  "label": "self study",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Homework",
+                  "code": 5127,
+                  "label": "homework",
+                  "color": "#FFA07A"
+                }
+              ]
+            },
+            {
+              "name": "Self-study / Personal Development",
+              "examples": "Recreational courses, learning a skill or language, ...",
+              "code": 1131,
+              "label": "recreational courses, study",
+              "color": "#FFDAB9",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "Activities At Home (Non-Digital)",
+          "activities": [
+            {
+              "name": "Socialising",
+              "examples": "Meeting family, friends, phone call",
+              "code": 1140,
+              "label": "socialising with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Reading",
+              "examples": "Physical book, magazine, newspaper",
+              "code": 1141,
+              "label": "reading physical",
+              "color": "#DA70D6",
+              "childItems": []
+            },
+            {
+              "name": "Playing instrument or singing",
+              "code": 1142,
+              "label": "playing instrument or singing",
+              "color": "#EE82EE"
+            },
+            {
+              "name": "Religious / Spiritual Practice, Meditation",
+              "code": 1143,
+              "label": "religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Sports / Exercise",
+              "code": 1144,
+              "label": "sports, exercise",
+              "color": "#BA55D3",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Preparing food",
+              "code": 1146,
+              "label": "preparing food",
+              "color": "#8A2BE2",
+              "childItems": []
+            },
+            {
+              "name": "Play",
+              "code": 5146,
+              "label": "play",
+              "color": "#8A2BE2",
+              "childItems": []
+            },
+            {
+              "name": "Other home activities",
+              "examples": "Please specify.",
+              "code": 1147,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "Activities out of Home (Non-Digital)",
+          "activities": [
+            {
+              "name": "Socialising",
+              "examples": "meeting family, friends",
+              "code": 1160,
+              "label": "Socialising out of home with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Religious / Spiritual Practice, Meditation",
+              "examples": "Church, temple, mosque, synagogue, meditation center, visit cemetery",
+              "code": 1161,
+              "label": "Religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Play",
+              "code": 5162,
+              "label": "Play",
+              "color": "#EE82EE"
+            },
+            {
+              "name": "Events / Entertainment",
+              "examples": "Cinema, theatre, concert, sports event",
+              "code": 1163,
+              "label": "events or entertainment outside",
+              "color": "#DA70D6"
+            },
+            {
+              "name": "Hobby non-sports",
+              "examples": "Visiting a museum, music lesson, book club, voluntary work, etc. Please specify.",
+              "code": 1164,
+              "label": "hobby non-sports",
+              "color": "#BA55D3",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Sports / Exercise outdoors",
+              "code": 1166,
+              "label": "sports outdoors",
+              "color": "#9370DB",
+              "childItems": [
+                {
+                  "name": "Walking",
+                  "code": 1167,
+                  "label": "Walking",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Running",
+                  "code": 1169,
+                  "label": "Running",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Other outdoor sports/exercise",
+                  "examples": "Cycling, hiking, team sports, etc",
+                  "code": 1171,
+                  "label": "sports outdoors other",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Sports / Exercise indoors",
+              "examples": "Gym, swimming, fitness classes, indoor climbing, etc",
+              "code": 1172,
+              "label": "sports, exercise indoors",
+              "color": "#8A2BE2",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Other out of home activities",
+              "code": 1173,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
           "name": "Digital Media",
           "activities": [
             {
@@ -377,34 +306,28 @@
               "examples": "",
               "color": "#FFD700",
               "childItems": [
-                  {
-                    "name": "Scrolling / Content Consumption",
-                    "code": 1211,
-                    "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook feed, Twitter feed, etc",
-                    "label": "Scrolling / Content Consumption",
-                    "short": "scroll",
-                    "vshort": "scroll",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Building networks / Engaging with posts",
-                    "examples": "On Facebook, Instagram, Twitter, LinkedIn, etc",
-                    "code": 1212,
-                    "label": "Building networks / Engaging with posts",
-                    "short": "engage",
-                    "vshort": "engage",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Messenger / Chatting",
-                    "code": 1213,
-                    "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
-                    "label": "Messenger / Chatting",
-                    "short": "chat",
-                    "vshort": "chat",
-                    "color": "#FFD700"
-                  }
-                ]
+                {
+                  "name": "Scrolling / Content Consumption",
+                  "code": 1211,
+                  "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook feed, Twitter feed, etc",
+                  "label": "Scrolling / Content Consumption",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Building networks / Engaging with posts",
+                  "examples": "On Facebook, Instagram, Twitter, LinkedIn, etc",
+                  "code": 1212,
+                  "label": "Building networks / Engaging with posts",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / Chatting",
+                  "code": 1213,
+                  "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
+                  "label": "Messenger / Chatting",
+                  "color": "#FFD700"
+                }
+              ]
             },
             {
               "name": "Gaming",
@@ -412,67 +335,55 @@
               "examples": "",
               "color": "#FFA500",
               "childItems": [
-                  {
-                    "name": "Console, alone",
-                    "code": 1221,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
-                    "label": "Console Gaming, alone",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Console, with others",
-                    "code": 1222,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
-                    "label": "Console Gaming, with others",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Computer Gaming, alone",
-                    "code": 1223,
-                    "examples": "PC, Mac, etc. Please specify game.",
-                    "label": "Computer Gaming, alone",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Computer Gaming, with others",
-                    "code": 1224,
-                    "examples": "PC, Mac, etc. Please specify game.",
-                    "label": "Computer Gaming, with others",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobile Gaming, alone",
-                    "code": 1225,
-                    "examples": "Phone, tablet, etc. Please specify game.",
-                    "label": "Mobile Gaming, alone",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobile Gaming, with others",
-                    "code": 1226,
-                    "examples": "Phone, tablet, etc. Please specify game.",
-                    "label": "Mobile Gaming, with others",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  }
-                ]
+                {
+                  "name": "Console, alone",
+                  "code": 1221,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
+                  "label": "Console Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Console, with others",
+                  "code": 1222,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
+                  "label": "Console Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer Gaming, alone",
+                  "code": 1223,
+                  "examples": "PC, Mac, etc. Please specify game.",
+                  "label": "Computer Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer Gaming, with others",
+                  "code": 1224,
+                  "examples": "PC, Mac, etc. Please specify game.",
+                  "label": "Computer Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile Gaming, alone",
+                  "code": 1225,
+                  "examples": "Phone, tablet, etc. Please specify game.",
+                  "label": "Mobile Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile Gaming, with others",
+                  "code": 1226,
+                  "examples": "Phone, tablet, etc. Please specify game.",
+                  "label": "Mobile Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
             },
             {
               "name": "Listening to Audio",
@@ -488,80 +399,72 @@
             }
           ]
         },
-          {
-            "name": "Other",
-            "color": "#C0C0C0",
-            "activities": [
-              {
-                "name": "Other Activity",
-                "examples": "Please specify.",
-                "code": 1248,
-                "color": "#C0C0C0",
-                "is_custom_input": true,
-                "childItems": []
-              },
-              {
-                "name": "Forgot / Unspecified",
-                "label": "unspecified",
-                "code": 1249,
-                "color": "#C0C0C0",
-                "childItems": []
-              }
-            ]
-          }
-        ]
-      },
+        {
+          "name": "Other",
+          "color": "#C0C0C0",
+          "activities": [
+            {
+              "name": "Other Activity",
+              "examples": "Please specify.",
+              "code": 1248,
+              "color": "#C0C0C0",
+              "is_custom_input": true,
+              "childItems": []
+            },
+            {
+              "name": "Forgot / Unspecified",
+              "label": "unspecified",
+              "code": 1249,
+              "color": "#C0C0C0",
+              "childItems": []
+            }
+          ]
+        }
+      ]
+    },
     "secondary": {
-        "name": "Secondary Activity",
-        "description": "",
-        "mode": "single-choice",
-        "min_coverage": 0,
-        "categories": [
-          {
-            "name": "Social, Leisure & Hobbies",
-            "activities": [
-              {
-                "name": "Socialising",
-                "examples": "Meeting family, friends, phone call",
-                "code": 2140,
-                "label": "socialising with family, friends, phone call",
-                "short": "socialise",
-                "vshort": "soc",
-                "color": "#DDA0DD",
-                "childItems": []
-              },
-              {
-                "name": "Reading",
-                "examples": "Physical book, magazine, newspaper",
-                "code": 2141,
-                "label": "reading physical",
-                "short": "read",
-                "vshort": "rea",
-                "color": "#DA70D6",
-                "childItems": []
-              },
-              {
-                "name": "Religious / Spiritual Practice, Meditation",
-                "code": 2143,
-                "label": "religious or spiritual practice, meditation",
-                "short": "religious practice",
-                "vshort": "rel",
-                "color": "#D8BFD8"
-              },
-              {
-                "name": "Other activities",
-                "examples": "Please specify.",
-                "code": 2147,
-                "label": "other",
-                "short": "other",
-                "vshort": "other",
-                "color": "#9932CC",
-                "childItems": [],
-                "is_custom_input": true
-              }
-            ]
-          },
-          {
+      "name": "Secondary Activity",
+      "description": "",
+      "mode": "single-choice",
+      "min_coverage": 0,
+      "categories": [
+        {
+          "name": "Social, Leisure & Hobbies",
+          "activities": [
+            {
+              "name": "Socialising",
+              "examples": "Meeting family, friends, phone call",
+              "code": 2140,
+              "label": "socialising with family, friends, phone call",
+              "color": "#DDA0DD",
+              "childItems": []
+            },
+            {
+              "name": "Reading",
+              "examples": "Physical book, magazine, newspaper",
+              "code": 2141,
+              "label": "reading physical",
+              "color": "#DA70D6",
+              "childItems": []
+            },
+            {
+              "name": "Religious / Spiritual Practice, Meditation",
+              "code": 2143,
+              "label": "religious or spiritual practice, meditation",
+              "color": "#D8BFD8"
+            },
+            {
+              "name": "Other activities",
+              "examples": "Please specify.",
+              "code": 2147,
+              "label": "other",
+              "color": "#9932CC",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
           "name": "Digital Media",
           "activities": [
             {
@@ -576,34 +479,28 @@
               "examples": "",
               "color": "#FFD700",
               "childItems": [
-                  {
-                    "name": "Scrolling / Content Consumption",
-                    "code": 2211,
-                    "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook feed, Twitter feed, etc",
-                    "label": "Scrolling / Content Consumption",
-                    "short": "scroll",
-                    "vshort": "scroll",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Building networks / Engaging with posts",
-                    "examples": "On Facebook, Instagram, Twitter, LinkedIn, etc",
-                    "code": 2212,
-                    "label": "Building networks / Engaging with posts",
-                    "short": "engage",
-                    "vshort": "engage",
-                    "color": "#FFD700"
-                  },
-                  {
-                    "name": "Messenger / Chatting",
-                    "code": 2213,
-                    "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
-                    "label": "Messenger / Chatting",
-                    "short": "chat",
-                    "vshort": "chat",
-                    "color": "#FFD700"
-                  }
-                ]
+                {
+                  "name": "Scrolling / Content Consumption",
+                  "code": 2211,
+                  "examples": "TikTok, Instagram Reels, Youtube Shorts, Facebook feed, Twitter feed, etc",
+                  "label": "Scrolling / Content Consumption",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Building networks / Engaging with posts",
+                  "examples": "On Facebook, Instagram, Twitter, LinkedIn, etc",
+                  "code": 2212,
+                  "label": "Building networks / Engaging with posts",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / Chatting",
+                  "code": 2213,
+                  "examples": "Facebook Messenger, WhatsApp, Snapchat, etc",
+                  "label": "Messenger / Chatting",
+                  "color": "#FFD700"
+                }
+              ]
             },
             {
               "name": "Gaming",
@@ -611,67 +508,55 @@
               "examples": "",
               "color": "#FFA500",
               "childItems": [
-                  {
-                    "name": "Console, alone",
-                    "code": 2221,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
-                    "label": "Console Gaming, alone",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Console, with others",
-                    "code": 2222,
-                    "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
-                    "label": "Console Gaming, with others",
-                    "short": "console",
-                    "vshort": "console",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Computer Gaming, alone",
-                    "code": 2223,
-                    "examples": "PC, Mac, etc. Please specify game.",
-                    "label": "Computer Gaming, alone",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Computer Gaming, with others",
-                    "code": 2224,
-                    "examples": "PC, Mac, etc. Please specify game.",
-                    "label": "Computer Gaming, with others",
-                    "short": "computer",
-                    "vshort": "comp",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobile Gaming, alone",
-                    "code": 2225,
-                    "examples": "Phone, tablet, etc. Please specify game.",
-                    "label": "Mobile Gaming, alone",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  },
-                  {
-                    "name": "Mobile Gaming, with others",
-                    "code": 2226,
-                    "examples": "Phone, tablet, etc. Please specify game.",
-                    "label": "Mobile Gaming, with others",
-                    "short": "mobile",
-                    "vshort": "mob",
-                    "color": "#FFA500",
-                    "is_custom_input": true
-                  }
-                ]
+                {
+                  "name": "Console, alone",
+                  "code": 2221,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
+                  "label": "Console Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Console, with others",
+                  "code": 2222,
+                  "examples": "Playstation, Xbox, Nintendo Switch, etc. Please specify game.",
+                  "label": "Console Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer Gaming, alone",
+                  "code": 2223,
+                  "examples": "PC, Mac, etc. Please specify game.",
+                  "label": "Computer Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer Gaming, with others",
+                  "code": 2224,
+                  "examples": "PC, Mac, etc. Please specify game.",
+                  "label": "Computer Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile Gaming, alone",
+                  "code": 2225,
+                  "examples": "Phone, tablet, etc. Please specify game.",
+                  "label": "Mobile Gaming, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile Gaming, with others",
+                  "code": 2226,
+                  "examples": "Phone, tablet, etc. Please specify game.",
+                  "label": "Mobile Gaming, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
             },
             {
               "name": "Listening to Audio",
@@ -687,7 +572,7 @@
             }
           ]
         }
-        ]
-      }
+      ]
+    }
   }
 }
