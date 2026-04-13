@@ -2,6 +2,15 @@ TRAC MPIAE Changes
 ===================
 
 
+Version 0.12.0 -- Study creation via API possible, UX improvements
+--------------------------------------------------------------------
+* NEW: improve frontend UX and design (uncovered timelines, clearer active timeline, ...)
+* NEW: support creating new study via API (required moving available activities into DB)
+* NEW: allow changing study start/end time via admin page
+* NEW: development: add Docker dev environment
+* NEW: development: increase test coverage, test on chrome, webkit and firefox
+
+
 Version 0.11.0 -- Improved delete UX and other improvements
 ------------------------------------------------------------
 * NEW: add support for return_url URL param, see #53
