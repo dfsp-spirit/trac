@@ -76,8 +76,12 @@
       "titleFor": "Select an option for \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "Submit this day?",
-      "message": "You will not be able to change your responses for this day."
+      "title": "Submit data for {{dayLabel}} (day {{currentDay}} of {{totalDays}})?",
+      "message": "You will not be able to change your responses for day {{dayLabel}}.",
+      "infoOnTemplate": "For the next day, you will see the data you entered for today as a template to help you report more easily. Please adapt it as needed.<br /><br /> Remember that you can delete data by long-pressing or hovering over the activity in the timeline with the mouse cursor and pressing 'd' or DEL.",
+      "studyEnd": "This submission concludes the study.",
+      "submitDay": "Submit Day {{dayLabel}}",
+      "submitDayAndFinish": "Submit Day {{dayLabel}} and Finish Study"
     },
     "confirmSkip": {
       "title": "Do you really want to skip all time reporting?",

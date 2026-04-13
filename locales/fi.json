@@ -76,8 +76,12 @@
       "titleFor": "Valitse vaihtoehto \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "Lähetetäänkö tämä päivä?",
-      "message": "Et voi enää muuttaa tämän päivän vastauksia."
+      "title": "Lähetä tiedot: {{dayLabel}} (päivä {{currentDay}} / {{totalDays}})?",
+      "message": "Et voi enää muuttaa päivän {{dayLabel}} vastauksia.",
+      "infoOnTemplate": "Seuraavaa päivää varten näet tänään syöttämäsi tiedot mallina helpottamaan raportointia. Muokkaa niitä tarvittaessa.<br /><br /> Muista, että voit poistaa tietoja painamalla pitkään tai viemällä hiiren aikajanalla olevan aktiviteetin päälle ja painamalla 'd' tai DEL.",
+      "studyEnd": "Tämä lähetys päättää tutkimuksen.",
+      "submitDay": "Lähetä päivä {{dayLabel}}",
+      "submitDayAndFinish": "Lähetä päivä {{dayLabel}} ja lopeta tutkimus"
     },
     "confirmSkip": {
       "title": "Haluatko varmasti ohittaa ajankäytön raportoinnin?",
