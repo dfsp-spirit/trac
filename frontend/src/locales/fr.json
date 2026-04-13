@@ -76,8 +76,12 @@
       "titleFor": "Sélectionnez une option pour \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "Êtes-vous sûr?",
-      "message": "Vous ne pourrez pas changer vos réponses."
+      "title": "Envoyer les données pour {{dayLabel}} (jour {{currentDay}} sur {{totalDays}}) ?",
+      "message": "Vous ne pourrez pas modifier vos réponses pour le jour {{dayLabel}}.",
+      "infoOnTemplate": "Pour le jour suivant, vous verrez les données saisies aujourd'hui comme modèle pour faciliter votre rapport. Adaptez-les selon vos besoins.<br /><br /> N'oubliez pas que vous pouvez supprimer des données en appuyant longuement ou en survolant l'activité dans la chronologie avec la souris et en appuyant sur 'd' ou SUPPR.",
+      "studyEnd": "Cette soumission conclut l'étude.",
+      "submitDay": "Envoyer le jour {{dayLabel}}",
+      "submitDayAndFinish": "Envoyer le jour {{dayLabel}} et terminer l'étude"
     },
     "confirmSkip": {
       "title": "Voulez-vous vraiment ignorer tout le rapport de temps ?",

@@ -76,8 +76,12 @@
       "titleFor": "Selecciona una opción para \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "¿Estás seguro?",
-      "message": "No podrás cambiar tus respuestas."
+      "title": "¿Enviar datos de {{dayLabel}} (día {{currentDay}} de {{totalDays}})?",
+      "message": "No podrás cambiar tus respuestas del día {{dayLabel}}.",
+      "infoOnTemplate": "Para el día siguiente verás los datos ingresados hoy como plantilla para ayudarte a reportar más fácilmente. Adáptala según sea necesario.<br /><br /> Recuerda que puedes eliminar datos manteniendo presionado o pasando el cursor sobre la actividad en la línea de tiempo y presionando 'd' o DEL.",
+      "studyEnd": "Esta entrega concluye el estudio.",
+      "submitDay": "Enviar día {{dayLabel}}",
+      "submitDayAndFinish": "Enviar día {{dayLabel}} y finalizar estudio"
     },
     "confirmSkip": {
       "title": "¿Realmente quieres omitir todo el reporte de tiempo?",

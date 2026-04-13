@@ -76,8 +76,12 @@
       "titleFor": "Wybierz opcję dla \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "Wysłać ten dzień?",
-      "message": "Nie będziesz mógł zmienić swoich odpowiedzi dla tego dnia."
+      "title": "Wyślij dane za {{dayLabel}} (dzień {{currentDay}} z {{totalDays}})?",
+      "message": "Nie będziesz mógł zmienić swoich odpowiedzi dla dnia {{dayLabel}}.",
+      "infoOnTemplate": "Następnego dnia zobaczysz dane wprowadzone dzisiaj jako szablon ułatwiający raportowanie. Dostosuj je według potrzeb.<br /><br /> Pamiętaj, że możesz usunąć dane, przytrzymując lub najeżdżając na aktywność na osi czasu myszką i naciskając 'd' lub DEL.",
+      "studyEnd": "To przesłanie kończy badanie.",
+      "submitDay": "Wyślij dzień {{dayLabel}}",
+      "submitDayAndFinish": "Wyślij dzień {{dayLabel}} i zakończ badanie"
     },
     "confirmSkip": {
       "title": "Czy na pewno chcesz pominąć raportowanie czasu?",

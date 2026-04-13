@@ -76,8 +76,12 @@
       "titleFor": "Option für \"{activityName}\" auswählen"
     },
     "confirmSubmit": {
-      "title": "Diesen Tag absenden?",
-      "message": "Sie können Ihre Antworten für diesen Tag nicht mehr ändern."
+      "title": "Daten für {{dayLabel}} (Tag {{currentDay}} von {{totalDays}}) einreichen?",
+      "message": "Sie können Ihre Antworten für Tag {{dayLabel}} nicht mehr ändern.",
+      "infoOnTemplate": "Für den nächsten Tag werden die Daten, die Sie heute eingegeben haben, als Vorlage angezeigt. Bitte passen Sie sie nach Bedarf an.<br /><br /> Denken Sie daran, dass Sie Daten löschen können, indem Sie lange auf die Aktivität in der Zeitleiste drücken oder mit der Maus darüber fahren und 'd' oder ENTF drücken.",
+      "studyEnd": "Diese Einreichung schließt die Studie ab.",
+      "submitDay": "Tag {{dayLabel}} einreichen",
+      "submitDayAndFinish": "Tag {{dayLabel}} einreichen und Studie beenden"
     },
     "confirmSkip": {
       "title": "Möchten Sie die Zeiterfassung wirklich überspringen?",
@@ -86,7 +90,7 @@
     "loading": {
       "title": "Ihr Tagebuch wird übermittelt...",
       "message": "Bitte warten Sie, während Ihre Antworten gespeichert werden."
-    }
+    },
     "activityContext": {
       "showInfo": "Info anzeigen",
       "delete": "Löschen",

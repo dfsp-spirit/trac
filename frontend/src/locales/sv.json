@@ -76,8 +76,12 @@
       "titleFor": "Välj ett alternativ för \"{activityName}\""
     },
     "confirmSubmit": {
-      "title": "Skicka in den här dagen?",
-      "message": "Du kommer inte att kunna ändra dina svar för den här dagen."
+      "title": "Skicka in data för {{dayLabel}} (dag {{currentDay}} av {{totalDays}})?",
+      "message": "Du kommer inte att kunna ändra dina svar för dag {{dayLabel}}.",
+      "infoOnTemplate": "För nästa dag visas de data du angav idag som en mall för att hjälpa dig rapportera enklare. Anpassa dem efter behov.<br /><br /> Kom ihåg att du kan ta bort data genom att hålla ned eller hålla muspekaren över aktiviteten i tidslinjen och trycka på 'd' eller DEL.",
+      "studyEnd": "Den här inlämningen avslutar studien.",
+      "submitDay": "Skicka in dag {{dayLabel}}",
+      "submitDayAndFinish": "Skicka in dag {{dayLabel}} och avsluta studien"
     },
     "confirmSkip": {
       "title": "Vill du verkligen hoppa över all tidsrapportering?",
