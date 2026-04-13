@@ -2,6 +2,11 @@ TRAC MPIAE Changes
 ===================
 
 
+Current WIP
+-----------
+* FIX: fix missing i18n of the modal that shows up when clicking the Submit Day button
+
+
 Version 0.12.0 -- Study creation via API possible, UX improvements
 --------------------------------------------------------------------
 * NEW: improve frontend UX and design (uncovered timelines, clearer active timeline, ...)
