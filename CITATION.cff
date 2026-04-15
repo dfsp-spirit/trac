@@ -70,10 +70,20 @@ keywords:
 
 
 # References to software/libraries used by your tool
-references:
+
   - type: software
-    title: "wavesurfer.js"
-    url: "https://wavesurfer.xyz/"
-    repository-code: "https://github.com/katspaugh/wavesurfer.js"
-    license: "BSD-3-Clause"
-    notes: "Audio waveform visualization library for modern web browsers"
+    title: "O-TUD: A web-based tool for collecting daily activities in a timeline format"
+    authors:
+      - family-names: "Foldes"
+        given-names: "Andrei"
+    url: "https://andreifoldes.github.io/o-timeusediary/"
+    repository-code: "https://github.com/andreifoldes/o-timeusediary"
+    version: "Initial Release"
+    date-released: "2025-01-02"
+    license: "MIT"
+    notes: "Used as a dependency/foundation for the frontend of TRAC. O-TUD provides an interactive drag-and-drop timeline interface for time-use diary studies."
+    keywords:
+      - "time-use"
+      - "daily-activities"
+      - "research-tool"
+      - "timeline-interface"
