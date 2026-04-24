@@ -5,51 +5,70 @@ console.log('=== i18n Debug Test ===');
 
 // Check if i18n is available
 if (window.i18n) {
-    console.log('✓ i18n object is available');
-    console.log('Current language:', window.i18n.getCurrentLanguage());
-    console.log('Is ready:', window.i18n.isReady());
+  console.log('✓ i18n object is available');
+  console.log('Current language:', window.i18n.getCurrentLanguage());
+  console.log('Is ready:', window.i18n.isReady());
 
-    // Test some translations
-    console.log('Test translations:');
-    console.log('  instructions.title:', window.i18n.t('instructions.title'));
-    console.log('  buttons.submit:', window.i18n.t('buttons.submit'));
-    console.log('  buttons.undo:', window.i18n.t('buttons.undo'));
+  // Test some translations
+  console.log('Test translations:');
+  console.log('  instructions.title:', window.i18n.t('instructions.title'));
+  console.log('  buttons.submit:', window.i18n.t('buttons.submit'));
+  console.log('  buttons.undo:', window.i18n.t('buttons.undo'));
 
-    // Check what elements have data-i18n attributes
-    const i18nElements = document.querySelectorAll('[data-i18n]');
-    console.log(`Found ${i18nElements.length} elements with data-i18n attributes`);
+  // Check what elements have data-i18n attributes
+  const i18nElements = document.querySelectorAll('[data-i18n]');
+  console.log(
+    `Found ${i18nElements.length} elements with data-i18n attributes`
+  );
 
-    // Show first few elements and their current text
-    i18nElements.forEach((el, index) => {
-        if (index < 5) {
-            console.log(`  Element ${index + 1}: key="${el.getAttribute('data-i18n')}", text="${el.textContent}"`);
-        }
-    });
+  // Show first few elements and their current text
+  i18nElements.forEach((el, index) => {
+    if (index < 5) {
+      console.log(
+        `  Element ${index + 1}: key="${el.getAttribute('data-i18n')}", text="${
+          el.textContent
+        }"`
+      );
+    }
+  });
 
-    // Try applying translations manually
-    console.log('Attempting to apply translations...');
-    window.i18n.applyTranslations();
-    console.log('Translations applied');
-
+  // Try applying translations manually
+  console.log('Attempting to apply translations...');
+  window.i18n.applyTranslations();
+  console.log('Translations applied');
 } else {
-    console.log('✗ i18n object is not available');
-    console.log('Available globals:', Object.keys(window).filter(key => key.includes('i18n')));
+  console.log('✗ i18n object is not available');
+  console.log(
+    'Available globals:',
+    Object.keys(window).filter((key) => key.includes('i18n'))
+  );
 }
 
 // Check study-specific activities config language from studies_config.json
-const debugStudyName = new URLSearchParams(window.location.search).get('study_name') || window.TUD_SETTINGS?.DEFAULT_STUDY_NAME || 'default';
+const debugStudyName =
+  new URLSearchParams(window.location.search).get('study_name') ||
+  window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+  'default';
 fetch('./settings/studies_config.json')
-    .then(response => response.json())
-    .then(studiesConfig => {
-        const study = studiesConfig?.studies?.find(s => s.name_short === debugStudyName) || studiesConfig?.studies?.[0];
-        const activitiesFile = study?.activities_json_file || 'activities_default.json';
-        return fetch(`./settings/${activitiesFile}`).then(response => response.json());
-    })
-    .then(data => {
-        console.log('Study-specific activities language setting:', data.general?.language);
-    })
-    .catch(error => {
-        console.log('Error loading study-specific activities config:', error);
-    });
+  .then((response) => response.json())
+  .then((studiesConfig) => {
+    const study =
+      studiesConfig?.studies?.find((s) => s.name_short === debugStudyName) ||
+      studiesConfig?.studies?.[0];
+    const activitiesFile =
+      study?.activities_json_file || 'activities_default.json';
+    return fetch(`./settings/${activitiesFile}`).then((response) =>
+      response.json()
+    );
+  })
+  .then((data) => {
+    console.log(
+      'Study-specific activities language setting:',
+      data.general?.language
+    );
+  })
+  .catch((error) => {
+    console.log('Error loading study-specific activities config:', error);
+  });
 
 console.log('=== End Debug Test ===');

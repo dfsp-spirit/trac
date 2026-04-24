@@ -7,9 +7,9 @@ const autoScrollModule = (() => {
   // Configuration options
   let isEnabled = true; // Auto-scroll feature is enabled by default
   const config = {
-    threshold: 100,    // Threshold in pixels from top/bottom of viewport
-    scrollSpeed: 8,    // Pixels to scroll per tick
-    interval: 16       // How often to check for scrolling (16ms ≈ 60fps)
+    threshold: 100, // Threshold in pixels from top/bottom of viewport
+    scrollSpeed: 8, // Pixels to scroll per tick
+    interval: 16, // How often to check for scrolling (16ms ≈ 60fps)
   };
 
   let mouseMoveListener = null;
@@ -38,7 +38,7 @@ const autoScrollModule = (() => {
     const headerHeight = headerSection ? headerSection.offsetHeight : 0;
 
     // Retrieve footer element to prevent scrolling past it
-    const footer = document.querySelector("#instructionsFooter");
+    const footer = document.querySelector('#instructionsFooter');
     let footerLimit = Infinity;
     if (footer) {
       // Calculate the absolute top position of the footer
@@ -46,19 +46,21 @@ const autoScrollModule = (() => {
     }
 
     // Scroll Down Condition:
-    if (distanceToBottom < config.threshold && 
-        scrollTop < scrollHeight - viewportHeight && 
-        (scrollTop + config.scrollSpeed + viewportHeight) < footerLimit) {
+    if (
+      distanceToBottom < config.threshold &&
+      scrollTop < scrollHeight - viewportHeight &&
+      scrollTop + config.scrollSpeed + viewportHeight < footerLimit
+    ) {
       window.scrollBy({
         top: config.scrollSpeed,
-        behavior: 'auto'
+        behavior: 'auto',
       });
     }
     // Scroll Up Condition:
     else if (distanceToTop < config.threshold && scrollTop > headerHeight) {
       window.scrollBy({
         top: -config.scrollSpeed,
-        behavior: 'auto'
+        behavior: 'auto',
       });
     }
   }
@@ -85,15 +87,19 @@ const autoScrollModule = (() => {
   function enable() {
     if (!mouseMoveListener) {
       mouseMoveListener = onPointerMove;
-      document.addEventListener('mousemove', mouseMoveListener, { passive: true });
-      document.addEventListener('touchmove', mouseMoveListener, { passive: true });
+      document.addEventListener('mousemove', mouseMoveListener, {
+        passive: true,
+      });
+      document.addEventListener('touchmove', mouseMoveListener, {
+        passive: true,
+      });
     }
-    
+
     // Start the scroll interval if not already running
     if (!scrollInterval) {
       scrollInterval = setInterval(performScroll, config.interval);
     }
-    
+
     isEnabled = true;
   }
 
@@ -104,16 +110,16 @@ const autoScrollModule = (() => {
       document.removeEventListener('touchmove', mouseMoveListener);
       mouseMoveListener = null;
     }
-    
+
     // Clear the scroll interval
     if (scrollInterval) {
       clearInterval(scrollInterval);
       scrollInterval = null;
     }
-    
+
     // Reset pointer position
     lastPointerY = null;
-    
+
     isEnabled = false;
   }
 
@@ -121,7 +127,7 @@ const autoScrollModule = (() => {
   return {
     enable,
     disable,
-    config
+    config,
   };
 })();
 
@@ -131,4 +137,4 @@ window.autoScrollModule = autoScrollModule;
 // Enable auto-scroll by default
 autoScrollModule.enable();
 
-export default autoScrollModule; 
+export default autoScrollModule;

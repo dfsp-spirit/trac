@@ -8,4 +8,3 @@ export const TIMELINE_HOURS = 24;
 // Debug mode
 export const DEBUG_MODE = true;
 export const TUD_FRONTEND_VERSION = '0.13.1';
-
