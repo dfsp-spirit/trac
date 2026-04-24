@@ -50,7 +50,9 @@ def generate_docs(output_dir: Path) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate static API docs files for a release.")
+    parser = argparse.ArgumentParser(
+        description="Generate static API docs files for a release."
+    )
     parser.add_argument(
         "--output-dir",
         default="release-api-docs",
