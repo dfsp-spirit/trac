@@ -355,9 +355,11 @@ The E2E test command uses the `e2e` service in `docker-compose.dev.yml`, which i
 
 ## Author, License and Citing
 
-TRAC was written by Tim Schäfer at the [Department of Cognitive Neuropsychology, Max-Planck Institute for Empirical Aesthetics, Frankfurt am Main, Germany](https://www.aesthetics.mpg.de/en/research/department-of-cognitive-neuropsychology.html).
+TRAC was written by Tim Schäfer as part of employment at the [Department of Cognitive Neuropsychology, Max-Planck Institute for Empirical Aesthetics, Frankfurt am Main, Germany](https://www.aesthetics.mpg.de/en/research/department-of-cognitive-neuropsychology.html).
 
-The frontend is based on [o-timeusediary by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary).
+Copyright 2025-2026 Max-Planck Institute for Empirical Aesthetics.
+
+The frontend is based on [o-timeusediary (O-TUD) by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary).
 
 Both O-TUD and TRAC are published under the very permissive [MIT License](./LICENSE).
 
