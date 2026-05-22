@@ -40,6 +40,15 @@
     "customActivityHelp": "Activité non listée ? Ajoutez une activité personnalisée",
     "customActivityName": "Autre non listé (entrer)"
   },
+  "consent": {
+    "pageTitle": "Consentement | Journal d'utilisation du temps",
+    "title": "Consentement",
+    "eyebrow": "Consentement à l'étude",
+    "subtitle": "Veuillez lire les informations de consentement ci-dessous avant de commencer l'étude.",
+    "saving": "Enregistrement du consentement...",
+    "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
+    "loadError": "Impossible de charger les informations de consentement."
+  },
   "common": {
     "language": "Language",
     "chooseLanguage": "Choose language",
@@ -54,6 +63,8 @@
     "skipReporting": "Ignorer le rapport de temps",
     "back": "Retour",
     "backToInstructions": "Retour aux Instructions",
+    "giveConsent": "Je consens et je continue",
+    "declineConsent": "Je refuse de consentir",
     "ok": "OK",
     "cancel": "Annuler",
     "save": "Sauvegarder",

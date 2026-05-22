@@ -40,6 +40,15 @@
     "customActivityHelp": "¿Actividad no listada? Añade una actividad personalizada",
     "customActivityName": "Otra no listada (ingresar)"
   },
+  "consent": {
+    "pageTitle": "Consentimiento | Diario de uso del tiempo",
+    "title": "Consentimiento",
+    "eyebrow": "Consentimiento del estudio",
+    "subtitle": "Lea la información de consentimiento a continuación antes de comenzar el estudio.",
+    "saving": "Guardando consentimiento...",
+    "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
+    "loadError": "No se pudo cargar la información de consentimiento."
+  },
   "common": {
     "language": "Language",
     "chooseLanguage": "Choose language",
@@ -54,6 +63,8 @@
     "skipReporting": "Omitir reporte de tiempo",
     "back": "Atrás",
     "backToInstructions": "Volver a Instrucciones",
+    "giveConsent": "Doy mi consentimiento y continúo",
+    "declineConsent": "No doy mi consentimiento",
     "ok": "OK",
     "cancel": "Cancelar",
     "save": "Guardar",

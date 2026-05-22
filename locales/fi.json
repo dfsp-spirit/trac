@@ -40,6 +40,15 @@
     "customActivityHelp": "Eikö toimintoa ole listalla? Lisää oma toiminto",
     "customActivityName": "Muu (kirjoita)"
   },
+  "consent": {
+    "pageTitle": "Suostumus | Ajankäyttöpäiväkirja",
+    "title": "Suostumus",
+    "eyebrow": "Tutkimuksen suostumus",
+    "subtitle": "Lue alla olevat suostumustiedot ennen kuin aloitat tutkimuksen.",
+    "saving": "Tallennetaan suostumusta...",
+    "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
+    "loadError": "Suostumustietojen lataaminen epäonnistui."
+  },
   "common": {
     "language": "Kieli",
     "chooseLanguage": "Valitse kieli",
@@ -54,6 +63,8 @@
     "skipReporting": "Ohita ajankäytön raportointi",
     "back": "Takaisin",
     "backToInstructions": "Takaisin ohjeisiin",
+    "giveConsent": "Annan suostumukseni ja jatkan",
+    "declineConsent": "En anna suostumustani",
     "ok": "OK",
     "cancel": "Peruuta",
     "save": "Tallenna",

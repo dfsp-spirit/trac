@@ -40,6 +40,15 @@
     "customActivityHelp": "Brak aktywności na liście? Dodaj własną aktywność",
     "customActivityName": "Inne (wpisz)"
   },
+  "consent": {
+    "pageTitle": "Zgoda | Dziennik użycia czasu",
+    "title": "Zgoda",
+    "eyebrow": "Zgoda na udział w badaniu",
+    "subtitle": "Przeczytaj poniższe informacje o zgodzie, zanim rozpoczniesz badanie.",
+    "saving": "Zapisywanie zgody...",
+    "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
+    "loadError": "Nie udało się wczytać informacji o zgodzie."
+  },
   "common": {
     "language": "Język",
     "chooseLanguage": "Wybierz język",
@@ -54,6 +63,8 @@
     "skipReporting": "Pomiń raportowanie czasu",
     "back": "Wstecz",
     "backToInstructions": "Wróć do instrukcji",
+    "giveConsent": "Wyrażam zgodę i kontynuuję",
+    "declineConsent": "Nie wyrażam zgody",
     "ok": "OK",
     "cancel": "Anuluj",
     "save": "Zapisz",

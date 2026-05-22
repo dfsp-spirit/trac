@@ -40,6 +40,15 @@
     "customActivityHelp": "Activity not listed? Add a custom activity",
     "customActivityName": "Other not listed (enter)"
   },
+  "consent": {
+    "pageTitle": "Consent | Time Use Diary",
+    "title": "Consent",
+    "eyebrow": "Study consent",
+    "subtitle": "Please read the consent information below before starting the study.",
+    "saving": "Saving consent...",
+    "saveError": "Could not save consent. Please try again.",
+    "loadError": "Could not load the consent information."
+  },
   "common": {
     "language": "Language",
     "chooseLanguage": "Choose language",
@@ -54,6 +63,8 @@
     "skipReporting": "Skip time reporting",
     "back": "Back",
     "backToInstructions": "Back to Instructions",
+    "giveConsent": "Give consent and continue",
+    "declineConsent": "Decline consent",
     "ok": "OK",
     "cancel": "Cancel",
     "save": "Save",

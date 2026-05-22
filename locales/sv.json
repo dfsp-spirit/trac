@@ -40,6 +40,15 @@
     "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet",
     "customActivityName": "Annat som inte finns med (ange)"
   },
+  "consent": {
+    "pageTitle": "Samtycke | Tidsdagbok",
+    "title": "Samtycke",
+    "eyebrow": "Samtycke till studien",
+    "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
+    "saving": "Sparar samtycke...",
+    "saveError": "Kunde inte spara samtycket. Försök igen.",
+    "loadError": "Kunde inte läsa in samtyckesinformationen."
+  },
   "common": {
     "language": "Språk",
     "chooseLanguage": "Välj språk",
@@ -54,6 +63,8 @@
     "skipReporting": "Hoppa över tidsrapportering",
     "back": "Tillbaka",
     "backToInstructions": "Tillbaka till instruktioner",
+    "giveConsent": "Jag samtycker och fortsätter",
+    "declineConsent": "Jag samtycker inte",
     "ok": "OK",
     "cancel": "Avbryt",
     "save": "Spara",

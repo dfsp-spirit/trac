@@ -202,7 +202,9 @@
             const completionStatus = urlParams.get('completion_status') || 'completed';
             const selectedField = completionStatus === 'skipped'
                 ? 'study_text_end_skipped'
-                : 'study_text_end_completed';
+                : completionStatus === 'noconsent'
+                    ? 'study_text_end_noconsent'
+                    : 'study_text_end_completed';
 
             const customText = studyConfig?.[selectedField];
             if (typeof customText === 'string' && customText.trim() !== '') {
@@ -235,6 +237,11 @@
         function applyReturnUrlLink() {
             const customEndElement = document.getElementById('study-custom-message-end');
             if (!customEndElement) {
+                return;
+            }
+
+            const urlParams = new URLSearchParams(window.location.search);
+            if ((urlParams.get('completion_status') || 'completed') === 'noconsent') {
                 return;
             }
 

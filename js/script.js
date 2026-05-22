@@ -4904,6 +4904,12 @@ function isInstructionsPagePath(pathname = window.location.pathname) {
   );
 }
 
+function isConsentPagePath(pathname = window.location.pathname) {
+  return (
+    pathname.includes('/consent/') || /\/pages\/consent(?:\.html)?$/.test(pathname)
+  );
+}
+
 function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
   if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
     return;
@@ -5283,6 +5289,34 @@ async function init() {
     await i18n.init(language);
     i18n.applyTranslations();
     renderPreviousDaysSwitchRow();
+
+    const studyConsentRequired = currentStudy?.require_consent === true;
+    const consentGiven = currentStudy?.consent_given;
+
+    if (
+      studyConsentRequired &&
+      consentGiven === false &&
+      !isConsentPagePath()
+    ) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectUrl = new URL('pages/thank-you.html', window.location.href);
+      currentParams.set('completion_status', 'noconsent');
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
+
+    if (studyConsentRequired && consentGiven !== true && !isConsentPagePath()) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectUrl = new URL('pages/consent.html', window.location.href);
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
 
     if (footerStatus) {
       if (configLoadBackendSuccess) {

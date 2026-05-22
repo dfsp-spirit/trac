@@ -46,6 +46,11 @@ function getLangFromUrl() {
   return urlParams.get('lang');
 }
 
+function getParticipantIdFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('pid');
+}
+
 function normalizeLanguageCode(language) {
   if (typeof language !== 'string') {
     return null;
@@ -238,6 +243,16 @@ async function loadStudiesConfigFromFile() {
       selectedLanguage,
       CURRENT_STUDY_CACHE.default_language || 'en'
     );
+    CURRENT_STUDY_CACHE.study_text_end_noconsent = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_end_noconsent,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_consent = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_consent,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
 
     console.log(
       `Loaded study from file: ${CURRENT_STUDY_CACHE.name} with ${CURRENT_STUDY_CACHE.day_labels.length} days`
@@ -256,6 +271,7 @@ async function loadStudiesConfigFromFile() {
       day_labels: ['default'],
       study_participant_ids: [],
       allow_unlisted_participants: true,
+      require_consent: false,
       activities_json_files: { en: 'activities_default.json' },
       supported_languages: ['en'],
       selected_language: 'en',
@@ -270,10 +286,14 @@ async function loadStudiesConfigFromFile() {
 async function syncWithBackendConfig() {
   try {
     const studyName = TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    const participantId = getParticipantIdFromUrl();
     const apiUrl = new URL(
       `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`,
       window.location.origin
     );
+    if (participantId) {
+      apiUrl.searchParams.set('participant_id', participantId);
+    }
     const selectedLanguage = getPreferredLanguage(
       CURRENT_STUDY_CACHE?.supported_languages || [],
       CURRENT_STUDY_CACHE?.default_language || 'en'
@@ -431,6 +451,39 @@ async function syncWithBackendConfig() {
       );
       if (resolvedSkipped && !CURRENT_STUDY_CACHE.study_text_end_skipped) {
         CURRENT_STUDY_CACHE.study_text_end_skipped = resolvedSkipped;
+      }
+
+      const resolvedNoConsent = resolveLocalizedStudyText(
+        backendConfig.study_text_end_noconsent,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (
+        resolvedNoConsent &&
+        !CURRENT_STUDY_CACHE.study_text_end_noconsent
+      ) {
+        CURRENT_STUDY_CACHE.study_text_end_noconsent = resolvedNoConsent;
+      }
+
+      const resolvedConsent = resolveLocalizedStudyText(
+        backendConfig.study_text_consent,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedConsent && !CURRENT_STUDY_CACHE.study_text_consent) {
+        CURRENT_STUDY_CACHE.study_text_consent = resolvedConsent;
+      }
+
+      if (backendConfig.require_consent !== undefined) {
+        CURRENT_STUDY_CACHE.require_consent = backendConfig.require_consent;
+      }
+
+      if (backendConfig.consent_given !== undefined) {
+        CURRENT_STUDY_CACHE.consent_given = backendConfig.consent_given;
+      }
+      if (backendConfig.consent_decided_at !== undefined) {
+        CURRENT_STUDY_CACHE.consent_decided_at =
+          backendConfig.consent_decided_at;
       }
 
       if (backendConfig.study_days_count) {

@@ -40,6 +40,15 @@
     "customActivityHelp": "Aktivität nicht aufgeführt? Eigene Aktivität hinzufügen",
     "customActivityName": "Sonstiges (eingeben)"
   },
+  "consent": {
+    "pageTitle": "Einwilligung | Zeitnutzungstagebuch",
+    "title": "Einwilligung",
+    "eyebrow": "Studieneinwilligung",
+    "subtitle": "Bitte lesen Sie die Einwilligungsinformationen unten, bevor Sie mit der Studie beginnen.",
+    "saving": "Einwilligung wird gespeichert...",
+    "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+    "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden."
+  },
   "common": {
     "language": "Sprache",
     "chooseLanguage": "Sprache wählen",
@@ -54,6 +63,8 @@
     "skipReporting": "Zeiterfassung überspringen",
     "back": "Zurück",
     "backToInstructions": "Zurück zur Anleitung",
+    "giveConsent": "Einwilligen und fortfahren",
+    "declineConsent": "Einwilligung ablehnen",
     "ok": "OK",
     "cancel": "Abbrechen",
     "save": "Speichern",
