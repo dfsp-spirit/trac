@@ -1,6 +1,7 @@
 import { getIsMobile, updateIsMobile } from '../js/globals.js';
 import i18n from '../js/i18n.js';
 import { loadActivitiesConfig } from '../js/activities_config.js';
+import { renderMarkdown } from '../js/markdown.js';
 
 function getUrlParams() {
   return new URLSearchParams(window.location.search);
@@ -196,7 +197,7 @@ function applyStudyIntroText(studyConfig) {
   );
 
   if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
-    introElement.innerHTML = resolvedText;
+    introElement.innerHTML = renderMarkdown(resolvedText);
     introElement.removeAttribute('data-i18n-html');
   }
 }

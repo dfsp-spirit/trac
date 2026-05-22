@@ -164,6 +164,7 @@
     <script src="../settings/tud_settings.js"></script>
     <script type="module">
         import i18n from '../js/i18n.js';
+        import { renderMarkdown } from '../js/markdown.js';
 
         async function loadStudyConfig(language) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -250,15 +251,15 @@
                 return;
             }
 
-            const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
-            customEndElement.innerHTML = '';
+                const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
+                const linkParagraph = document.createElement('p');
 
-            const link = document.createElement('a');
-            link.href = safeReturnUrl;
-            link.className = 'continue-link';
-            link.textContent = linkText;
-
-            customEndElement.appendChild(link);
+                const link = document.createElement('a');
+                link.href = safeReturnUrl;
+                link.className = 'continue-link';
+                link.textContent = linkText;
+                linkParagraph.appendChild(link);
+                customEndElement.appendChild(linkParagraph);
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
