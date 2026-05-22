@@ -587,6 +587,7 @@
                 <p>{{ study_data.study.description }}</p>
                 <div class="study-meta">
                     <div><strong>ID:</strong> {{ study_data.study.id }}</div>
+                    <div><strong>Requires consent:</strong> {{ "Yes" if study_data.require_consent else "No" }}</div>
                     <div><strong>Participants:</strong> {{ study_data.participant_count }}</div>
                     <div><strong>Activities logged:</strong> {{ study_data.total_activities_logged }}</div>
                     <div><strong>Currently Collecting Data:</strong> {{ "Yes" if study_data.is_actively_collecting else "No" }}</div>

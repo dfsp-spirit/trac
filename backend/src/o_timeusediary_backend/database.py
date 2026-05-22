@@ -482,6 +482,7 @@ def create_config_file_studies_in_database(config_path: str):
                     name_short=study_config.name_short,
                     description=study_config.description,
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
+                    require_consent=study_config.require_consent,
                     default_language=study_config.default_language,
                     activities_json_url=default_activities_url,
                     data_collection_start=study_config.data_collection_start,

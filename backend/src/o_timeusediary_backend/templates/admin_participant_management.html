@@ -325,12 +325,19 @@
         {% if selected_study %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Participants in "{{ selected_study.name_short }}" ({{ current_participants|length }})</h2>
+            {% if selected_study_requires_consent %}
+            <div class="hint" style="margin-bottom: 0.75rem;">This study requires consent. Consent status is shown below.</div>
+            {% endif %}
             {% if current_participants %}
             <table>
                 <thead>
                     <tr>
                         <th>Participant ID</th>
                         <th>Created</th>
+                        {% if selected_study_requires_consent %}
+                        <th>Consent</th>
+                        <th>Consent Decided At</th>
+                        {% endif %}
                         <th>Activity Count</th>
                         <th>Action</th>
                     </tr>
@@ -340,6 +347,18 @@
                     <tr>
                         <td><code>{{ participant.id }}</code></td>
                         <td>{{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else '-' }}</td>
+                        {% if selected_study_requires_consent %}
+                        <td>
+                            {% if participant.consent_given is none %}
+                                Not decided
+                            {% elif participant.consent_given %}
+                                Given
+                            {% else %}
+                                Denied
+                            {% endif %}
+                        </td>
+                        <td>{{ participant.consent_decided_at.strftime('%Y-%m-%d %H:%M') if participant.consent_decided_at else '-' }}</td>
+                        {% endif %}
                         <td>{{ participant.activity_count }}</td>
                         <td>
                             <button type="button" class="btn-danger" onclick="removeParticipant('{{ participant.id }}')">Remove</button>

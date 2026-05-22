@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { enterStudyIfNeeded } = require('./e2e_helpers.js');
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
@@ -243,8 +244,7 @@ test('resize activities across timelines keeps minute/time-format integrity and 
     waitUntil: 'domcontentloaded',
   });
 
-  await expect(page).toHaveURL(/pages\/instructions\.html/);
-  await page.locator('#continueBtn').click();
+  await enterStudyIfNeeded(page);
   await expect(page).toHaveURL(/index\.html/);
   await expect(page.locator('#currentDayDisplay')).toHaveAttribute(
     'title',

@@ -30,6 +30,7 @@ class Study(SQLModel, table=True):
     name_short: str = Field(index=True, unique=True)
     description: str
     allow_unlisted_participants: bool = Field(default=True)
+    require_consent: bool = Field(default=False)
     default_language: str = Field(default="en")
     activities_json_url: str
     data_collection_start: datetime = Field(

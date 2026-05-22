@@ -914,6 +914,8 @@ async def admin_overview(
                         "id": participant.id,
                         "created_at": participant.created_at,
                         "joined_study_at": sp.created_at,
+                        "consent_given": sp.consent_given,
+                        "consent_decided_at": sp.consent_decided_at,
                         "activity_count": participant_activity_count,
                     }
                 )
@@ -1040,6 +1042,7 @@ async def admin_overview(
         studies_data.append(
             {
                 "study": study,
+                "require_consent": bool(getattr(cfg_study, "require_consent", False)),
                 "day_labels": day_labels,
                 "is_actively_collecting": study_is_currently_collecting,
                 "timelines": timelines,
@@ -1443,6 +1446,7 @@ def _create_study_from_import_payload(
         name_short=study_payload.name_short,
         description=study_payload.description or "",
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
+        require_consent=study_payload.require_consent,
         default_language=default_language,
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
@@ -2113,6 +2117,7 @@ async def admin_participant_management(
         )
     selected_study = None
     current_participants = []
+    selected_study_requires_consent = False
 
     if study_name_short:
         selected_study = session.exec(
@@ -2123,6 +2128,8 @@ async def admin_participant_management(
             raise HTTPException(
                 status_code=404, detail=f"Study '{study_name_short}' not found"
             )
+
+        selected_study_requires_consent = bool(selected_study.require_consent)
 
         study_participants = session.exec(
             select(StudyParticipant)
@@ -2150,6 +2157,8 @@ async def admin_participant_management(
                     "id": participant.id,
                     "created_at": participant.created_at,
                     "assigned_at": association.created_at,
+                    "consent_given": association.consent_given,
+                    "consent_decided_at": association.consent_decided_at,
                     "activity_count": participant_activity_count,
                 }
             )
@@ -2161,6 +2170,7 @@ async def admin_participant_management(
         "current_admin": current_admin,
         "studies": studies_for_dropdown,
         "selected_study": selected_study,
+        "selected_study_requires_consent": selected_study_requires_consent,
         "current_participants": current_participants,
         "current_time": utc_now(),
     }
@@ -3324,7 +3334,7 @@ def get_study_config(
         if cfg_study
         else None
     )
-    require_consent = bool(getattr(cfg_study, "require_consent", False))
+    require_consent = bool(study.require_consent)
 
     consent_given = None
     consent_decided_at = None
