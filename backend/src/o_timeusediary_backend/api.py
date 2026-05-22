@@ -2453,6 +2453,16 @@ async def export_study_activities(
             detail=f"No activities found for study '{study_name_short}'",
         )
 
+    consent_by_participant: Dict[str, StudyParticipant] = {}
+    if study.require_consent:
+        study_participants = session.exec(
+            select(StudyParticipant).where(StudyParticipant.study_id == study.id)
+        ).all()
+        consent_by_participant = {
+            study_participant.participant_id: study_participant
+            for study_participant in study_participants
+        }
+
     # Prepare the data with dereferenced fields
     export_data = []
     for activity, participant, day_label, timeline in activities:
@@ -2487,6 +2497,23 @@ async def export_study_activities(
             "study_name_short": study.name_short,
             "study_id": study.id,
         }
+
+        if study.require_consent:
+            study_participant = consent_by_participant.get(participant.id)
+            consent_decided_at = (
+                study_participant.consent_decided_at.isoformat()
+                if study_participant and study_participant.consent_decided_at
+                else None
+            )
+            record.update(
+                {
+                    "study_requires_consent": True,
+                    "participant_consent_given": (
+                        study_participant.consent_given if study_participant else None
+                    ),
+                    "participant_consent_decided_at": consent_decided_at,
+                }
+            )
 
         # Add parent activity info if available
         if activity.parent_activity_code:

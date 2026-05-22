@@ -1,5 +1,7 @@
+import csv
 import os
 import uuid
+from io import StringIO
 
 import httpx
 import pytest
@@ -223,6 +225,30 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         export_data = export_response.json()
         for key in ["metadata", "data"]:
             assert key in export_data
+
+        assert export_data["data"]
+        first_export_record = export_data["data"][0]
+        for key in [
+            "study_requires_consent",
+            "participant_consent_given",
+            "participant_consent_decided_at",
+        ]:
+            assert key in first_export_record
+
+        export_csv_response = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "csv"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert export_csv_response.status_code == 200
+        csv_rows = list(csv.DictReader(StringIO(export_csv_response.text)))
+        assert csv_rows
+        for key in [
+            "study_requires_consent",
+            "participant_consent_given",
+            "participant_consent_decided_at",
+        ]:
+            assert key in csv_rows[0]
 
         runtime_config_export_response = await client.get(
             f"{BASE_URL}/api/admin/export/studies-runtime-config",
