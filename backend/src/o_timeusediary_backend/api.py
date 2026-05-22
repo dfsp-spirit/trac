@@ -83,6 +83,22 @@ def _normalize_language_code(language: Optional[str]) -> Optional[str]:
     return primary_subtag or None
 
 
+def _get_localized_study_text(
+    study: Study, field_name: str, language: Optional[str] = None
+) -> Optional[str]:
+    target_language = language or study.default_language
+    text_map = getattr(study, field_name, None)
+
+    if not isinstance(text_map, dict) or not text_map:
+        return None
+
+    return (
+        text_map.get(target_language)
+        or text_map.get(study.default_language)
+        or text_map.get("en")
+    )
+
+
 # Initialize templates with absolute path
 current_dir = Path(__file__).parent
 templates = Jinja2Templates(directory=str(current_dir / "templates"))
@@ -1448,6 +1464,11 @@ def _create_study_from_import_payload(
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         require_consent=study_payload.require_consent,
         default_language=default_language,
+        study_text_intro=study_payload.study_text_intro,
+        study_text_end_completed=study_payload.study_text_end_completed,
+        study_text_end_skipped=study_payload.study_text_end_skipped,
+        study_text_end_noconsent=study_payload.study_text_end_noconsent,
+        study_text_consent=study_payload.study_text_consent,
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
@@ -1968,11 +1989,6 @@ async def export_runtime_studies_config(
         if cfg_study:
             activities_json_files = cfg_study.get_supported_activities_json_files()
             supported_languages = cfg_study.get_supported_languages()
-            study_text_intro = cfg_study.study_text_intro
-            study_text_end_completed = cfg_study.study_text_end_completed
-            study_text_end_skipped = cfg_study.study_text_end_skipped
-            study_text_end_noconsent = cfg_study.study_text_end_noconsent
-            study_text_consent = cfg_study.study_text_consent
             if not activities_json_files and blob_by_lang:
                 activities_json_files = {
                     language: f"db_blob://{study.name_short}/{language}"
@@ -1991,11 +2007,6 @@ async def export_runtime_studies_config(
                     study.default_language: study.activities_json_url
                 }
                 supported_languages = [study.default_language]
-            study_text_intro = None
-            study_text_end_completed = None
-            study_text_end_skipped = None
-            study_text_end_noconsent = None
-            study_text_consent = None
 
         activity_configs_for_study: Dict = {}
         for lang, activity_file_path in activities_json_files.items():
@@ -2027,11 +2038,11 @@ async def export_runtime_studies_config(
                 "supported_languages": supported_languages,
                 "activities_json_files": activities_json_files,
                 "activities_json_data": activity_configs_for_study,
-                "study_text_intro": study_text_intro,
-                "study_text_end_completed": study_text_end_completed,
-                "study_text_end_skipped": study_text_end_skipped,
-                "study_text_end_noconsent": study_text_end_noconsent,
-                "study_text_consent": study_text_consent,
+                "study_text_intro": study.study_text_intro,
+                "study_text_end_completed": study.study_text_end_completed,
+                "study_text_end_skipped": study.study_text_end_skipped,
+                "study_text_end_noconsent": study.study_text_end_noconsent,
+                "study_text_consent": study.study_text_consent,
                 "data_collection_start": study.data_collection_start,
                 "data_collection_end": study.data_collection_end,
                 "activities_logged_by_userid": logged_activities,
@@ -3264,8 +3275,20 @@ def get_study_config(
             _normalize_language_code(language) or language
             for language in cfg_study.get_supported_languages()
         ]
-        if selected_language not in supported_languages:
-            selected_language = study.default_language
+    else:
+        blob_languages = session.exec(
+            select(StudyActivityConfigBlob.language)
+            .where(StudyActivityConfigBlob.study_id == study.id)
+            .order_by(StudyActivityConfigBlob.language)
+        ).all()
+        if blob_languages:
+            supported_languages = [
+                _normalize_language_code(language) or language
+                for language in blob_languages
+            ]
+
+    if selected_language not in supported_languages:
+        selected_language = study.default_language
 
     logger.info(
         "[TRAC day-label-debug] study-config language resolution: requested_lang='%s' normalized_lang='%s' selected_language='%s' supported_languages=%s",
@@ -3316,30 +3339,20 @@ def get_study_config(
             )
         )
 
-    study_text_intro = (
-        cfg_study.get_study_text("study_text_intro", selected_language)
-        if cfg_study
-        else None
+    study_text_intro = _get_localized_study_text(
+        study, "study_text_intro", selected_language
     )
-    study_text_end_completed = (
-        cfg_study.get_study_text("study_text_end_completed", selected_language)
-        if cfg_study
-        else None
+    study_text_end_completed = _get_localized_study_text(
+        study, "study_text_end_completed", selected_language
     )
-    study_text_end_skipped = (
-        cfg_study.get_study_text("study_text_end_skipped", selected_language)
-        if cfg_study
-        else None
+    study_text_end_skipped = _get_localized_study_text(
+        study, "study_text_end_skipped", selected_language
     )
-    study_text_end_noconsent = (
-        cfg_study.get_study_text("study_text_end_noconsent", selected_language)
-        if cfg_study
-        else None
+    study_text_end_noconsent = _get_localized_study_text(
+        study, "study_text_end_noconsent", selected_language
     )
-    study_text_consent = (
-        cfg_study.get_study_text("study_text_consent", selected_language)
-        if cfg_study
-        else None
+    study_text_consent = _get_localized_study_text(
+        study, "study_text_consent", selected_language
     )
     require_consent = bool(study.require_consent)
 

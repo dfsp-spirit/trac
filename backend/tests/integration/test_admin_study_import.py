@@ -80,6 +80,15 @@ async def test_admin_import_study_config_with_embedded_activities_data():
         assert import_data["summary"]["created"] == 1
         assert import_data["summary"]["failed"] == 0
 
+        study_config_response = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config"
+        )
+        assert study_config_response.status_code == 200
+        study_config_data = study_config_response.json()
+        assert study_config_data["study_text_intro"] == "Intro"
+        assert study_config_data["study_text_end_completed"] == "Done"
+        assert study_config_data["study_text_end_skipped"] == "Skipped"
+
         # Small retry loop for environments where API and DB commits are slightly delayed.
         activities_config_response = None
         for _ in range(5):
@@ -385,9 +394,19 @@ async def test_admin_export_require_consent_roundtrip():
         exported_study = export_data["studies_config"]["studies"][0]
 
         assert exported_study["require_consent"] is True
-        # study_text_consent and study_text_end_noconsent are not stored in the DB;
-        # they are read from studies_config.json. For a freshly imported study that
-        # has no entry in the config file, they will be None in the export.
-        assert "study_text_consent" in exported_study
-        assert "study_text_end_noconsent" in exported_study
+        assert exported_study["study_text_consent"] == {
+            "en": "Please consent to participate."
+        }
+        assert exported_study["study_text_end_noconsent"] == {
+            "en": "You did not consent."
+        }
+
+        study_config_response = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config"
+        )
+        assert study_config_response.status_code == 200
+        study_config_data = study_config_response.json()
+        assert study_config_data["require_consent"] is True
+        assert study_config_data["study_text_consent"] == "Please consent to participate."
+        assert study_config_data["study_text_end_noconsent"] == "You did not consent."
 

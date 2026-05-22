@@ -26,10 +26,55 @@ from pathlib import Path
 import json
 import hashlib
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import inspect, text
 
 logger = logging.getLogger(__name__)
 
 engine = create_engine(settings.database_url)
+
+
+_STUDY_TEXT_FIELDS = (
+    "study_text_intro",
+    "study_text_end_completed",
+    "study_text_end_skipped",
+    "study_text_end_noconsent",
+    "study_text_consent",
+)
+
+
+def _ensure_study_text_columns() -> None:
+    inspector = inspect(engine)
+    if "studies" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("studies")}
+    missing_columns = [
+        column_name
+        for column_name in _STUDY_TEXT_FIELDS
+        if column_name not in existing_columns
+    ]
+    if not missing_columns:
+        return
+
+    with engine.begin() as connection:
+        for column_name in missing_columns:
+            connection.execute(
+                text(f"ALTER TABLE studies ADD COLUMN {column_name} JSON")
+            )
+            logger.info("Added missing studies.%s column", column_name)
+
+
+def _hydrate_study_texts_from_config(session: Session, study: Study, study_config) -> bool:
+    updated = False
+
+    for field_name in _STUDY_TEXT_FIELDS:
+        if getattr(study, field_name) is None:
+            config_value = getattr(study_config, field_name, None)
+            if config_value is not None:
+                setattr(study, field_name, config_value)
+                updated = True
+
+    return updated
 
 
 def _resolve_relative_to_studies_config(file_path: str) -> Path:
@@ -228,6 +273,7 @@ def create_db_and_tables(do_report_contents: bool = False):
             )
         else:
             raise
+    _ensure_study_text_columns()
     create_config_file_studies_in_database(settings.studies_config_path)
     if do_report_contents:
         report_on_db_contents()
@@ -359,6 +405,9 @@ def create_config_file_studies_in_database(config_path: str):
                 ).first()
 
                 if existing_study:
+                    study_updated = _hydrate_study_texts_from_config(
+                        session, existing_study, study_config
+                    )
                     _ensure_activity_blobs_from_config(
                         session, existing_study, study_config
                     )
@@ -373,6 +422,11 @@ def create_config_file_studies_in_database(config_path: str):
                             study=existing_study,
                             activities_by_language=activities_cfg_by_language,
                             default_language=study_config.default_language,
+                        )
+                    if study_updated:
+                        logger.info(
+                            "Hydrated DB-backed study texts for existing study '%s' from config",
+                            study_config.name_short,
                         )
                     session.commit()
                     logger.info(
@@ -484,6 +538,11 @@ def create_config_file_studies_in_database(config_path: str):
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
                     require_consent=study_config.require_consent,
                     default_language=study_config.default_language,
+                    study_text_intro=study_config.study_text_intro,
+                    study_text_end_completed=study_config.study_text_end_completed,
+                    study_text_end_skipped=study_config.study_text_end_skipped,
+                    study_text_end_noconsent=study_config.study_text_end_noconsent,
+                    study_text_consent=study_config.study_text_consent,
                     activities_json_url=default_activities_url,
                     data_collection_start=study_config.data_collection_start,
                     data_collection_end=study_config.data_collection_end,

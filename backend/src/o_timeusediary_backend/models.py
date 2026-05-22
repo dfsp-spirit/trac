@@ -32,6 +32,21 @@ class Study(SQLModel, table=True):
     allow_unlisted_participants: bool = Field(default=True)
     require_consent: bool = Field(default=False)
     default_language: str = Field(default="en")
+    study_text_intro: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    study_text_end_completed: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    study_text_end_skipped: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    study_text_end_noconsent: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    study_text_consent: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
     activities_json_url: str
     data_collection_start: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
