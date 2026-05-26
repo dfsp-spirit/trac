@@ -20,7 +20,11 @@ from .parsers.activities_config import (
     ActivitiesConfig,
     get_all_activity_codes,
 )
-from .parsers.studies_config import CfgFileExternalTask, get_cfg_study_by_name_short
+from .parsers.studies_config import (
+    CfgFileExternalTask,
+    get_cfg_study_by_name_short,
+    validate_external_tasks_for_study,
+)
 import secrets
 from .logging_config import setup_logging, get_admin_audit_logger
 
@@ -1342,6 +1346,13 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     default_language = _normalize_language_code(study_payload.default_language)
     if default_language not in supported_languages:
         raise ValueError("default_language must be included in supported_languages")
+
+    validate_external_tasks_for_study(
+        study_name_short=study_payload.name_short,
+        allow_unlisted_participants=study_payload.allow_unlisted_participants,
+        study_participant_ids=study_payload.study_participant_ids,
+        external_tasks=study_payload.external_tasks,
+    )
 
     has_embedded_data = bool(study_payload.activities_json_data)
     has_file_refs = bool(study_payload.activities_json_files)

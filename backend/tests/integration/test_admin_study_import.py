@@ -431,8 +431,8 @@ async def test_admin_export_external_tasks_roundtrip():
                         "display_names": {"en": "Monday"},
                     }
                 ],
-                "study_participant_ids": [],
-                "allow_unlisted_participants": True,
+                "study_participant_ids": ["p1", "p2"],
+                "allow_unlisted_participants": False,
                 "external_tasks": [
                     {
                         "task_key": "payment",

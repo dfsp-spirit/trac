@@ -50,6 +50,81 @@ class CfgFileExternalTask(BaseModel):
     config: Dict[str, Any] = Field(default_factory=dict)
 
 
+_ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES = {"none", "callback"}
+
+
+def validate_external_tasks_for_study(
+    *,
+    study_name_short: str,
+    allow_unlisted_participants: bool,
+    study_participant_ids: List[str],
+    external_tasks: List[CfgFileExternalTask],
+) -> None:
+    if not external_tasks:
+        return
+
+    if allow_unlisted_participants:
+        raise ValueError(
+            "external_tasks require allow_unlisted_participants=false so that all participants are explicitly listed"
+        )
+
+    participant_count = len(study_participant_ids)
+    seen_task_keys: set[str] = set()
+
+    for external_task in external_tasks:
+        if not isinstance(external_task.task_key, str) or not re.match(
+            r"^[a-z0-9_]+$", external_task.task_key
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external_tasks.task_key '{external_task.task_key}' is invalid. "
+                "Use lowercase letters, numbers, and underscores only."
+            )
+
+        if external_task.task_key in seen_task_keys:
+            raise ValueError(
+                f"Study '{study_name_short}' has duplicate external task key '{external_task.task_key}'"
+            )
+        seen_task_keys.add(external_task.task_key)
+
+        if not isinstance(external_task.name, str) or not external_task.name.strip():
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' must define a non-empty name"
+            )
+
+        if not isinstance(external_task.url, str) or not external_task.url.strip():
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' must define a non-empty url"
+            )
+
+        if (
+            external_task.confirmation_type
+            not in _ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' has unsupported confirmation_type "
+                f"'{external_task.confirmation_type}'. Allowed values: {sorted(_ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES)}"
+            )
+
+        if len(external_task.tokens) != participant_count:
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' must define exactly one token per participant. "
+                f"Expected {participant_count}, got {len(external_task.tokens)}"
+            )
+
+        if any(
+            not isinstance(token, str) or not token.strip()
+            for token in external_task.tokens
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' contains empty tokens"
+            )
+
+        if len(set(external_task.tokens)) != len(external_task.tokens):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' contains duplicate tokens"
+            )
+
+
 class CfgFileStudy(BaseModel):
     name: str
     name_short: str
@@ -366,6 +441,16 @@ class CfgFileStudy(BaseModel):
                     f"{text_field_name} is missing translations for supported_languages: {missing_languages}"
                 )
 
+        return self
+
+    @model_validator(mode="after")
+    def validate_external_tasks_config(self) -> "CfgFileStudy":
+        validate_external_tasks_for_study(
+            study_name_short=self.name_short,
+            allow_unlisted_participants=self.allow_unlisted_participants,
+            study_participant_ids=self.study_participant_ids,
+            external_tasks=self.external_tasks,
+        )
         return self
 
 

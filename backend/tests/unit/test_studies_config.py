@@ -92,7 +92,7 @@ def test_load_studies_config_accepts_external_tasks(tmp_path):
             "description": "Complete payment handoff.",
             "url": "https://example.org/payment",
             "confirmation_type": "none",
-            "tokens": ["tok-1", "tok-2"],
+            "tokens": ["tok-1"],
             "config": {"provider": "example"},
         }
     ]
@@ -104,6 +104,105 @@ def test_load_studies_config_accepts_external_tasks(tmp_path):
 
     assert len(config.studies[0].external_tasks) == 1
     assert config.studies[0].external_tasks[0].task_key == "payment"
+
+
+def test_load_studies_config_rejects_external_tasks_for_open_study(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = True
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1"],
+            "config": {},
+        }
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="external_tasks require allow_unlisted_participants=false",
+    ):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_external_tasks_with_wrong_token_count(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["study_participant_ids"] = ["p1", "p2"]
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1"],
+            "config": {},
+        }
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="exactly one token per participant"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_external_tasks_with_unsupported_confirmation_type(
+    tmp_path,
+):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "email",
+            "tokens": ["tok-1"],
+            "config": {},
+        }
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="unsupported confirmation_type"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_external_tasks_with_duplicate_task_keys(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey A",
+            "url": "https://example.org/payment-a",
+            "confirmation_type": "none",
+            "tokens": ["tok-1"],
+            "config": {},
+        },
+        {
+            "task_key": "payment",
+            "name": "Payment Survey B",
+            "url": "https://example.org/payment-b",
+            "confirmation_type": "callback",
+            "tokens": ["tok-2"],
+            "config": {},
+        },
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate external task key"):
+        load_studies_config(str(config_file))
 
 
 def test_load_studies_config_rejects_invalid_name_short(tmp_path):

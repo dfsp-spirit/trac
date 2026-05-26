@@ -153,3 +153,94 @@ def test_import_study_payload_accepts_external_tasks():
     assert len(study_payload.external_tasks) == 1
     assert study_payload.external_tasks[0].task_key == "payment"
     assert study_payload.external_tasks[0].tokens == ["tok-1", "tok-2"]
+
+
+def test_validate_import_payload_rejects_external_tasks_for_open_study():
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = True
+    payload["study_participant_ids"] = ["p1", "p2"]
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1", "tok-2"],
+            "config": {},
+        }
+    ]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match="external_tasks require allow_unlisted_participants=false",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_external_tasks_with_wrong_token_count():
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1", "p2"]
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1"],
+            "config": {},
+        }
+    ]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="exactly one token per participant"):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_external_tasks_with_unsupported_confirmation_type():
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1"]
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "email",
+            "tokens": ["tok-1"],
+            "config": {},
+        }
+    ]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="unsupported confirmation_type"):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_external_tasks_with_duplicate_tokens():
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1", "p2"]
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1", "tok-1"],
+            "config": {},
+        }
+    ]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="duplicate tokens"):
+        _validate_import_study_payload(study_payload)

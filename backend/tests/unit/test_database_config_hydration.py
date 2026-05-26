@@ -278,8 +278,8 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
     config_path = _write_studies_config(
         tmp_path,
         activities_file=activities_file,
-        allow_unlisted_participants=True,
-        study_participant_ids=[],
+        allow_unlisted_participants=False,
+        study_participant_ids=["p1"],
         activities_logged_by_userid={},
         external_tasks=[
             {
@@ -288,7 +288,7 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
                 "description": "Complete payment handoff.",
                 "url": "https://example.org/payment",
                 "confirmation_type": "none",
-                "tokens": ["tok-1", "tok-2"],
+                "tokens": ["tok-1"],
                 "config": {"provider": "example"},
             }
         ],
@@ -310,4 +310,4 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
 
         assert len(external_tasks) == 1
         assert external_tasks[0].task_key == "payment"
-        assert external_tasks[0].tokens == ["tok-1", "tok-2"]
+        assert external_tasks[0].tokens == ["tok-1"]
