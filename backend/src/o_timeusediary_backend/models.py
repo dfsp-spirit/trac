@@ -31,6 +31,7 @@ class Study(SQLModel, table=True):
     description: str
     allow_unlisted_participants: bool = Field(default=True)
     require_consent: bool = Field(default=False)
+    is_paused: bool = Field(default=False)
     default_language: str = Field(default="en")
     study_text_intro: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)

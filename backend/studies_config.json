@@ -5,13 +5,97 @@
       "name_short": "default",
       "description": "Default Study for Adults at KI, filled out by themselves",
       "day_labels": [
-        { "name": "monday", "display_order": 0, "display_names": { "en": "Monday", "sv": "Måndag", "de": "Montag", "pl": "Poniedziałek", "fi": "Maanantai", "fr": "Lundi", "es": "Lunes" } },
-        { "name": "tuesday", "display_order": 1, "display_names": { "en": "Tuesday", "sv": "Tisdag", "de": "Dienstag", "pl": "Wtorek", "fi": "Tiistai", "fr": "Mardi", "es": "Martes" } },
-        { "name": "wednesday", "display_order": 2, "display_names": { "en": "Wednesday", "sv": "Onsdag", "de": "Mittwoch", "pl": "Środa", "fi": "Keskiviikko", "fr": "Mercredi", "es": "Miércoles" } },
-        { "name": "thursday", "display_order": 3, "display_names": { "en": "Thursday", "sv": "Torsdag", "de": "Donnerstag", "pl": "Czwartek", "fi": "Torstai", "fr": "Jeudi", "es": "Jueves" } },
-        { "name": "friday", "display_order": 4, "display_names": { "en": "Friday", "sv": "Fredag", "de": "Freitag", "pl": "Piątek", "fi": "Perjantai", "fr": "Vendredi", "es": "Viernes" } },
-        { "name": "saturday", "display_order": 5, "display_names": { "en": "Saturday", "sv": "Lördag", "de": "Samstag", "pl": "Sobota", "fi": "Lauantai", "fr": "Samedi", "es": "Sábado" } },
-        { "name": "sunday", "display_order": 6, "display_names": { "en": "Sunday", "sv": "Söndag", "de": "Sonntag", "pl": "Niedziela", "fi": "Sunnuntai", "fr": "Dimanche", "es": "Domingo" } }
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag",
+            "pl": "Poniedziałek",
+            "fi": "Maanantai",
+            "fr": "Lundi",
+            "es": "Lunes"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag",
+            "pl": "Wtorek",
+            "fi": "Tiistai",
+            "fr": "Mardi",
+            "es": "Martes"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch",
+            "pl": "Środa",
+            "fi": "Keskiviikko",
+            "fr": "Mercredi",
+            "es": "Miércoles"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag",
+            "pl": "Czwartek",
+            "fi": "Torstai",
+            "fr": "Jeudi",
+            "es": "Jueves"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag",
+            "pl": "Piątek",
+            "fi": "Perjantai",
+            "fr": "Vendredi",
+            "es": "Viernes"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag",
+            "pl": "Sobota",
+            "fi": "Lauantai",
+            "fr": "Samedi",
+            "es": "Sábado"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Söndag",
+            "de": "Sonntag",
+            "pl": "Niedziela",
+            "fi": "Sunnuntai",
+            "fr": "Dimanche",
+            "es": "Domingo"
+          }
+        }
       ],
       "study_text_intro": {
         "en": "This is our time use study for adults. Please reconstruct a typical week of your daily activities.",
@@ -41,6 +125,7 @@
         "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
       },
       "require_consent": true,
+      "is_paused": false,
       "study_text_consent": {
         "en": "# Study Consent Page\n\nBy continuing, you agree that:\n- your answers are collected for scientific time use research\n- the data may be analyzed in aggregated form\n- you can stop at any time before submitting",
         "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in",
@@ -58,7 +143,11 @@
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "en",
-      "supported_languages": ["en", "sv", "de"],
+      "supported_languages": [
+        "en",
+        "sv",
+        "de"
+      ],
       "activities_json_files": {
         "en": "activities_ki_adults_en.json",
         "sv": "activities_ki_adults_sv.json",
@@ -72,13 +161,97 @@
       "name_short": "15yearolds",
       "description": "Weekly Study for 15 year olds at KI, filled out by themselves.",
       "day_labels": [
-        { "name": "monday", "display_order": 0, "display_names": { "en": "Monday", "sv": "Måndag", "de": "Montag", "pl": "Poniedziałek", "fi": "Maanantai", "fr": "Lundi", "es": "Lunes" } },
-        { "name": "tuesday", "display_order": 1, "display_names": { "en": "Tuesday", "sv": "Tisdag", "de": "Dienstag", "pl": "Wtorek", "fi": "Tiistai", "fr": "Mardi", "es": "Martes" } },
-        { "name": "wednesday", "display_order": 2, "display_names": { "en": "Wednesday", "sv": "Onsdag", "de": "Mittwoch", "pl": "Środa", "fi": "Keskiviikko", "fr": "Mercredi", "es": "Miércoles" } },
-        { "name": "thursday", "display_order": 3, "display_names": { "en": "Thursday", "sv": "Torsdag", "de": "Donnerstag", "pl": "Czwartek", "fi": "Torstai", "fr": "Jeudi", "es": "Jueves" } },
-        { "name": "friday", "display_order": 4, "display_names": { "en": "Friday", "sv": "Fredag", "de": "Freitag", "pl": "Piątek", "fi": "Perjantai", "fr": "Vendredi", "es": "Viernes" } },
-        { "name": "saturday", "display_order": 5, "display_names": { "en": "Saturday", "sv": "Lördag", "de": "Samstag", "pl": "Sobota", "fi": "Lauantai", "fr": "Samedi", "es": "Sábado" } },
-        { "name": "sunday", "display_order": 6, "display_names": { "en": "Sunday", "sv": "Sunday", "de": "Sonntag", "pl": "Niedziela", "fi": "Sunnuntai", "fr": "Dimanche", "es": "Domingo" } }
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag",
+            "pl": "Poniedziałek",
+            "fi": "Maanantai",
+            "fr": "Lundi",
+            "es": "Lunes"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag",
+            "pl": "Wtorek",
+            "fi": "Tiistai",
+            "fr": "Mardi",
+            "es": "Martes"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch",
+            "pl": "Środa",
+            "fi": "Keskiviikko",
+            "fr": "Mercredi",
+            "es": "Miércoles"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag",
+            "pl": "Czwartek",
+            "fi": "Torstai",
+            "fr": "Jeudi",
+            "es": "Jueves"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag",
+            "pl": "Piątek",
+            "fi": "Perjantai",
+            "fr": "Vendredi",
+            "es": "Viernes"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag",
+            "pl": "Sobota",
+            "fi": "Lauantai",
+            "fr": "Samedi",
+            "es": "Sábado"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Sunday",
+            "de": "Sonntag",
+            "pl": "Niedziela",
+            "fi": "Sunnuntai",
+            "fr": "Dimanche",
+            "es": "Domingo"
+          }
+        }
       ],
       "study_text_intro": {
         "en": "This is our time use study for 15 year olds. Please reconstruct a typical week of your daily activities.",
@@ -108,6 +281,7 @@
         "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
       },
       "require_consent": true,
+      "is_paused": false,
       "study_text_consent": {
         "en": "# Study Consent Page\n\nBy continuing, you agree that:\n- your answers are collected for scientific time use research\n- the data may be analyzed in aggregated form\n- you can stop at any time before submitting",
         "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in"
@@ -124,7 +298,10 @@
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "en",
-      "supported_languages": ["en", "sv"],
+      "supported_languages": [
+        "en",
+        "sv"
+      ],
       "activities_json_files": {
         "en": "activities_ki_15yearolds_en.json",
         "sv": "activities_ki_15yearolds_sv.json",
@@ -138,13 +315,97 @@
       "name_short": "9yearolds",
       "description": "Weekly Study for 9 year olds at KI, filled out by their parents.",
       "day_labels": [
-        { "name": "monday", "display_order": 0, "display_names": { "en": "Monday", "sv": "Måndag", "de": "Montag", "pl": "Poniedziałek", "fi": "Maanantai", "fr": "Lundi", "es": "Lunes" } },
-        { "name": "tuesday", "display_order": 1, "display_names": { "en": "Tuesday", "sv": "Tisdag", "de": "Dienstag", "pl": "Wtorek", "fi": "Tiistai", "fr": "Mardi", "es": "Martes" } },
-        { "name": "wednesday", "display_order": 2, "display_names": { "en": "Wednesday", "sv": "Onsdag", "de": "Mittwoch", "pl": "Środa", "fi": "Keskiviikko", "fr": "Mercredi", "es": "Miércoles" } },
-        { "name": "thursday", "display_order": 3, "display_names": { "en": "Thursday", "sv": "Torsdag", "de": "Donnerstag", "pl": "Czwartek", "fi": "Torstai", "fr": "Jeudi", "es": "Jueves" } },
-        { "name": "friday", "display_order": 4, "display_names": { "en": "Friday", "sv": "Fredag", "de": "Freitag", "pl": "Piątek", "fi": "Perjantai", "fr": "Vendredi", "es": "Viernes" } },
-        { "name": "saturday", "display_order": 5, "display_names": { "en": "Saturday", "sv": "Lördag", "de": "Samstag", "pl": "Sobota", "fi": "Lauantai", "fr": "Samedi", "es": "Sábado" } },
-        { "name": "sunday", "display_order": 6, "display_names": { "en": "Sunday", "sv": "Söndag", "de": "Sonntag", "pl": "Niedziela", "fi": "Sunnuntai", "fr": "Dimanche", "es": "Domingo" } }
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag",
+            "pl": "Poniedziałek",
+            "fi": "Maanantai",
+            "fr": "Lundi",
+            "es": "Lunes"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag",
+            "pl": "Wtorek",
+            "fi": "Tiistai",
+            "fr": "Mardi",
+            "es": "Martes"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch",
+            "pl": "Środa",
+            "fi": "Keskiviikko",
+            "fr": "Mercredi",
+            "es": "Miércoles"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag",
+            "pl": "Czwartek",
+            "fi": "Torstai",
+            "fr": "Jeudi",
+            "es": "Jueves"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag",
+            "pl": "Piątek",
+            "fi": "Perjantai",
+            "fr": "Vendredi",
+            "es": "Viernes"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag",
+            "pl": "Sobota",
+            "fi": "Lauantai",
+            "fr": "Samedi",
+            "es": "Sábado"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Söndag",
+            "de": "Sonntag",
+            "pl": "Niedziela",
+            "fi": "Sunnuntai",
+            "fr": "Dimanche",
+            "es": "Domingo"
+          }
+        }
       ],
       "study_text_intro": {
         "en": "Please fill out this study for 9 year old children. You will be asked to report time use for an entire week.",
@@ -174,6 +435,7 @@
         "es": "Ha omitido completar la parte del estudio sobre el uso del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
       },
       "require_consent": true,
+      "is_paused": false,
       "study_text_consent": {
         "en": "# Study Consent Page\n\nBy continuing, you agree that:\n- your answers are collected for scientific time use research\n- the data may be analyzed in aggregated form\n- you can stop at any time before submitting",
         "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in"
@@ -190,7 +452,10 @@
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "sv",
-      "supported_languages": ["en", "sv"],
+      "supported_languages": [
+        "en",
+        "sv"
+      ],
       "activities_json_files": {
         "en": "activities_ki_9yearolds_en.json",
         "sv": "activities_ki_9yearolds_sv.json",

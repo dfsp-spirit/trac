@@ -64,6 +64,20 @@ def _ensure_study_text_columns() -> None:
             logger.info("Added missing studies.%s column", column_name)
 
 
+def _ensure_is_paused_column() -> None:
+    inspector = inspect(engine)
+    if "studies" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("studies")}
+    if "is_paused" not in existing_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE studies ADD COLUMN is_paused BOOLEAN NOT NULL DEFAULT FALSE")
+            )
+            logger.info("Added missing studies.is_paused column")
+
+
 def _hydrate_study_texts_from_config(session: Session, study: Study, study_config) -> bool:
     updated = False
 
@@ -274,6 +288,7 @@ def create_db_and_tables(do_report_contents: bool = False):
         else:
             raise
     _ensure_study_text_columns()
+    _ensure_is_paused_column()
     create_config_file_studies_in_database(settings.studies_config_path)
     if do_report_contents:
         report_on_db_contents()
@@ -537,6 +552,7 @@ def create_config_file_studies_in_database(config_path: str):
                     description=study_config.description,
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
                     require_consent=study_config.require_consent,
+                    is_paused=study_config.is_paused,
                     default_language=study_config.default_language,
                     study_text_intro=study_config.study_text_intro,
                     study_text_end_completed=study_config.study_text_end_completed,

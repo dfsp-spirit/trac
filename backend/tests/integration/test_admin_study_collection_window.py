@@ -145,3 +145,54 @@ async def test_admin_collection_window_update_and_pause_behavior():
         assert paused_start == pause_start
         assert paused_end == yesterday_end
         assert paused_json["is_currently_collecting"] is False
+
+
+@pytest.mark.asyncio
+async def test_admin_pause_and_unpause_study():
+    study_name_short = f"it_pause_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study_for_window_tests(client, study_name_short)
+
+        # Pause requires auth
+        unauth = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/pause"
+        )
+        assert unauth.status_code == 401
+
+        # Pause study
+        pause_resp = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/pause",
+            auth=ADMIN_AUTH,
+        )
+        assert pause_resp.status_code == 200
+        assert pause_resp.json()["is_paused"] is True
+
+        # Pausing again should return 400
+        double_pause = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/pause",
+            auth=ADMIN_AUTH,
+        )
+        assert double_pause.status_code == 400
+
+        # Unpause study
+        unpause_resp = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/unpause",
+            auth=ADMIN_AUTH,
+        )
+        assert unpause_resp.status_code == 200
+        assert unpause_resp.json()["is_paused"] is False
+
+        # Unpausing again should return 400
+        double_unpause = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/unpause",
+            auth=ADMIN_AUTH,
+        )
+        assert double_unpause.status_code == 400
+
+        # Pause non-existent study returns 404
+        not_found = await client.patch(
+            f"{BASE_URL}/api/admin/studies/nonexistent_study_xyz/pause",
+            auth=ADMIN_AUTH,
+        )
+        assert not_found.status_code == 404

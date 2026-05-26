@@ -592,6 +592,12 @@ def submit_activities(
             f"Data collection ended on {study.data_collection_end.isoformat()}.",
         )
 
+    if study.is_paused:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Study '{study.name_short}' is currently paused.",
+        )
+
     # Get all valid activity codes for this study
     try:
         valid_codes = get_study_activity_codes(study_name_short, session)
@@ -897,6 +903,7 @@ async def admin_overview(
 
         study_is_currently_collecting = (
             study.data_collection_start <= utc_now() <= study.data_collection_end
+            and not study.is_paused
         )
 
         # Get timelines for this study
@@ -1158,6 +1165,7 @@ class ImportStudiesConfigStudy(BaseModel):
     activities_json_data: Optional[Dict[str, Dict]] = None
     activities_json_files: Optional[Dict[str, str]] = None
     require_consent: bool = False
+    is_paused: bool = False
     study_text_intro: Optional[Dict[str, str]] = None
     study_text_end_completed: Optional[Dict[str, str]] = None
     study_text_end_skipped: Optional[Dict[str, str]] = None
@@ -1463,6 +1471,7 @@ def _create_study_from_import_payload(
         description=study_payload.description or "",
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         require_consent=study_payload.require_consent,
+        is_paused=study_payload.is_paused,
         default_language=default_language,
         study_text_intro=study_payload.study_text_intro,
         study_text_end_completed=study_payload.study_text_end_completed,
@@ -1870,8 +1879,61 @@ async def update_study_collection_window(
         },
         "is_currently_collecting": study.data_collection_start
         <= utc_now()
-        <= study.data_collection_end,
+        <= study.data_collection_end
+        and not study.is_paused,
     }
+
+
+@app.patch("/api/admin/studies/{study_name_short}/pause")
+async def pause_study(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Pause a study. Participants will not be able to submit data while the study is paused."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+    if study.is_paused:
+        raise HTTPException(
+            status_code=400, detail=f"Study '{study_name_short}' is already paused"
+        )
+    study.is_paused = True
+    session.add(study)
+    session.commit()
+    logger.info("Admin '%s' paused study '%s'", current_admin, study_name_short)
+    audit_admin_action(current_admin, f"paused study '{study_name_short}'")
+    return {"study_name_short": study_name_short, "is_paused": True}
+
+
+@app.patch("/api/admin/studies/{study_name_short}/unpause")
+async def unpause_study(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Unpause a study, allowing participants to submit data again."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+    if not study.is_paused:
+        raise HTTPException(
+            status_code=400, detail=f"Study '{study_name_short}' is not paused"
+        )
+    study.is_paused = False
+    session.add(study)
+    session.commit()
+    logger.info("Admin '%s' unpaused study '%s'", current_admin, study_name_short)
+    audit_admin_action(current_admin, f"unpaused study '{study_name_short}'")
+    return {"study_name_short": study_name_short, "is_paused": False}
 
 
 @app.get("/api/admin/export/studies-runtime-config")
@@ -2034,6 +2096,7 @@ async def export_runtime_studies_config(
                 "study_participant_ids": participant_ids,
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "require_consent": study.require_consent,
+                "is_paused": study.is_paused,
                 "default_language": study.default_language,
                 "supported_languages": supported_languages,
                 "activities_json_files": activities_json_files,
