@@ -410,3 +410,74 @@ async def test_admin_export_require_consent_roundtrip():
         assert study_config_data["study_text_consent"] == "Please consent to participate."
         assert study_config_data["study_text_end_noconsent"] == "You did not consent."
 
+
+@pytest.mark.asyncio
+async def test_admin_export_external_tasks_roundtrip():
+    study_name_short = f"it_external_{uuid.uuid4().hex[:8]}"
+    activities_payload = _load_activities_template()
+
+    payload = {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"External Task Roundtrip Study {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Study with external task metadata",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": True,
+                "external_tasks": [
+                    {
+                        "task_key": "payment",
+                        "name": "Payment Survey",
+                        "description": "Complete payment handoff.",
+                        "url": "https://example.org/payment",
+                        "confirmation_type": "none",
+                        "tokens": ["tok-1", "tok-2"],
+                        "config": {"provider": "example"},
+                    }
+                ],
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {"en": activities_payload},
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        import_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert import_response.status_code == 200
+
+        export_response = await client.get(
+            f"{BASE_URL}/api/admin/export/studies-runtime-config",
+            params={"study_name": study_name_short},
+            auth=ADMIN_AUTH,
+        )
+        assert export_response.status_code == 200
+
+        exported_study = export_response.json()["studies_config"]["studies"][0]
+        assert exported_study["external_tasks"] == [
+            {
+                "task_key": "payment",
+                "name": "Payment Survey",
+                "description": "Complete payment handoff.",
+                "url": "https://example.org/payment",
+                "confirmation_type": "none",
+                "tokens": ["tok-1", "tok-2"],
+                "config": {"provider": "example"},
+            }
+        ]
+

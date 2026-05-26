@@ -20,7 +20,7 @@ from .parsers.activities_config import (
     ActivitiesConfig,
     get_all_activity_codes,
 )
-from .parsers.studies_config import get_cfg_study_by_name_short
+from .parsers.studies_config import CfgFileExternalTask, get_cfg_study_by_name_short
 import secrets
 from .logging_config import setup_logging, get_admin_audit_logger
 
@@ -34,6 +34,7 @@ from .models import (
     StudyParticipant,
     Participant,
     StudyActivityConfigBlob,
+    StudyExternalTask,
 )
 from .models import (
     StudyAvailableTimeline,
@@ -54,7 +55,7 @@ from .api_deps.available_activities import (
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func
 from io import StringIO
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 import o_timeusediary_backend
 
 from .utils import utc_now, get_time_for_minutes_from_midnight
@@ -1166,6 +1167,7 @@ class ImportStudiesConfigStudy(BaseModel):
     activities_json_files: Optional[Dict[str, str]] = None
     require_consent: bool = False
     is_paused: bool = False
+    external_tasks: List[CfgFileExternalTask] = Field(default_factory=list)
     study_text_intro: Optional[Dict[str, str]] = None
     study_text_end_completed: Optional[Dict[str, str]] = None
     study_text_end_skipped: Optional[Dict[str, str]] = None
@@ -1484,6 +1486,20 @@ def _create_study_from_import_payload(
     )
     session.add(study)
     session.flush()
+
+    for external_task_payload in study_payload.external_tasks:
+        session.add(
+            StudyExternalTask(
+                study_id=study.id,
+                task_key=external_task_payload.task_key,
+                name=external_task_payload.name,
+                description=external_task_payload.description,
+                url=external_task_payload.url,
+                confirmation_type=external_task_payload.confirmation_type,
+                tokens=list(external_task_payload.tokens),
+                config=dict(external_task_payload.config),
+            )
+        )
 
     for day_label_data in sorted(
         study_payload.day_labels, key=lambda row: row.get("display_order", 0)
@@ -2087,6 +2103,12 @@ async def export_runtime_studies_config(
 
         activities_by_study[study.name_short] = activity_configs_for_study
 
+        external_tasks = session.exec(
+            select(StudyExternalTask)
+            .where(StudyExternalTask.study_id == study.id)
+            .order_by(StudyExternalTask.task_key)
+        ).all()
+
         exported_studies.append(
             {
                 "name": study.name,
@@ -2097,6 +2119,18 @@ async def export_runtime_studies_config(
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "require_consent": study.require_consent,
                 "is_paused": study.is_paused,
+                "external_tasks": [
+                    {
+                        "task_key": external_task.task_key,
+                        "name": external_task.name,
+                        "description": external_task.description,
+                        "url": external_task.url,
+                        "confirmation_type": external_task.confirmation_type,
+                        "tokens": external_task.tokens,
+                        "config": external_task.config,
+                    }
+                    for external_task in external_tasks
+                ],
                 "default_language": study.default_language,
                 "supported_languages": supported_languages,
                 "activities_json_files": activities_json_files,

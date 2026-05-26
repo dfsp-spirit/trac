@@ -131,3 +131,25 @@ def test_import_study_payload_accepts_study_text_consent_and_noconsent():
         "de": "Bitte zustimmen.",
     }
     assert study_payload.study_text_end_noconsent == {"en": "No consent given."}
+
+
+def test_import_study_payload_accepts_external_tasks():
+    payload = _base_payload()
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "description": "Post-study payment handoff.",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1", "tok-2"],
+            "config": {"provider": "example"},
+        }
+    ]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    assert len(study_payload.external_tasks) == 1
+    assert study_payload.external_tasks[0].task_key == "payment"
+    assert study_payload.external_tasks[0].tokens == ["tok-1", "tok-2"]

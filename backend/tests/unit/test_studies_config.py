@@ -82,6 +82,30 @@ def test_load_studies_config_from_json(tmp_path):
     assert sorted(config.studies[0].get_supported_languages()) == ["en", "sv"]
 
 
+def test_load_studies_config_accepts_external_tasks(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": "Payment Survey",
+            "description": "Complete payment handoff.",
+            "url": "https://example.org/payment",
+            "confirmation_type": "none",
+            "tokens": ["tok-1", "tok-2"],
+            "config": {"provider": "example"},
+        }
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert len(config.studies[0].external_tasks) == 1
+    assert config.studies[0].external_tasks[0].task_key == "payment"
+
+
 def test_load_studies_config_rejects_invalid_name_short(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()

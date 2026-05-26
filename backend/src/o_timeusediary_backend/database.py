@@ -13,6 +13,7 @@ from .models import (
     StudyAvailableCategory,
     StudyAvailableActivity,
     StudyAvailableActivityI18n,
+    StudyExternalTask,
 )
 from .settings import settings
 from .parsers.studies_config import load_studies_config, CfgFileStudies
@@ -150,6 +151,31 @@ def _ensure_activity_blobs_from_config(
                 continue
             activities_json_data = _load_json_dict_from_path(activity_file)
         _upsert_study_activity_blob(session, study.id, language, activities_json_data)
+
+
+def _ensure_external_tasks_from_config(
+    session: Session, study: Study, study_config
+) -> None:
+    existing_tasks = session.exec(
+        select(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
+    ).all()
+    existing_task_keys = {task.task_key for task in existing_tasks}
+
+    for external_task in getattr(study_config, "external_tasks", []):
+        if external_task.task_key in existing_task_keys:
+            continue
+        session.add(
+            StudyExternalTask(
+                study_id=study.id,
+                task_key=external_task.task_key,
+                name=external_task.name,
+                description=external_task.description,
+                url=external_task.url,
+                confirmation_type=external_task.confirmation_type,
+                tokens=list(external_task.tokens),
+                config=dict(external_task.config),
+            )
+        )
 
 
 def _load_activities_configs_by_language(study_config) -> dict[str, ActivitiesConfig]:
@@ -426,6 +452,9 @@ def create_config_file_studies_in_database(config_path: str):
                     _ensure_activity_blobs_from_config(
                         session, existing_study, study_config
                     )
+                    _ensure_external_tasks_from_config(
+                        session, existing_study, study_config
+                    )
 
                     activities_cfg_by_language = _load_activities_configs_by_language(
                         study_config
@@ -567,6 +596,7 @@ def create_config_file_studies_in_database(config_path: str):
                 session.commit()  # Commit immediately after each study
 
                 _ensure_activity_blobs_from_config(session, study, study_config)
+                _ensure_external_tasks_from_config(session, study, study_config)
                 _ensure_available_catalog_from_activities_configs(
                     session=session,
                     study=study,

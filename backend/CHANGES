@@ -6,6 +6,7 @@ See the CHANGES file in the repo root for versions later than 0.7.1.
 
 Current WIP
 -----------
+* Add new is_paused property for studies, in cfg file and DB, that can be used in admin interface to pause a study without the need to fake it by temporarily changing start or end date.
 
 Version 0.7.1 -- Bump version to match frontend version only
 ------------------------------------------------------------

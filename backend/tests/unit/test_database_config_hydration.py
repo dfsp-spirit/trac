@@ -8,6 +8,7 @@ from o_timeusediary_backend.models import (
     Study,
     StudyActivityConfigBlob,
     StudyAvailableActivity,
+    StudyExternalTask,
 )
 
 
@@ -42,6 +43,7 @@ def _write_studies_config(
     allow_unlisted_participants: bool,
     study_participant_ids: list[str],
     activities_logged_by_userid: dict,
+    external_tasks: list[dict] | None = None,
 ) -> str:
     studies_payload = {
         "studies": [
@@ -62,6 +64,7 @@ def _write_studies_config(
                 "study_text_intro": {"en": "Intro text"},
                 "study_text_consent": {"en": "Consent text"},
                 "study_text_end_noconsent": {"en": "No consent text"},
+                "external_tasks": external_tasks or [],
                 "activities_json_files": {"en": activities_file},
                 "activities_logged_by_userid": activities_logged_by_userid,
                 "data_collection_start": "2024-01-01T00:00:00Z",
@@ -266,3 +269,45 @@ def test_create_config_file_studies_in_database_persists_study_texts(
         assert study.study_text_intro == {"en": "Intro text"}
         assert study.study_text_consent == {"en": "Consent text"}
         assert study.study_text_end_noconsent == {"en": "No consent text"}
+
+
+def test_create_config_file_studies_in_database_persists_external_tasks(
+    tmp_path, database_module
+):
+    activities_file = _write_activities_file(tmp_path, codes=[100])
+    config_path = _write_studies_config(
+        tmp_path,
+        activities_file=activities_file,
+        allow_unlisted_participants=True,
+        study_participant_ids=[],
+        activities_logged_by_userid={},
+        external_tasks=[
+            {
+                "task_key": "payment",
+                "name": "Payment Survey",
+                "description": "Complete payment handoff.",
+                "url": "https://example.org/payment",
+                "confirmation_type": "none",
+                "tokens": ["tok-1", "tok-2"],
+                "config": {"provider": "example"},
+            }
+        ],
+    )
+
+    database_module.create_config_file_studies_in_database(config_path)
+
+    with Session(database_module.engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == "hydration_demo")
+        ).first()
+        assert study is not None
+
+        external_tasks = session.exec(
+            select(StudyExternalTask)
+            .where(StudyExternalTask.study_id == study.id)
+            .order_by(StudyExternalTask.task_key)
+        ).all()
+
+        assert len(external_tasks) == 1
+        assert external_tasks[0].task_key == "payment"
+        assert external_tasks[0].tokens == ["tok-1", "tok-2"]

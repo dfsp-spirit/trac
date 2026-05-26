@@ -77,6 +77,38 @@ class Study(SQLModel, table=True):
     available_activities: List["StudyAvailableActivity"] = Relationship(
         back_populates="study"
     )
+    external_tasks: List["StudyExternalTask"] = Relationship(back_populates="study")
+
+
+class StudyExternalTask(SQLModel, table=True):
+    __tablename__ = "study_external_tasks"
+    __table_args__ = (
+        UniqueConstraint("study_id", "task_key", name="uq_study_external_task_key"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    study_id: int = Field(foreign_key="studies.id", index=True)
+    task_key: str = Field(index=True)
+    name: str
+    description: Optional[str] = None
+    url: str
+    confirmation_type: str = Field(default="none", index=True)
+    tokens: List[str] = Field(
+        default_factory=list, sa_column=Column(JSON, nullable=False)
+    )
+    config: Dict[str, Any] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    study: Study = Relationship(back_populates="external_tasks")
 
 
 class StudyActivityConfigBlob(SQLModel, table=True):

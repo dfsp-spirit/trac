@@ -40,6 +40,16 @@ class CfgFileLoggedActivity(BaseModel):
     end_minutes: int
 
 
+class CfgFileExternalTask(BaseModel):
+    task_key: str
+    name: str
+    description: Optional[str] = None
+    url: str
+    confirmation_type: str = "none"
+    tokens: List[str] = Field(default_factory=list)
+    config: Dict[str, Any] = Field(default_factory=dict)
+
+
 class CfgFileStudy(BaseModel):
     name: str
     name_short: str
@@ -54,6 +64,7 @@ class CfgFileStudy(BaseModel):
     activities_json_data: Optional[Dict[str, Dict[str, Any]]] = None
     require_consent: bool = False
     is_paused: bool = False
+    external_tasks: List[CfgFileExternalTask] = Field(default_factory=list)
     study_text_intro: Optional[Dict[str, str]] = None
     study_text_end_completed: Optional[Dict[str, str]] = None
     study_text_end_skipped: Optional[Dict[str, str]] = None
