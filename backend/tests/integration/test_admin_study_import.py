@@ -493,3 +493,13 @@ async def test_admin_export_external_tasks_roundtrip():
             }
         ]
 
+        admin_page_response = await client.get(
+            f"{BASE_URL}/admin",
+            auth=ADMIN_AUTH,
+        )
+        assert admin_page_response.status_code == 200
+        assert "External Tasks" in admin_page_response.text
+        assert "Payment Survey" in admin_page_response.text
+        assert "tok-1" in admin_page_response.text
+        assert "tok-2" in admin_page_response.text
+

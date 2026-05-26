@@ -618,6 +618,8 @@
                     <div><strong>ID:</strong> {{ study_data.study.id }}</div>
                     <div><strong>Requires consent:</strong> {{ "Yes" if study_data.require_consent else "No" }}</div>
                     <div><strong>Participants:</strong> {{ study_data.participant_count }}</div>
+                    <div><strong>External Tasks:</strong> {{ study_data.external_task_count }}</div>
+                    <div><strong>ET Assignments:</strong> {{ study_data.external_task_assignment_count }}</div>
                     <div><strong>Activities logged:</strong> {{ study_data.total_activities_logged }}</div>
                     <div><strong>Currently Collecting Data:</strong> {{ "Yes" if study_data.is_actively_collecting else "No" }}</div>
                     <div><strong>Study Paused:</strong> {{ "Yes" if study_data.study.is_paused else "No" }}</div>
@@ -721,6 +723,7 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('timelines-{{ study_data.study.id }}', this)">Timelines ({{ study_data.timeline_stats|length }})</button>
                 <button class="tab" onclick="switchTab('participants-{{ study_data.study.id }}', this)">Participants ({{ study_data.participant_count }})</button>
+                <button class="tab" onclick="switchTab('externaltasks-{{ study_data.study.id }}', this)">External Tasks ({{ study_data.external_task_count }})</button>
                 <button class="tab" onclick="switchTab('activities-{{ study_data.study.id }}', this)">DB Logged Activities ({{ study_data.total_activities_logged }})</button>
                 <button class="tab" onclick="switchTab('daylabels-{{ study_data.study.id }}', this)">Day Labels ({{ study_data.day_labels|length }})</button>
                 <button class="tab" onclick="switchTab('cfgactivities-{{ study_data.study.id }}', this)">Cfg File Activities ({{ study_data.total_activities_cfg }})</button>
@@ -765,6 +768,51 @@
                     {% else %}
                     <div class="empty-state">
                         <p>No participants yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div id="externaltasks-{{ study_data.study.id }}" class="tab-panel">
+                    {% if study_data.external_tasks %}
+                    <div class="timeline-grid">
+                        {% for external_task in study_data.external_tasks %}
+                        <div class="timeline-card">
+                            <h3>{{ external_task.name }} <span class="badge badge-timeline">{{ external_task.task_key }}</span></h3>
+                            <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
+                            <p><strong>Configured tokens:</strong> {{ external_task.token_count }}</p>
+                            <p><strong>Assignments:</strong> {{ external_task.assignment_count }}</p>
+                            <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
+                            {% if external_task.description %}
+                            <p><strong>Description:</strong> {{ external_task.description }}</p>
+                            {% endif %}
+                            {% if external_task.assignments %}
+                            <div class="table-container" style="margin-top: 0.75rem;">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Order</th>
+                                            <th>Participant</th>
+                                            <th>Assigned Token</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for assignment in external_task.assignments %}
+                                        <tr>
+                                            <td>{{ assignment.assignment_order }}</td>
+                                            <td>{{ assignment.participant_id }}</td>
+                                            <td>{{ assignment.assigned_token }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <p>No external tasks configured for this study.</p>
                     </div>
                     {% endif %}
                 </div>

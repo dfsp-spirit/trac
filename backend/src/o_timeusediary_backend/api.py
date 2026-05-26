@@ -1023,6 +1023,45 @@ async def admin_overview(
             or 0
         )
 
+        external_task_rows = session.exec(
+            select(StudyExternalTask)
+            .where(StudyExternalTask.study_id == study.id)
+            .order_by(StudyExternalTask.task_key)
+        ).all()
+        external_tasks = []
+        external_task_assignment_count = 0
+        for external_task in external_task_rows:
+            assignment_rows = session.exec(
+                select(StudyExternalTaskAssignment)
+                .where(
+                    StudyExternalTaskAssignment.external_task_id == external_task.id
+                )
+                .order_by(
+                    StudyExternalTaskAssignment.assignment_order,
+                    StudyExternalTaskAssignment.participant_id,
+                )
+            ).all()
+            external_task_assignment_count += len(assignment_rows)
+            external_tasks.append(
+                {
+                    "task_key": external_task.task_key,
+                    "name": external_task.name,
+                    "description": external_task.description,
+                    "url": external_task.url,
+                    "confirmation_type": external_task.confirmation_type,
+                    "token_count": len(external_task.tokens),
+                    "assignment_count": len(assignment_rows),
+                    "assignments": [
+                        {
+                            "participant_id": assignment.participant_id,
+                            "assigned_token": assignment.assigned_token,
+                            "assignment_order": assignment.assignment_order,
+                        }
+                        for assignment in assignment_rows
+                    ],
+                }
+            )
+
         num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfg_per_timeline(
             activities_config
         )
@@ -1082,6 +1121,9 @@ async def admin_overview(
                 "timelines": timelines,
                 "timeline_stats": timeline_stats,
                 "participants": participants,
+                "external_tasks": external_tasks,
+                "external_task_count": len(external_tasks),
+                "external_task_assignment_count": external_task_assignment_count,
                 "activities_preview": enriched_activities,
                 "total_activities_logged": total_activities_logged,
                 "total_activities_cfg": num_activities_in_cfgfile_total,
