@@ -41,13 +41,62 @@ class CfgFileLoggedActivity(BaseModel):
 
 
 class CfgFileExternalTask(BaseModel):
+    """Study-config entry for one external task.
+
+    Example:
+    {
+        "task_key": "payment",
+        "name": "Payment Survey",
+        "description": "Complete payment handoff",
+        "url": "https://example.org/payment?src=trac",
+        "confirmation_type": "none",
+        "tokens": ["tok-user-1", "tok-user-2"],
+        "send_pid": true,
+        "pid_query_param": "pid",
+        "config": {"token_query_param": "survey_token"}
+    }
+
+    Notes:
+    - "tokens" must contain exactly one token per listed participant.
+        - "config.token_query_param" controls the URL query parameter name used for
+      the assigned token in participant continuation links.
+      If omitted, "token" is used.
+        - If "send_pid" is true, the participant ID is also appended using
+            "pid_query_param" (default: "pid").
+    """
+    # Stable machine key for this task in API payloads and callbacks.
     task_key: str
+    # Human-facing task name shown in admin and participant views.
     name: str
+    # Optional long description shown next to the task name.
     description: Optional[str] = None
+    # Base URL of the external task target (token is appended as query param).
     url: str
+    # Supported values: "none" (manual completion) or "callback" (backend callback).
     confirmation_type: str = "none"
+    # One token per participant, aligned with study_participant_ids order.
     tokens: List[str] = Field(default_factory=list)
+    # If true, append the participant ID to continuation_url.
+    send_pid: bool = False
+    # Query parameter key used when send_pid is enabled.
+    pid_query_param: str = "pid"
+    # Extra task settings, e.g. {"token_query_param": "survey_token"}.
     config: Dict[str, Any] = Field(default_factory=dict)
+
+
+def get_external_task_effective_config(
+    external_task: CfgFileExternalTask,
+) -> Dict[str, Any]:
+    config = (
+        dict(external_task.config)
+        if isinstance(external_task.config, dict)
+        else {}
+    )
+    if external_task.send_pid:
+        pid_query_param = (external_task.pid_query_param or "pid").strip() or "pid"
+        config["send_pid"] = True
+        config["pid_query_param"] = pid_query_param
+    return config
 
 
 _ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES = {"none", "callback"}
@@ -122,6 +171,14 @@ def validate_external_tasks_for_study(
         if len(set(external_task.tokens)) != len(external_task.tokens):
             raise ValueError(
                 f"Study '{study_name_short}': external task '{external_task.task_key}' contains duplicate tokens"
+            )
+
+        if (
+            not isinstance(external_task.pid_query_param, str)
+            or not external_task.pid_query_param.strip()
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' has invalid pid_query_param"
             )
 
 

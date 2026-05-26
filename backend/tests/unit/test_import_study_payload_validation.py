@@ -146,6 +146,8 @@ def test_import_study_payload_accepts_external_tasks():
             "url": "https://example.org/payment",
             "confirmation_type": "none",
             "tokens": ["tok-1", "tok-2"],
+            "send_pid": True,
+            "pid_query_param": "participant_id",
             "config": {"provider": "example"},
         }
     ]
@@ -155,6 +157,8 @@ def test_import_study_payload_accepts_external_tasks():
     assert len(study_payload.external_tasks) == 1
     assert study_payload.external_tasks[0].task_key == "payment"
     assert study_payload.external_tasks[0].tokens == ["tok-1", "tok-2"]
+    assert study_payload.external_tasks[0].send_pid is True
+    assert study_payload.external_tasks[0].pid_query_param == "participant_id"
 
 
 def test_validate_import_payload_rejects_external_tasks_for_open_study():
@@ -278,3 +282,26 @@ def test_build_external_task_continuation_url_replaces_existing_token_param():
     continuation_url = _build_external_task_continuation_url(external_task, "cb-1")
 
     assert continuation_url == "https://example.org/callback?src=trac&token=cb-1"
+
+
+def test_build_external_task_continuation_url_appends_pid_when_enabled():
+    external_task = StudyExternalTask(
+        study_id=1,
+        task_key="payment",
+        name="Payment Survey",
+        url="https://example.org/payment?src=trac",
+        confirmation_type="none",
+        tokens=["tok-1"],
+        config={"token_query_param": "survey_token", "send_pid": True, "pid_query_param": "participant_id"},
+    )
+
+    continuation_url = _build_external_task_continuation_url(
+        external_task,
+        "tok-1",
+        participant_id="p1",
+    )
+
+    assert (
+        continuation_url
+        == "https://example.org/payment?src=trac&survey_token=tok-1&participant_id=p1"
+    )

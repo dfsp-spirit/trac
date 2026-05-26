@@ -638,6 +638,8 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
                         "url": "https://example.org/payment?src=trac",
                         "confirmation_type": "none",
                         "tokens": ["tok-1", "tok-2"],
+                        "send_pid": True,
+                        "pid_query_param": "participant_id",
                         "config": {"token_query_param": "survey_token"},
                     },
                     {
@@ -687,7 +689,7 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
             "description": "Complete payment handoff.",
             "confirmation_type": "none",
             "assigned_token": "tok-1",
-            "continuation_url": "https://example.org/payment?src=trac&survey_token=tok-1",
+            "continuation_url": "https://example.org/payment?src=trac&survey_token=tok-1&participant_id=p1",
             "is_confirmed": False,
             "confirmed_at": None,
         }

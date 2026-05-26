@@ -22,6 +22,7 @@ from .parsers.activities_config import (
 )
 from .parsers.studies_config import (
     CfgFileExternalTask,
+    get_external_task_effective_config,
     get_cfg_study_by_name_short,
     validate_external_tasks_for_study,
 )
@@ -111,17 +112,24 @@ def _get_localized_study_text(
 
 
 def _build_external_task_continuation_url(
-    external_task: StudyExternalTask, assigned_token: str
+    external_task: StudyExternalTask,
+    assigned_token: str,
+    participant_id: Optional[str] = None,
 ) -> str:
     parsed_url = urlparse(external_task.url)
     config = external_task.config if isinstance(external_task.config, dict) else {}
     token_query_param = (config.get("token_query_param") or "token").strip()
+    send_pid = bool(config.get("send_pid"))
+    pid_query_param = (config.get("pid_query_param") or "pid").strip()
     query_items = [
         (key, value)
         for key, value in parse_qsl(parsed_url.query, keep_blank_values=True)
         if key != token_query_param
+        and not (send_pid and participant_id and key == pid_query_param)
     ]
     query_items.append((token_query_param, assigned_token))
+    if send_pid and participant_id:
+        query_items.append((pid_query_param, participant_id))
 
     return urlunparse(
         parsed_url._replace(query=urlencode(query_items, doseq=True))
@@ -158,7 +166,9 @@ def _get_participant_external_tasks(
             confirmation_type=external_task.confirmation_type,
             assigned_token=assignment.assigned_token,
             continuation_url=_build_external_task_continuation_url(
-                external_task, assignment.assigned_token
+                external_task,
+                assignment.assigned_token,
+                participant_id=participant_id,
             ),
             is_confirmed=assignment.is_confirmed,
             confirmed_at=assignment.confirmed_at,
@@ -1642,7 +1652,7 @@ def _create_study_from_import_payload(
                 url=external_task_payload.url,
                 confirmation_type=external_task_payload.confirmation_type,
                 tokens=list(external_task_payload.tokens),
-                config=dict(external_task_payload.config),
+                config=get_external_task_effective_config(external_task_payload),
             )
         )
 

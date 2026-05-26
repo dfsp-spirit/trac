@@ -17,7 +17,11 @@ from .models import (
     StudyExternalTaskAssignment,
 )
 from .settings import settings
-from .parsers.studies_config import load_studies_config, CfgFileStudies
+from .parsers.studies_config import (
+    load_studies_config,
+    CfgFileStudies,
+    get_external_task_effective_config,
+)
 from .parsers.activities_config import (
     ActivitiesConfig,
     get_activity_codes_set,
@@ -237,7 +241,7 @@ def _ensure_external_tasks_from_config(
                 url=external_task.url,
                 confirmation_type=external_task.confirmation_type,
                 tokens=list(external_task.tokens),
-                config=dict(external_task.config),
+                config=get_external_task_effective_config(external_task),
             )
         )
 
