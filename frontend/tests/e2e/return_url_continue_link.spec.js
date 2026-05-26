@@ -110,9 +110,15 @@ test('thank-you page shows assigned external task link for confirmation_type non
     'href',
     'https://example.org/callback?token=cb-1'
   );
+
+  const baseTaskRow = page.locator('#study-custom-message-end .follow-up-link-row', {
+    hasText: 'Complete TRAC diary reporting',
+  });
+  await expect(baseTaskRow).toBeVisible();
+  await expect(baseTaskRow).toContainText('Completed');
 });
 
-test('thank-you page confirms callback external task and hides it afterwards', async ({
+test('thank-you page confirms callback external task and shows it as completed', async ({
   page,
 }) => {
   let callbackConfirmed = false;
@@ -179,7 +185,66 @@ test('thank-you page confirms callback external task and hides it afterwards', a
     { waitUntil: 'domcontentloaded' }
   );
 
-  await expect(page.locator('#study-custom-message-end')).not.toContainText(
-    'Callback Task'
+  const callbackTaskRow = page.locator('#study-custom-message-end .follow-up-link-row', {
+    hasText: 'Callback Task',
+  });
+  await expect(callbackTaskRow).toBeVisible();
+  await expect(callbackTaskRow).toContainText('Already completed');
+
+  await expect(
+    page.locator('#study-custom-message-end a.continue-link', {
+      hasText: 'Callback Task',
+    })
+  ).toHaveCount(0);
+});
+
+test('thank-you page shows base task row as not completed for noconsent status', async ({
+  page,
+}) => {
+  await page.route('**/api/studies/pw_noconsent/study-config**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        study_name: 'Playwright Noconsent Study',
+        study_name_short: 'pw_noconsent',
+        description: 'Mocked noconsent study config',
+        allow_unlisted_participants: false,
+        require_consent: true,
+        data_collection_start: '2024-01-01T00:00:00Z',
+        data_collection_end: '2028-12-31T23:59:59Z',
+        default_language: 'en',
+        activities_json_url: '/unused.json',
+        supported_languages: ['en'],
+        selected_language: 'en',
+        study_text_end_completed: 'Done.',
+        study_text_end_skipped: 'Skipped.',
+        study_text_end_noconsent: 'No consent.',
+        external_tasks: [],
+        timelines: [],
+        day_labels: [],
+        study_days_count: 1,
+      }),
+    });
+  });
+
+  await page.goto(
+    'pages/thank-you.html?study_name=pw_noconsent&pid=p1&lang=en&completion_status=noconsent',
+    { waitUntil: 'domcontentloaded' }
+  );
+
+  const baseTaskRow = page.locator('#study-custom-message-end .follow-up-link-row', {
+    hasText: 'Complete TRAC diary reporting',
+  });
+  await expect(baseTaskRow).toBeVisible();
+  await expect(baseTaskRow).toContainText('Not completed');
+
+  await expect(
+    page.locator('#study-custom-message-end a.continue-link', {
+      hasText: 'Complete TRAC diary reporting',
+    })
+  ).toHaveCount(0);
+  await expect(page.locator('#study-custom-message-end a.continue-link')).toHaveCount(
+    0
   );
 });

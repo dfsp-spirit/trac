@@ -120,11 +120,47 @@
             margin-top: 16px;
         }
 
+        .follow-up-task-title {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+
+        .follow-up-link-row.is-completed .follow-up-task-title {
+            color: #64748b;
+        }
+
+        .follow-up-task-status {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 600;
+            vertical-align: middle;
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .follow-up-task-status.is-completed {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .follow-up-task-status.is-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
         .follow-up-task-description {
             display: block;
             margin-top: 6px;
             font-size: 14px;
             color: var(--secondary-color);
+        }
+
+        .follow-up-link-row.is-completed .follow-up-task-description {
+            color: #64748b;
         }
 
         .app-name {
@@ -290,20 +326,48 @@
             return confirmationResult;
         }
 
-        function appendFollowUpLink({ href, text, description = '', className = 'continue-link' }) {
+        function appendFollowUpTask({
+            href = null,
+            text,
+            description = '',
+            className = 'continue-link',
+            statusLabel = '',
+            statusClassName = '',
+            isCompleted = false,
+        }) {
             const customEndElement = document.getElementById('study-custom-message-end');
-            if (!customEndElement || !href || !text) {
+            if (!customEndElement || !text) {
                 return;
             }
 
             const row = document.createElement('span');
             row.className = 'follow-up-link-row';
+            if (isCompleted) {
+                row.classList.add('is-completed');
+            }
 
-            const link = document.createElement('a');
-            link.href = href;
-            link.className = className;
-            link.textContent = text;
-            row.appendChild(link);
+            let titleElement = null;
+            if (typeof href === 'string' && href.trim() !== '') {
+                titleElement = document.createElement('a');
+                titleElement.href = href;
+                titleElement.className = className;
+            } else {
+                titleElement = document.createElement('span');
+                titleElement.className = 'follow-up-task-title';
+            }
+
+            titleElement.textContent = text;
+            row.appendChild(titleElement);
+
+            if (typeof statusLabel === 'string' && statusLabel.trim() !== '') {
+                const statusElement = document.createElement('span');
+                statusElement.className = 'follow-up-task-status';
+                if (typeof statusClassName === 'string' && statusClassName.trim() !== '') {
+                    statusElement.classList.add(statusClassName.trim());
+                }
+                statusElement.textContent = statusLabel.trim();
+                row.appendChild(statusElement);
+            }
 
             if (typeof description === 'string' && description.trim() !== '') {
                 const descriptionElement = document.createElement('span');
@@ -314,6 +378,42 @@
 
             customEndElement.appendChild(document.createElement('br'));
             customEndElement.appendChild(row);
+        }
+
+        function translateOrFallback(key, fallback) {
+            const translated = window.i18n?.t?.(key);
+            if (
+                typeof translated !== 'string' ||
+                translated.trim() === '' ||
+                translated.trim() === key
+            ) {
+                return fallback;
+            }
+            return translated;
+        }
+
+        function getTaskLabels() {
+            return {
+                baseTaskName: translateOrFallback('thankYou.baseTaskName', 'Complete TRAC diary reporting'),
+                statusCompleted: translateOrFallback('thankYou.statusCompleted', 'Completed'),
+                statusAlreadyCompleted: translateOrFallback('thankYou.statusAlreadyCompleted', 'Already completed'),
+                statusNotCompleted: translateOrFallback('thankYou.statusNotCompleted', 'Not completed'),
+            };
+        }
+
+        function applyBaseStudyTaskRow() {
+            const labels = getTaskLabels();
+            const completionStatus = getCompletionStatus();
+            const baseTaskCompleted = completionStatus === 'completed';
+
+            appendFollowUpTask({
+                text: labels.baseTaskName,
+                statusLabel: baseTaskCompleted
+                    ? labels.statusCompleted
+                    : labels.statusNotCompleted,
+                statusClassName: baseTaskCompleted ? 'is-completed' : 'is-pending',
+                isCompleted: baseTaskCompleted,
+            });
         }
 
         function getSafeReturnUrl() {
@@ -347,7 +447,7 @@
             }
 
             const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
-            appendFollowUpLink({
+            appendFollowUpTask({
                 href: safeReturnUrl,
                 text: linkText,
             });
@@ -364,10 +464,8 @@
 
             externalTasks.forEach((externalTask) => {
                 if (
-                    (externalTask?.confirmation_type !== 'none' && externalTask?.confirmation_type !== 'callback') ||
-                    externalTask?.is_confirmed === true ||
-                    typeof externalTask?.continuation_url !== 'string' ||
-                    externalTask.continuation_url.trim() === ''
+                    externalTask?.confirmation_type !== 'none' &&
+                    externalTask?.confirmation_type !== 'callback'
                 ) {
                     return;
                 }
@@ -377,7 +475,26 @@
                         ? externalTask.name.trim()
                         : window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
 
-                appendFollowUpLink({
+                if (externalTask?.is_confirmed === true) {
+                    const labels = getTaskLabels();
+                    appendFollowUpTask({
+                        text: taskName,
+                        description: externalTask.description,
+                        statusLabel: labels.statusAlreadyCompleted,
+                        statusClassName: 'is-completed',
+                        isCompleted: true,
+                    });
+                    return;
+                }
+
+                if (
+                    typeof externalTask?.continuation_url !== 'string' ||
+                    externalTask.continuation_url.trim() === ''
+                ) {
+                    return;
+                }
+
+                appendFollowUpTask({
                     href: externalTask.continuation_url,
                     text: taskName,
                     description: externalTask.description,
@@ -408,6 +525,7 @@
             }
 
             applyStudyOutroText(studyConfig, language);
+            applyBaseStudyTaskRow();
             applyExternalTasks(studyConfig);
             applyReturnUrlLink();
         });
