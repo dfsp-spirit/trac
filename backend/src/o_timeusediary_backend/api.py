@@ -14,7 +14,7 @@ from datetime import datetime
 import csv
 import json
 from sqlmodel import Session, select
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from fastapi.templating import Jinja2Templates
 from .parsers.activities_config import (
     ActivitiesConfig,
@@ -108,6 +108,62 @@ def _get_localized_study_text(
         or text_map.get(study.default_language)
         or text_map.get("en")
     )
+
+
+def _build_external_task_continuation_url(
+    external_task: StudyExternalTask, assigned_token: str
+) -> str:
+    parsed_url = urlparse(external_task.url)
+    config = external_task.config if isinstance(external_task.config, dict) else {}
+    token_query_param = (config.get("token_query_param") or "token").strip()
+    query_items = [
+        (key, value)
+        for key, value in parse_qsl(parsed_url.query, keep_blank_values=True)
+        if key != token_query_param
+    ]
+    query_items.append((token_query_param, assigned_token))
+
+    return urlunparse(
+        parsed_url._replace(query=urlencode(query_items, doseq=True))
+    )
+
+
+def _get_participant_external_tasks(
+    session: Session, study: Study, participant_id: Optional[str]
+) -> List["ParticipantExternalTaskResponse"]:
+    if not participant_id:
+        return []
+
+    assigned_rows = session.exec(
+        select(StudyExternalTaskAssignment, StudyExternalTask)
+        .join(
+            StudyExternalTask,
+            StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+        )
+        .where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTaskAssignment.participant_id == participant_id,
+            StudyExternalTask.confirmation_type == "none",
+        )
+        .order_by(
+            StudyExternalTaskAssignment.assignment_order,
+            StudyExternalTask.task_key,
+        )
+    ).all()
+
+    return [
+        ParticipantExternalTaskResponse(
+            task_key=external_task.task_key,
+            name=external_task.name,
+            description=external_task.description,
+            confirmation_type=external_task.confirmation_type,
+            assigned_token=assignment.assigned_token,
+            continuation_url=_build_external_task_continuation_url(
+                external_task, assignment.assigned_token
+            ),
+        )
+        for assignment, external_task in assigned_rows
+    ]
 
 
 # Initialize templates with absolute path
@@ -3365,6 +3421,15 @@ class DayLabelConfigResponse(BaseModel):
     display_name: Optional[str] = None
 
 
+class ParticipantExternalTaskResponse(BaseModel):
+    task_key: str
+    name: str
+    description: Optional[str] = None
+    confirmation_type: str
+    assigned_token: str
+    continuation_url: str
+
+
 class StudyConfigResponse(BaseModel):
     study_name: str
     study_name_short: str
@@ -3384,6 +3449,7 @@ class StudyConfigResponse(BaseModel):
     study_text_consent: Optional[str] = None
     consent_given: Optional[bool] = None
     consent_decided_at: Optional[datetime] = None
+    external_tasks: List[ParticipantExternalTaskResponse] = []
     timelines: List[TimelineConfigResponse]
     day_labels: List[DayLabelConfigResponse]
     study_days_count: int
@@ -3576,6 +3642,10 @@ def get_study_config(
             consent_given = study_participant.consent_given
             consent_decided_at = study_participant.consent_decided_at
 
+    participant_external_tasks = _get_participant_external_tasks(
+        session, study, participant_id
+    )
+
     return StudyConfigResponse(
         study_name=study.name,
         study_name_short=study.name_short,
@@ -3595,6 +3665,7 @@ def get_study_config(
         study_text_consent=study_text_consent,
         consent_given=consent_given,
         consent_decided_at=consent_decided_at,
+        external_tasks=participant_external_tasks,
         timelines=timeline_responses,
         day_labels=day_label_responses,
         study_days_count=len(day_labels),

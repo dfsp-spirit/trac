@@ -503,3 +503,81 @@ async def test_admin_export_external_tasks_roundtrip():
         assert "tok-1" in admin_page_response.text
         assert "tok-2" in admin_page_response.text
 
+
+@pytest.mark.asyncio
+async def test_study_config_returns_participant_external_tasks_for_none_confirmation():
+    study_name_short = f"it_external_cfg_{uuid.uuid4().hex[:8]}"
+    activities_payload = _load_activities_template()
+
+    payload = {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"External Task Study Config {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Study with participant-facing external task links",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": ["p1", "p2"],
+                "allow_unlisted_participants": False,
+                "external_tasks": [
+                    {
+                        "task_key": "payment",
+                        "name": "Payment Survey",
+                        "description": "Complete payment handoff.",
+                        "url": "https://example.org/payment?src=trac",
+                        "confirmation_type": "none",
+                        "tokens": ["tok-1", "tok-2"],
+                        "config": {"token_query_param": "survey_token"},
+                    },
+                    {
+                        "task_key": "callback_only",
+                        "name": "Callback Task",
+                        "description": "Should not be shown yet.",
+                        "url": "https://example.org/callback",
+                        "confirmation_type": "callback",
+                        "tokens": ["cb-1", "cb-2"],
+                        "config": {},
+                    },
+                ],
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {"en": activities_payload},
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        import_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert import_response.status_code == 200
+
+        study_config_response = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": "p1"},
+        )
+        assert study_config_response.status_code == 200
+
+        study_config_data = study_config_response.json()
+        assert study_config_data["external_tasks"] == [
+            {
+                "task_key": "payment",
+                "name": "Payment Survey",
+                "description": "Complete payment handoff.",
+                "confirmation_type": "none",
+                "assigned_token": "tok-1",
+                "continuation_url": "https://example.org/payment?src=trac&survey_token=tok-1",
+            }
+        ]
+

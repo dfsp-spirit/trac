@@ -141,6 +141,7 @@ async def test_study_and_participant_endpoints_are_available_with_expected_struc
             "default_language",
             "supported_languages",
             "selected_language",
+            "external_tasks",
             "timelines",
             "day_labels",
             "study_days_count",

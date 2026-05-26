@@ -9,8 +9,10 @@ os.environ.setdefault("TUD_ALLOWED_ORIGINS", '["http://localhost:3000"]')
 
 from o_timeusediary_backend.api import (
     ImportStudiesConfigStudy,
+    _build_external_task_continuation_url,
     _validate_import_study_payload,
 )
+from o_timeusediary_backend.models import StudyExternalTask
 from o_timeusediary_backend.settings import settings
 
 
@@ -244,3 +246,19 @@ def test_validate_import_payload_rejects_external_tasks_with_duplicate_tokens():
 
     with pytest.raises(ValueError, match="duplicate tokens"):
         _validate_import_study_payload(study_payload)
+
+
+def test_build_external_task_continuation_url_uses_configured_token_query_param():
+    external_task = StudyExternalTask(
+        study_id=1,
+        task_key="payment",
+        name="Payment Survey",
+        url="https://example.org/payment?src=trac",
+        confirmation_type="none",
+        tokens=["tok-1"],
+        config={"token_query_param": "survey_token"},
+    )
+
+    continuation_url = _build_external_task_continuation_url(external_task, "tok-1")
+
+    assert continuation_url == "https://example.org/payment?src=trac&survey_token=tok-1"

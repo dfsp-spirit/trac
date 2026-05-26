@@ -115,6 +115,18 @@
             text-decoration: underline;
         }
 
+        .follow-up-link-row {
+            display: block;
+            margin-top: 16px;
+        }
+
+        .follow-up-task-description {
+            display: block;
+            margin-top: 6px;
+            font-size: 14px;
+            color: var(--secondary-color);
+        }
+
         .app-name {
             font-weight: 600;
             color: var(--primary-color);
@@ -215,6 +227,37 @@
             document.documentElement.lang = language;
         }
 
+        function getCompletionStatus() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('completion_status') || 'completed';
+        }
+
+        function appendFollowUpLink({ href, text, description = '', className = 'continue-link' }) {
+            const customEndElement = document.getElementById('study-custom-message-end');
+            if (!customEndElement || !href || !text) {
+                return;
+            }
+
+            const row = document.createElement('span');
+            row.className = 'follow-up-link-row';
+
+            const link = document.createElement('a');
+            link.href = href;
+            link.className = className;
+            link.textContent = text;
+            row.appendChild(link);
+
+            if (typeof description === 'string' && description.trim() !== '') {
+                const descriptionElement = document.createElement('span');
+                descriptionElement.className = 'follow-up-task-description';
+                descriptionElement.textContent = description.trim();
+                row.appendChild(descriptionElement);
+            }
+
+            customEndElement.appendChild(document.createElement('br'));
+            customEndElement.appendChild(row);
+        }
+
         function getSafeReturnUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             const rawReturnUrl = (urlParams.get('return_url') || '').trim();
@@ -236,13 +279,7 @@
         }
 
         function applyReturnUrlLink() {
-            const customEndElement = document.getElementById('study-custom-message-end');
-            if (!customEndElement) {
-                return;
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-            if ((urlParams.get('completion_status') || 'completed') === 'noconsent') {
+            if (getCompletionStatus() === 'noconsent') {
                 return;
             }
 
@@ -251,15 +288,42 @@
                 return;
             }
 
-                const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
-                const linkParagraph = document.createElement('p');
+            const linkText = window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
+            appendFollowUpLink({
+                href: safeReturnUrl,
+                text: linkText,
+            });
+        }
 
-                const link = document.createElement('a');
-                link.href = safeReturnUrl;
-                link.className = 'continue-link';
-                link.textContent = linkText;
-                linkParagraph.appendChild(link);
-                customEndElement.appendChild(linkParagraph);
+        function applyExternalTasks(studyConfig) {
+            if (getCompletionStatus() === 'noconsent') {
+                return;
+            }
+
+            const externalTasks = Array.isArray(studyConfig?.external_tasks)
+                ? studyConfig.external_tasks
+                : [];
+
+            externalTasks.forEach((externalTask) => {
+                if (
+                    externalTask?.confirmation_type !== 'none' ||
+                    typeof externalTask?.continuation_url !== 'string' ||
+                    externalTask.continuation_url.trim() === ''
+                ) {
+                    return;
+                }
+
+                const taskName =
+                    typeof externalTask.name === 'string' && externalTask.name.trim() !== ''
+                        ? externalTask.name.trim()
+                        : window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
+
+                appendFollowUpLink({
+                    href: externalTask.continuation_url,
+                    text: taskName,
+                    description: externalTask.description,
+                });
+            });
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -279,6 +343,7 @@
             i18n.applyTranslations();
 
             applyStudyOutroText(studyConfig, language);
+            applyExternalTasks(studyConfig);
             applyReturnUrlLink();
         });
     </script>
