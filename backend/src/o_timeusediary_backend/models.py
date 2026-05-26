@@ -20,6 +20,9 @@ class Participant(SQLModel, table=True):
         back_populates="participant"
     )
     activities: List["Activity"] = Relationship(back_populates="participant")
+    external_task_assignments: List["StudyExternalTaskAssignment"] = Relationship(
+        back_populates="participant"
+    )
 
 
 class Study(SQLModel, table=True):
@@ -109,6 +112,38 @@ class StudyExternalTask(SQLModel, table=True):
     )
 
     study: Study = Relationship(back_populates="external_tasks")
+    assignments: List["StudyExternalTaskAssignment"] = Relationship(
+        back_populates="external_task"
+    )
+
+
+class StudyExternalTaskAssignment(SQLModel, table=True):
+    __tablename__ = "study_external_task_assignments"
+    __table_args__ = (
+        UniqueConstraint(
+            "external_task_id",
+            "participant_id",
+            name="uq_external_task_assignment_task_participant",
+        ),
+        UniqueConstraint(
+            "external_task_id",
+            "assigned_token",
+            name="uq_external_task_assignment_task_token",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    external_task_id: int = Field(foreign_key="study_external_tasks.id", index=True)
+    participant_id: str = Field(foreign_key="participants.id", index=True)
+    assigned_token: str = Field(index=True)
+    assignment_order: int = Field(default=0, index=True)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    external_task: StudyExternalTask = Relationship(back_populates="assignments")
+    participant: Participant = Relationship(back_populates="external_task_assignments")
 
 
 class StudyActivityConfigBlob(SQLModel, table=True):

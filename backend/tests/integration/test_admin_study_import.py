@@ -478,6 +478,18 @@ async def test_admin_export_external_tasks_roundtrip():
                 "confirmation_type": "none",
                 "tokens": ["tok-1", "tok-2"],
                 "config": {"provider": "example"},
+                "participant_assignments": [
+                    {
+                        "participant_id": "p1",
+                        "assigned_token": "tok-1",
+                        "assignment_order": 0,
+                    },
+                    {
+                        "participant_id": "p2",
+                        "assigned_token": "tok-2",
+                        "assignment_order": 1,
+                    },
+                ],
             }
         ]
 

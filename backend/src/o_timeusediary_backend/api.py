@@ -39,6 +39,7 @@ from .models import (
     Participant,
     StudyActivityConfigBlob,
     StudyExternalTask,
+    StudyExternalTaskAssignment,
 )
 from .models import (
     StudyAvailableTimeline,
@@ -46,7 +47,12 @@ from .models import (
     StudyAvailableActivity,
     StudyAvailableActivityI18n,
 )
-from .database import get_session, create_db_and_tables, get_timelines_for_study
+from .database import (
+    get_session,
+    create_db_and_tables,
+    get_timelines_for_study,
+    ensure_external_task_assignments,
+)
 from pathlib import Path
 import hashlib
 from .api_deps.activities import get_study_activity_codes
@@ -1568,6 +1574,12 @@ def _create_study_from_import_payload(
                 )
             )
 
+    ensure_external_task_assignments(
+        session,
+        study,
+        study_payload.study_participant_ids,
+    )
+
     for language in validated_data["supported_languages"]:
         raw_blob = validated_data["raw_activities_by_lang"][language]
         session.add(
@@ -2139,6 +2151,24 @@ async def export_runtime_studies_config(
                         "confirmation_type": external_task.confirmation_type,
                         "tokens": external_task.tokens,
                         "config": external_task.config,
+                        "participant_assignments": [
+                            {
+                                "participant_id": assignment.participant_id,
+                                "assigned_token": assignment.assigned_token,
+                                "assignment_order": assignment.assignment_order,
+                            }
+                            for assignment in session.exec(
+                                select(StudyExternalTaskAssignment)
+                                .where(
+                                    StudyExternalTaskAssignment.external_task_id
+                                    == external_task.id
+                                )
+                                .order_by(
+                                    StudyExternalTaskAssignment.assignment_order,
+                                    StudyExternalTaskAssignment.participant_id,
+                                )
+                            ).all()
+                        ],
                     }
                     for external_task in external_tasks
                 ],

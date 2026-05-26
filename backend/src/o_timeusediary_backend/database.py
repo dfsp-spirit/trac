@@ -14,6 +14,7 @@ from .models import (
     StudyAvailableActivity,
     StudyAvailableActivityI18n,
     StudyExternalTask,
+    StudyExternalTaskAssignment,
 )
 from .settings import settings
 from .parsers.studies_config import load_studies_config, CfgFileStudies
@@ -176,6 +177,64 @@ def _ensure_external_tasks_from_config(
                 config=dict(external_task.config),
             )
         )
+
+
+def ensure_external_task_assignments(
+    session: Session, study: Study, participant_ids_in_order: list[str]
+) -> None:
+    normalized_participant_ids: list[str] = []
+    seen_participant_ids: set[str] = set()
+    for participant_id in participant_ids_in_order:
+        normalized_participant_id = (participant_id or "").strip()
+        if not normalized_participant_id:
+            continue
+        if normalized_participant_id in seen_participant_ids:
+            continue
+        seen_participant_ids.add(normalized_participant_id)
+        normalized_participant_ids.append(normalized_participant_id)
+
+    if not normalized_participant_ids:
+        return
+
+    external_tasks = session.exec(
+        select(StudyExternalTask)
+        .where(StudyExternalTask.study_id == study.id)
+        .order_by(StudyExternalTask.task_key)
+    ).all()
+    if not external_tasks:
+        return
+
+    for external_task in external_tasks:
+        existing_assignments = session.exec(
+            select(StudyExternalTaskAssignment).where(
+                StudyExternalTaskAssignment.external_task_id == external_task.id
+            )
+        ).all()
+        assignments_by_participant = {
+            assignment.participant_id: assignment for assignment in existing_assignments
+        }
+
+        for assignment_order, (participant_id, assigned_token) in enumerate(
+            zip(normalized_participant_ids, external_task.tokens)
+        ):
+            assignment = assignments_by_participant.get(participant_id)
+            if assignment:
+                if (
+                    assignment.assigned_token != assigned_token
+                    or assignment.assignment_order != assignment_order
+                ):
+                    assignment.assigned_token = assigned_token
+                    assignment.assignment_order = assignment_order
+                continue
+
+            session.add(
+                StudyExternalTaskAssignment(
+                    external_task_id=external_task.id,
+                    participant_id=participant_id,
+                    assigned_token=assigned_token,
+                    assignment_order=assignment_order,
+                )
+            )
 
 
 def _load_activities_configs_by_language(study_config) -> dict[str, ActivitiesConfig]:
@@ -449,11 +508,39 @@ def create_config_file_studies_in_database(config_path: str):
                     study_updated = _hydrate_study_texts_from_config(
                         session, existing_study, study_config
                     )
+                    if study_config.study_participant_ids:
+                        for participant_id in study_config.study_participant_ids:
+                            existing_participant = session.exec(
+                                select(Participant).where(Participant.id == participant_id)
+                            ).first()
+                            if not existing_participant:
+                                existing_participant = Participant(id=participant_id)
+                                session.add(existing_participant)
+                                session.flush()
+
+                            existing_association = session.exec(
+                                select(StudyParticipant).where(
+                                    StudyParticipant.study_id == existing_study.id,
+                                    StudyParticipant.participant_id == participant_id,
+                                )
+                            ).first()
+                            if not existing_association:
+                                session.add(
+                                    StudyParticipant(
+                                        study_id=existing_study.id,
+                                        participant_id=participant_id,
+                                    )
+                                )
                     _ensure_activity_blobs_from_config(
                         session, existing_study, study_config
                     )
                     _ensure_external_tasks_from_config(
                         session, existing_study, study_config
+                    )
+                    ensure_external_task_assignments(
+                        session,
+                        existing_study,
+                        study_config.study_participant_ids,
                     )
 
                     activities_cfg_by_language = _load_activities_configs_by_language(
@@ -683,6 +770,12 @@ def create_config_file_studies_in_database(config_path: str):
                                 participant_id=participant_id,
                             )
                         )
+
+                ensure_external_task_assignments(
+                    session,
+                    study,
+                    study_config.study_participant_ids,
+                )
 
                 # Flush so DayLabel/Timeline IDs exist for hydrated activities
                 session.flush()

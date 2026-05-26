@@ -67,6 +67,27 @@ async function clickActiveTimelineAtPercent(page, percent) {
   await page.mouse.click(x, y);
 }
 
+async function getActiveTimelineActivityCountSafe(page) {
+  try {
+    return await page.evaluate(() => {
+      if (!window.timelineManager || !window.timelineManager.keys) {
+        return null;
+      }
+      const key = window.timelineManager.keys[window.timelineManager.currentIndex];
+      return (window.timelineManager.activities[key] || []).length;
+    });
+  } catch (error) {
+    const message = String(error && error.message ? error.message : error);
+    if (
+      message.includes('Execution context was destroyed') ||
+      message.includes('Cannot find context with specified id')
+    ) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 test('delete in mobile persists after resizing to desktop without submit', async ({
   page,
 }) => {
@@ -85,12 +106,7 @@ test('delete in mobile persists after resizing to desktop without submit', async
 
   await expect
     .poll(
-      async () =>
-        page.evaluate(() => {
-          const key =
-            window.timelineManager.keys[window.timelineManager.currentIndex];
-          return (window.timelineManager.activities[key] || []).length;
-        }),
+      async () => getActiveTimelineActivityCountSafe(page),
       {
         timeout: 5000,
         message: 'Waiting for created activity in timeline state',
@@ -126,12 +142,7 @@ test('delete in mobile persists after resizing to desktop without submit', async
 
   await expect
     .poll(
-      async () =>
-        page.evaluate(() => {
-          const key =
-            window.timelineManager.keys[window.timelineManager.currentIndex];
-          return (window.timelineManager.activities[key] || []).length;
-        }),
+      async () => getActiveTimelineActivityCountSafe(page),
       {
         timeout: 5000,
         message:
@@ -152,12 +163,7 @@ test('delete in mobile persists after resizing to desktop without submit', async
 
   await expect
     .poll(
-      async () =>
-        page.evaluate(() => {
-          const key =
-            window.timelineManager.keys[window.timelineManager.currentIndex];
-          return (window.timelineManager.activities[key] || []).length;
-        }),
+      async () => getActiveTimelineActivityCountSafe(page),
       {
         timeout: 5000,
         message:
