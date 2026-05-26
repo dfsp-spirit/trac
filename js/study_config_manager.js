@@ -51,6 +51,11 @@ function getParticipantIdFromUrl() {
   return urlParams.get('pid');
 }
 
+function getStudyNameFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+}
+
 function normalizeLanguageCode(language) {
   if (typeof language !== 'string') {
     return null;
@@ -200,7 +205,7 @@ async function loadStudiesConfigFromFile() {
     STUDIES_CONFIG_CACHE = await response.json();
 
     // Find current study
-    const studyName = TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    const studyName = getStudyNameFromUrl();
     CURRENT_STUDY_CACHE = STUDIES_CONFIG_CACHE.studies.find(
       (s) => s.name_short === studyName
     );
@@ -272,6 +277,8 @@ async function loadStudiesConfigFromFile() {
       study_participant_ids: [],
       allow_unlisted_participants: true,
       require_consent: false,
+      instructions_completed: false,
+      participant_has_completed_study: false,
       activities_json_files: { en: 'activities_default.json' },
       supported_languages: ['en'],
       selected_language: 'en',
@@ -285,7 +292,7 @@ async function loadStudiesConfigFromFile() {
 // Sync with backend (preferred source)
 async function syncWithBackendConfig() {
   try {
-    const studyName = TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    const studyName = getStudyNameFromUrl();
     const participantId = getParticipantIdFromUrl();
     const apiUrl = new URL(
       `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`,
@@ -484,6 +491,19 @@ async function syncWithBackendConfig() {
       if (backendConfig.consent_decided_at !== undefined) {
         CURRENT_STUDY_CACHE.consent_decided_at =
           backendConfig.consent_decided_at;
+      }
+
+      if (backendConfig.instructions_completed !== undefined) {
+        CURRENT_STUDY_CACHE.instructions_completed =
+          backendConfig.instructions_completed;
+      }
+      if (backendConfig.instructions_completed_at !== undefined) {
+        CURRENT_STUDY_CACHE.instructions_completed_at =
+          backendConfig.instructions_completed_at;
+      }
+      if (backendConfig.participant_has_completed_study !== undefined) {
+        CURRENT_STUDY_CACHE.participant_has_completed_study =
+          backendConfig.participant_has_completed_study;
       }
 
       if (backendConfig.study_days_count) {

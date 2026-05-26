@@ -5174,6 +5174,21 @@ async function init() {
         'en'
     );
 
+    const participantHasCompletedStudy =
+      currentStudy?.participant_has_completed_study === true;
+    if (participantHasCompletedStudy && !isInstructionsPagePath()) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectUrl = new URL('pages/thank-you.html', window.location.href);
+      if (!currentParams.has('completion_status')) {
+        currentParams.set('completion_status', 'completed');
+      }
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
+
     // Keep shared study cache aligned with effective language choice.
     currentStudy.selected_language = selectedLanguage;
     ensureLanguageSelector(

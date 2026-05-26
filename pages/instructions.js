@@ -202,6 +202,48 @@ function applyStudyIntroText(studyConfig) {
   }
 }
 
+function buildThankYouUrlWithCurrentParams() {
+  const currentUrl = new URL(window.location.href);
+  const redirectUrl = new URL('thank-you.html', currentUrl.href);
+  currentUrl.searchParams.forEach((value, key) => {
+    redirectUrl.searchParams.set(key, value);
+  });
+  if (!redirectUrl.searchParams.has('completion_status')) {
+    redirectUrl.searchParams.set('completion_status', 'completed');
+  }
+  return redirectUrl.toString();
+}
+
+async function markInstructionsCompletedInBackend() {
+  const urlParams = getUrlParams();
+  const studyName =
+    urlParams.get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+  const participantId = urlParams.get('pid');
+  if (!participantId) {
+    return;
+  }
+
+  const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+  const endpointUrl = new URL(
+    `${apiBaseUrl}/studies/${studyName}/participants/${participantId}/instructions/complete`,
+    window.location.origin
+  );
+
+  const response = await fetch(endpointUrl.toString(), {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ completed: true }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to persist instructions completion: ${response.status}`);
+  }
+}
+
 // Add the missing updateLayout function
 function updateLayout() {
   const isMobile = getIsMobile();
@@ -244,6 +286,10 @@ function updateLayout() {
     }
 
     if (studyConfig) {
+      if (studyConfig.participant_has_completed_study === true) {
+        window.location.href = buildThankYouUrlWithCurrentParams();
+        return;
+      }
       renderLanguageSelector(studyConfig, selectedLanguage);
     }
 
@@ -349,6 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('Continue button found, adding click handler');
     continueBtn.addEventListener('click', (e) => {
       console.log('Continue button clicked:', e);
+      markInstructionsCompletedInBackend().catch((error) => {
+        console.warn('Could not persist instructions completion:', error.message);
+      });
       const targetUrl = createUrlWithParams('../index.html');
       console.log('Redirecting to:', targetUrl);
       window.location.href = targetUrl;
