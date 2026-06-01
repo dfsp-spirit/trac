@@ -138,7 +138,6 @@
     "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
     "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
-    "timelineHeaderCombined": "Rapportering av __TIMELINE__ för dagen __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
@@ -150,7 +149,7 @@
     "loadingActivitiesShort": "Fel vid laddning av aktiviteter. Uppdatera sidan och försök igen. Fel:"
   },
   "banner": {
-    "dayOneInstructions": "Instruktioner: Välj först en aktivitet från listan nedan. Klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet på mobil, håll ned den i 2 sekunder. På dator högerklickar du på en aktivitet och väljer 'Ta bort' (eller hovrar över den och trycker på 'd' eller DEL)."
+    "dayOneInstructions": "Instruktioner: Välj en aktivitet nedan, klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet, håll den nedtryckt på mobil eller använd högerklicksmenyn på dator."
   },
   "activities": {
     "otherNotListed": "Annat som inte finns med (ange)"
