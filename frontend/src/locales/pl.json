@@ -138,7 +138,6 @@
     "invalidPlacement": "Nie można umieścić aktywności w tym miejscu z powodu niewłaściwej pozycji.",
     "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
     "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
-    "timelineHeaderCombined": "Raportowanie __TIMELINE__ dla dnia __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Raportowanie dla dnia:",
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
@@ -150,7 +149,7 @@
     "loadingActivitiesShort": "Błąd ładowania aktywności. Proszę odświeżyć stronę, aby spróbować ponownie. Błąd:"
   },
   "banner": {
-    "dayOneInstructions": "Instrukcje użytkowania: Najpierw wybierz aktywność z poniższej listy. Następnie kliknij na oś czasu, aby ją umieścić, a następnie przeciągnij krawędzie, aby ją rozciągnąć. Aby usunąć aktywność na urządzeniu mobilnym, przytrzymaj ją przez 2 sekundy. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz 'Usuń' (lub najedź kursorem i naciśnij 'd' albo DEL)."
+    "dayOneInstructions": "Instrukcje: Wybierz aktywność poniżej, potem kliknij na osi czasu, aby ją umieścić, i przeciągnij krawędzie, aby wydłużyć. Aby usunąć aktywność, przytrzymaj ją na telefonie lub użyj menu po kliknięciu prawym przyciskiem myszy na komputerze."
   },
   "activities": {
     "otherNotListed": "Inne (wpisz)"

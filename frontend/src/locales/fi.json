@@ -138,7 +138,6 @@
     "invalidPlacement": "Toimintoa ei voi sijoittaa tähän virheellisen sijainnin vuoksi.",
     "timelineValidationError": "Aikajanan validointivirhe: {{message}}",
     "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
-    "timelineHeaderCombined": "Kirjaus __TIMELINE__ päivälle __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Raportointi päivälle:",
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
@@ -150,7 +149,7 @@
     "loadingActivitiesShort": "Virhe toimintojen latauksessa. Päivitä sivu ja yritä uudelleen. Virhe:"
   },
   "banner": {
-    "dayOneInstructions": "Käyttöohjeet: Valitse ensin toiminto alla olevasta listasta. Klikkaa sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi sitä. Poistaaksesi toiminnon mobiilissa, pidä sitä painettuna 2 sekuntia. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse 'Poista' (tai vie hiiri sen päälle ja paina 'd'- tai Delete-näppäintä)."
+    "dayOneInstructions": "Ohjeet: Valitse toiminto alta, napsauta sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi. Poistaaksesi toiminnon, pidä sitä painettuna mobiilissa tai käytä tietokoneella hiiren oikean painikkeen valikkoa."
   },
   "activities": {
     "otherNotListed": "Muu (kirjoita)"
