@@ -1346,11 +1346,14 @@ body {
 }
 
 .skip-btn {
-  background-color: var(--danger-color);
+  background-color: #e2e8f0;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  box-shadow: none;
 }
 
 .skip-btn:hover:not(:disabled) {
-  background-color: #b91c1c;
+  background-color: #cbd5e1;
 }
 
 /* When next button shows Submit text, use success color */
@@ -1975,6 +1978,29 @@ body {
 }
 
 /* Submit button styles */
+.instructions-footer {
+  padding: 20px;
+  background: white;
+  border-top: 1px solid #ddd;
+  text-align: left;
+  margin-top: 20px;
+}
+
+.footer-actions-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.footer-actions-spacer {
+  min-width: 0;
+}
+
+.footer-skip-btn {
+  justify-self: center;
+}
+
 .nav-submit-btn {
   padding: 12px 24px;
   background-color: var(--primary-color);
@@ -1987,6 +2013,7 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-self: end;
   transition:
     transform 0.2s ease,
     background-color 0.2s ease;
@@ -2020,6 +2047,21 @@ body {
 @media (max-width: 480px) {
   #instructionsFooter {
     padding: 15px !important;
+  }
+
+  .footer-actions-row {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 12px;
+  }
+
+  .footer-actions-spacer {
+    display: none;
+  }
+
+  .footer-skip-btn,
+  .nav-submit-btn {
+    justify-self: center;
   }
 
   .nav-submit-btn {
