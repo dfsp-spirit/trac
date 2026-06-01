@@ -440,6 +440,40 @@ function createModal() {
     }
   });
 
+  const cleanRowConfirmationModal = document.createElement('div');
+  cleanRowConfirmationModal.className = 'modal-overlay';
+  cleanRowConfirmationModal.id = 'cleanRowConfirmationModal';
+  cleanRowConfirmationModal.innerHTML = `
+        <div class="modal">
+            <div class="modal-content">
+                <h3 data-i18n="modals.confirmCleanRow.title">Clear current timeline row?</h3>
+                <p data-i18n="modals.confirmCleanRow.message">Are you sure you want to delete all activities in the current timeline row?</p>
+                <div class="button-container">
+                    <button id="confirmCleanRowCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
+                    <button id="confirmCleanRowOk" class="btn save-btn" data-i18n="buttons.cleanRow">Clean Row</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+  cleanRowConfirmationModal
+    .querySelector('#confirmCleanRowCancel')
+    .addEventListener('click', () => {
+      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+    });
+
+  cleanRowConfirmationModal
+    .querySelector('#confirmCleanRowOk')
+    .addEventListener('click', () => {
+      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+    });
+
+  cleanRowConfirmationModal.addEventListener('click', (e) => {
+    if (e.target === cleanRowConfirmationModal) {
+      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+    }
+  });
+
   // Create loading modal
   const loadingModal = document.createElement('div');
   loadingModal.className = 'modal-overlay';
@@ -457,6 +491,7 @@ function createModal() {
   document.body.appendChild(activitiesModal);
   document.body.appendChild(confirmationModal);
   document.body.appendChild(skipConfirmationModal);
+  document.body.appendChild(cleanRowConfirmationModal);
   document.body.appendChild(loadingModal);
   document.body.appendChild(customActivityModal);
 
@@ -1077,7 +1112,7 @@ function initButtons() {
     });
   }
 
-  cleanRowBtn.addEventListener('click', () => {
+  const performCleanRow = () => {
     const currentKey = getCurrentTimelineKey();
     const currentData = getCurrentTimelineData();
     if (currentData.length > 0) {
@@ -1117,7 +1152,27 @@ function initButtons() {
         );
       }
     }
+  };
+
+  cleanRowBtn.addEventListener('click', () => {
+    createModal();
+    const cleanRowConfirmationModal = document.getElementById(
+      'cleanRowConfirmationModal'
+    );
+
+    if (cleanRowConfirmationModal) {
+      cleanRowConfirmationModal.style.display = 'block';
+      return;
+    }
+
+    // Fallback if modal is unavailable for any reason.
+    performCleanRow();
   });
+
+  const confirmCleanRowOk = document.getElementById('confirmCleanRowOk');
+  if (confirmCleanRowOk) {
+    confirmCleanRowOk.addEventListener('click', performCleanRow);
+  }
 
   // Add click handler for Undo button using debounced function
   document

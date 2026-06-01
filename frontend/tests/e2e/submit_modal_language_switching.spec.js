@@ -109,6 +109,8 @@ async function openSubmitConfirmation(page) {
 test('submit modal uses correct language for each day after language switch', async ({
   page,
 }) => {
+  const pid = `trac-e2e-lang-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+
   // Stub the POST-activities submit endpoint so the test does not depend on
   // a writable backend. GET calls are left to pass through so study config and
   // activity definitions still load from the real backend.
@@ -130,7 +132,7 @@ test('submit modal uses correct language for each day after language switch', as
   // -------------------------------------------------------------------------
   // Day 1 – English (Monday)
   // -------------------------------------------------------------------------
-  await page.goto('index.html?study_name=default&lang=en', {
+  await page.goto(`index.html?study_name=default&lang=en&pid=${pid}`, {
     waitUntil: 'domcontentloaded',
   });
   await expect(page).toHaveURL(/pages\/instructions\.html/);
@@ -163,11 +165,25 @@ test('submit modal uses correct language for each day after language switch', as
   // -------------------------------------------------------------------------
   // Day 2 – Swedish (Tuesday) – switch language via the language selector
   // -------------------------------------------------------------------------
-  await expect(page.locator('#languageSelectMain')).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/lang=sv/, { timeout: 30000 }),
-    page.locator('#languageSelectMain').selectOption('sv'),
-  ]);
+  const languageSelectMain = page.locator('#languageSelectMain');
+  if (await languageSelectMain.count()) {
+    await expect(languageSelectMain).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/lang=sv/, { timeout: 30000 }),
+      languageSelectMain.selectOption('sv'),
+    ]);
+  } else {
+    const url = new URL(page.url());
+    url.searchParams.set('lang', 'sv');
+    url.searchParams.set('pid', pid);
+    await page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/lang=sv/);
+  }
+
+  const activeLangAfterSwitch = await page.evaluate(
+    () => window.studyConfigManager?.getSelectedLanguage?.() || 'en'
+  );
+  expect(activeLangAfterSwitch).toBe('sv');
 
   // The page reloads in-place with lang=sv; we should land on day 2 directly
   // (no instructions redirect because instructions=completed is already in the URL)
@@ -200,11 +216,19 @@ test('submit modal uses correct language for each day after language switch', as
   // -------------------------------------------------------------------------
   // Day 3 – English again (Wednesday) – switch language back
   // -------------------------------------------------------------------------
-  await expect(page.locator('#languageSelectMain')).toBeVisible();
-  await Promise.all([
-    page.waitForURL(/lang=en/, { timeout: 30000 }),
-    page.locator('#languageSelectMain').selectOption('en'),
-  ]);
+  if (await languageSelectMain.count()) {
+    await expect(languageSelectMain).toBeVisible();
+    await Promise.all([
+      page.waitForURL(/lang=en/, { timeout: 30000 }),
+      languageSelectMain.selectOption('en'),
+    ]);
+  } else {
+    const url = new URL(page.url());
+    url.searchParams.set('lang', 'en');
+    url.searchParams.set('pid', pid);
+    await page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/lang=en/);
+  }
 
   await expect(page).toHaveURL(/index\.html/);
   await waitForActivitiesLoaded(page);

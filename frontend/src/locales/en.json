@@ -98,6 +98,10 @@
       "title": "Do you really want to skip all time reporting?",
       "message": "You will be taken directly to the thank-you page."
     },
+    "confirmCleanRow": {
+      "title": "Clear current timeline row?",
+      "message": "Are you sure you want to delete all activities in the current timeline row?"
+    },
     "loading": {
       "title": "Submitting your diary...",
       "message": "Please wait while we save your responses."

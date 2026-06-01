@@ -98,6 +98,10 @@
       "title": "Czy na pewno chcesz pominąć raportowanie czasu?",
       "message": "Zostaniesz przeniesiony bezpośrednio na stronę z podziękowaniami."
     },
+    "confirmCleanRow": {
+      "title": "Wyczyścić bieżący rząd osi czasu?",
+      "message": "Czy na pewno chcesz usunąć wszystkie aktywności z bieżącego rzędu osi czasu?"
+    },
     "loading": {
       "title": "Wysyłanie dziennika...",
       "message": "Proszę czekać, podczas gdy zapisujemy Twoje odpowiedzi."

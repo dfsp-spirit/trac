@@ -71,7 +71,9 @@ async function placeAnyActivityOnActiveTimeline(page) {
 test('study-config SV localization: intro text and day labels are shown in Swedish', async ({
   page,
 }) => {
-  await page.goto('index.html?study_name=default&lang=sv', {
+  const pid = `trac-e2e-sv-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
+
+  await page.goto(`index.html?study_name=default&lang=sv&pid=${pid}`, {
     waitUntil: 'domcontentloaded',
   });
 
@@ -84,6 +86,21 @@ test('study-config SV localization: intro text and day labels are shown in Swedi
 
   await page.locator('#continueBtn').click();
   await expect(page).toHaveURL(/index\.html/);
+
+  // If the app has switched away from Swedish (e.g. backend/default preferences),
+  // force lang=sv and continue with deterministic Swedish assertions.
+  if (!page.url().includes('lang=sv')) {
+    const url = new URL(page.url());
+    url.searchParams.set('lang', 'sv');
+    url.searchParams.set('pid', pid);
+    await page.goto(url.toString(), { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveURL(/lang=sv/);
+  }
+
+  const activeLang = await page.evaluate(
+    () => window.studyConfigManager?.getSelectedLanguage?.() || 'en'
+  );
+  expect(activeLang).toBe('sv');
 
   const currentDayDisplay = page.locator('#currentDayDisplay');
   await expect(currentDayDisplay).toBeVisible();

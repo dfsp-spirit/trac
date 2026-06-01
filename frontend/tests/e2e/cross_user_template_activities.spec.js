@@ -146,9 +146,17 @@ async function getPrimaryActivityCount(page) {
 
 async function clearCurrentRow(page) {
   const cleanRowBtn = page.locator('#cleanRowBtn');
+  const cleanRowConfirmationModal = page.locator('#cleanRowConfirmationModal');
+  const confirmCleanRowOkBtn = page.locator('#confirmCleanRowOk');
+
   await expect(cleanRowBtn).toBeVisible({ timeout: 15_000 });
   await expect(cleanRowBtn).toBeEnabled();
   await cleanRowBtn.click();
+
+  await expect(cleanRowConfirmationModal).toBeVisible({ timeout: 10_000 });
+  await expect(confirmCleanRowOkBtn).toBeVisible();
+  await confirmCleanRowOkBtn.click();
+
   await expect
     .poll(async () => getPrimaryActivityCount(page), {
       timeout: 10_000,

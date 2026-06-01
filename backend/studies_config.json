@@ -142,9 +142,9 @@
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
-      "default_language": "en",
+      "default_language": "sv",
       "supported_languages": [
-        "en"
+        "en", "sv", "de"
       ],
       "activities_json_files": {
         "en": "activities_ki_adults_en.json",
