@@ -137,8 +137,8 @@
     "templateLoadedBanner": "Wir haben Ihre Aktivitäten von <strong>{{day}}</strong> als Ausgangspunkt geladen. Klicken Sie auf <strong>'Zeile leeren'</strong>, um neu zu beginnen, oder bearbeiten Sie die untenstehenden Aktivitäten. Auf dem Handy löschen Sie eine einzelne Aktivität durch langes Drücken. Auf dem Desktop klicken Sie mit der rechten Maustaste auf eine Aktivität und wählen <strong>'Löschen'</strong> (oder fahren mit der Maus darüber und drücken DEL oder 'd').",
     "timelineHeaderCombined": "Erfassung von __TIMELINE__ für den Tag __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Bericht für Tag:",
-    "studyDayOf": "Studientag {{current}} von {{total}}",
-    "currentDayTooltip": "Aktuell: {{dayName}} (Tag {{current}} von {{total}})",
+    "studyDayOf": "Tag {{current}} von {{total}}",
+    "currentDayTooltip": "{{dayName}} (Tag {{current}} von {{total}})",
     "goBackToEditPreviousDays": "Zu Tag wechseln:"
   },
   "errors": {

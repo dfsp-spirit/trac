@@ -140,8 +140,8 @@
     "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
     "timelineHeaderCombined": "Raportowanie __TIMELINE__ dla dnia __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Raportowanie dla dnia:",
-    "studyDayOf": "Dzień badania {{current}} z {{total}}",
-    "currentDayTooltip": "Aktualny: {{dayName}} (Dzień {{current}} z {{total}})",
+    "studyDayOf": "Dzień {{current}} z {{total}}",
+    "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
     "goBackToEditPreviousDays": "Przełącz na dzień:"
   },
   "errors": {

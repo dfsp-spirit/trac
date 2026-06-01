@@ -140,8 +140,8 @@
     "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
     "timelineHeaderCombined": "Registro de __TIMELINE__ para el día __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Reporting for day:",
-    "studyDayOf": "Study Day {{current}} of {{total}}",
-    "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
+    "studyDayOf": "Día {{current}} de {{total}}",
+    "currentDayTooltip": "{{dayName}} (Día {{current}} de {{total}})",
     "goBackToEditPreviousDays": "Cambiar al día:"
   },
   "errors": {

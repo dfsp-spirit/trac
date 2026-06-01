@@ -140,8 +140,8 @@
     "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
     "timelineHeaderCombined": "Kirjaus __TIMELINE__ päivälle __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Raportointi päivälle:",
-    "studyDayOf": "Tutkimuspäivä {{current}} / {{total}}",
-    "currentDayTooltip": "Nykyinen: {{dayName}} (päivä {{current}} / {{total}})",
+    "studyDayOf": "Päivä {{current}} / {{total}}",
+    "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
     "goBackToEditPreviousDays": "Vaihda päivään:"
   },
   "errors": {

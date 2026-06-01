@@ -140,8 +140,8 @@
     "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
     "timelineHeaderCombined": "Saisie de __TIMELINE__ pour le jour __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Reporting for day:",
-    "studyDayOf": "Study Day {{current}} of {{total}}",
-    "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
+    "studyDayOf": "Jour {{current}} sur {{total}}",
+    "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
     "goBackToEditPreviousDays": "Aller au jour :"
   },
   "errors": {

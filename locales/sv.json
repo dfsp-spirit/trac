@@ -140,8 +140,8 @@
     "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
     "timelineHeaderCombined": "Rapportering av __TIMELINE__ för dagen __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Rapportering för dag:",
-    "studyDayOf": "Studiedag {{current}} av {{total}}",
-    "currentDayTooltip": "Nuvarande: {{dayName}} (Dag {{current}} av {{total}})",
+    "studyDayOf": "Dag {{current}} av {{total}}",
+    "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
     "goBackToEditPreviousDays": "Byt till dag:"
   },
   "errors": {

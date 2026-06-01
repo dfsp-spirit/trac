@@ -697,26 +697,12 @@ export function updateCurrentDayDisplay() {
     return null;
   }
 
-  const currentTimelineKey = getCurrentTimelineKey();
-  const timelineName =
-    window.timelineManager?.metadata?.[currentTimelineKey]?.name ||
-    timelineTitle.dataset.timelineName ||
-    '';
-
   const studyDayText = window.i18n
     ? window.i18n.t('messages.studyDayOf', {
         current: dayIndex + 1,
         total: studyDaysCount,
       })
-    : `Study Day ${dayIndex + 1} of ${studyDaysCount}`;
-
-  const combinedTemplate = window.i18n
-    ? window.i18n.t('messages.timelineHeaderCombined', {
-        timelineName: '__TIMELINE__',
-        dayName: '__DAY__',
-        studyDayText: '__STUDY_DAY__',
-      })
-    : 'Reporting __TIMELINE__ for day __DAY__ (__STUDY_DAY__)';
+    : `Day ${dayIndex + 1} of ${studyDaysCount}`;
 
   const dayTooltipText = window.i18n
     ? window.i18n.t('messages.currentDayTooltip', {
@@ -724,43 +710,23 @@ export function updateCurrentDayDisplay() {
         current: dayIndex + 1,
         total: studyDaysCount,
       })
-    : `Current: ${dayName} (Day ${dayIndex + 1} of ${studyDaysCount})`;
+    : `${dayName} (Day ${dayIndex + 1} of ${studyDaysCount})`;
 
   timelineTitle.textContent = '';
 
-  const parts = combinedTemplate
-    .split(/(__TIMELINE__|__DAY__|__STUDY_DAY__)/g)
-    .filter(Boolean);
+  const dayNameSpan = document.createElement('span');
+  dayNameSpan.className = 'timeline-header-emphasis';
+  dayNameSpan.textContent = dayName;
+  timelineTitle.appendChild(dayNameSpan);
 
-  parts.forEach((part) => {
-    if (part === '__TIMELINE__') {
-      const timelineNameSpan = document.createElement('span');
-      timelineNameSpan.className = 'timeline-header-emphasis';
-      timelineNameSpan.textContent = timelineName;
-      timelineTitle.appendChild(timelineNameSpan);
-      return;
-    }
+  timelineTitle.appendChild(document.createTextNode(' '));
 
-    if (part === '__DAY__') {
-      const dayNameSpan = document.createElement('span');
-      dayNameSpan.className = 'timeline-header-emphasis';
-      dayNameSpan.textContent = dayName;
-      timelineTitle.appendChild(dayNameSpan);
-      return;
-    }
-
-    if (part === '__STUDY_DAY__') {
-      const dayDisplay = document.createElement('span');
-      dayDisplay.id = 'currentDayDisplay';
-      dayDisplay.className = 'timeline-study-day-meta';
-      dayDisplay.textContent = studyDayText;
-      dayDisplay.title = dayTooltipText;
-      timelineTitle.appendChild(dayDisplay);
-      return;
-    }
-
-    timelineTitle.appendChild(document.createTextNode(part));
-  });
+  const dayDisplay = document.createElement('span');
+  dayDisplay.id = 'currentDayDisplay';
+  dayDisplay.className = 'timeline-study-day-meta';
+  dayDisplay.textContent = `(${studyDayText})`;
+  dayDisplay.title = dayTooltipText;
+  timelineTitle.appendChild(dayDisplay);
 
   return document.getElementById('currentDayDisplay');
 }

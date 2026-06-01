@@ -140,8 +140,8 @@
     "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
     "timelineHeaderCombined": "Reporting __TIMELINE__ for day __DAY__ (__STUDY_DAY__)",
     "reportingForDay": "Reporting for day:",
-    "studyDayOf": "Study Day {{current}} of {{total}}",
-    "currentDayTooltip": "Current: {{dayName}} (Day {{current}} of {{total}})",
+    "studyDayOf": "Day {{current}} of {{total}}",
+    "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
     "goBackToEditPreviousDays": "Switch to day:"
   },
   "errors": {
