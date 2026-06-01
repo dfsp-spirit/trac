@@ -98,6 +98,10 @@
       "title": "Haluatko varmasti ohittaa ajankäytön raportoinnin?",
       "message": "Sinut ohjataan suoraan kiitossivulle."
     },
+    "confirmCleanRow": {
+      "title": "Tyhjennetäänkö nykyinen aikajanarivi?",
+      "message": "Haluatko varmasti poistaa kaikki aktiviteetit nykyiseltä aikajanariviltä?"
+    },
     "loading": {
       "title": "Päiväkirjaa lähetetään...",
       "message": "Odota, kun tallennamme vastauksesi."

@@ -98,6 +98,10 @@
       "title": "¿Realmente quieres omitir todo el reporte de tiempo?",
       "message": "Serás llevado directamente a la página de agradecimiento."
     },
+    "confirmCleanRow": {
+      "title": "¿Limpiar la fila actual de la línea de tiempo?",
+      "message": "¿Seguro que quieres eliminar todas las actividades de la fila actual de la línea de tiempo?"
+    },
     "loading": {
       "title": "Enviando tu diario...",
       "message": "Por favor espera mientras guardamos tus respuestas."

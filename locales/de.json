@@ -98,6 +98,10 @@
       "title": "Möchten Sie die Zeiterfassung wirklich überspringen?",
       "message": "Sie werden direkt zur Dankesseite weitergeleitet."
     },
+    "confirmCleanRow": {
+      "title": "Aktuelle Zeitleisten-Zeile leeren?",
+      "message": "Möchten Sie wirklich alle Aktivitäten in der aktuellen Zeitleisten-Zeile löschen?"
+    },
     "loading": {
       "title": "Ihr Tagebuch wird übermittelt...",
       "message": "Bitte warten Sie, während Ihre Antworten gespeichert werden."

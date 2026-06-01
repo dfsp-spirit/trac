@@ -98,6 +98,10 @@
       "title": "Vill du verkligen hoppa över all tidsrapportering?",
       "message": "Du kommer att skickas direkt till tack-sidan."
     },
+    "confirmCleanRow": {
+      "title": "Rensa aktuell tidslinjerad?",
+      "message": "Är du säker på att du vill ta bort alla aktiviteter i den aktuella tidslinjeraden?"
+    },
     "loading": {
       "title": "Skickar din dagbok...",
       "message": "Var god vänta medan vi sparar dina svar."
