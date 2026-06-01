@@ -11,11 +11,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -24,11 +20,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -37,11 +29,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -50,11 +38,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -63,11 +47,7 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
           }
         },
         {
@@ -76,11 +56,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -89,11 +65,7 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Söndag",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],
@@ -101,28 +73,16 @@
         "en": "This is our time use study for adults. Please reconstruct a typical week of your daily activities.",
         "sv": "Detta är vår tidsanvändningsstudie för vuxna. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
         "de": "Dies ist unsere Zeitnutzungsstudie für Erwachsene. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten.",
-        "pl": "To jest nasze badanie wykorzystania czasu dla dorosłych. Prosimy o odtworzenie typowego tygodnia Twoich codziennych aktywności.",
-        "fi": "Tämä on aikuisten ajankäyttötutkimuksemme. Ole hyvä ja rekonstruoi tyypillinen viikko päivittäisistä toiminnoistasi.",
-        "fr": "Ceci est notre étude sur l'utilisation du temps pour les adultes. Veuillez reconstituer une semaine typique de vos activités quotidiennes.",
-        "es": "Este es nuestro estudio sobre el uso del tiempo para adultos. Por favor, reconstruya una semana típica de sus actividades diarias."
       },
       "study_text_end_completed": {
         "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
         "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
         "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
-        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
-        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
-        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
-        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
       },
       "study_text_end_skipped": {
         "en": "You skipped the time reporting part. If you provided some information, we will try to use it. Thank you!",
         "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
         "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
-        "pl": "Pominąłeś część dotyczącą raportowania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
-        "fi": "Ohitit ajankäytön raportointiosuuden. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
-        "fr": "Vous avez ignoré la partie de déclaration du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
-        "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
       },
       "require_consent": true,
       "is_paused": false,
@@ -135,10 +95,6 @@
         "en": "You did not give consent and your data will not be used in this study.",
         "sv": "Du gav inte ditt samtycke och dina data kommer inte att användas i denna studie.",
         "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet.",
-        "pl": "Nie wyraziłeś(-aś) zgody i Twoje dane nie będą wykorzystane w tym badaniu.",
-        "fi": "Et antanut suostumusta, eikä tietojasi käytetä tässä tutkimuksessa.",
-        "fr": "Vous n'avez pas donné votre consentement et vos données ne seront pas utilisées dans cette étude.",
-        "es": "No ha dado su consentimiento y sus datos no se utilizarán en este estudio."
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
@@ -165,11 +121,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -178,11 +130,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -191,11 +139,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -204,11 +148,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -217,11 +157,7 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
           }
         },
         {
@@ -230,11 +166,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -243,62 +175,43 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Sunday",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],
       "study_text_intro": {
         "en": "This is our time use study for 15 year olds. Please reconstruct a typical week of your daily activities.",
         "sv": "Detta är vår tidsanvändningsstudie för 15-åringar. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
-        "de": "Dies ist unsere Zeitnutzungsstudie für 15-Jährige. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten.",
-        "pl": "To jest nasze badanie wykorzystania czasu dla 15-latków. Prosimy o odtworzenie typowego tygodnia Twoich codziennych aktywności.",
-        "fi": "Tämä on 15-vuotiaille tarkoitettu ajankäyttötutkimuksemme. Ole hyvä ja rekonstruoi tyypillinen viikko päivittäisistä toiminnoistasi.",
-        "fr": "Ceci est notre étude sur l'utilisation du temps pour les 15 ans. Veuillez reconstituer une semaine typique de vos activités quotidiennes.",
-        "es": "Este es nuestro estudio sobre el uso del tiempo para jóvenes de 15 años. Por favor, reconstruya una semana típica de sus actividades diarias."
+        "de": "Dies ist unsere Zeitnutzungsstudie für 15-Jährige. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten."
       },
       "study_text_end_completed": {
         "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
         "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
-        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
-        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
-        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
-        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
-        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
       },
       "study_text_end_skipped": {
         "en": "You skipped the time reporting part. If you provided some information, we will try to use it. Thank you!",
         "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
-        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
-        "pl": "Pominąłeś część dotyczącą raportowania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
-        "fi": "Ohitit ajankäytön raportointiosuuden. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
-        "fr": "Vous avez ignoré la partie de déclaration du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
-        "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
+        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
       },
       "require_consent": true,
       "is_paused": false,
       "study_text_consent": {
         "en": "# Study Consent Page\n\nBy continuing, you agree that:\n- your answers are collected for scientific time use research\n- the data may be analyzed in aggregated form\n- you can stop at any time before submitting",
-        "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in"
+        "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in",
+        "de": "# Einwilligungsseite für die Studie\n\nWenn Sie fortfahren, stimmen Sie zu, dass:\n- Ihre Antworten für wissenschaftliche Forschung zur Zeitnutzung erhoben werden\n- die Daten in zusammengefasster Form ausgewertet werden können\n- Sie jederzeit vor dem Absenden abbrechen können"
       },
       "study_text_end_noconsent": {
         "en": "You did not give consent and your data will not be used in this study.",
         "sv": "Du gav inte ditt samtycke och dina data kommer inte att användas i denna studie.",
-        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet.",
-        "pl": "Nie wyraziłeś(-aś) zgody i Twoje dane nie będą wykorzystane w tym badaniu.",
-        "fi": "Et antanut suostumusta, eikä tietojasi käytetä tässä tutkimuksessa.",
-        "fr": "Vous n'avez pas donné votre consentement et vos données ne seront pas utilisées dans cette étude.",
-        "es": "No ha dado su consentimiento y sus datos no se utilizarán en este estudio."
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "en",
       "supported_languages": [
         "en",
-        "sv"
+        "sv", "de"
       ],
       "activities_json_files": {
         "en": "activities_ki_15yearolds_en.json",
@@ -319,11 +232,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -332,11 +241,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -345,11 +250,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -358,11 +259,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -371,11 +268,16 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag"
           }
         },
         {
@@ -384,11 +286,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -397,55 +295,36 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Söndag",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],
       "study_text_intro": {
         "en": "Please fill out this study for 9 year old children. You will be asked to report time use for an entire week.",
         "sv": "Vänligen fyll i denna studie för 9-åringar. Du kommer att bli ombedd att rapportera tidsanvändning för en hel vecka.",
-        "de": "Bitte füllen Sie diese Studie für 9-jährige Kinder aus. Sie werden gebeten, die Zeitnutzung für eine ganze Woche zu berichten.",
-        "pl": "Prosimy o wypełnienie tego badania dla 9-letnich dzieci. Zostaniesz poproszony o raportowanie wykorzystania czasu przez cały tydzień.",
-        "fi": "Täytä tämä tutkimus 9-vuotiaita lapsia varten. Sinua pyydetään raportoimaan ajankäyttö koko viikon ajalta.",
-        "fr": "Veuillez remplir cette étude pour des enfants de 9 ans. Il vous sera demandé de déclarer l'utilisation du temps pour une semaine entière.",
-        "es": "Por favor complete este estudio para niños de 9 años. Se le pedirá que informe el uso del tiempo durante una semana completa."
+        "de": "Bitte füllen Sie diese Studie für 9-jährige Kinder aus. Sie werden gebeten, die Zeitnutzung für eine ganze Woche zu berichten."
       },
       "study_text_end_completed": {
         "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
         "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
-        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
-        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
-        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
-        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
-        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
       },
       "study_text_end_skipped": {
         "en": "You have skipped filling out the time use part of the study. If you provided some information, we will try to use it. Thank you!",
         "sv": "Du har hoppat över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
-        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
-        "pl": "Pominąłeś wypełnienie części badania dotyczącej wykorzystania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
-        "fi": "Ohitit tutkimuksen ajankäyttöosan täyttämisen. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
-        "fr": "Vous avez ignoré le remplissage de la partie de l'étude sur l'utilisation du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
-        "es": "Ha omitido completar la parte del estudio sobre el uso del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
+        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
       },
       "require_consent": true,
       "is_paused": false,
       "study_text_consent": {
         "en": "# Study Consent Page\n\nBy continuing, you agree that:\n- your answers are collected for scientific time use research\n- the data may be analyzed in aggregated form\n- you can stop at any time before submitting",
-        "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in"
+        "sv": "# Sida för samtycke till studien\n\nGenom att fortsätta godkänner du att:\n- dina svar samlas in för vetenskaplig tidsanvändningsforskning\n- uppgifterna kan analyseras i samlad form\n- du kan avbryta när som helst innan du skickar in",
+        "de": "# Einwilligungsseite für die Studie\n\nWenn Sie fortfahren, stimmen Sie zu, dass:\n- Ihre Antworten für wissenschaftliche Forschung zur Zeitnutzung erhoben werden\n- die Daten in zusammengefasster Form ausgewertet werden können\n- Sie jederzeit vor dem Absenden abbrechen können"
       },
       "study_text_end_noconsent": {
         "en": "You did not give consent and your data will not be used in this study.",
         "sv": "Du gav inte ditt samtycke och dina data kommer inte att användas i denna studie.",
-        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet.",
-        "pl": "Nie wyraziłeś(-aś) zgody i Twoje dane nie będą wykorzystane w tym badaniu.",
-        "fi": "Et antanut suostumusta, eikä tietojasi käytetä tässä tutkimuksessa.",
-        "fr": "Vous n'avez pas donné votre consentement et vos données ne seront pas utilisées dans cette étude.",
-        "es": "No ha dado su consentimiento y sus datos no se utilizarán en este estudio."
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
