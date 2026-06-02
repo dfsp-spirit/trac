@@ -2607,6 +2607,7 @@ function renderChildItems(activity, categoryName) {
           childItem
         );
         if (frequencyOptions.length > 0) {
+          modal.style.display = 'none';
           openActivityDetailsModal({
             title: `Select frequency for: ${childItem.name}`,
             showInput: false,
@@ -2779,153 +2780,39 @@ function renderActivities(
 
           // Check if this is the "other not listed" button
           if (is_custom_input) {
-            // Show custom activity modal
-            console.log(
-              '>>[ACTIVITY] Detected "Other not listed" custom input activity button click'
-            );
-            console.log(
-              '[ACTIVITY] "Other not listed" button clicked, showing custom activity modal'
-            );
-            const customActivityModal = document.getElementById(
-              'customActivityModal'
-            );
-            const customActivityInput = document.getElementById(
-              'customActivityInput'
-            );
-            const modalTitle = customActivityModal.querySelector('h3');
-            const customActivityInputContainer = document.getElementById(
-              'customActivityInputContainer'
-            );
-            const customActivityFrequencyContainer = document.getElementById(
-              'customActivityFrequencyContainer'
-            );
-            const customActivityFrequencySelect = document.getElementById(
-              'customActivityFrequencySelect'
-            );
             const frequencyOptions = getFrequencyOptionsForActivity(activity);
-            modalTitle.textContent = `Enter custom value for: ${activity.name}`;
-
-            if (customActivityInputContainer) {
-              customActivityInputContainer.style.display = 'block';
-            }
-            if (customActivityFrequencyContainer) {
-              customActivityFrequencyContainer.style.display =
-                frequencyOptions.length ? 'block' : 'none';
-            }
-            populateFrequencySelect(
-              customActivityFrequencySelect,
-              frequencyOptions
-            );
-
-            customActivityInput.value = ''; // Clear previous input
-            customActivityModal.style.display = 'block';
-            customActivityInput.focus(); // Focus the input field
-
-            // Handle custom activity submission
-            const handleCustomActivity = () => {
-              const customText = customActivityInput.value.trim();
-              const selectedFrequencyKey =
-                customActivityFrequencySelect?.value || null;
-              if (customText) {
-                // Check if this is a child item custom input
-                if (
-                  window.customInputContext &&
-                  window.customInputContext.type === 'childItem'
-                ) {
-                  const context = window.customInputContext;
-
-                  // Create child item structure with custom text
-                  window.selectedActivity = {
-                    name: customText,
-                    parentName: context.parentActivity.name,
-                    parentCode: context.parentActivity.code,
-                    color:
-                      context.childItem.color || context.parentActivity.color,
-                    category: context.categoryName,
-                    selected: customText,
-                    originalSelection: context.childItem.name, // Store what was originally clicked
-                    isCustomInput: true,
-                    mode: 'single-choice',
-                    frequencyKey: selectedFrequencyKey,
-                    code: context.childItem.code,
-                  };
-
-                  // Reset context
-                  window.customInputContext = {
-                    type: null,
-                    parentActivity: null,
-                    categoryName: null,
-                  };
-                } else {
-                  // Original top-level custom input logic
-                  // This branch should not be hit: custom acticvity AND multuople-choice is not supported
-                  if (isMultipleChoice) {
-                    console.error(
-                      '[ACTIVITY] ERROR: Custom activity input in multiple-choice mode is not supported.'
-                    );
-                    activityButton.classList.add('selected');
-                    const selectedButtons = Array.from(categoryButtons).filter(
-                      (btn) => btn.classList.contains('selected')
-                    );
-                    window.selectedActivity = {
-                      selections: selectedButtons.map((btn) => ({
-                        name:
-                          btn === activityButton
-                            ? customText
-                            : btn.querySelector('.activity-text').textContent,
-                        color: btn.style.getPropertyValue('--color'),
-                      })),
-                      category: category.name,
-                      codes: selectedButtons.map((btn) =>
-                        btn === activityButton ? null : btn.dataset.code
-                      ),
-                    };
-                  } else {
-                    clearSelectedActivityButtons();
-                    window.selectedActivity = {
-                      name: customText,
-                      parentName: null,
-                      parentCode: null,
-                      color: activity.color,
-                      category: category.name,
-                      selected: customText,
-                      originalSelection: activity.name, // Store what was originally clicked
-                      isCustomInput: true,
-                      mode: 'single-choice',
-                      frequencyKey: selectedFrequencyKey,
-                      code: activity.code,
-                    };
-                    setSingleActiveActivityButton(activityButton);
-                  }
-                }
-
-                customActivityModal.style.display = 'none';
-                document.getElementById('activitiesModal').style.display =
-                  'none';
-
-                // Also close child items modal if it's open
-                const childItemsModal =
-                  document.getElementById('childItemsModal');
-                if (childItemsModal) {
-                  childItemsModal.style.display = 'none';
-                }
-              }
+            window.customInputContext = {
+              type: null,
+              parentActivity: null,
+              categoryName: null,
             };
+            openActivityDetailsModal({
+              title: `Enter custom value for: ${activity.name}`,
+              showInput: true,
+              frequencyOptions,
+              onConfirm: ({ customText, frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: customText,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: customText,
+                  originalSelection: activity.name,
+                  isCustomInput: true,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
 
-            // Set up event listeners for custom activity modal
-            const confirmBtn = document.getElementById('confirmCustomActivity');
-            const inputField = document.getElementById('customActivityInput');
-
-            // Remove any existing listeners
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-            // Add new listeners
-            newConfirmBtn.addEventListener('click', handleCustomActivity);
-            inputField.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter') {
-                handleCustomActivity();
-              }
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
             });
             console.log(
               'window.customInputContext: ',
@@ -3199,127 +3086,39 @@ function renderActivities(
 
           // Check if this is the "other not listed" button
           if (is_custom_input) {
-            // Show custom activity modal
-            console.log(
-              '>>>>[ACTIVITY] is_custom_input button clicked, showing custom activity modal'
-            );
-            const customActivityModal = document.getElementById(
-              'customActivityModal'
-            );
-            const customActivityInput = document.getElementById(
-              'customActivityInput'
-            );
-            customActivityInput.value = ''; // Clear previous input
-            customActivityModal.style.display = 'block';
-            customActivityInput.focus(); // Focus the input field
-            const modalTitle = customActivityModal.querySelector('h3');
-            modalTitle.textContent = `Enter custom value for:  ${activity.name}`;
-
-            // Handle custom activity submission
-            const handleCustomActivity = () => {
-              const customText = customActivityInput.value.trim();
-              if (customText) {
-                // Check if this is a child item custom input
-                if (
-                  window.customInputContext &&
-                  window.customInputContext.type === 'childItem'
-                ) {
-                  console.log(
-                    '>>>>[ACTIVITY] This is a child-level custom input activity'
-                  );
-                  const context = window.customInputContext;
-
-                  // Create child item structure with custom text
-                  window.selectedActivity = {
-                    name: customText,
-                    parentName: context.parentActivity.name,
-                    parentCode: context.parentActivity.code,
-                    color:
-                      context.childItem.color || context.parentActivity.color,
-                    category: context.categoryName,
-                    selected: customText,
-                    originalSelection: context.childItem.name, // Store what was originally clicked
-                    mode: 'single-choice',
-                    isCustomInput: true,
-                    code: context.childItem.code,
-                  };
-
-                  // Reset context
-                  window.customInputContext = {
-                    type: null,
-                    parentActivity: null,
-                    categoryName: null,
-                  };
-                } else {
-                  console.log(
-                    '>>>>[ACTIVITY] This is a top-level custom input activity'
-                  );
-                  // Original top-level custom input logic
-                  if (isMultipleChoice) {
-                    console.error(
-                      'ERROR: cucstom input with multiple-choice is not supported'
-                    );
-                    activityButton.classList.add('selected');
-                    const selectedButtons = Array.from(categoryButtons).filter(
-                      (btn) => btn.classList.contains('selected')
-                    );
-                    window.selectedActivity = {
-                      selections: selectedButtons.map((btn) => ({
-                        name:
-                          btn === activityButton
-                            ? customText
-                            : btn.querySelector('.activity-text').textContent,
-                        color: btn.style.getPropertyValue('--color'),
-                      })),
-                      category: category.name,
-                      mode: 'multiple-choice',
-                      codes: selectedButtons.map((btn) => btn.dataset.code),
-                    };
-                  } else {
-                    clearSelectedActivityButtons();
-                    window.selectedActivity = {
-                      name: customText,
-                      parentName: null,
-                      parentCode: null,
-                      color: activity.color,
-                      category: category.name,
-                      originalSelection: activity.name, // Store what was originally clicked
-                      selected: customText,
-                      mode: 'single-choice',
-                      isCustomInput: true,
-                      code: activity.code,
-                    };
-                    setSingleActiveActivityButton(activityButton);
-                  }
-                }
-
-                customActivityModal.style.display = 'none';
-                document.getElementById('activitiesModal').style.display =
-                  'none';
-
-                // Also close child items modal if it's open
-                const childItemsModal =
-                  document.getElementById('childItemsModal');
-                if (childItemsModal) {
-                  childItemsModal.style.display = 'none';
-                }
-              }
+            const frequencyOptions = getFrequencyOptionsForActivity(activity);
+            window.customInputContext = {
+              type: null,
+              parentActivity: null,
+              categoryName: null,
             };
+            openActivityDetailsModal({
+              title: `Enter custom value for: ${activity.name}`,
+              showInput: true,
+              frequencyOptions,
+              onConfirm: ({ customText, frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: customText,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  originalSelection: activity.name,
+                  selected: customText,
+                  mode: 'single-choice',
+                  isCustomInput: true,
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
 
-            // Set up event listeners for custom activity modal
-            const confirmBtn = document.getElementById('confirmCustomActivity');
-            const inputField = document.getElementById('customActivityInput');
-
-            // Remove any existing listeners
-            const newConfirmBtn = confirmBtn.cloneNode(true);
-            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
-
-            // Add new listeners
-            newConfirmBtn.addEventListener('click', handleCustomActivity);
-            inputField.addEventListener('keypress', (e) => {
-              if (e.key === 'Enter') {
-                handleCustomActivity();
-              }
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
             });
 
             return;
