@@ -131,11 +131,12 @@ async function loadStudyConfigForInstructions(language) {
 
 function renderLanguageSelector(studyConfig, selectedLanguage) {
   const supportedLanguages = studyConfig?.supported_languages || [];
+  const existingSelector = document.getElementById('languageSelect');
   if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+    existingSelector?.closest('.language-selector-container')?.remove();
     return;
   }
 
-  const existingSelector = document.getElementById('languageSelect');
   if (existingSelector) {
     return;
   }
@@ -240,7 +241,9 @@ async function markInstructionsCompletedInBackend() {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to persist instructions completion: ${response.status}`);
+    throw new Error(
+      `Failed to persist instructions completion: ${response.status}`
+    );
   }
 }
 
@@ -396,7 +399,10 @@ document.addEventListener('DOMContentLoaded', () => {
     continueBtn.addEventListener('click', (e) => {
       console.log('Continue button clicked:', e);
       markInstructionsCompletedInBackend().catch((error) => {
-        console.warn('Could not persist instructions completion:', error.message);
+        console.warn(
+          'Could not persist instructions completion:',
+          error.message
+        );
       });
       const targetUrl = createUrlWithParams('../index.html');
       console.log('Redirecting to:', targetUrl);
