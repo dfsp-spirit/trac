@@ -299,6 +299,16 @@
                   "code": 1171,
                   "label": "sports outdoors other",
                   "color": "#9370DB",
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Varannan vecka"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Månadsvis"
+                    }
+                  ],
                   "is_custom_input": true
                 }
               ]

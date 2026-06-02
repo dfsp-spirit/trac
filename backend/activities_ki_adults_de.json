@@ -299,6 +299,16 @@
                   "code": 1171,
                   "label": "sport im freien sonstiges",
                   "color": "#9370DB",
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Alle zwei Wochen"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monatlich"
+                    }
+                  ],
                   "is_custom_input": true
                 }
               ]

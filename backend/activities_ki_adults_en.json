@@ -299,6 +299,16 @@
                   "code": 1171,
                   "label": "sports outdoors other",
                   "color": "#9370DB",
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Bi-weekly"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monthly"
+                    }
+                  ],
                   "is_custom_input": true
                 }
               ]
