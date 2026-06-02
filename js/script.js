@@ -1059,6 +1059,7 @@ function createActivityBlock(activityData, isFromTemplate = false) {
   currentBlock.dataset.startMinutes = activityData.startMinutes;
   currentBlock.dataset.endMinutes = activityData.endMinutes;
   currentBlock.dataset.code = activityData.code;
+  currentBlock.dataset.frequencyKey = activityData.frequencyKey || '';
 
   if (activityData.selections) {
     currentBlock.dataset.tooltipText = activityData.selections
@@ -1327,6 +1328,7 @@ function createActivityBlock(activityData, isFromTemplate = false) {
       selected: activityData.selected || combinedActivityText,
       isCustomInput: activityData.isCustomInput || false,
       originalSelection: activityData.originalSelection || null,
+      frequencyKey: activityData.frequencyKey || null,
       startMinutes: activityData.startMinutes,
       endMinutes: activityData.endMinutes,
       mode: activityData.mode || 'single-choice',
@@ -4642,6 +4644,7 @@ function transformBackendActivitiesResponse(backendData) {
       count: activity.selections ? activity.selections.length : 1,
       id: activity.activity_id_backend || generateUniqueId(),
       code: activity.activity_code,
+      frequencyKey: activity.frequency_key || null,
       day_label_index: activity.day_label_index,
       day_label: activity.day_label || null,
     });
