@@ -79,6 +79,184 @@ function clearActiveActivitySelection() {
   window.selectedActivity = null;
 }
 
+function normalizeFrequencyOptions(source) {
+  const rawOptions =
+    source?.frequency_options || source?.frequencyOptions || [];
+  if (!Array.isArray(rawOptions)) {
+    return [];
+  }
+
+  return rawOptions
+    .map((option) => {
+      const key =
+        option?.key || option?.frequency_key || option?.value || option?.id;
+      const label =
+        option?.label || option?.name || option?.text || option?.title || key;
+
+      if (!key) {
+        return null;
+      }
+
+      return {
+        key: String(key),
+        label: String(label || key),
+      };
+    })
+    .filter(Boolean);
+}
+
+function getFrequencyOptionsForActivity(activity, childItem = null) {
+  return normalizeFrequencyOptions(childItem || activity);
+}
+
+function getActivityDetailsModalElements() {
+  const modal = document.getElementById('customActivityModal');
+  if (!modal) {
+    return null;
+  }
+
+  return {
+    modal,
+    title: modal.querySelector('h3'),
+    inputContainer: document.getElementById('customActivityInputContainer'),
+    input: document.getElementById('customActivityInput'),
+    frequencyContainer: document.getElementById(
+      'customActivityFrequencyContainer'
+    ),
+    frequencyLabel: document.getElementById('customActivityFrequencyLabel'),
+    frequencySelect: document.getElementById('customActivityFrequencySelect'),
+    confirmButton: document.getElementById('confirmCustomActivity'),
+  };
+}
+
+function populateFrequencySelect(selectElement, options, selectedKey = '') {
+  if (!selectElement) {
+    return;
+  }
+
+  selectElement.innerHTML = '';
+
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = 'No special frequency';
+  selectElement.appendChild(placeholderOption);
+
+  options.forEach((option) => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.key;
+    optionElement.textContent = option.label;
+    selectElement.appendChild(optionElement);
+  });
+
+  selectElement.value = selectedKey || '';
+}
+
+function openActivityDetailsModal({
+  title,
+  showInput = false,
+  inputValue = '',
+  inputPlaceholder = '',
+  frequencyOptions = [],
+  selectedFrequencyKey = '',
+  onConfirm,
+}) {
+  const elements = getActivityDetailsModalElements();
+  if (!elements) {
+    return;
+  }
+
+  const {
+    modal,
+    title: titleElement,
+    inputContainer,
+    input,
+    frequencyContainer,
+    frequencyLabel,
+    frequencySelect,
+    confirmButton,
+  } = elements;
+
+  if (titleElement && title) {
+    titleElement.textContent = title;
+  }
+
+  if (inputContainer && input) {
+    inputContainer.style.display = showInput ? 'block' : 'none';
+    input.value = showInput ? inputValue : '';
+    if (inputPlaceholder) {
+      input.placeholder = inputPlaceholder;
+    }
+  }
+
+  const normalizedFrequencyOptions = Array.isArray(frequencyOptions)
+    ? frequencyOptions
+    : [];
+  if (frequencyContainer && frequencySelect) {
+    const shouldShowFrequency = normalizedFrequencyOptions.length > 0;
+    frequencyContainer.style.display = shouldShowFrequency ? 'block' : 'none';
+    if (frequencyLabel && shouldShowFrequency) {
+      frequencyLabel.textContent = 'Frequency';
+    }
+    populateFrequencySelect(
+      frequencySelect,
+      normalizedFrequencyOptions,
+      selectedFrequencyKey
+    );
+  }
+
+  const newConfirmButton = confirmButton.cloneNode(true);
+  confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+
+  if (showInput && input) {
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+  }
+
+  const refreshedInput = document.getElementById('customActivityInput');
+  const refreshedConfirmButton = document.getElementById(
+    'confirmCustomActivity'
+  );
+  const refreshedFrequencySelect = document.getElementById(
+    'customActivityFrequencySelect'
+  );
+
+  window.handleCustomActivityModalClose = () => {
+    modal.style.cssText = 'display: none !important';
+  };
+
+  const commitSelection = () => {
+    const customText =
+      showInput && refreshedInput ? refreshedInput.value.trim() : '';
+    const frequencyKey =
+      refreshedFrequencySelect && refreshedFrequencySelect.value
+        ? refreshedFrequencySelect.value
+        : null;
+
+    if (showInput && !customText) {
+      refreshedInput?.focus();
+      return;
+    }
+
+    onConfirm?.({ customText, frequencyKey });
+    window.handleCustomActivityModalClose = null;
+    modal.style.cssText = 'display: none !important';
+  };
+
+  refreshedConfirmButton.addEventListener('click', commitSelection);
+  refreshedInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      commitSelection();
+    }
+  });
+
+  modal.style.display = 'block';
+  if (showInput) {
+    refreshedInput?.focus();
+  } else if (refreshedFrequencySelect && frequencyOptions.length > 0) {
+    refreshedFrequencySelect.focus();
+  }
+}
+
 function setSingleActiveActivityButton(activityButton) {
   clearSelectedActivityButtons();
   if (activityButton) {
@@ -2286,6 +2464,19 @@ function renderChildItems(activity, categoryName) {
           );
           const modalTitle = customActivityModal.querySelector('h3');
           const activitiesModal = document.getElementById('activitiesModal');
+          const customActivityInputContainer = document.getElementById(
+            'customActivityInputContainer'
+          );
+          const customActivityFrequencyContainer = document.getElementById(
+            'customActivityFrequencyContainer'
+          );
+          const customActivityFrequencySelect = document.getElementById(
+            'customActivityFrequencySelect'
+          );
+          const frequencyOptions = getFrequencyOptionsForActivity(
+            activity,
+            childItem
+          );
 
           // Update modal title for child item context
           if (window.i18n && window.i18n.isReady()) {
@@ -2299,6 +2490,18 @@ function renderChildItems(activity, categoryName) {
           } else {
             modalTitle.textContent = `Enter custom value for: ${activity.name}`;
           }
+
+          if (customActivityInputContainer) {
+            customActivityInputContainer.style.display = 'block';
+          }
+          if (customActivityFrequencyContainer) {
+            customActivityFrequencyContainer.style.display =
+              frequencyOptions.length ? 'block' : 'none';
+          }
+          populateFrequencySelect(
+            customActivityFrequencySelect,
+            frequencyOptions
+          );
 
           customActivityInput.value = ''; // Clear previous input
           customActivityModal.style.display = 'block';
@@ -2319,6 +2522,8 @@ function renderChildItems(activity, categoryName) {
             // Handle custom activity submission for child items
             const handleChildItemCustomActivity = () => {
               const customText = newInputField.value.trim();
+              const selectedFrequencyKey =
+                customActivityFrequencySelect?.value || null;
               if (customText) {
                 // Create child item structure with custom text
                 window.selectedActivity = {
@@ -2330,6 +2535,7 @@ function renderChildItems(activity, categoryName) {
                   selected: customText,
                   originalSelection: childItem.name, // Store what was originally clicked
                   isCustomInput: true,
+                  frequencyKey: selectedFrequencyKey,
                   code: childItem.code,
                 };
 
@@ -2373,6 +2579,42 @@ function renderChildItems(activity, categoryName) {
 
         //console.log(`>>[CHILD ITEM] non-custom Selected child item: "${childItem.name}"`);
 
+        const frequencyOptions = getFrequencyOptionsForActivity(
+          activity,
+          childItem
+        );
+        if (frequencyOptions.length > 0) {
+          openActivityDetailsModal({
+            title: `Select frequency for: ${childItem.name}`,
+            showInput: false,
+            frequencyOptions,
+            onConfirm: ({ frequencyKey }) => {
+              window.selectedActivity = {
+                name: childItem.name,
+                parentName: activity.name,
+                parentCode: activity.code,
+                color: childItem.color || activity.color,
+                category: categoryName,
+                selected: childItem.name,
+                isCustomInput: false,
+                frequencyKey: frequencyKey || null,
+                code: childItem.code,
+              };
+
+              // Close the modal
+              modal.style.display = 'none';
+
+              // Also close activities modal if open
+              const activitiesModal =
+                document.getElementById('activitiesModal');
+              if (activitiesModal) {
+                activitiesModal.style.display = 'none';
+              }
+            },
+          });
+          return;
+        }
+
         // Regular child item selection (not custom)
         window.selectedActivity = {
           name: childItem.name,
@@ -2382,6 +2624,7 @@ function renderChildItems(activity, categoryName) {
           category: categoryName,
           selected: childItem.name,
           isCustomInput: false,
+          frequencyKey: null,
           code: childItem.code,
         };
 
@@ -2520,7 +2763,29 @@ function renderActivities(
               'customActivityInput'
             );
             const modalTitle = customActivityModal.querySelector('h3');
+            const customActivityInputContainer = document.getElementById(
+              'customActivityInputContainer'
+            );
+            const customActivityFrequencyContainer = document.getElementById(
+              'customActivityFrequencyContainer'
+            );
+            const customActivityFrequencySelect = document.getElementById(
+              'customActivityFrequencySelect'
+            );
+            const frequencyOptions = getFrequencyOptionsForActivity(activity);
             modalTitle.textContent = `Enter custom value for: ${activity.name}`;
+
+            if (customActivityInputContainer) {
+              customActivityInputContainer.style.display = 'block';
+            }
+            if (customActivityFrequencyContainer) {
+              customActivityFrequencyContainer.style.display =
+                frequencyOptions.length ? 'block' : 'none';
+            }
+            populateFrequencySelect(
+              customActivityFrequencySelect,
+              frequencyOptions
+            );
 
             customActivityInput.value = ''; // Clear previous input
             customActivityModal.style.display = 'block';
@@ -2529,6 +2794,8 @@ function renderActivities(
             // Handle custom activity submission
             const handleCustomActivity = () => {
               const customText = customActivityInput.value.trim();
+              const selectedFrequencyKey =
+                customActivityFrequencySelect?.value || null;
               if (customText) {
                 // Check if this is a child item custom input
                 if (
@@ -2549,6 +2816,7 @@ function renderActivities(
                     originalSelection: context.childItem.name, // Store what was originally clicked
                     isCustomInput: true,
                     mode: 'single-choice',
+                    frequencyKey: selectedFrequencyKey,
                     code: context.childItem.code,
                   };
 
@@ -2594,6 +2862,7 @@ function renderActivities(
                       originalSelection: activity.name, // Store what was originally clicked
                       isCustomInput: true,
                       mode: 'single-choice',
+                      frequencyKey: selectedFrequencyKey,
                       code: activity.code,
                     };
                     setSingleActiveActivityButton(activityButton);
@@ -2645,6 +2914,39 @@ function renderActivities(
 
             // Show child items modal
             renderChildItems(activity, category.name);
+            return;
+          }
+
+          const frequencyOptions = getFrequencyOptionsForActivity(activity);
+          if (frequencyOptions.length > 0 && !isMultipleChoice) {
+            openActivityDetailsModal({
+              title: `Select frequency for: ${activity.name}`,
+              showInput: false,
+              frequencyOptions,
+              onConfirm: ({ frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: activity.name,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: activity.name,
+                  originalSelection: null,
+                  isCustomInput: is_custom_input,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
             return;
           }
 
@@ -3004,6 +3306,39 @@ function renderActivities(
           console.log(
             '>>>>[ACTIVITY] This activity has no child items, proceeding with selection logic'
           );
+
+          const frequencyOptions = getFrequencyOptionsForActivity(activity);
+          if (frequencyOptions.length > 0 && !isMultipleChoice) {
+            openActivityDetailsModal({
+              title: `Select frequency for: ${activity.name}`,
+              showInput: false,
+              frequencyOptions,
+              onConfirm: ({ frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: activity.name,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: activity.name,
+                  originalSelection: null,
+                  isCustomInput: is_custom_input,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
+            return;
+          }
 
           if (isMultipleChoice) {
             console.log(
@@ -4114,6 +4449,7 @@ function initTimelineInteraction(timeline) {
       selected: window.selectedActivity.selected,
       isCustomInput: window.selectedActivity.isCustomInput,
       originalSelection: window.selectedActivity.originalSelection,
+      frequencyKey: window.selectedActivity.frequencyKey || null,
       startMinutes: startMinutes,
       endMinutes: endMinutes,
       mode: window.selectedActivity.selections

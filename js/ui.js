@@ -197,11 +197,17 @@ function createModal() {
   customActivityModal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3 data-i18n="modals.customActivity.title">Enter Custom Activity</h3>
+                <h3 data-i18n="modals.customActivity.title">Activity Details</h3>
                 <button class="modal-close">&times;</button>
             </div>
             <div class="modal-content">
-                <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
+                <div id="customActivityInputContainer">
+                    <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
+                </div>
+                <div id="customActivityFrequencyContainer" style="display: none;">
+                    <label id="customActivityFrequencyLabel" for="customActivityFrequencySelect">Frequency</label>
+                    <select id="customActivityFrequencySelect"></select>
+                </div>
                 <div class="button-container">
                     <button id="confirmCustomActivity" class="btn save-btn" data-i18n="buttons.ok">OK</button>
                 </div>
@@ -212,12 +218,20 @@ function createModal() {
   customActivityModal
     .querySelector('.modal-close')
     .addEventListener('click', () => {
-      customActivityModal.style.cssText = 'display: none !important';
+      if (typeof window.handleCustomActivityModalClose === 'function') {
+        window.handleCustomActivityModalClose();
+      } else {
+        customActivityModal.style.cssText = 'display: none !important';
+      }
     });
 
   customActivityModal.addEventListener('click', (e) => {
     if (e.target === customActivityModal) {
-      customActivityModal.style.cssText = 'display: none !important';
+      if (typeof window.handleCustomActivityModalClose === 'function') {
+        window.handleCustomActivityModalClose();
+      } else {
+        customActivityModal.style.cssText = 'display: none !important';
+      }
     }
   });
 

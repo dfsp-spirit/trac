@@ -619,6 +619,7 @@ export function createTimelineDataFrame() {
         selected: activity.selected || activity.activity,
         isCustomInput: activity.isCustomInput || false,
         originalSelection: activity.originalSelection || null,
+        frequencyKey: activity.frequencyKey || null,
 
         // For proper ordering and positioning
         startMinutes: activity.startMinutes,
@@ -660,6 +661,7 @@ export function createTimelineJSON(stringify = false) {
         parent_activity_code: activity.parentCode || null,
         //is_custom_input: activity.isCustomInput || false,
         original_selection: activity.originalSelection || null,
+        frequency_key: activity.frequencyKey || null,
 
         // For proper ordering and positioning
         start_minutes: activity.startMinutes,
@@ -759,6 +761,7 @@ export function createCombinedData() {
     category: row.category,
     startTime: row.startTime,
     endTime: row.endTime,
+    frequencyKey: row.frequencyKey || null,
     pid: pid,
     diaryWave: studyData.DIARY_WAVE ? parseInt(studyData.DIARY_WAVE) : null,
     viewportWidth,
