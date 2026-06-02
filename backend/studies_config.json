@@ -72,17 +72,17 @@
       "study_text_intro": {
         "en": "This is our time use study for adults. Please reconstruct a typical week of your daily activities.",
         "sv": "Detta är vår tidsanvändningsstudie för vuxna. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
-        "de": "Dies ist unsere Zeitnutzungsstudie für Erwachsene. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten.",
+        "de": "Dies ist unsere Zeitnutzungsstudie für Erwachsene. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten."
       },
       "study_text_end_completed": {
         "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
         "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
-        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
       },
       "study_text_end_skipped": {
         "en": "You skipped the time reporting part. If you provided some information, we will try to use it. Thank you!",
         "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
-        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
+        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
       },
       "require_consent": true,
       "is_paused": false,
@@ -94,7 +94,7 @@
       "study_text_end_noconsent": {
         "en": "You did not give consent and your data will not be used in this study.",
         "sv": "Du gav inte ditt samtycke och dina data kommer inte att användas i denna studie.",
-        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet.",
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
