@@ -2177,6 +2177,34 @@ body {
   transform: translateY(-50%) scale(1.2);
 }
 
+.activity-button.has-frequency,
+.child-item-button.has-frequency {
+  padding-right: 56px;
+}
+
+.activity-frequency-indicator {
+  position: absolute;
+  right: 34px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.72);
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.activity-frequency-indicator:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
 /* Child Items Modal Styles */
 #childItemsModal {
   display: none;
@@ -2541,6 +2569,10 @@ body {
 .child-item-button.custom-input:hover::after {
   transform: translateY(-50%) scale(1.2);
   color: rgba(0, 0, 0, 0.8);
+}
+
+.child-item-button.has-frequency .activity-frequency-indicator {
+  right: 36px;
 }
 
 .activity-tooltip-bottom {

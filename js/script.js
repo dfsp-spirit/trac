@@ -129,6 +129,15 @@ function getActivityDetailsModalElements() {
   };
 }
 
+function createFrequencyIndicator() {
+  const indicator = document.createElement('span');
+  indicator.className = 'activity-frequency-indicator';
+  indicator.textContent = '⟳';
+  indicator.title = 'Frequency';
+  indicator.setAttribute('aria-hidden', 'true');
+  return indicator;
+}
+
 function populateFrequencySelect(selectElement, options, selectedKey = '') {
   if (!selectElement) {
     return;
@@ -252,7 +261,10 @@ function openActivityDetailsModal({
   modal.style.display = 'block';
   if (showInput) {
     refreshedInput?.focus();
-  } else if (refreshedFrequencySelect && frequencyOptions.length > 0) {
+  } else if (
+    refreshedFrequencySelect &&
+    normalizedFrequencyOptions.length > 0
+  ) {
     refreshedFrequencySelect.focus();
   }
 }
@@ -2414,6 +2426,14 @@ function renderChildItems(activity, categoryName) {
         button.classList.add('custom-input');
       }
 
+      const frequencyOptions = getFrequencyOptionsForActivity(
+        activity,
+        childItem
+      );
+      if (frequencyOptions.length > 0) {
+        button.classList.add('has-frequency');
+      }
+
       button.style.setProperty('--color', childItem.color || activity.color);
       button.dataset.code = childItem.code;
 
@@ -2435,6 +2455,9 @@ function renderChildItems(activity, categoryName) {
       }
 
       button.appendChild(buttonContent);
+      if (frequencyOptions.length > 0) {
+        button.appendChild(createFrequencyIndicator());
+      }
 
       // ... rest of the existing click handler code remains the same
       button.addEventListener('click', () => {
@@ -2701,6 +2724,10 @@ function renderActivities(
         activityButton.className = `activity-button ${
           isMultipleChoice ? 'checkbox-style' : ''
         }`;
+        const frequencyOptions = getFrequencyOptionsForActivity(activity);
+        if (frequencyOptions.length > 0) {
+          activityButton.classList.add('has-frequency');
+        }
         // Add indicator class if activity has child items
         if (activity.childItems && activity.childItems.length > 0) {
           activityButton.classList.add('has-child-items');
@@ -2737,6 +2764,9 @@ function renderActivities(
         }
 
         activityButton.appendChild(textSpan);
+        if (frequencyOptions.length > 0) {
+          activityButton.appendChild(createFrequencyIndicator());
+        }
         activityButton.addEventListener('click', () => {
           const activitiesContainer = activityButton.closest(
             '#activitiesContainer, #modalActivitiesContainer'
@@ -3114,6 +3144,10 @@ function renderActivities(
         activityButton.className = `activity-button ${
           isMultipleChoice ? 'checkbox-style' : ''
         }`;
+        const frequencyOptions = getFrequencyOptionsForActivity(activity);
+        if (frequencyOptions.length > 0) {
+          activityButton.classList.add('has-frequency');
+        }
         // Add indicator class if activity has child items
         if (activity.childItems && activity.childItems.length > 0) {
           activityButton.classList.add('has-child-items');
@@ -3150,6 +3184,9 @@ function renderActivities(
         }
 
         activityButton.appendChild(textSpan);
+        if (frequencyOptions.length > 0) {
+          activityButton.appendChild(createFrequencyIndicator());
+        }
         activityButton.addEventListener('click', () => {
           const activitiesContainer = activityButton.closest(
             '#activitiesContainer, #modalActivitiesContainer'
