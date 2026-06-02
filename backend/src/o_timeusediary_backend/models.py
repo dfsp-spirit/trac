@@ -383,6 +383,7 @@ class Activity(SQLModel, table=True):
     category: Optional[str] = (
         None  # e.g., "leisure", "work", "commuting", used for grouping in frontend
     )
+    frequency_key: Optional[str] = Field(default=None, index=True)
 
     # Hierarchy information
     parent_activity_code: Optional[int] = Field(default=None, index=True)

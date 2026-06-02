@@ -173,6 +173,24 @@ def _ensure_study_available_activity_i18n_frequency_options_column() -> None:
         )
 
 
+def _ensure_activity_frequency_key_column() -> None:
+    inspector = inspect(engine)
+    if "activities" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("activities")
+    }
+    if "frequency_key" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text("ALTER TABLE activities ADD COLUMN frequency_key VARCHAR")
+        )
+        logger.info("Added missing activities.frequency_key column")
+
+
 def _hydrate_study_texts_from_config(
     session: Session, study: Study, study_config
 ) -> bool:
@@ -475,6 +493,7 @@ def create_db_and_tables(do_report_contents: bool = False):
     _ensure_external_task_assignment_confirmation_columns()
     _ensure_study_participant_instruction_columns()
     _ensure_study_available_activity_i18n_frequency_options_column()
+    _ensure_activity_frequency_key_column()
     create_config_file_studies_in_database(settings.studies_config_path)
     if do_report_contents:
         report_on_db_contents()

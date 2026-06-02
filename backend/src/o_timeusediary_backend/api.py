@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import logging
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 from datetime import datetime
 import csv
 import json
@@ -585,6 +585,7 @@ class ActivitySubmitItem(BaseModel):
     end_minutes: int
     mode: str  # "single-choice" or "multiple-choice",
     color: Optional[str] = None  # e.g., "#FF0000", used in frontend for display
+    frequency_key: Optional[str] = None
 
     @model_validator(mode="after")
     def validate_code_or_codes(self):
@@ -601,6 +602,13 @@ class ActivitySubmitItem(BaseModel):
             raise ValueError('"code" must be provided for single-choice mode')
         if self.mode == "multiple-choice" and not codes_provided:
             raise ValueError('"codes" must be provided for multiple-choice mode')
+
+        if self.frequency_key is not None:
+            self.frequency_key = self.frequency_key.strip()
+            if not self.frequency_key:
+                raise ValueError(
+                    '"frequency_key" must be a non-empty string when provided'
+                )
 
         return self
 
@@ -645,6 +653,67 @@ def compute_activity_path(activity_item: ActivitySubmitItem) -> str:
     parts.append(f"activity:{activity_item.activity}")
 
     return " > ".join(parts)
+
+
+def _build_allowed_frequency_keys_by_code(
+    activities_config: ActivitiesConfig,
+) -> Dict[int, Set[str]]:
+    """Map activity code to allowed frequency keys from activities config."""
+    allowed_by_code: Dict[int, Set[str]] = {}
+    activity_info = get_all_activity_codes(activities_config)
+
+    for code, metadata in activity_info.items():
+        frequency_options = metadata.get("frequency_options") or []
+        allowed_by_code[code] = {
+            str(option.get("key")).strip()
+            for option in frequency_options
+            if option.get("key") is not None and str(option.get("key")).strip()
+        }
+
+    return allowed_by_code
+
+
+def _validate_frequency_key_for_codes(
+    activity_item: ActivitySubmitItem,
+    candidate_codes: List[int],
+    allowed_frequency_keys_by_code: Dict[int, Set[str]],
+) -> List[Dict[str, object]]:
+    """Return validation errors for a submitted frequency_key against one or more activity codes."""
+    if activity_item.frequency_key is None:
+        return []
+
+    errors: List[Dict[str, object]] = []
+    frequency_key = activity_item.frequency_key
+
+    for code in candidate_codes:
+        allowed_keys = allowed_frequency_keys_by_code.get(code, set())
+
+        if not allowed_keys:
+            errors.append(
+                {
+                    "code": code,
+                    "timeline": activity_item.timeline_key,
+                    "activity_name": activity_item.activity,
+                    "frequency_key": frequency_key,
+                    "reason": "no_frequency_options_for_activity",
+                    "allowed_frequency_keys": [],
+                }
+            )
+            continue
+
+        if frequency_key not in allowed_keys:
+            errors.append(
+                {
+                    "code": code,
+                    "timeline": activity_item.timeline_key,
+                    "activity_name": activity_item.activity,
+                    "frequency_key": frequency_key,
+                    "reason": "frequency_key_not_allowed",
+                    "allowed_frequency_keys": sorted(allowed_keys),
+                }
+            )
+
+    return errors
 
 
 @app.post(
@@ -714,6 +783,28 @@ def submit_activities(
             detail="Could not load activity configuration for validation",
         )
 
+    try:
+        activities_config, _source, _selected_language = (
+            get_study_activities_config_model(
+                session=session,
+                study=study,
+                lang=None,
+            )
+        )
+        allowed_frequency_keys_by_code = _build_allowed_frequency_keys_by_code(
+            activities_config
+        )
+    except Exception as e:
+        logger.error(
+            "Error loading activities config for frequency validation in study %s: %s",
+            study_name_short,
+            e,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Could not load activity configuration for frequency validation",
+        )
+
     # Validate/Create participant based on study settings
     if not study.allow_unlisted_participants:
         # Study restricts participants - check if they're in the allowed list
@@ -780,6 +871,7 @@ def submit_activities(
 
     created_activities = []
     invalid_codes = []
+    invalid_frequency_keys = []
 
     # PHASE 1: Validate all activity codes before creating any records
     for activity_item in activities_data.activities:
@@ -812,6 +904,14 @@ def submit_activities(
                         "type": "single-choice",
                     }
                 )
+            else:
+                invalid_frequency_keys.extend(
+                    _validate_frequency_key_for_codes(
+                        activity_item=activity_item,
+                        candidate_codes=[activity_item.code],
+                        allowed_frequency_keys_by_code=allowed_frequency_keys_by_code,
+                    )
+                )
 
         # Handle multiple-choice activity
         elif activity_item.mode == "multiple-choice":
@@ -836,6 +936,18 @@ def submit_activities(
                         }
                     )
 
+            valid_codes_for_frequency = [
+                code for code in activity_item.codes if code in valid_codes
+            ]
+            if valid_codes_for_frequency:
+                invalid_frequency_keys.extend(
+                    _validate_frequency_key_for_codes(
+                        activity_item=activity_item,
+                        candidate_codes=valid_codes_for_frequency,
+                        allowed_frequency_keys_by_code=allowed_frequency_keys_by_code,
+                    )
+                )
+
         else:
             logger.info(
                 f"Unknown activity mode '{activity_item.mode}' for study '{study_name_short}'"
@@ -859,6 +971,23 @@ def submit_activities(
                 "total_invalid": len(invalid_codes),
                 "suggestion": "Check that the activities.json file used by frontend matches the backend configuration at: "
                 + study.activities_json_url,
+            },
+        )
+
+    if invalid_frequency_keys:
+        logger.error(
+            "Invalid frequency_key values detected for study '%s': %s",
+            study_name_short,
+            invalid_frequency_keys,
+        )
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Invalid frequency_key submitted for one or more activities.",
+                "error_type": "invalid_frequency_key",
+                "invalid_frequency_keys": invalid_frequency_keys,
+                "total_invalid": len(invalid_frequency_keys),
+                "suggestion": "Use one of the configured frequency option keys for the selected activity code.",
             },
         )
 
@@ -904,6 +1033,7 @@ def submit_activities(
                 activity_path_frontend=compute_activity_path(activity_item),
                 color=activity_item.color,
                 category=activity_item.category,
+                frequency_key=activity_item.frequency_key,
                 parent_activity_code=activity_item.parent_activity_code,
             )
             session.add(activity)
@@ -923,6 +1053,7 @@ def submit_activities(
                     activity_path_frontend=compute_activity_path(activity_item),
                     color=activity_item.color,
                     category=activity_item.category,
+                    frequency_key=activity_item.frequency_key,
                     parent_activity_code=activity_item.parent_activity_code,
                 )
                 session.add(activity)
@@ -2851,6 +2982,7 @@ async def export_study_activities(
             "activity_id_backend": activity.id,
             "activity_code": activity.activity_code,
             "activity_name": activity.activity_name,
+            "frequency": activity.frequency_key or "",
             "start_time": f"{start_hour:02d}:{start_minute:02d}",
             "end_time": f"{end_hour:02d}:{end_minute:02d}",
             "start_minutes": activity.start_minutes,
@@ -3171,6 +3303,7 @@ def get_participant_day_activities(
                 "timeline_mode": timeline.mode,
                 "activity": activity.activity_name,
                 "activity_code": activity.activity_code,
+                "frequency_key": activity.frequency_key,
                 "color": activity.color,
                 "parent_activity_code": activity.parent_activity_code,
                 "activity_path_frontend": activity.activity_path_frontend,
@@ -3242,6 +3375,7 @@ def get_participant_day_activities(
                             "timeline_mode": timeline.mode,
                             "activity": activity.activity_name,
                             "activity_code": activity.activity_code,
+                            "frequency_key": activity.frequency_key,
                             "color": activity.color,
                             "parent_activity_code": activity.parent_activity_code,
                             "activity_path_frontend": activity.activity_path_frontend,
@@ -3437,6 +3571,7 @@ def copy_cross_user_template_activities(
                 activity_path_frontend=src.activity_path_frontend,
                 color=src.color,
                 category=src.category,
+                frequency_key=src.frequency_key,
                 parent_activity_code=src.parent_activity_code,
             )
             session.add(new_activity)
