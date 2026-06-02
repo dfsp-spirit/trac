@@ -4906,12 +4906,17 @@ function isInstructionsPagePath(pathname = window.location.pathname) {
 
 function isConsentPagePath(pathname = window.location.pathname) {
   return (
-    pathname.includes('/consent/') || /\/pages\/consent(?:\.html)?$/.test(pathname)
+    pathname.includes('/consent/') ||
+    /\/pages\/consent(?:\.html)?$/.test(pathname)
   );
 }
 
 function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
+  const existingSelector = document.getElementById('languageSelectMain');
   if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+    if (existingSelector) {
+      existingSelector.closest('div')?.remove();
+    }
     return;
   }
 
@@ -4921,7 +4926,6 @@ function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
   }
 
   const normalizedSelectedLanguage = normalizeLanguageCode(selectedLanguage);
-  const existingSelector = document.getElementById('languageSelectMain');
   if (existingSelector) {
     existingSelector.value =
       normalizedSelectedLanguage || existingSelector.value;
