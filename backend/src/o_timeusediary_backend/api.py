@@ -1792,14 +1792,46 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
 
     parsed_activities_by_lang: Dict[str, ActivitiesConfig] = {}
     signature_by_lang: Dict[str, Dict] = {}
+    declared_internal_languages: Dict[str, str] = {}
 
     for language in supported_languages:
         raw_activities = raw_activities_by_lang[language]
         parsed_activities = ActivitiesConfig(**raw_activities)
         parsed_activities_by_lang[language] = parsed_activities
+
+        declared_language = _normalize_language_code(parsed_activities.general.language)
+        if not declared_language:
+            raise ValueError(
+                "activities_json_data language mismatch: "
+                f"activities file mapped to language '{language}' is missing a valid general.language value"
+            )
+        declared_internal_languages[language] = declared_language
+
         signature_by_lang[language] = _build_activity_structure_signature(
             parsed_activities
         )
+
+    duplicate_internal_languages = sorted(
+        {
+            declared_language
+            for declared_language in declared_internal_languages.values()
+            if list(declared_internal_languages.values()).count(declared_language) > 1
+        }
+    )
+    if duplicate_internal_languages:
+        raise ValueError(
+            "activities_json_data language mismatch: "
+            "uploaded activities files must declare distinct general.language values. "
+            f"Duplicate(s): {duplicate_internal_languages}. "
+            f"Declared mapping: {declared_internal_languages}"
+        )
+
+    for mapped_language, declared_language in declared_internal_languages.items():
+        if declared_language != mapped_language:
+            raise ValueError(
+                "activities_json_data language mismatch: "
+                f"activities file mapped to language '{mapped_language}' declares general.language='{declared_language}'"
+            )
 
     reference_signature = signature_by_lang[default_language]
     for language, signature in signature_by_lang.items():
@@ -2021,9 +2053,32 @@ def _validate_activities_multilang_in_memory(
         data_collection_end=datetime.fromisoformat("2030-01-01T00:00:00+00:00"),
     )
     validated = _validate_import_study_payload(payload)
+
+    parsed_activities_by_lang: Dict[str, ActivitiesConfig] = validated[
+        "parsed_activities_by_lang"
+    ]
+    per_language_stats: Dict[str, Dict[str, Any]] = {}
+    for language, parsed_activities in parsed_activities_by_lang.items():
+        timeline_count = len(parsed_activities.timeline)
+        category_count = sum(
+            len(timeline_cfg.categories)
+            for timeline_cfg in parsed_activities.timeline.values()
+        )
+        activity_count = len(get_all_activity_codes(parsed_activities))
+        per_language_stats[language] = {
+            "timeline_count": timeline_count,
+            "category_count": category_count,
+            "activity_count": activity_count,
+        }
+
+    default_language_stats = per_language_stats.get(default_language, {})
     return {
         "supported_languages": validated["supported_languages"],
         "default_language": validated["default_language"],
+        "timeline_count": default_language_stats.get("timeline_count", 0),
+        "category_count": default_language_stats.get("category_count", 0),
+        "activity_count": default_language_stats.get("activity_count", 0),
+        "per_language_stats": per_language_stats,
     }
 
 
@@ -3090,7 +3145,7 @@ async def validate_files_in_memory(
                 explicit_map_json=activities_language_map,
             )
 
-            _validate_activities_multilang_in_memory(
+            multilang_validated = _validate_activities_multilang_in_memory(
                 activities_by_lang=activities_by_lang,
                 supported_languages=supported_languages,
                 default_language=normalized_default_language,
@@ -3107,6 +3162,10 @@ async def validate_files_in_memory(
                     "languages": supported_languages,
                     "default_language": normalized_default_language,
                     "uploaded_languages": sorted(activities_by_lang.keys()),
+                    "timeline_count": multilang_validated["timeline_count"],
+                    "category_count": multilang_validated["category_count"],
+                    "activity_count": multilang_validated["activity_count"],
+                    "per_language_stats": multilang_validated["per_language_stats"],
                 },
                 "errors": [],
             }
@@ -3180,6 +3239,28 @@ async def validate_files_in_memory(
         import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
         validated = _validate_import_study_payload(import_study_payload)
 
+        parsed_activities_by_lang: Dict[str, ActivitiesConfig] = validated[
+            "parsed_activities_by_lang"
+        ]
+        per_language_stats: Dict[str, Dict[str, Any]] = {}
+        for language, parsed_activities in parsed_activities_by_lang.items():
+            timeline_count = len(parsed_activities.timeline)
+            category_count = sum(
+                len(timeline_cfg.categories)
+                for timeline_cfg in parsed_activities.timeline.values()
+            )
+            activity_count = len(get_all_activity_codes(parsed_activities))
+            per_language_stats[language] = {
+                "timeline_count": timeline_count,
+                "category_count": category_count,
+                "activity_count": activity_count,
+            }
+
+        default_language_stats = per_language_stats.get(
+            validated["default_language"],
+            {},
+        )
+
         audit_admin_action(
             current_admin,
             (
@@ -3195,6 +3276,10 @@ async def validate_files_in_memory(
                 "available_studies": sorted(available_studies),
                 "supported_languages": validated["supported_languages"],
                 "default_language": validated["default_language"],
+                "timeline_count": default_language_stats.get("timeline_count", 0),
+                "category_count": default_language_stats.get("category_count", 0),
+                "activity_count": default_language_stats.get("activity_count", 0),
+                "per_language_stats": per_language_stats,
             },
             "errors": [],
         }

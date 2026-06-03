@@ -298,6 +298,72 @@
             updateFullStudySelector(payload);
         }
 
+        function setFullStudySelectorOptions(studyNameShorts, preserveCurrentValue = true) {
+            if (!fullStudySelectorField || !fullStudyNameShortSelect) {
+                return;
+            }
+
+            const previousValue = preserveCurrentValue
+                ? fullStudyNameShortSelect.value
+                : '';
+            const uniqueStudies = [...new Set(
+                (studyNameShorts || [])
+                    .map((value) => String(value || '').trim())
+                    .filter((value) => value.length > 0)
+            )];
+
+            fullStudyNameShortSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = '-- Select study_name_short --';
+            fullStudyNameShortSelect.appendChild(placeholderOption);
+
+            uniqueStudies.forEach((studyNameShort) => {
+                const option = document.createElement('option');
+                option.value = studyNameShort;
+                option.textContent = studyNameShort;
+                fullStudyNameShortSelect.appendChild(option);
+            });
+
+            if (previousValue && uniqueStudies.includes(previousValue)) {
+                fullStudyNameShortSelect.value = previousValue;
+            } else if (uniqueStudies.length === 1) {
+                fullStudyNameShortSelect.value = uniqueStudies[0];
+            } else {
+                fullStudyNameShortSelect.value = '';
+            }
+
+            fullStudySelectorField.style.display = uniqueStudies.length > 1 ? 'block' : 'none';
+        }
+
+        async function updateFullStudySelectorFromUploadedFile() {
+            if (!fullStudyForm) {
+                return;
+            }
+
+            const studiesFileInput = fullStudyForm.querySelector('input[name="studies_config_file"]');
+            if (!studiesFileInput || !studiesFileInput.files || !studiesFileInput.files.length) {
+                setFullStudySelectorOptions([], false);
+                return;
+            }
+
+            const studiesFile = studiesFileInput.files[0];
+            try {
+                const rawText = await studiesFile.text();
+                const parsed = JSON.parse(rawText);
+                const studies = Array.isArray(parsed?.studies) ? parsed.studies : [];
+                const names = studies
+                    .map((study) => (study && typeof study === 'object' ? study.name_short : null))
+                    .filter((name) => typeof name === 'string' && name.trim().length > 0)
+                    .map((name) => name.trim());
+
+                setFullStudySelectorOptions(names, false);
+            } catch (_error) {
+                // Keep selector hidden when file is invalid; backend submission will show validation details.
+                setFullStudySelectorOptions([], false);
+            }
+        }
+
         function updateFullStudySelector(payload) {
             if (!fullStudyForm || !fullStudySelectorField || !fullStudyNameShortSelect) {
                 return;
@@ -317,28 +383,7 @@
                 return;
             }
 
-            const previousValue = fullStudyNameShortSelect.value;
-            const uniqueStudies = [...new Set(availableStudies.filter((value) => String(value).trim().length > 0))];
-
-            fullStudyNameShortSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = '-- Select study_name_short --';
-            fullStudyNameShortSelect.appendChild(placeholderOption);
-
-            uniqueStudies.forEach((studyNameShort) => {
-                const option = document.createElement('option');
-                option.value = String(studyNameShort);
-                option.textContent = String(studyNameShort);
-                fullStudyNameShortSelect.appendChild(option);
-            });
-
-            if (uniqueStudies.includes(previousValue)) {
-                fullStudyNameShortSelect.value = previousValue;
-            } else {
-                fullStudyNameShortSelect.value = '';
-            }
-
+            setFullStudySelectorOptions(availableStudies, true);
             fullStudySelectorField.style.display = 'block';
         }
 
@@ -438,6 +483,15 @@
                 }
             });
         });
+
+        if (fullStudyForm) {
+            const studiesFileInput = fullStudyForm.querySelector('input[name="studies_config_file"]');
+            if (studiesFileInput) {
+                studiesFileInput.addEventListener('change', () => {
+                    updateFullStudySelectorFromUploadedFile();
+                });
+            }
+        }
     </script>
 </body>
 </html>

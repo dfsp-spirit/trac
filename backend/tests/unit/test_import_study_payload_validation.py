@@ -260,6 +260,7 @@ def test_validate_import_payload_rejects_frequency_key_mismatch_across_languages
 
     en_data = _minimal_activities_payload([100])
     sv_data = _minimal_activities_payload([100])
+    sv_data["general"]["language"] = "sv"
 
     en_data["timeline"]["primary"]["categories"][0]["activities"][0][
         "frequency_options"
@@ -289,6 +290,7 @@ def test_validate_import_payload_reports_specific_structure_difference_details()
 
     en_data = _minimal_activities_payload([100])
     de_data = _minimal_activities_payload([100])
+    de_data["general"]["language"] = "de"
 
     en_data["timeline"]["primary"]["categories"][0]["activities"][0][
         "frequency_options"
@@ -309,6 +311,48 @@ def test_validate_import_payload_reports_specific_structure_difference_details()
     with pytest.raises(
         ValueError,
         match=r"timeline 'primary', activity code 100 frequency options mismatch",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_duplicate_internal_activities_languages():
+    payload = _base_payload()
+    payload["supported_languages"] = ["en", "sv"]
+    payload["day_labels"][0]["display_names"] = {"en": "Monday", "sv": "Mandag"}
+
+    en_data = _minimal_activities_payload([100])
+    sv_data = _minimal_activities_payload([100])
+
+    en_data["general"]["language"] = "sv"
+    sv_data["general"]["language"] = "sv"
+
+    payload["activities_json_data"] = {"en": en_data, "sv": sv_data}
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match=r"must declare distinct general\.language values",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_internal_language_mapped_key_mismatch():
+    payload = _base_payload()
+    payload["supported_languages"] = ["en", "sv"]
+    payload["day_labels"][0]["display_names"] = {"en": "Monday", "sv": "Mandag"}
+
+    en_data = _minimal_activities_payload([100])
+    sv_data = _minimal_activities_payload([100])
+
+    en_data["general"]["language"] = "en"
+    sv_data["general"]["language"] = "de"
+
+    payload["activities_json_data"] = {"en": en_data, "sv": sv_data}
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match=r"mapped to language 'sv' declares general\.language='de'",
     ):
         _validate_import_study_payload(study_payload)
 
