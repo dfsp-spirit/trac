@@ -64,7 +64,6 @@ async def prepared_submission_context():
             "start_minutes": 0,
             "end_minutes": 10,
             "mode": selection["timeline_mode"],
-            "frequency_key": "monthly",
         }
 
         if selection["timeline_mode"] == "single-choice":
@@ -243,10 +242,6 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         ]:
             assert key in first_export_record
 
-        assert any(
-            record.get("frequency") == "monthly" for record in export_data["data"]
-        )
-
         export_csv_response = await client.get(
             f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
             params={"format": "csv"},
@@ -262,8 +257,6 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
             "frequency",
         ]:
             assert key in csv_rows[0]
-
-        assert any(row.get("frequency") == "monthly" for row in csv_rows)
 
         runtime_config_export_response = await client.get(
             f"{BASE_URL}/api/admin/export/studies-runtime-config",

@@ -186,7 +186,7 @@ class CfgFileStudy(BaseModel):
     name: str
     name_short: str
     description: Optional[str] = None
-    day_labels: List[CfgFileDayLabel]
+    day_labels: List[CfgFileDayLabel] = Field(min_length=1)
     study_participant_ids: List[str] = []
     allow_unlisted_participants: bool = True
     default_language: str = "en"  # default to English if not given
@@ -308,11 +308,14 @@ class CfgFileStudy(BaseModel):
     @model_validator(mode="after")
     def validate_name_short(self) -> "CfgFileStudy":
         if not self.name_short:
-            raise ValueError("name_short cannot be empty")
+            raise ValueError(
+                f"Study '{self.name}': name_short cannot be empty"
+            )
 
         # Check for URL-friendly characters only: lowercase a-z, numbers 0-9, underscore
         if not re.match(r"^[a-z0-9_]+$", self.name_short):
             raise ValueError(
+                f"Study '{self.name_short}': "
                 f'name_short "{self.name_short}" can only contain lowercase letters (a-z), numbers (0-9), and underscores (_). '
                 f"No uppercase letters, spaces, hyphens, or special characters allowed."
             )
@@ -320,12 +323,62 @@ class CfgFileStudy(BaseModel):
         # Check length
         if len(self.name_short) < 2:
             raise ValueError(
+                f"Study '{self.name_short}': "
                 f'name_short "{self.name_short}" must be at least 2 characters long'
             )
         if len(self.name_short) > 50:
             raise ValueError(
+                f"Study '{self.name_short}': "
                 f'name_short "{self.name_short}" cannot exceed 50 characters'
             )
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_day_labels(self) -> "CfgFileStudy":
+        if not self.day_labels:
+            raise ValueError(
+                f"Study '{self.name_short}': day_labels must contain at least one day definition"
+            )
+
+        seen_names: set[str] = set()
+        seen_display_orders: set[int] = set()
+
+        for day_label in self.day_labels:
+            normalized_name = day_label.name.strip() if day_label.name else ""
+            if not normalized_name:
+                raise ValueError(
+                    f"Study '{self.name_short}': day_labels entries must define a non-empty name"
+                )
+
+            if not re.match(r"^[a-z0-9_]+$", normalized_name):
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    f'day_labels entry name "{day_label.name}" is invalid. '
+                    "Use lowercase letters, numbers, and underscores only."
+                )
+
+            if day_label.display_order < 0:
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    f'day_labels entry "{normalized_name}" has invalid display_order '
+                    f"{day_label.display_order}. display_order must be >= 0."
+                )
+
+            if normalized_name in seen_names:
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    f'day_labels contains duplicate name "{normalized_name}"'
+                )
+            seen_names.add(normalized_name)
+
+            if day_label.display_order in seen_display_orders:
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    "day_labels contains duplicate display_order "
+                    f"{day_label.display_order}"
+                )
+            seen_display_orders.add(day_label.display_order)
 
         return self
 
@@ -357,10 +410,13 @@ class CfgFileStudy(BaseModel):
         import re
 
         if not isinstance(self.default_language, str):
-            raise ValueError("default_language must be a string")
+            raise ValueError(
+                f"Study '{self.name_short}': default_language must be a string"
+            )
 
         if not re.match(r"^[a-z]{2}$", self.default_language):
             raise ValueError(
+                f"Study '{self.name_short}': "
                 f'default_language "{self.default_language}" is invalid. '
                 f"Must be a 2-letter lowercase ASCII string (a-z)."
             )
@@ -373,28 +429,33 @@ class CfgFileStudy(BaseModel):
         data_by_lang = self.get_activities_json_data()
         if not files_by_lang and not data_by_lang:
             raise ValueError(
+                f"Study '{self.name_short}': "
                 "One of activities_json_files / activities_json_file or activities_json_data must be configured and non-empty"
             )
 
         for language, file_path in files_by_lang.items():
             if not isinstance(language, str) or not re.match(r"^[a-z]{2}$", language):
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'activities language key "{language}" is invalid. '
                     f"Must be a 2-letter lowercase ASCII string (a-z)."
                 )
             if not isinstance(file_path, str) or file_path.strip() == "":
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'activities_json file for language "{language}" must be a non-empty string'
                 )
 
         for language, json_payload in data_by_lang.items():
             if not isinstance(language, str) or not re.match(r"^[a-z]{2}$", language):
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'activities data language key "{language}" is invalid. '
                     f"Must be a 2-letter lowercase ASCII string (a-z)."
                 )
             if not isinstance(json_payload, dict) or not json_payload:
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'activities_json_data for language "{language}" must be a non-empty object'
                 )
 
@@ -404,6 +465,7 @@ class CfgFileStudy(BaseModel):
 
         if self.default_language not in available_activity_languages:
             raise ValueError(
+                f"Study '{self.name_short}': "
                 f'default_language "{self.default_language}" must be present in activities configuration languages: '
                 f"{sorted(available_activity_languages)}"
             )
@@ -414,6 +476,7 @@ class CfgFileStudy(BaseModel):
                 or len(self.supported_languages) == 0
             ):
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     "supported_languages must be a non-empty array of language codes"
                 )
 
@@ -422,15 +485,19 @@ class CfgFileStudy(BaseModel):
                     r"^[a-z]{2}$", language
                 ):
                     raise ValueError(
+                        f"Study '{self.name_short}': "
                         f'supported_languages entry "{language}" is invalid. '
                         f"Must be a 2-letter lowercase ASCII string (a-z)."
                     )
 
             if len(set(self.supported_languages)) != len(self.supported_languages):
-                raise ValueError("supported_languages must not contain duplicates")
+                raise ValueError(
+                    f"Study '{self.name_short}': supported_languages must not contain duplicates"
+                )
 
             if self.default_language not in self.supported_languages:
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'default_language "{self.default_language}" must be included in supported_languages: '
                     f"{self.supported_languages}"
                 )
@@ -440,6 +507,7 @@ class CfgFileStudy(BaseModel):
             )
             if missing_activity_configs:
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f"supported_languages contains languages without activities configuration (file or embedded data): "
                     f"{missing_activity_configs}"
                 )
@@ -450,6 +518,7 @@ class CfgFileStudy(BaseModel):
             missing_languages = sorted(required_languages - set(display_names.keys()))
             if missing_languages:
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f'day_labels entry "{day_label.name}" is missing translated display names for languages '
                     f"{missing_languages}. If an activities file exists for a language, day_labels must also define that language."
                 )
@@ -476,6 +545,7 @@ class CfgFileStudy(BaseModel):
                 continue
             if not isinstance(text_map, dict):
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f"{text_field_name} must be an object mapping language codes to text"
                 )
             for language, text_value in text_map.items():
@@ -489,12 +559,14 @@ class CfgFileStudy(BaseModel):
                     )
                 if not isinstance(text_value, str) or text_value.strip() == "":
                     raise ValueError(
+                        f"Study '{self.name_short}': "
                         f'{text_field_name}["{language}"] must be a non-empty string'
                     )
 
             missing_languages = sorted(required_languages - set(text_map.keys()))
             if missing_languages:
                 raise ValueError(
+                    f"Study '{self.name_short}': "
                     f"{text_field_name} is missing translations for supported_languages: {missing_languages}"
                 )
 

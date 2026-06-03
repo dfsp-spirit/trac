@@ -231,6 +231,53 @@ def test_load_studies_config_rejects_missing_daylabel_translation_for_existing_a
         load_studies_config(str(config_file))
 
 
+def test_load_studies_config_rejects_missing_day_labels_field(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0].pop("day_labels", None)
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="day_labels"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_empty_day_labels(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["day_labels"] = []
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="day_labels"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_duplicate_day_label_names(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["day_labels"] = [
+        {
+            "name": "day1",
+            "display_order": 0,
+            "display_names": {"en": "Day 1", "sv": "Day 1"},
+        },
+        {
+            "name": "day1",
+            "display_order": 1,
+            "display_names": {"en": "Day One", "sv": "Day One"},
+        },
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate name"):
+        load_studies_config(str(config_file))
+
+
 def test_load_studies_config_rejects_mismatching_activity_code_sets_across_languages(
     tmp_path,
 ):

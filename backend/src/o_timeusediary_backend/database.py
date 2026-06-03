@@ -1,6 +1,7 @@
 # database.py
 from sqlmodel import SQLModel, create_engine, Session, select
 from typing import Generator
+from contextlib import contextmanager
 from .models import (
     Study,
     Participant,
@@ -189,6 +190,69 @@ def _ensure_activity_frequency_key_column() -> None:
             text("ALTER TABLE activities ADD COLUMN frequency_key VARCHAR")
         )
         logger.info("Added missing activities.frequency_key column")
+
+
+def _ensure_day_label_timeline_uniqueness_constraints() -> None:
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    required_tables = {"day_labels", "timelines"}
+    if not required_tables.issubset(table_names):
+        return
+
+    statements = [
+        (
+            "uq_day_label_study_name_idx",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_day_label_study_name_idx "
+            "ON day_labels (study_id, name)",
+        ),
+        (
+            "uq_day_label_study_display_order_idx",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_day_label_study_display_order_idx "
+            "ON day_labels (study_id, display_order)",
+        ),
+        (
+            "uq_timeline_study_name_idx",
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_timeline_study_name_idx "
+            "ON timelines (study_id, name)",
+        ),
+    ]
+
+    with engine.begin() as connection:
+        for index_name, statement in statements:
+            try:
+                connection.execute(text(statement))
+            except Exception as exc:
+                raise RuntimeError(
+                    "Unable to enforce uniqueness constraint index "
+                    f"'{index_name}'. Existing duplicate rows may be present. "
+                    "Please deduplicate affected rows before startup."
+                ) from exc
+
+
+@contextmanager
+def _study_import_advisory_lock(session: Session):
+    bind = session.get_bind()
+    if bind is None or bind.dialect.name != "postgresql":
+        yield
+        return
+
+    # Arbitrary lock IDs for TRAC startup config import lock.
+    lock_key_1 = 1414678851
+    lock_key_2 = 1397049668
+
+    logger.info("Acquiring PostgreSQL advisory lock for study config import...")
+    session.execute(
+        text("SELECT pg_advisory_lock(:key1, :key2)"),
+        {"key1": lock_key_1, "key2": lock_key_2},
+    )
+    try:
+        yield
+    finally:
+        session.execute(
+            text("SELECT pg_advisory_unlock(:key1, :key2)"),
+            {"key1": lock_key_1, "key2": lock_key_2},
+        )
+        logger.info("Released PostgreSQL advisory lock for study config import.")
 
 
 def _hydrate_study_texts_from_config(
@@ -475,6 +539,71 @@ def _ensure_available_catalog_from_activities_configs(
             )
 
 
+def _ensure_day_labels_for_study(
+    session: Session,
+    study: Study,
+    study_config,
+) -> dict[str, DayLabel]:
+    existing_day_labels = session.exec(
+        select(DayLabel).where(DayLabel.study_id == study.id)
+    ).all()
+    day_labels_by_name: dict[str, DayLabel] = {
+        day_label.name: day_label for day_label in existing_day_labels
+    }
+
+    for day_label_inst in study_config.day_labels:
+        existing_day_label = day_labels_by_name.get(day_label_inst.name)
+        if existing_day_label:
+            continue
+
+        display_name = study_config.get_day_label_display_name(
+            day_label_inst.name, study_config.default_language
+        )
+        new_day_label = DayLabel(
+            study_id=study.id,
+            name=day_label_inst.name,
+            display_order=day_label_inst.display_order,
+            display_name=display_name or day_label_inst.name,
+        )
+        session.add(new_day_label)
+        day_labels_by_name[new_day_label.name] = new_day_label
+
+    return day_labels_by_name
+
+
+def _ensure_timelines_for_study(
+    session: Session,
+    study: Study,
+    activities_config: ActivitiesConfig,
+) -> dict[str, Timeline]:
+    existing_timelines = session.exec(
+        select(Timeline).where(Timeline.study_id == study.id)
+    ).all()
+    timelines_by_name: dict[str, Timeline] = {
+        timeline.name: timeline for timeline in existing_timelines
+    }
+
+    for timeline_name, timeline_config in activities_config.timeline.items():
+        existing_timeline = timelines_by_name.get(timeline_name)
+        if existing_timeline:
+            continue
+
+        new_timeline = Timeline(
+            study_id=study.id,
+            name=timeline_name,
+            display_name=timeline_config.name,
+            description=timeline_config.description,
+            mode=timeline_config.mode,
+            min_coverage=int(timeline_config.min_coverage)
+            if timeline_config.min_coverage
+            else None,
+        )
+        session.add(new_timeline)
+        timelines_by_name[new_timeline.name] = new_timeline
+
+    return timelines_by_name
+
+
 def create_db_and_tables(do_report_contents: bool = False):
     try:
         SQLModel.metadata.create_all(engine)
@@ -494,6 +623,7 @@ def create_db_and_tables(do_report_contents: bool = False):
     _ensure_study_participant_instruction_columns()
     _ensure_study_available_activity_i18n_frequency_options_column()
     _ensure_activity_frequency_key_column()
+    _ensure_day_label_timeline_uniqueness_constraints()
     create_config_file_studies_in_database(settings.studies_config_path)
     if do_report_contents:
         report_on_db_contents()
@@ -617,345 +747,325 @@ def create_config_file_studies_in_database(config_path: str):
     )
 
     with Session(engine) as session:
-        for study_config in studies_config.studies:
-            try:
-                # Check if study already exists
-                existing_study = session.exec(
-                    select(Study).where(Study.name_short == study_config.name_short)
-                ).first()
+        with _study_import_advisory_lock(session):
+            for study_config in studies_config.studies:
+                try:
+                    # Check if study already exists
+                    existing_study = session.exec(
+                        select(Study).where(Study.name_short == study_config.name_short)
+                    ).first()
 
-                if existing_study:
-                    study_updated = _hydrate_study_texts_from_config(
-                        session, existing_study, study_config
-                    )
-                    if study_config.study_participant_ids:
-                        for participant_id in study_config.study_participant_ids:
-                            existing_participant = session.exec(
-                                select(Participant).where(
-                                    Participant.id == participant_id
-                                )
-                            ).first()
-                            if not existing_participant:
-                                existing_participant = Participant(id=participant_id)
-                                session.add(existing_participant)
-                                session.flush()
-
-                            existing_association = session.exec(
-                                select(StudyParticipant).where(
-                                    StudyParticipant.study_id == existing_study.id,
-                                    StudyParticipant.participant_id == participant_id,
-                                )
-                            ).first()
-                            if not existing_association:
-                                session.add(
-                                    StudyParticipant(
-                                        study_id=existing_study.id,
-                                        participant_id=participant_id,
+                    if existing_study:
+                        study_updated = _hydrate_study_texts_from_config(
+                            session, existing_study, study_config
+                        )
+                        if study_config.study_participant_ids:
+                            for participant_id in study_config.study_participant_ids:
+                                existing_participant = session.exec(
+                                    select(Participant).where(
+                                        Participant.id == participant_id
                                     )
-                                )
-                    _ensure_activity_blobs_from_config(
-                        session, existing_study, study_config
-                    )
-                    _ensure_external_tasks_from_config(
-                        session, existing_study, study_config
-                    )
-                    ensure_external_task_assignments(
-                        session,
-                        existing_study,
-                        study_config.study_participant_ids,
-                    )
+                                ).first()
+                                if not existing_participant:
+                                    existing_participant = Participant(id=participant_id)
+                                    session.add(existing_participant)
+                                    session.flush()
 
+                                existing_association = session.exec(
+                                    select(StudyParticipant).where(
+                                        StudyParticipant.study_id == existing_study.id,
+                                        StudyParticipant.participant_id == participant_id,
+                                    )
+                                ).first()
+                                if not existing_association:
+                                    session.add(
+                                        StudyParticipant(
+                                            study_id=existing_study.id,
+                                            participant_id=participant_id,
+                                        )
+                                    )
+                        _ensure_activity_blobs_from_config(
+                            session, existing_study, study_config
+                        )
+                        _ensure_external_tasks_from_config(
+                            session, existing_study, study_config
+                        )
+                        ensure_external_task_assignments(
+                            session,
+                            existing_study,
+                            study_config.study_participant_ids,
+                        )
+
+                        activities_cfg_by_language = _load_activities_configs_by_language(
+                            study_config
+                        )
+
+                        if study_config.default_language in activities_cfg_by_language:
+                            _ensure_available_catalog_from_activities_configs(
+                                session=session,
+                                study=existing_study,
+                                activities_by_language=activities_cfg_by_language,
+                                default_language=study_config.default_language,
+                            )
+                        if study_updated:
+                            logger.info(
+                                "Hydrated DB-backed study texts for existing study '%s' from config",
+                                study_config.name_short,
+                            )
+                        session.commit()
+                        logger.info(
+                            f"Study already exists: '{study_config.name_short}' with long name: '{study_config.name}'"
+                        )
+                        continue  # Skip to next study
+
+                    # Create study
                     activities_cfg_by_language = _load_activities_configs_by_language(
                         study_config
                     )
 
-                    if study_config.default_language in activities_cfg_by_language:
-                        _ensure_available_catalog_from_activities_configs(
-                            session=session,
-                            study=existing_study,
-                            activities_by_language=activities_cfg_by_language,
-                            default_language=study_config.default_language,
+                    if study_config.default_language not in activities_cfg_by_language:
+                        raise ValueError(
+                            f"No activities configuration found for study '{study_config.name_short}' "
+                            f"and default language '{study_config.default_language}'"
                         )
-                    if study_updated:
-                        logger.info(
-                            "Hydrated DB-backed study texts for existing study '%s' from config",
-                            study_config.name_short,
-                        )
-                    session.commit()
-                    logger.info(
-                        f"Study already exists: '{study_config.name_short}' with long name: '{study_config.name}'"
-                    )
-                    continue  # Skip to next study
 
-                # Create study
-                activities_cfg_by_language = _load_activities_configs_by_language(
-                    study_config
-                )
-
-                if study_config.default_language not in activities_cfg_by_language:
-                    raise ValueError(
-                        f"No activities configuration found for study '{study_config.name_short}' "
-                        f"and default language '{study_config.default_language}'"
-                    )
-
-                activities_config: ActivitiesConfig = activities_cfg_by_language[
-                    study_config.default_language
-                ]
-                valid_activity_codes = get_activity_codes_set(activities_config)
-                activity_info_by_code = get_all_activity_codes(activities_config)
-
-                default_activities_file = (
-                    study_config.get_activities_json_file_for_language(
+                    activities_config: ActivitiesConfig = activities_cfg_by_language[
                         study_config.default_language
-                    )
-                )
-                default_activities_url = (
-                    default_activities_file
-                    if default_activities_file
-                    else f"db_blob://{study_config.name_short}/{study_config.default_language}"
-                )
+                    ]
+                    valid_activity_codes = get_activity_codes_set(activities_config)
+                    activity_info_by_code = get_all_activity_codes(activities_config)
 
-                activities_logged_by_userid = (
-                    study_config.get_logged_activities_by_participant()
-                )
-                allowed_day_labels = {
-                    day_label.name for day_label in study_config.day_labels
-                }
-                allowed_timeline_names = set(activities_config.timeline.keys())
-
-                # Sanity checks before writing anything to DB
-                if (
-                    not study_config.allow_unlisted_participants
-                    and activities_logged_by_userid
-                ):
-                    unauthorized_participants = sorted(
-                        set(activities_logged_by_userid.keys())
-                        - set(study_config.study_participant_ids)
+                    default_activities_file = (
+                        study_config.get_activities_json_file_for_language(
+                            study_config.default_language
+                        )
                     )
-                    if unauthorized_participants:
+                    default_activities_url = (
+                        default_activities_file
+                        if default_activities_file
+                        else f"db_blob://{study_config.name_short}/{study_config.default_language}"
+                    )
+
+                    activities_logged_by_userid = (
+                        study_config.get_logged_activities_by_participant()
+                    )
+                    allowed_day_labels = {
+                        day_label.name for day_label in study_config.day_labels
+                    }
+                    allowed_timeline_names = set(activities_config.timeline.keys())
+
+                    # Sanity checks before writing anything to DB
+                    if (
+                        not study_config.allow_unlisted_participants
+                        and activities_logged_by_userid
+                    ):
+                        unauthorized_participants = sorted(
+                            set(activities_logged_by_userid.keys())
+                            - set(study_config.study_participant_ids)
+                        )
+                        if unauthorized_participants:
+                            raise ValueError(
+                                "Invalid studies_config JSON for study "
+                                f"'{study_config.name_short}': closed study has logged activities for unauthorized participants "
+                                f"{unauthorized_participants}. All participant IDs in activities_logged_by_userid "
+                                "must be listed in study_participant_ids."
+                            )
+
+                    invalid_codes = []
+                    invalid_days = []
+                    invalid_timelines = []
+
+                    for participant_id, day_map in activities_logged_by_userid.items():
+                        for day_name, entries in day_map.items():
+                            if day_name not in allowed_day_labels:
+                                invalid_days.append(
+                                    f"participant='{participant_id}', day='{day_name}'"
+                                )
+                                continue
+
+                            for index, activity_item in enumerate(entries):
+                                if activity_item.activity_code not in valid_activity_codes:
+                                    invalid_codes.append(
+                                        f"participant='{participant_id}', day='{day_name}', entry={index}, "
+                                        f"activity_code={activity_item.activity_code}"
+                                    )
+
+                                if activity_item.timeline not in allowed_timeline_names:
+                                    invalid_timelines.append(
+                                        f"participant='{participant_id}', day='{day_name}', entry={index}, "
+                                        f"timeline='{activity_item.timeline}'"
+                                    )
+
+                    if invalid_days:
                         raise ValueError(
                             "Invalid studies_config JSON for study "
-                            f"'{study_config.name_short}': closed study has logged activities for unauthorized participants "
-                            f"{unauthorized_participants}. All participant IDs in activities_logged_by_userid "
-                            "must be listed in study_participant_ids."
+                            f"'{study_config.name_short}': unknown day labels in activities_logged_by_userid: {invalid_days[:10]}"
                         )
 
-                invalid_codes = []
-                invalid_days = []
-                invalid_timelines = []
+                    if invalid_timelines:
+                        raise ValueError(
+                            "Invalid studies_config JSON for study "
+                            f"'{study_config.name_short}': unknown timelines in activities_logged_by_userid: {invalid_timelines[:10]}"
+                        )
 
-                for participant_id, day_map in activities_logged_by_userid.items():
-                    for day_name, entries in day_map.items():
-                        if day_name not in allowed_day_labels:
-                            invalid_days.append(
-                                f"participant='{participant_id}', day='{day_name}'"
-                            )
-                            continue
+                    if invalid_codes:
+                        raise ValueError(
+                            "Invalid studies_config JSON for study "
+                            f"'{study_config.name_short}': activity codes in activities_logged_by_userid are missing in the study default-language activities file "
+                            f"(default language '{study_config.default_language}'). Invalid entries: {invalid_codes[:10]}"
+                        )
 
-                        for index, activity_item in enumerate(entries):
-                            if activity_item.activity_code not in valid_activity_codes:
-                                invalid_codes.append(
-                                    f"participant='{participant_id}', day='{day_name}', entry={index}, "
-                                    f"activity_code={activity_item.activity_code}"
-                                )
+                    study = Study(
+                        name=study_config.name,
+                        name_short=study_config.name_short,
+                        description=study_config.description,
+                        allow_unlisted_participants=study_config.allow_unlisted_participants,
+                        require_consent=study_config.require_consent,
+                        is_paused=study_config.is_paused,
+                        default_language=study_config.default_language,
+                        study_text_intro=study_config.study_text_intro,
+                        study_text_end_completed=study_config.study_text_end_completed,
+                        study_text_end_skipped=study_config.study_text_end_skipped,
+                        study_text_end_noconsent=study_config.study_text_end_noconsent,
+                        study_text_consent=study_config.study_text_consent,
+                        activities_json_url=default_activities_url,
+                        data_collection_start=study_config.data_collection_start,
+                        data_collection_end=study_config.data_collection_end,
+                    )
+                    session.add(study)
+                    # Keep study creation in the same transaction as dependent rows.
+                    session.flush()
 
-                            if activity_item.timeline not in allowed_timeline_names:
-                                invalid_timelines.append(
-                                    f"participant='{participant_id}', day='{day_name}', entry={index}, "
-                                    f"timeline='{activity_item.timeline}'"
-                                )
-
-                if invalid_days:
-                    raise ValueError(
-                        "Invalid studies_config JSON for study "
-                        f"'{study_config.name_short}': unknown day labels in activities_logged_by_userid: {invalid_days[:10]}"
+                    _ensure_activity_blobs_from_config(session, study, study_config)
+                    _ensure_external_tasks_from_config(session, study, study_config)
+                    _ensure_available_catalog_from_activities_configs(
+                        session=session,
+                        study=study,
+                        activities_by_language=activities_cfg_by_language,
+                        default_language=study_config.default_language,
                     )
 
-                if invalid_timelines:
-                    raise ValueError(
-                        "Invalid studies_config JSON for study "
-                        f"'{study_config.name_short}': unknown timelines in activities_logged_by_userid: {invalid_timelines[:10]}"
+                    day_labels_by_name = _ensure_day_labels_for_study(
+                        session=session,
+                        study=study,
+                        study_config=study_config,
                     )
 
-                if invalid_codes:
-                    raise ValueError(
-                        "Invalid studies_config JSON for study "
-                        f"'{study_config.name_short}': activity codes in activities_logged_by_userid are missing in the study default-language activities file "
-                        f"(default language '{study_config.default_language}'). Invalid entries: {invalid_codes[:10]}"
+                    timelines_by_name = _ensure_timelines_for_study(
+                        session=session,
+                        study=study,
+                        activities_config=activities_config,
                     )
-
-                study = Study(
-                    name=study_config.name,
-                    name_short=study_config.name_short,
-                    description=study_config.description,
-                    allow_unlisted_participants=study_config.allow_unlisted_participants,
-                    require_consent=study_config.require_consent,
-                    is_paused=study_config.is_paused,
-                    default_language=study_config.default_language,
-                    study_text_intro=study_config.study_text_intro,
-                    study_text_end_completed=study_config.study_text_end_completed,
-                    study_text_end_skipped=study_config.study_text_end_skipped,
-                    study_text_end_noconsent=study_config.study_text_end_noconsent,
-                    study_text_consent=study_config.study_text_consent,
-                    activities_json_url=default_activities_url,
-                    data_collection_start=study_config.data_collection_start,
-                    data_collection_end=study_config.data_collection_end,
-                )
-                session.add(study)
-                session.commit()  # Commit immediately after each study
-
-                _ensure_activity_blobs_from_config(session, study, study_config)
-                _ensure_external_tasks_from_config(session, study, study_config)
-                _ensure_available_catalog_from_activities_configs(
-                    session=session,
-                    study=study,
-                    activities_by_language=activities_cfg_by_language,
-                    default_language=study_config.default_language,
-                )
-
-                # Create day labels
-                day_labels_by_name: dict[str, DayLabel] = {}
-                for _, day_label_inst in enumerate(study_config.day_labels):
-                    display_name = study_config.get_day_label_display_name(
-                        day_label_inst.name, study_config.default_language
-                    )
-                    day_label = DayLabel(
-                        study_id=study.id,
-                        name=day_label_inst.name,
-                        display_order=day_label_inst.display_order,
-                        display_name=display_name or day_label_inst.name,
-                    )
-                    session.add(day_label)
-                    day_labels_by_name[day_label.name] = day_label
-
-                # Create timelines
-                timelines_by_name: dict[str, Timeline] = {}
-                for (
-                    timeline_name,
-                    timeline_config,
-                ) in activities_config.timeline.items():
-                    timeline = Timeline(
-                        study_id=study.id,
-                        name=timeline_name,
-                        display_name=timeline_config.name,
-                        description=timeline_config.description,
-                        mode=timeline_config.mode,
-                        min_coverage=int(timeline_config.min_coverage)
-                        if timeline_config.min_coverage
-                        else None,
-                    )
-                    session.add(timeline)
-                    timelines_by_name[timeline.name] = timeline
 
                 # Create participants if specified
-                if (
-                    not study_config.allow_unlisted_participants
-                    and study_config.study_participant_ids
-                ):
-                    for participant_id in study_config.study_participant_ids:
-                        existing_participant = session.exec(
+                    if (
+                        not study_config.allow_unlisted_participants
+                        and study_config.study_participant_ids
+                    ):
+                        for participant_id in study_config.study_participant_ids:
+                            existing_participant = session.exec(
+                                select(Participant).where(Participant.id == participant_id)
+                            ).first()
+
+                            if not existing_participant:
+                                participant = Participant(id=participant_id)
+                                session.add(participant)
+                                session.flush()
+                            else:
+                                participant = existing_participant
+
+                            study_participant = StudyParticipant(
+                                study_id=study.id, participant_id=participant.id
+                            )
+                            session.add(study_participant)
+
+                # Ensure participants exist and are associated for hydrated activities
+                    for participant_id in activities_logged_by_userid.keys():
+                        participant = session.exec(
                             select(Participant).where(Participant.id == participant_id)
                         ).first()
-
-                        if not existing_participant:
+                        if not participant:
                             participant = Participant(id=participant_id)
                             session.add(participant)
                             session.flush()
-                        else:
-                            participant = existing_participant
 
-                        study_participant = StudyParticipant(
-                            study_id=study.id, participant_id=participant.id
-                        )
-                        session.add(study_participant)
-
-                # Ensure participants exist and are associated for hydrated activities
-                for participant_id in activities_logged_by_userid.keys():
-                    participant = session.exec(
-                        select(Participant).where(Participant.id == participant_id)
-                    ).first()
-                    if not participant:
-                        participant = Participant(id=participant_id)
-                        session.add(participant)
-                        session.flush()
-
-                    existing_association = session.exec(
-                        select(StudyParticipant).where(
-                            StudyParticipant.study_id == study.id,
-                            StudyParticipant.participant_id == participant_id,
-                        )
-                    ).first()
-                    if not existing_association:
-                        session.add(
-                            StudyParticipant(
-                                study_id=study.id,
-                                participant_id=participant_id,
+                        existing_association = session.exec(
+                            select(StudyParticipant).where(
+                                StudyParticipant.study_id == study.id,
+                                StudyParticipant.participant_id == participant_id,
                             )
-                        )
-
-                ensure_external_task_assignments(
-                    session,
-                    study,
-                    study_config.study_participant_ids,
-                )
-
-                # Flush so DayLabel/Timeline IDs exist for hydrated activities
-                session.flush()
-
-                # Hydrate activities from settings file
-                for participant_id, day_map in activities_logged_by_userid.items():
-                    for day_name, entries in day_map.items():
-                        day_label = day_labels_by_name[day_name]
-                        for activity_item in entries:
-                            timeline = timelines_by_name[activity_item.timeline]
-                            activity_info = activity_info_by_code.get(
-                                activity_item.activity_code, {}
-                            )
-                            activity_name = (
-                                activity_info.get("name")
-                                or f"Code {activity_item.activity_code}"
-                            )
-                            activity_category = activity_info.get("category")
-                            activity_color = activity_info.get("color")
-                            parent_name = activity_info.get("parent_name")
-
-                            path_parts = [f"timeline:{timeline.name}"]
-                            if activity_category:
-                                path_parts.append(f"category:{activity_category}")
-                            if parent_name and parent_name != activity_name:
-                                path_parts.append(f"parent:{parent_name}")
-                            path_parts.append(f"activity:{activity_name}")
-
+                        ).first()
+                        if not existing_association:
                             session.add(
-                                Activity(
+                                StudyParticipant(
                                     study_id=study.id,
                                     participant_id=participant_id,
-                                    day_label_id=day_label.id,
-                                    timeline_id=timeline.id,
-                                    activity_code=activity_item.activity_code,
-                                    start_minutes=activity_item.start_minutes,
-                                    end_minutes=activity_item.end_minutes,
-                                    activity_name=activity_name,
-                                    activity_path_frontend=" > ".join(path_parts),
-                                    color=activity_color,
-                                    category=activity_category,
                                 )
                             )
 
-                session.commit()  # Commit all related entities
-                logger.info(f"Created study: {study_config.name}")
+                    ensure_external_task_assignments(
+                        session,
+                        study,
+                        study_config.study_participant_ids,
+                    )
 
-            except Exception as e:
-                session.rollback()  # Rollback on error
-                if "duplicate key" in str(e) or "already exists" in str(e):
-                    logger.warning(
-                        f"Study '{study_config.name_short}' may already exist: {e}"
-                    )
-                else:
-                    logger.error(
-                        f"Error creating study '{study_config.name_short}': {e}"
-                    )
-                    raise
+                # Flush so DayLabel/Timeline IDs exist for hydrated activities
+                    session.flush()
+
+                # Hydrate activities from settings file
+                    for participant_id, day_map in activities_logged_by_userid.items():
+                        for day_name, entries in day_map.items():
+                            day_label = day_labels_by_name[day_name]
+                            for activity_item in entries:
+                                timeline = timelines_by_name[activity_item.timeline]
+                                activity_info = activity_info_by_code.get(
+                                    activity_item.activity_code, {}
+                                )
+                                activity_name = (
+                                    activity_info.get("name")
+                                    or f"Code {activity_item.activity_code}"
+                                )
+                                activity_category = activity_info.get("category")
+                                activity_color = activity_info.get("color")
+                                parent_name = activity_info.get("parent_name")
+
+                                path_parts = [f"timeline:{timeline.name}"]
+                                if activity_category:
+                                    path_parts.append(f"category:{activity_category}")
+                                if parent_name and parent_name != activity_name:
+                                    path_parts.append(f"parent:{parent_name}")
+                                path_parts.append(f"activity:{activity_name}")
+
+                                session.add(
+                                    Activity(
+                                        study_id=study.id,
+                                        participant_id=participant_id,
+                                        day_label_id=day_label.id,
+                                        timeline_id=timeline.id,
+                                        activity_code=activity_item.activity_code,
+                                        start_minutes=activity_item.start_minutes,
+                                        end_minutes=activity_item.end_minutes,
+                                        activity_name=activity_name,
+                                        activity_path_frontend=" > ".join(path_parts),
+                                        color=activity_color,
+                                        category=activity_category,
+                                    )
+                                )
+
+                    session.commit()  # Commit all related entities atomically
+                    logger.info(f"Created study: {study_config.name}")
+
+                except Exception as e:
+                    session.rollback()  # Rollback on error
+                    if "duplicate key" in str(e) or "already exists" in str(e):
+                        logger.warning(
+                            f"Study '{study_config.name_short}' may already exist: {e}"
+                        )
+                    else:
+                        logger.error(
+                            f"Error creating study '{study_config.name_short}': {e}"
+                        )
+                        raise
 
 
 def get_session() -> Generator[Session, None, None]:

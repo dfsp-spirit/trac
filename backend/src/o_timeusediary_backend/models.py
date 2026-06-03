@@ -301,6 +301,12 @@ class DayLabel(SQLModel, table=True):
     """Valid day labels for a study (e.g., "monday", "tuesday", "typical_weekend")"""
 
     __tablename__ = "day_labels"
+    __table_args__ = (
+        UniqueConstraint("study_id", "name", name="uq_day_label_study_name"),
+        UniqueConstraint(
+            "study_id", "display_order", name="uq_day_label_study_display_order"
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
@@ -317,6 +323,9 @@ class Timeline(SQLModel, table=True):
     """Timelines defined in activities.json (primary, digitalmediause, device, etc.)"""
 
     __tablename__ = "timelines"
+    __table_args__ = (
+        UniqueConstraint("study_id", "name", name="uq_timeline_study_name"),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")

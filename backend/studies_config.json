@@ -272,15 +272,6 @@
           }
         },
         {
-          "name": "friday",
-          "display_order": 4,
-          "display_names": {
-            "en": "Friday",
-            "sv": "Fredag",
-            "de": "Freitag"
-          }
-        },
-        {
           "name": "saturday",
           "display_order": 5,
           "display_names": {
