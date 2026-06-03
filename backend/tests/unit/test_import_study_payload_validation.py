@@ -281,6 +281,37 @@ def test_validate_import_payload_rejects_frequency_key_mismatch_across_languages
         _validate_import_study_payload(study_payload)
 
 
+def test_validate_import_payload_reports_specific_structure_difference_details():
+    payload = _base_payload()
+    payload["supported_languages"] = ["en", "de"]
+    payload["day_labels"][0]["display_names"] = {"en": "Monday", "de": "Montag"}
+
+    en_data = _minimal_activities_payload([100])
+    de_data = _minimal_activities_payload([100])
+
+    en_data["timeline"]["primary"]["categories"][0]["activities"][0][
+        "frequency_options"
+    ] = [
+        {"key": "bi_weekly", "label": "Bi-weekly"},
+        {"key": "monthly", "label": "Monthly"},
+    ]
+    de_data["timeline"]["primary"]["categories"][0]["activities"][0][
+        "frequency_options"
+    ] = [
+        {"key": "monthly", "label": "Monatlich"},
+    ]
+
+    payload["activities_json_data"] = {"en": en_data, "de": de_data}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match=r"timeline 'primary', activity code 100 frequency options mismatch",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
 def test_build_external_task_continuation_url_uses_configured_token_query_param():
     external_task = StudyExternalTask(
         study_id=1,

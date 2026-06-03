@@ -1525,6 +1525,68 @@ def _build_activity_structure_signature(activities_cfg: ActivitiesConfig) -> Dic
     return timeline_signature
 
 
+def _describe_activity_structure_difference(
+    reference_signature: Dict[str, Dict],
+    candidate_signature: Dict[str, Dict],
+) -> str:
+    reference_timelines = set(reference_signature.keys())
+    candidate_timelines = set(candidate_signature.keys())
+
+    missing_timelines = sorted(reference_timelines - candidate_timelines)
+    if missing_timelines:
+        return f"missing timelines: {missing_timelines}"
+
+    extra_timelines = sorted(candidate_timelines - reference_timelines)
+    if extra_timelines:
+        return f"unexpected timelines: {extra_timelines}"
+
+    for timeline_key in sorted(reference_timelines):
+        reference_timeline = reference_signature[timeline_key]
+        candidate_timeline = candidate_signature[timeline_key]
+
+        if candidate_timeline.get("mode") != reference_timeline.get("mode"):
+            return (
+                f"timeline '{timeline_key}' mode mismatch: "
+                f"expected '{reference_timeline.get('mode')}', "
+                f"got '{candidate_timeline.get('mode')}'"
+            )
+
+        if candidate_timeline.get("min_coverage") != reference_timeline.get(
+            "min_coverage"
+        ):
+            return (
+                f"timeline '{timeline_key}' min_coverage mismatch: "
+                f"expected {reference_timeline.get('min_coverage')}, "
+                f"got {candidate_timeline.get('min_coverage')}"
+            )
+
+        reference_codes = set(reference_timeline.get("codes", []))
+        candidate_codes = set(candidate_timeline.get("codes", []))
+
+        missing_codes = sorted(reference_codes - candidate_codes)
+        if missing_codes:
+            return f"timeline '{timeline_key}' missing activity codes: {missing_codes}"
+
+        extra_codes = sorted(candidate_codes - reference_codes)
+        if extra_codes:
+            return f"timeline '{timeline_key}' unexpected activity codes: {extra_codes}"
+
+        reference_frequency_keys = reference_timeline.get("frequency_keys_by_code", {})
+        candidate_frequency_keys = candidate_timeline.get("frequency_keys_by_code", {})
+
+        for code in sorted(reference_codes):
+            code_key = str(code)
+            expected_keys = reference_frequency_keys.get(code_key, [])
+            candidate_keys = candidate_frequency_keys.get(code_key, [])
+            if candidate_keys != expected_keys:
+                return (
+                    f"timeline '{timeline_key}', activity code {code} frequency options mismatch: "
+                    f"expected {expected_keys}, got {candidate_keys}"
+                )
+
+    return "unknown structure difference"
+
+
 def _compute_blob_hash(payload: Dict) -> str:
     return hashlib.sha256(
         json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -1742,8 +1804,12 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     reference_signature = signature_by_lang[default_language]
     for language, signature in signature_by_lang.items():
         if signature != reference_signature:
+            details = _describe_activity_structure_difference(
+                reference_signature,
+                signature,
+            )
             raise ValueError(
-                f"activities_json_data structure mismatch between language '{default_language}' and '{language}'"
+                f"activities_json_data structure mismatch between language '{default_language}' and '{language}': {details}"
             )
 
     return {

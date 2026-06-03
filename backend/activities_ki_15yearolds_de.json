@@ -14,7 +14,7 @@
       "name": "Hauptaktivität",
       "description": "",
       "mode": "single-choice",
-      "min_coverage": 1440,
+      "min_coverage": 10,
       "categories": [
         {
           "name": "Allgemeine Aktivitäten",
