@@ -128,6 +128,7 @@
     "fillRequired": "Please fill in all required activities",
     "submitSuccess": "Diary submitted successfully",
     "submitError": "Error submitting diary",
+    "sending_retry": "Retrying to save your diary (attempt {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Minimum coverage met",
     "timelineCoverageMissing": "{{covered}} of {{required}} required minutes covered",

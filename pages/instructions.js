@@ -121,9 +121,30 @@ async function loadStudyConfigForInstructions(language) {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Failed to load study-config from backend: ${response.status}`
-    );
+    let detailMessage = '';
+    let detailCode = '';
+    try {
+      const payload = await response.json();
+      const detail = payload?.detail;
+      if (typeof detail === 'string') {
+        detailMessage = detail;
+      } else if (detail && typeof detail === 'object') {
+        detailMessage = detail.message || '';
+        detailCode = detail.code || '';
+      }
+    } catch (_parseError) {
+      // keep generic fallback
+    }
+
+    const message =
+      detailMessage ||
+      `Failed to load study-config from backend: ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    if (detailCode === 'study_unavailable') {
+      error.code = 'STUDY_UNAVAILABLE';
+    }
+    throw error;
   }
 
   return await response.json();
@@ -271,6 +292,18 @@ function updateLayout() {
         requestedLanguage || undefined
       );
     } catch (studyConfigError) {
+      if (
+        studyConfigError?.code === 'STUDY_UNAVAILABLE' ||
+        studyConfigError?.status === 403
+      ) {
+        const currentUrl = new URL(window.location.href);
+        const redirectUrl = new URL('../index.html', currentUrl.href);
+        currentUrl.searchParams.forEach((value, key) => {
+          redirectUrl.searchParams.set(key, value);
+        });
+        window.location.href = redirectUrl.toString();
+        return;
+      }
       console.warn(
         'Could not load study-config for instructions page:',
         studyConfigError.message

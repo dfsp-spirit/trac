@@ -543,6 +543,7 @@ async function syncWithBackendConfig() {
     } else if (response.status === 403) {
       let errorMessage =
         'You are not authorized to participate in this study.';
+      let errorCode = 'STUDY_NOT_AUTHORIZED';
       try {
         const payload = await response.json();
         const detail = payload?.detail;
@@ -555,13 +556,16 @@ async function syncWithBackendConfig() {
           detail.message.trim()
         ) {
           errorMessage = detail.message;
+          if (detail.code === 'study_unavailable') {
+            errorCode = 'STUDY_UNAVAILABLE';
+          }
         }
       } catch (parseError) {
         console.warn('Failed to parse 403 study-config response:', parseError);
       }
 
       const unauthorizedError = new Error(errorMessage);
-      unauthorizedError.code = 'STUDY_NOT_AUTHORIZED';
+      unauthorizedError.code = errorCode;
       unauthorizedError.status = 403;
       throw unauthorizedError;
     } else if (response.status === 400) {
@@ -579,6 +583,7 @@ async function syncWithBackendConfig() {
   } catch (error) {
     if (
       error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_UNAVAILABLE' ||
       error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
     ) {
       throw error;
@@ -638,6 +643,7 @@ async function initializeStudyConfig() {
   } catch (error) {
     if (
       error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_UNAVAILABLE' ||
       error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
     ) {
       throw error;

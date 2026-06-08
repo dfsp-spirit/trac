@@ -5953,12 +5953,15 @@ async function init() {
     }
   } catch (error) {
     console.error('Failed to initialize application:', error);
+    const isStudyUnavailableError = error?.code === 'STUDY_UNAVAILABLE';
     const isStudyAuthorizationError =
       error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
     const isMissingParticipantIdError =
       error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' || error?.status === 400;
 
-    const errorTitle = isStudyAuthorizationError
+    const errorTitle = isStudyUnavailableError
+      ? 'Studie nicht verfügbar:'
+      : isStudyAuthorizationError
       ? 'Access denied:'
       : isMissingParticipantIdError
       ? 'Participant link required:'
@@ -5966,7 +5969,9 @@ async function init() {
       ? i18n.t('errors.loadingActivitiesConfigurationTitle')
       : 'Error loading activities configuration:';
 
-    const errorHelp = isStudyAuthorizationError
+    const errorHelp = isStudyUnavailableError
+      ? 'Diese Studie ist momentan nicht verfügbar.'
+      : isStudyAuthorizationError
       ? 'You are not authorized to participate in this study.'
       : isMissingParticipantIdError
       ? 'Please use your personal invitation link that includes your participant ID.'
@@ -5974,7 +5979,9 @@ async function init() {
       ? i18n.t('errors.loadingActivitiesConfigurationHelp')
       : 'The application requires a valid backend connection to load the appropriate activities for your study.';
 
-    const errorMessage = isStudyAuthorizationError
+    const errorMessage = isStudyUnavailableError
+      ? 'Diese Studie ist momentan nicht verfügbar.'
+      : isStudyAuthorizationError
       ? 'You are not authorized to participate in this study.'
       : error.message;
 
@@ -5982,13 +5989,24 @@ async function init() {
       title: errorTitle,
       message: errorMessage,
       help: errorHelp,
+      hideInteractiveUi:
+        isStudyUnavailableError ||
+        isStudyAuthorizationError ||
+        isMissingParticipantIdError,
     });
   }
   updateButtonStates();
 }
 
-function renderFatalInitializationError({ title, message, help }) {
-  document.title = 'TRAC -- ERROR';
+function renderFatalInitializationError({
+  title,
+  message,
+  help,
+  hideInteractiveUi = false,
+}) {
+  if (hideInteractiveUi) {
+    document.title = 'TRAC -- ERROR';
+  }
 
   const activitiesContainer = document.getElementById('activitiesContainer');
   if (activitiesContainer) {
@@ -5997,34 +6015,37 @@ function renderFatalInitializationError({ title, message, help }) {
       `<strong>${title}</strong><br>${message}${help ? `<br><br>${help}` : ''}</p>`;
   }
 
-  const backendStatus = document.getElementById('footer_backend_status');
-  if (backendStatus) {
-    backendStatus.style.display = 'none';
-  }
-
-  [
-    '.controls',
-    '.timeline-header',
-    '.timeline-canvas',
-    '#instructionsFooter',
-    '#previousDaysSwitchRow',
-  ].forEach((selector) => {
-    const element = document.querySelector(selector);
-    if (element) {
-      element.style.display = 'none';
+  if (hideInteractiveUi) {
+    const backendStatus = document.getElementById('footer_backend_status');
+    if (backendStatus) {
+      backendStatus.style.display = 'none';
     }
-  });
 
-  document.querySelectorAll('button').forEach((button) => {
-    button.disabled = true;
-    button.setAttribute('aria-disabled', 'true');
-    button.style.pointerEvents = 'none';
-    button.style.display = 'none';
-  });
+    [
+      '.controls',
+      '.timeline-header',
+      '.timeline-canvas',
+      '#instructionsFooter',
+      '#previousDaysSwitchRow',
+    ].forEach((selector) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.style.display = 'none';
+      }
+    });
+
+    document.querySelectorAll('button').forEach((button) => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.style.pointerEvents = 'none';
+      button.style.display = 'none';
+    });
+  }
 }
 
 init().catch((error) => {
   console.error('Failed to initialize application:', error);
+  const isStudyUnavailableError = error?.code === 'STUDY_UNAVAILABLE';
   const isStudyAuthorizationError =
     error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
   const isMissingParticipantIdError =
@@ -6032,7 +6053,9 @@ init().catch((error) => {
   const shortError = window.i18n?.isReady()
     ? i18n.t('errors.loadingActivitiesShort')
     : 'Error loading activities. Please refresh the page to try again. Error:';
-  const message = isStudyAuthorizationError
+  const message = isStudyUnavailableError
+    ? 'Diese Studie ist momentan nicht verfügbar.'
+    : isStudyAuthorizationError
     ? 'You are not authorized to participate in this study.'
     : isMissingParticipantIdError
     ? 'A participant link is required for this study.'
@@ -6041,6 +6064,10 @@ init().catch((error) => {
     title: 'Error:',
     message,
     help: '',
+    hideInteractiveUi:
+      isStudyUnavailableError ||
+      isStudyAuthorizationError ||
+      isMissingParticipantIdError,
   });
 });
 

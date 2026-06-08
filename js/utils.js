@@ -37,10 +37,35 @@ export async function fetchWithSmartRetry(url, options = {}, retryConfig = {}) {
           );
           return response;
         }
-        // Other 4xx errors (400, 403, etc.) - throw immediately, no retry
-        throw new Error(
-          `Client error: ${response.status} ${response.statusText}`
+        // Other 4xx errors (400, 403, etc.) - throw immediately, no retry.
+        let backendDetailMessage = '';
+        try {
+          const contentType = response.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const payload = await response.json();
+            const detail = payload?.detail;
+            if (typeof detail === 'string') {
+              backendDetailMessage = detail;
+            } else if (detail && typeof detail === 'object') {
+              backendDetailMessage =
+                detail.message || detail.code || JSON.stringify(detail);
+            }
+          } else {
+            backendDetailMessage = (await response.text()).trim();
+          }
+        } catch (_parseError) {
+          // Ignore parse errors and keep the generic client error message.
+        }
+
+        const detailSuffix = backendDetailMessage
+          ? ` - ${backendDetailMessage}`
+          : '';
+        const clientError = new Error(
+          `Client error: ${response.status} ${response.statusText}${detailSuffix}`
         );
+        clientError.nonRetryable = true;
+        clientError.status = response.status;
+        throw clientError;
       }
 
       // Success or server error - if success, return
@@ -59,6 +84,11 @@ export async function fetchWithSmartRetry(url, options = {}, retryConfig = {}) {
       return response;
     } catch (error) {
       lastError = error;
+
+      // Explicitly do not retry non-transient client-side failures (4xx).
+      if (error?.nonRetryable) {
+        throw error;
+      }
 
       // If this was the last attempt, throw
       if (attempt > maxRetries) {
