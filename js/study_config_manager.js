@@ -8,8 +8,10 @@ async function fetchWithBackgroundRetry(url, maxRetries = 2, delayMs = 1500) {
     try {
       const response = await fetch(url);
       if (response.ok) return response;
-      // Don't retry on client errors (4xx), but do on server errors (5xx)
-      if (response.status < 500) throw new Error(`HTTP ${response.status}`);
+      // Don't retry on client errors (4xx) - return to caller for specific handling.
+      if (response.status < 500) return response;
+      // Retry on server errors (5xx)
+      throw new Error(`HTTP ${response.status}`);
     } catch (error) {
       lastError = error;
       if (attempt > maxRetries) throw lastError;
@@ -538,12 +540,49 @@ async function syncWithBackendConfig() {
         `Synced with backend: ${CURRENT_STUDY_CACHE.day_labels.length} days`
       );
       return CURRENT_STUDY_CACHE;
+    } else if (response.status === 403) {
+      let errorMessage =
+        'You are not authorized to participate in this study.';
+      try {
+        const payload = await response.json();
+        const detail = payload?.detail;
+        if (typeof detail === 'string' && detail.trim()) {
+          errorMessage = detail;
+        } else if (
+          detail &&
+          typeof detail === 'object' &&
+          typeof detail.message === 'string' &&
+          detail.message.trim()
+        ) {
+          errorMessage = detail.message;
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse 403 study-config response:', parseError);
+      }
+
+      const unauthorizedError = new Error(errorMessage);
+      unauthorizedError.code = 'STUDY_NOT_AUTHORIZED';
+      unauthorizedError.status = 403;
+      throw unauthorizedError;
+    } else if (response.status === 400) {
+      const participantIdRequiredError = new Error(
+        'A participant link is required for this study.'
+      );
+      participantIdRequiredError.code = 'STUDY_PARTICIPANT_ID_REQUIRED';
+      participantIdRequiredError.status = 400;
+      throw participantIdRequiredError;
     } else {
       console.log(`Backend returned ${response.status}, using file config`);
       CURRENT_STUDY_CACHE.source = 'file';
       return CURRENT_STUDY_CACHE;
     }
   } catch (error) {
+    if (
+      error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
+    ) {
+      throw error;
+    }
     console.log('Backend unavailable, using file config:', error.message);
     CURRENT_STUDY_CACHE.source = 'file';
     return CURRENT_STUDY_CACHE;
@@ -597,6 +636,12 @@ async function initializeStudyConfig() {
     await syncWithBackendConfig();
     console.log('Backend sync completed in initializeStudyConfig');
   } catch (error) {
+    if (
+      error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
+    ) {
+      throw error;
+    }
     console.log('Background sync failed:', error.message);
   }
 

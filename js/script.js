@@ -5953,26 +5953,88 @@ async function init() {
     }
   } catch (error) {
     console.error('Failed to initialize application:', error);
-    const errorTitle = window.i18n?.isReady()
+    const isStudyAuthorizationError =
+      error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
+    const isMissingParticipantIdError =
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' || error?.status === 400;
+
+    const errorTitle = isStudyAuthorizationError
+      ? 'Access denied:'
+      : isMissingParticipantIdError
+      ? 'Participant link required:'
+      : window.i18n?.isReady()
       ? i18n.t('errors.loadingActivitiesConfigurationTitle')
       : 'Error loading activities configuration:';
-    const errorHelp = window.i18n?.isReady()
+
+    const errorHelp = isStudyAuthorizationError
+      ? 'You are not authorized to participate in this study.'
+      : isMissingParticipantIdError
+      ? 'Please use your personal invitation link that includes your participant ID.'
+      : window.i18n?.isReady()
       ? i18n.t('errors.loadingActivitiesConfigurationHelp')
       : 'The application requires a valid backend connection to load the appropriate activities for your study.';
-    document.getElementById('activitiesContainer').innerHTML =
-      '<p style="color: red; padding: 20px; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 8px; margin: 20px;">' +
-      `<strong>${errorTitle}</strong><br>${error.message}<br><br>${errorHelp}</p>`;
+
+    const errorMessage = isStudyAuthorizationError
+      ? 'You are not authorized to participate in this study.'
+      : error.message;
+
+    renderFatalInitializationError({
+      title: errorTitle,
+      message: errorMessage,
+      help: errorHelp,
+    });
   }
   updateButtonStates();
 }
 
+function renderFatalInitializationError({ title, message, help }) {
+  const activitiesContainer = document.getElementById('activitiesContainer');
+  if (activitiesContainer) {
+    activitiesContainer.innerHTML =
+      '<p style="color: red; padding: 20px; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 8px; margin: 20px;">' +
+      `<strong>${title}</strong><br>${message}${help ? `<br><br>${help}` : ''}</p>`;
+  }
+
+  [
+    '.controls',
+    '.timeline-header',
+    '.timeline-canvas',
+    '#instructionsFooter',
+    '#previousDaysSwitchRow',
+  ].forEach((selector) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.style.display = 'none';
+    }
+  });
+
+  document.querySelectorAll('button').forEach((button) => {
+    button.disabled = true;
+    button.setAttribute('aria-disabled', 'true');
+    button.style.pointerEvents = 'none';
+    button.style.display = 'none';
+  });
+}
+
 init().catch((error) => {
   console.error('Failed to initialize application:', error);
+  const isStudyAuthorizationError =
+    error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
+  const isMissingParticipantIdError =
+    error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' || error?.status === 400;
   const shortError = window.i18n?.isReady()
     ? i18n.t('errors.loadingActivitiesShort')
     : 'Error loading activities. Please refresh the page to try again. Error:';
-  document.getElementById('activitiesContainer').innerHTML =
-    `<p style="color: red;">${shortError} ${error.message}</p>`;
+  const message = isStudyAuthorizationError
+    ? 'You are not authorized to participate in this study.'
+    : isMissingParticipantIdError
+    ? 'A participant link is required for this study.'
+    : `${shortError} ${error.message}`;
+  renderFatalInitializationError({
+    title: 'Error:',
+    message,
+    help: '',
+  });
 });
 
 window.addEventListener('beforeunload', () => {
