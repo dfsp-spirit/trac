@@ -5988,11 +5988,18 @@ async function init() {
 }
 
 function renderFatalInitializationError({ title, message, help }) {
+  document.title = 'TRAC -- ERROR';
+
   const activitiesContainer = document.getElementById('activitiesContainer');
   if (activitiesContainer) {
     activitiesContainer.innerHTML =
       '<p style="color: red; padding: 20px; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 8px; margin: 20px;">' +
       `<strong>${title}</strong><br>${message}${help ? `<br><br>${help}` : ''}</p>`;
+  }
+
+  const backendStatus = document.getElementById('footer_backend_status');
+  if (backendStatus) {
+    backendStatus.style.display = 'none';
   }
 
   [
