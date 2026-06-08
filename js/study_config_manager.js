@@ -507,6 +507,17 @@ async function syncWithBackendConfig() {
         CURRENT_STUDY_CACHE.participant_has_completed_study =
           backendConfig.participant_has_completed_study;
       }
+      if (backendConfig.external_tasks !== undefined) {
+        CURRENT_STUDY_CACHE.external_tasks = Array.isArray(
+          backendConfig.external_tasks
+        )
+          ? backendConfig.external_tasks
+          : [];
+      }
+      if (backendConfig.all_external_tasks_confirmed !== undefined) {
+        CURRENT_STUDY_CACHE.all_external_tasks_confirmed =
+          backendConfig.all_external_tasks_confirmed;
+      }
 
       if (backendConfig.study_days_count) {
         // Ensure day_labels matches study_days_count

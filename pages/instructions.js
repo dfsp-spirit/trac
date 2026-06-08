@@ -2,6 +2,7 @@ import { getIsMobile, updateIsMobile } from '../js/globals.js';
 import i18n from '../js/i18n.js';
 import { loadActivitiesConfig } from '../js/activities_config.js';
 import { renderMarkdown } from '../js/markdown.js';
+import { hasPendingExternalTasks } from '../js/utils.js';
 
 function getUrlParams() {
   return new URLSearchParams(window.location.search);
@@ -224,9 +225,11 @@ function applyStudyIntroText(studyConfig) {
   }
 }
 
-function buildThankYouUrlWithCurrentParams() {
+function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {
   const currentUrl = new URL(window.location.href);
-  const redirectUrl = new URL('thank-you.html', currentUrl.href);
+  const hasPendingTasks = hasPendingExternalTasks(studyConfig);
+  const targetPath = hasPendingTasks ? 'tasks.html' : 'thank-you.html';
+  const redirectUrl = new URL(targetPath, currentUrl.href);
   currentUrl.searchParams.forEach((value, key) => {
     redirectUrl.searchParams.set(key, value);
   });
@@ -323,7 +326,7 @@ function updateLayout() {
 
     if (studyConfig) {
       if (studyConfig.participant_has_completed_study === true) {
-        window.location.href = buildThankYouUrlWithCurrentParams();
+        window.location.href = buildPostDiaryLandingUrlWithCurrentParams(studyConfig);
         return;
       }
       renderLanguageSelector(studyConfig, selectedLanguage);

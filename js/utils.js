@@ -1321,14 +1321,47 @@ export async function sendData(
   }
 }
 
+export function hasPendingExternalTasks(studyConfig) {
+  if (!studyConfig || typeof studyConfig !== 'object') {
+    return false;
+  }
+
+  const externalTasks = Array.isArray(studyConfig.external_tasks)
+    ? studyConfig.external_tasks
+    : [];
+
+  if (externalTasks.length === 0) {
+    return false;
+  }
+
+  if (studyConfig.all_external_tasks_confirmed === true) {
+    return false;
+  }
+
+  return externalTasks.some((task) => task?.is_confirmed !== true);
+}
+
+export function getPostDiaryRedirectPath(completionStatus = 'completed') {
+  if (completionStatus === 'noconsent') {
+    return 'pages/thank-you.html';
+  }
+
+  const currentStudy = window.studyConfigManager?.getCurrentStudy?.();
+  if (hasPendingExternalTasks(currentStudy)) {
+    return 'pages/tasks.html';
+  }
+
+  return window.timelineManager?.general?.primary_redirect_url || 'pages/thank-you.html';
+}
+
 // New function to handle day navigation
 async function handleDayNavigation(isLastDay, currentDayIndex) {
   console.log('handleDayNavigation:', { isLastDay, currentDayIndex });
 
   if (isLastDay) {
-    // Redirect to thank you page
-    const redirectUrl =
-      window.timelineManager?.general?.primary_redirect_url || 'thank-you.html';
+    // Redirect to tasks page first when external tasks are pending,
+    // otherwise go directly to thank-you page.
+    const redirectUrl = getPostDiaryRedirectPath('completed');
     console.log('Last day completed, redirecting to:', redirectUrl);
 
     // Preserve URL parameters if needed

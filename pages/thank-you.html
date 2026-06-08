@@ -268,64 +268,6 @@
             return urlParams.get('completion_status') || 'completed';
         }
 
-        function getCallbackParams() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const taskKey = (urlParams.get('callback_task_key') || '').trim();
-            const assignedToken = (urlParams.get('callback_token') || '').trim();
-
-            if (!taskKey || !assignedToken) {
-                return null;
-            }
-
-            return { taskKey, assignedToken };
-        }
-
-        async function confirmCallbackExternalTask(studyConfig) {
-            const callbackParams = getCallbackParams();
-            if (!callbackParams) {
-                return null;
-            }
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const studyName = urlParams.get('study_name') || studyConfig?.study_name_short || 'default';
-            const participantId = urlParams.get('pid');
-            if (!participantId) {
-                return null;
-            }
-
-            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
-            const response = await fetch(
-                `${apiBaseUrl}/studies/${studyName}/participants/${participantId}/external-tasks/confirm`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        task_key: callbackParams.taskKey,
-                        assigned_token: callbackParams.assignedToken,
-                    }),
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error(`Failed to confirm callback external task: ${response.status}`);
-            }
-
-            const confirmationResult = await response.json();
-            const matchedTask = Array.isArray(studyConfig?.external_tasks)
-                ? studyConfig.external_tasks.find((task) => task.task_key === confirmationResult.task_key)
-                : null;
-
-            if (matchedTask) {
-                matchedTask.is_confirmed = true;
-                matchedTask.confirmed_at = confirmationResult.confirmed_at;
-            }
-
-            return confirmationResult;
-        }
-
         function appendFollowUpTask({
             href = null,
             text,
@@ -380,41 +322,6 @@
             customEndElement.appendChild(row);
         }
 
-        function translateOrFallback(key, fallback) {
-            const translated = window.i18n?.t?.(key);
-            if (
-                typeof translated !== 'string' ||
-                translated.trim() === '' ||
-                translated.trim() === key
-            ) {
-                return fallback;
-            }
-            return translated;
-        }
-
-        function getTaskLabels() {
-            return {
-                baseTaskName: translateOrFallback('thankYou.baseTaskName', 'Complete TRAC diary reporting'),
-                statusCompleted: translateOrFallback('thankYou.statusCompleted', 'Completed'),
-                statusAlreadyCompleted: translateOrFallback('thankYou.statusAlreadyCompleted', 'Already completed'),
-                statusNotCompleted: translateOrFallback('thankYou.statusNotCompleted', 'Not completed'),
-            };
-        }
-
-        function applyBaseStudyTaskRow() {
-            const labels = getTaskLabels();
-            const completionStatus = getCompletionStatus();
-            const baseTaskCompleted = completionStatus === 'completed';
-
-            appendFollowUpTask({
-                text: labels.baseTaskName,
-                statusLabel: baseTaskCompleted
-                    ? labels.statusCompleted
-                    : labels.statusNotCompleted,
-                statusClassName: baseTaskCompleted ? 'is-completed' : 'is-pending',
-                isCompleted: baseTaskCompleted,
-            });
-        }
 
         function getSafeReturnUrl() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -453,54 +360,6 @@
             });
         }
 
-        function applyExternalTasks(studyConfig) {
-            if (getCompletionStatus() === 'noconsent') {
-                return;
-            }
-
-            const externalTasks = Array.isArray(studyConfig?.external_tasks)
-                ? studyConfig.external_tasks
-                : [];
-
-            externalTasks.forEach((externalTask) => {
-                if (
-                    externalTask?.confirmation_type !== 'none' &&
-                    externalTask?.confirmation_type !== 'callback'
-                ) {
-                    return;
-                }
-
-                const taskName =
-                    typeof externalTask.name === 'string' && externalTask.name.trim() !== ''
-                        ? externalTask.name.trim()
-                        : window.i18n?.t('thankYou.continueLink') || 'Click here to continue.';
-
-                if (externalTask?.is_confirmed === true) {
-                    const labels = getTaskLabels();
-                    appendFollowUpTask({
-                        text: taskName,
-                        description: externalTask.description,
-                        statusLabel: labels.statusAlreadyCompleted,
-                        statusClassName: 'is-completed',
-                        isCompleted: true,
-                    });
-                    return;
-                }
-
-                if (
-                    typeof externalTask?.continuation_url !== 'string' ||
-                    externalTask.continuation_url.trim() === ''
-                ) {
-                    return;
-                }
-
-                appendFollowUpTask({
-                    href: externalTask.continuation_url,
-                    text: taskName,
-                    description: externalTask.description,
-                });
-            });
-        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -518,15 +377,7 @@
             await i18n.init(language);
             i18n.applyTranslations();
 
-            try {
-                await confirmCallbackExternalTask(studyConfig);
-            } catch (error) {
-                console.warn('Could not confirm callback external task:', error.message);
-            }
-
             applyStudyOutroText(studyConfig, language);
-            applyBaseStudyTaskRow();
-            applyExternalTasks(studyConfig);
             applyReturnUrlLink();
         });
     </script>

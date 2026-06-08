@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TRAC Tasks</title>
+    <link href="/assets/fonts/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/fonts/fontawesome/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #475569;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+            --success-color: #059669;
+            --warning-color: #92400e;
+            --warning-bg: #fef3c7;
+        }
+
+        html {
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--background-color) 0%, #e2e8f0 100%);
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .tasks-container {
+            width: min(720px, calc(100vw - 24px));
+            margin: 20px;
+            padding: 40px 28px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 30px;
+            margin: 0 0 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--secondary-color);
+            margin: 0 0 24px;
+        }
+
+        .task-list {
+            display: grid;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .task-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+
+        .task-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .task-title {
+            font-weight: 600;
+        }
+
+        .task-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 600;
+            background: var(--warning-bg);
+            color: var(--warning-color);
+            white-space: nowrap;
+        }
+
+        .task-status.is-completed {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .task-description {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .task-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .task-link:hover,
+        .task-link:focus {
+            text-decoration: underline;
+        }
+
+        .footer-actions {
+            margin-top: 24px;
+        }
+
+        .continue-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            background: var(--success-color);
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .info {
+            color: var(--secondary-color);
+            font-size: 14px;
+            margin-top: 18px;
+        }
+
+        @media (max-width: 480px) {
+            .tasks-container {
+                margin: 10px;
+                padding: 28px 18px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="tasks-container">
+        <h1 id="tasks-heading">Final Tasks</h1>
+        <p id="tasks-subtitle" class="subtitle">Please complete the following tasks before finishing the study.</p>
+
+        <ul id="tasks-list" class="task-list"></ul>
+
+        <p id="tasks-info" class="info"></p>
+
+        <div id="continue-wrapper" class="footer-actions hidden">
+            <a id="continue-link" class="continue-btn" href="#">
+                <i class="fas fa-check"></i>
+                <span>Continue to final page</span>
+            </a>
+        </div>
+    </main>
+
+    <script src="../settings/tud_settings.js"></script>
+    <script type="module">
+        import i18n from '../js/i18n.js';
+
+        function getUrlParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function getCompletionStatus() {
+            return getUrlParams().get('completion_status') || 'completed';
+        }
+
+        function buildThankYouUrl() {
+            const currentUrl = new URL(window.location.href);
+            const redirectUrl = new URL('thank-you.html', currentUrl.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                redirectUrl.searchParams.set(key, value);
+            });
+            return redirectUrl.toString();
+        }
+
+        async function loadStudyConfig(language) {
+            const urlParams = getUrlParams();
+            const studyName = urlParams.get('study_name') || 'default';
+            const participantId = urlParams.get('pid');
+            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+            const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);
+
+            if (participantId) {
+                endpointUrl.searchParams.set('participant_id', participantId);
+            }
+            if (language) {
+                endpointUrl.searchParams.set('lang', language);
+            }
+
+            const response = await fetch(endpointUrl.toString(), {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load study-config: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        function getCallbackParams() {
+            const urlParams = getUrlParams();
+            const taskKey = (urlParams.get('callback_task_key') || '').trim();
+            const assignedToken = (urlParams.get('callback_token') || '').trim();
+
+            if (!taskKey || !assignedToken) {
+                return null;
+            }
+
+            return { taskKey, assignedToken };
+        }
+
+        async function confirmCallbackExternalTask(studyConfig) {
+            const callbackParams = getCallbackParams();
+            if (!callbackParams) {
+                return null;
+            }
+
+            const urlParams = getUrlParams();
+            const studyName = urlParams.get('study_name') || studyConfig?.study_name_short || 'default';
+            const participantId = urlParams.get('pid');
+            if (!participantId) {
+                return null;
+            }
+
+            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+            const response = await fetch(
+                `${apiBaseUrl}/studies/${studyName}/participants/${participantId}/external-tasks/confirm`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        task_key: callbackParams.taskKey,
+                        assigned_token: callbackParams.assignedToken,
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to confirm callback external task: ${response.status}`);
+            }
+
+            const confirmationResult = await response.json();
+            const matchedTask = Array.isArray(studyConfig?.external_tasks)
+                ? studyConfig.external_tasks.find((task) => task.task_key === confirmationResult.task_key)
+                : null;
+
+            if (matchedTask) {
+                matchedTask.is_confirmed = true;
+                matchedTask.confirmed_at = confirmationResult.confirmed_at;
+            }
+
+            return confirmationResult;
+        }
+
+        function isTaskSupported(task) {
+            return task?.confirmation_type === 'none' || task?.confirmation_type === 'callback';
+        }
+
+        function getEligibleTasks(studyConfig) {
+            const externalTasks = Array.isArray(studyConfig?.external_tasks)
+                ? studyConfig.external_tasks
+                : [];
+            return externalTasks.filter(isTaskSupported);
+        }
+
+        function hasPendingTasks(studyConfig) {
+            const eligibleTasks = getEligibleTasks(studyConfig);
+            if (eligibleTasks.length === 0) {
+                return false;
+            }
+
+            if (studyConfig?.all_external_tasks_confirmed === true) {
+                return false;
+            }
+
+            return eligibleTasks.some((task) => task?.is_confirmed !== true);
+        }
+
+        function getLocalizedText(key, fallback) {
+            const translated = window.i18n?.t?.(key);
+            if (
+                typeof translated !== 'string' ||
+                translated.trim() === '' ||
+                translated.trim() === key
+            ) {
+                return fallback;
+            }
+            return translated;
+        }
+
+        function renderTaskList(studyConfig) {
+            const tasksList = document.getElementById('tasks-list');
+            const tasksInfo = document.getElementById('tasks-info');
+            const continueWrapper = document.getElementById('continue-wrapper');
+            const continueLink = document.getElementById('continue-link');
+
+            if (!tasksList || !tasksInfo || !continueWrapper || !continueLink) {
+                return;
+            }
+
+            tasksList.innerHTML = '';
+
+            const eligibleTasks = getEligibleTasks(studyConfig);
+            const statusCompleted = getLocalizedText('thankYou.statusAlreadyCompleted', 'Already completed');
+            const statusPending = getLocalizedText('thankYou.statusNotCompleted', 'Not completed');
+
+            eligibleTasks.forEach((task) => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+
+                const titleRow = document.createElement('div');
+                titleRow.className = 'task-title-row';
+
+                const title = document.createElement(task?.is_confirmed === true ? 'span' : 'a');
+                title.className = task?.is_confirmed === true ? 'task-title' : 'task-title task-link';
+                title.textContent =
+                    typeof task?.name === 'string' && task.name.trim() !== ''
+                        ? task.name.trim()
+                        : getLocalizedText('thankYou.continueLink', 'Click here to continue.');
+
+                if (task?.is_confirmed !== true) {
+                    if (typeof task?.continuation_url === 'string' && task.continuation_url.trim() !== '') {
+                        title.href = task.continuation_url;
+                    } else {
+                        title.href = '#';
+                        title.classList.remove('task-link');
+                    }
+                }
+
+                const status = document.createElement('span');
+                status.className = task?.is_confirmed === true
+                    ? 'task-status is-completed'
+                    : 'task-status';
+                status.textContent = task?.is_confirmed === true ? statusCompleted : statusPending;
+
+                titleRow.appendChild(title);
+                titleRow.appendChild(status);
+                li.appendChild(titleRow);
+
+                if (typeof task?.description === 'string' && task.description.trim() !== '') {
+                    const description = document.createElement('p');
+                    description.className = 'task-description';
+                    description.textContent = task.description.trim();
+                    li.appendChild(description);
+                }
+
+                tasksList.appendChild(li);
+            });
+
+            const pending = hasPendingTasks(studyConfig);
+            if (pending) {
+                tasksInfo.textContent = getLocalizedText(
+                    'thankYou.subtitle',
+                    'Please complete all tasks above and return here.'
+                );
+                continueWrapper.classList.add('hidden');
+            } else {
+                tasksInfo.textContent = getLocalizedText(
+                    'thankYou.subtitle',
+                    'All tasks are complete. You can continue to the final page.'
+                );
+                continueLink.href = buildThankYouUrl();
+                continueWrapper.classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (getCompletionStatus() === 'noconsent') {
+                window.location.href = buildThankYouUrl();
+                return;
+            }
+
+            const requestedLanguage = getUrlParams().get('lang');
+            let studyConfig = null;
+            try {
+                studyConfig = await loadStudyConfig(requestedLanguage || undefined);
+            } catch (error) {
+                console.warn('Could not load study-config for tasks page:', error.message);
+                window.location.href = buildThankYouUrl();
+                return;
+            }
+
+            const language =
+                requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en';
+
+            await i18n.init(language);
+            i18n.applyTranslations();
+
+            try {
+                await confirmCallbackExternalTask(studyConfig);
+            } catch (error) {
+                console.warn('Could not confirm callback external task:', error.message);
+            }
+
+            document.title = getLocalizedText('thankYou.title', 'TRAC Tasks');
+            renderTaskList(studyConfig);
+        });
+    </script>
+</body>
+</html>

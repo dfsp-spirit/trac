@@ -12,6 +12,7 @@ import {
   getCurrentTimelineKey,
   createTimelineDataFrame,
   sendData,
+  getPostDiaryRedirectPath,
   validateMinCoverage,
   getTimelineCoverage,
   calculateTimeDifference,
@@ -5357,7 +5358,10 @@ async function init() {
       currentStudy?.participant_has_completed_study === true;
     if (participantHasCompletedStudy && !isInstructionsPagePath()) {
       const currentParams = new URLSearchParams(window.location.search);
-      const redirectUrl = new URL('pages/thank-you.html', window.location.href);
+      const redirectPath = getPostDiaryRedirectPath(
+        currentParams.get('completion_status') || 'completed'
+      );
+      const redirectUrl = new URL(redirectPath, window.location.href);
       if (!currentParams.has('completion_status')) {
         currentParams.set('completion_status', 'completed');
       }

@@ -2,6 +2,7 @@ import {
   getCurrentTimelineData,
   getCurrentTimelineKey,
   sendData,
+  getPostDiaryRedirectPath,
   formatTimeHHMM,
   positionToMinutes,
 } from './utils.js';
@@ -893,8 +894,7 @@ function updateButtonStates() {
 }
 
 function redirectToThankYouPage() {
-  const redirectUrl =
-    window.timelineManager?.general?.primary_redirect_url || 'thank-you.html';
+  const redirectUrl = getPostDiaryRedirectPath('skipped');
   const currentParams = new URLSearchParams(window.location.search);
   currentParams.set('completion_status', 'skipped');
   const separator = redirectUrl.includes('?') ? '&' : '?';
