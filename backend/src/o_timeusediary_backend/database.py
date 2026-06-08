@@ -221,12 +221,51 @@ def _ensure_day_label_timeline_uniqueness_constraints() -> None:
         for index_name, statement in statements:
             try:
                 connection.execute(text(statement))
+            except IntegrityError as exc:
+                if "pg_class_relname_nsp_index" in str(exc):
+                    logger.warning(
+                        "Ignoring concurrent index creation race for '%s': %s",
+                        index_name,
+                        exc,
+                    )
+                    continue
+                raise RuntimeError(
+                    "Unable to enforce uniqueness constraint index "
+                    f"'{index_name}'. Existing duplicate rows may be present. "
+                    "Please deduplicate affected rows before startup."
+                ) from exc
             except Exception as exc:
                 raise RuntimeError(
                     "Unable to enforce uniqueness constraint index "
                     f"'{index_name}'. Existing duplicate rows may be present. "
                     "Please deduplicate affected rows before startup."
                 ) from exc
+
+
+@contextmanager
+def _schema_bootstrap_advisory_lock() -> Generator[None, None, None]:
+    if engine.dialect.name != "postgresql":
+        yield
+        return
+
+    # Arbitrary lock IDs for TRAC startup schema bootstrap lock.
+    lock_key_1 = 1414678851
+    lock_key_2 = 1197096124
+
+    with engine.connect() as connection:
+        logger.info("Acquiring PostgreSQL advisory lock for schema bootstrap...")
+        connection.execute(
+            text("SELECT pg_advisory_lock(:key1, :key2)"),
+            {"key1": lock_key_1, "key2": lock_key_2},
+        )
+        try:
+            yield
+        finally:
+            connection.execute(
+                text("SELECT pg_advisory_unlock(:key1, :key2)"),
+                {"key1": lock_key_1, "key2": lock_key_2},
+            )
+            logger.info("Released PostgreSQL advisory lock for schema bootstrap.")
 
 
 @contextmanager
@@ -605,28 +644,29 @@ def _ensure_timelines_for_study(
 
 
 def create_db_and_tables(do_report_contents: bool = False):
-    try:
-        SQLModel.metadata.create_all(engine)
-    except IntegrityError as error:
-        # In multi-worker startup (e.g. gunicorn), concurrent create_all calls can race,
-        # and one worker may see a duplicate PostgreSQL type/index creation error.
-        # If this specific race happens, continue; tables already exist.
-        if "pg_type_typname_nsp_index" in str(error):
-            logger.warning(
-                "Ignoring concurrent table creation race condition: %s", error
-            )
-        else:
-            raise
-    _ensure_study_text_columns()
-    _ensure_is_paused_column()
-    _ensure_external_task_assignment_confirmation_columns()
-    _ensure_study_participant_instruction_columns()
-    _ensure_study_available_activity_i18n_frequency_options_column()
-    _ensure_activity_frequency_key_column()
-    _ensure_day_label_timeline_uniqueness_constraints()
-    create_config_file_studies_in_database(settings.studies_config_path)
-    if do_report_contents:
-        report_on_db_contents()
+    with _schema_bootstrap_advisory_lock():
+        try:
+            SQLModel.metadata.create_all(engine)
+        except IntegrityError as error:
+            # In multi-worker startup (e.g. gunicorn), concurrent create_all calls can race,
+            # and one worker may see a duplicate PostgreSQL type/index creation error.
+            # If this specific race happens, continue; tables already exist.
+            if "pg_type_typname_nsp_index" in str(error):
+                logger.warning(
+                    "Ignoring concurrent table creation race condition: %s", error
+                )
+            else:
+                raise
+        _ensure_study_text_columns()
+        _ensure_is_paused_column()
+        _ensure_external_task_assignment_confirmation_columns()
+        _ensure_study_participant_instruction_columns()
+        _ensure_study_available_activity_i18n_frequency_options_column()
+        _ensure_activity_frequency_key_column()
+        _ensure_day_label_timeline_uniqueness_constraints()
+        create_config_file_studies_in_database(settings.studies_config_path)
+        if do_report_contents:
+            report_on_db_contents()
 
 
 def report_on_db_contents():

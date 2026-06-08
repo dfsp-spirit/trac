@@ -89,7 +89,8 @@ logger = logging.getLogger(__name__)
 admin_audit_logger = get_admin_audit_logger()
 
 
-security = HTTPBasic()
+ADMIN_AUTH_REALM = "TRAC Administration"
+security = HTTPBasic(realm=ADMIN_AUTH_REALM)
 
 
 def audit_admin_action(admin_username: str, action_text: str) -> None:
@@ -298,7 +299,7 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid admin credentials",
-        headers={"WWW-Authenticate": "Basic"},
+        headers={"WWW-Authenticate": f'Basic realm="{ADMIN_AUTH_REALM}"'},
     )
 
 
