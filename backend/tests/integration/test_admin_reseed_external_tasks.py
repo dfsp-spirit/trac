@@ -1,5 +1,4 @@
 import os
-import uuid
 
 import httpx
 import pytest
@@ -15,16 +14,9 @@ ADMIN_AUTH = (settings.admin_username, settings.admin_password)
 @pytest.mark.asyncio
 async def test_admin_reseed_external_tasks_for_participant():
     study_name_short = "adult_pilot_de"
-    participant_id = f"it_reseed_{uuid.uuid4().hex[:8]}"
+    participant_id = "bernd"
 
     async with httpx.AsyncClient() as client:
-        assign_response = await client.post(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
-            json={"participant_ids": [participant_id]},
-            auth=ADMIN_AUTH,
-        )
-        assert assign_response.status_code == 200
-
         reseed_response = await client.post(
             f"{BASE_URL}/api/admin/studies/{study_name_short}/participants/{participant_id}/external-tasks/reseed",
             auth=ADMIN_AUTH,

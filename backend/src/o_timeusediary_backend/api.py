@@ -26,7 +26,7 @@ import csv
 import json
 import re
 from sqlmodel import Session, delete, select
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse, quote
 from fastapi.templating import Jinja2Templates
 from .parsers.activities_config import (
     ActivitiesConfig,
@@ -147,6 +147,28 @@ def _build_external_task_continuation_url(
     return urlunparse(parsed_url._replace(query=urlencode(query_items, doseq=True)))
 
 
+def _build_external_task_launch_url(
+    study_name_short: str,
+    participant_id: str,
+    task_key: str,
+    assigned_token: str,
+) -> str:
+    root_path = (settings.rootpath or "").strip()
+    if root_path in {"", "/"}:
+        root_prefix = ""
+    else:
+        root_prefix = root_path if root_path.startswith("/") else f"/{root_path}"
+
+    encoded_study = quote(study_name_short, safe="")
+    encoded_participant = quote(participant_id, safe="")
+    encoded_task = quote(task_key, safe="")
+    query = urlencode({"assigned_token": assigned_token})
+    return (
+        f"{root_prefix}/api/studies/{encoded_study}/participants/{encoded_participant}"
+        f"/external-tasks/{encoded_task}/launch?{query}"
+    )
+
+
 def _get_participant_external_tasks(
     session: Session, study: Study, participant_id: Optional[str]
 ) -> List["ParticipantExternalTaskResponse"]:
@@ -176,10 +198,11 @@ def _get_participant_external_tasks(
             description=external_task.description,
             confirmation_type=external_task.confirmation_type,
             assigned_token=assignment.assigned_token,
-            continuation_url=_build_external_task_continuation_url(
-                external_task,
+            continuation_url=_build_external_task_launch_url(
+                study.name_short,
+                participant_id,
+                external_task.task_key,
                 assignment.assigned_token,
-                participant_id=participant_id,
             ),
             is_confirmed=assignment.is_confirmed,
             confirmed_at=assignment.confirmed_at,
@@ -3659,7 +3682,15 @@ async def reseed_external_tasks_for_participant(
             detail=f"Participant '{participant_id}' is not assigned to study '{study_name_short}'",
         )
 
-    ensure_external_task_assignments(session, study, [participant_id])
+    # Reconcile assignments using the full study participant order to keep
+    # token-to-participant mapping stable and avoid token uniqueness collisions.
+    ordered_participant_ids = session.exec(
+        select(StudyParticipant.participant_id)
+        .where(StudyParticipant.study_id == study.id)
+        .order_by(StudyParticipant.id)
+    ).all()
+
+    ensure_external_task_assignments(session, study, list(ordered_participant_ids))
     session.commit()
 
     external_task_ids = session.exec(
@@ -4932,6 +4963,97 @@ def confirm_external_task_callback(
         "is_confirmed": assignment.is_confirmed,
         "confirmed_at": assignment.confirmed_at,
     }
+
+
+@app.get(
+    "/api/studies/{study_name_short}/participants/{participant_id}/external-tasks/{task_key}/launch"
+)
+def launch_external_task(
+    request: Request,
+    study_name_short: str,
+    participant_id: str,
+    task_key: str,
+    assigned_token: str = Query(...),
+    session: Session = Depends(get_session),
+):
+    event_at = utc_now().isoformat()
+    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
+    x_forwarded_for = request.headers.get("x-forwarded-for", "")
+    source_ip = (
+        x_forwarded_for.split(",")[0].strip()
+        if x_forwarded_for
+        else (request.client.host if request.client else "unknown")
+    )
+    user_agent = request.headers.get("user-agent", "")
+    referer = request.headers.get("referer", "")
+    token_hash = hashlib.sha256(assigned_token.encode("utf-8")).hexdigest()
+
+    def log_launch(success: bool, reason: str) -> None:
+        logger.info(
+            "external_task_launch event_type=%s event_at=%s study=%s task_key=%s participant_id=%s token_hash=%s success=%s reason=%s request_id=%s source_ip=%s user_agent=%s referer=%s",
+            "launch",
+            event_at,
+            study_name_short,
+            task_key,
+            participant_id,
+            token_hash,
+            success,
+            reason,
+            request_id,
+            source_ip,
+            user_agent,
+            referer,
+        )
+
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        log_launch(False, "study_not_found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    if not study.allow_unlisted_participants:
+        study_participant = _get_study_participant_association(
+            session, study, participant_id
+        )
+        if not study_participant:
+            log_launch(False, "participant_not_authorized")
+            raise HTTPException(
+                status_code=403,
+                detail=f"Participant '{participant_id}' not authorized for this study",
+            )
+
+    assignment_row = session.exec(
+        select(StudyExternalTaskAssignment, StudyExternalTask)
+        .join(
+            StudyExternalTask,
+            StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+        )
+        .where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTask.task_key == task_key,
+            StudyExternalTaskAssignment.participant_id == participant_id,
+            StudyExternalTaskAssignment.assigned_token == assigned_token,
+        )
+    ).first()
+
+    if not assignment_row:
+        log_launch(False, "assignment_not_found")
+        raise HTTPException(
+            status_code=404,
+            detail="No matching external task assignment found",
+        )
+
+    assignment, external_task = assignment_row
+    target_url = _build_external_task_continuation_url(
+        external_task,
+        assignment.assigned_token,
+        participant_id=participant_id,
+    )
+    log_launch(True, "redirect")
+    return RedirectResponse(url=target_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 @app.post(

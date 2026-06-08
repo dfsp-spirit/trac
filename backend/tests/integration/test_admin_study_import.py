@@ -689,7 +689,7 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
             "description": "Complete payment handoff.",
             "confirmation_type": "none",
             "assigned_token": "tok-1",
-            "continuation_url": "https://example.org/payment?src=trac&survey_token=tok-1&participant_id=p1",
+            "continuation_url": f"{settings.rootpath}/api/studies/{study_name_short}/participants/p1/external-tasks/payment/launch?assigned_token=tok-1",
             "is_confirmed": False,
             "confirmed_at": None,
         }
@@ -700,7 +700,7 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
             "description": "Should not be shown yet.",
             "confirmation_type": "callback",
             "assigned_token": "cb-1",
-            "continuation_url": "https://example.org/callback?token=cb-1",
+            "continuation_url": f"{settings.rootpath}/api/studies/{study_name_short}/participants/p1/external-tasks/callback_only/launch?assigned_token=cb-1",
             "is_confirmed": False,
             "confirmed_at": None,
         }
