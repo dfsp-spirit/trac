@@ -147,20 +147,11 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
     expect(submitResponse.ok()).toBeTruthy();
   }
 
-  await page.route('https://survey.academiccloud.de/**', async (route) => {
+  await page.context().route('**/external-tasks/*/launch?*', async (route) => {
     const requestUrl = new URL(route.request().url());
-
-    let taskKey = null;
-    if (requestUrl.pathname.includes('/f/153111')) {
-      taskKey = 'depression_survey';
-    } else if (requestUrl.pathname.includes('/f/153222')) {
-      taskKey = 'payment_info';
-    }
-
-    const token =
-      requestUrl.searchParams.get('survey_token') ||
-      requestUrl.searchParams.get('pay_token') ||
-      '';
+    const taskKeyMatch = requestUrl.pathname.match(/\/external-tasks\/([^/]+)\/launch/);
+    const taskKey = taskKeyMatch ? taskKeyMatch[1] : null;
+    const token = requestUrl.searchParams.get('assigned_token') || '';
 
     const callbackUrl = new URL('http://127.0.0.1:3000/report/pages/tasks.html');
     callbackUrl.searchParams.set('study_name', STUDY_NAME);
@@ -205,7 +196,7 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
   await expect(taskOneLink).toBeVisible();
   await taskOneLink.click();
 
-  await expect(page).toHaveURL(/survey\.academiccloud\.de\/f\/153111/);
+  await expect(page).toHaveURL(/external-tasks\/depression_survey\/launch/);
   await page.locator('#completeTask').click();
 
   await expect(page).toHaveURL(/pages\/tasks\.html/);
@@ -222,7 +213,7 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
   await expect(taskTwoLink).toBeVisible();
   await taskTwoLink.click();
 
-  await expect(page).toHaveURL(/survey\.academiccloud\.de\/f\/153222/);
+  await expect(page).toHaveURL(/external-tasks\/payment_info\/launch/);
   await page.locator('#completeTask').click();
 
   await expect(page).toHaveURL(/pages\/tasks\.html/);
