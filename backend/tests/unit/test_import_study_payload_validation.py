@@ -67,6 +67,33 @@ def _base_payload():
     }
 
 
+def _external_task_payload(
+    task_key: str,
+    *,
+    participant_ids: list[str],
+    confirmation_type: str = "none",
+    token_values: list[str] | None = None,
+) -> dict:
+    values = token_values or [f"tok-{index + 1}" for index in range(len(participant_ids))]
+    by_participant = {
+        participant_id: values[index]
+        for index, participant_id in enumerate(participant_ids)
+    }
+    return {
+        "task_key": task_key,
+        "name": {"en": "Payment Survey"},
+        "description": {"en": "Post-study payment handoff."},
+        "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&survey_token={survey_token}",
+        "confirmation_type": confirmation_type,
+        "outbound_tokens": [
+            {
+                "name": "survey_token",
+                "by_participant": by_participant,
+            }
+        ],
+    }
+
+
 def test_validate_import_payload_rejects_both_activities_sources():
     payload = _base_payload()
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
@@ -138,28 +165,22 @@ def test_import_study_payload_accepts_study_text_consent_and_noconsent():
 
 def test_import_study_payload_accepts_external_tasks():
     payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1", "p2"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
     payload["external_tasks"] = [
-        {
-            "task_key": "payment",
-            "name": "Payment Survey",
-            "description": "Post-study payment handoff.",
-            "url": "https://example.org/payment",
-            "confirmation_type": "none",
-            "tokens": ["tok-1", "tok-2"],
-            "send_pid": True,
-            "pid_query_param": "participant_id",
-            "config": {"provider": "example"},
-        }
+        _external_task_payload("payment", participant_ids=["p1", "p2"])
     ]
 
     study_payload = ImportStudiesConfigStudy(**payload)
 
     assert len(study_payload.external_tasks) == 1
     assert study_payload.external_tasks[0].task_key == "payment"
-    assert study_payload.external_tasks[0].tokens == ["tok-1", "tok-2"]
-    assert study_payload.external_tasks[0].send_pid is True
-    assert study_payload.external_tasks[0].pid_query_param == "participant_id"
+    assert study_payload.external_tasks[0].outbound_tokens[0].name == "survey_token"
+    assert study_payload.external_tasks[0].outbound_tokens[0].by_participant == {
+        "p1": "tok-1",
+        "p2": "tok-2",
+    }
 
 
 def test_validate_import_payload_rejects_external_tasks_for_open_study():
@@ -168,14 +189,7 @@ def test_validate_import_payload_rejects_external_tasks_for_open_study():
     payload["study_participant_ids"] = ["p1", "p2"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
     payload["external_tasks"] = [
-        {
-            "task_key": "payment",
-            "name": "Payment Survey",
-            "url": "https://example.org/payment",
-            "confirmation_type": "none",
-            "tokens": ["tok-1", "tok-2"],
-            "config": {},
-        }
+        _external_task_payload("payment", participant_ids=["p1", "p2"])
     ]
 
     study_payload = ImportStudiesConfigStudy(**payload)
@@ -193,19 +207,12 @@ def test_validate_import_payload_rejects_external_tasks_with_wrong_token_count()
     payload["study_participant_ids"] = ["p1", "p2"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
     payload["external_tasks"] = [
-        {
-            "task_key": "payment",
-            "name": "Payment Survey",
-            "url": "https://example.org/payment",
-            "confirmation_type": "none",
-            "tokens": ["tok-1"],
-            "config": {},
-        }
+        _external_task_payload("payment", participant_ids=["p1"])
     ]
 
     study_payload = ImportStudiesConfigStudy(**payload)
 
-    with pytest.raises(ValueError, match="exactly one token per participant"):
+    with pytest.raises(ValueError, match="must define tokens for exactly the study participants"):
         _validate_import_study_payload(study_payload)
 
 
@@ -215,14 +222,9 @@ def test_validate_import_payload_rejects_external_tasks_with_unsupported_confirm
     payload["study_participant_ids"] = ["p1"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
     payload["external_tasks"] = [
-        {
-            "task_key": "payment",
-            "name": "Payment Survey",
-            "url": "https://example.org/payment",
-            "confirmation_type": "email",
-            "tokens": ["tok-1"],
-            "config": {},
-        }
+        _external_task_payload(
+            "payment", participant_ids=["p1"], confirmation_type="email"
+        )
     ]
 
     study_payload = ImportStudiesConfigStudy(**payload)
@@ -237,14 +239,9 @@ def test_validate_import_payload_rejects_external_tasks_with_duplicate_tokens():
     payload["study_participant_ids"] = ["p1", "p2"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
     payload["external_tasks"] = [
-        {
-            "task_key": "payment",
-            "name": "Payment Survey",
-            "url": "https://example.org/payment",
-            "confirmation_type": "none",
-            "tokens": ["tok-1", "tok-1"],
-            "config": {},
-        }
+        _external_task_payload(
+            "payment", participant_ids=["p1", "p2"], token_values=["tok-1", "tok-1"]
+        )
     ]
 
     study_payload = ImportStudiesConfigStudy(**payload)
@@ -357,56 +354,29 @@ def test_validate_import_payload_rejects_internal_language_mapped_key_mismatch()
         _validate_import_study_payload(study_payload)
 
 
-def test_build_external_task_continuation_url_uses_configured_token_query_param():
+def test_build_external_task_continuation_url_renders_template_with_token_and_pid():
     external_task = StudyExternalTask(
         study_id=1,
         task_key="payment",
         name="Payment Survey",
-        url="https://example.org/payment?src=trac",
-        confirmation_type="none",
-        tokens=["tok-1"],
-        config={"token_query_param": "survey_token"},
-    )
-
-    continuation_url = _build_external_task_continuation_url(external_task, "tok-1")
-
-    assert continuation_url == "https://example.org/payment?src=trac&survey_token=tok-1"
-
-
-def test_build_external_task_continuation_url_replaces_existing_token_param():
-    external_task = StudyExternalTask(
-        study_id=1,
-        task_key="callback_task",
-        name="Callback Task",
-        url="https://example.org/callback?token=old&src=trac",
-        confirmation_type="callback",
-        tokens=["cb-1"],
-        config={},
-    )
-
-    continuation_url = _build_external_task_continuation_url(external_task, "cb-1")
-
-    assert continuation_url == "https://example.org/callback?src=trac&token=cb-1"
-
-
-def test_build_external_task_continuation_url_appends_pid_when_enabled():
-    external_task = StudyExternalTask(
-        study_id=1,
-        task_key="payment",
-        name="Payment Survey",
-        url="https://example.org/payment?src=trac",
+        url="https://example.org/payment?src=trac&survey_token={survey_token}&participant_id={participant_id}",
         confirmation_type="none",
         tokens=["tok-1"],
         config={
-            "token_query_param": "survey_token",
-            "send_pid": True,
-            "pid_query_param": "participant_id",
+            "callback_token_name": "survey_token",
+            "outbound_tokens": [
+                {
+                    "name": "survey_token",
+                    "by_participant": {"p1": "tok-1"},
+                }
+            ],
         },
     )
 
     continuation_url = _build_external_task_continuation_url(
         external_task,
         "tok-1",
+        "unit_import_study",
         participant_id="p1",
     )
 
@@ -414,6 +384,71 @@ def test_build_external_task_continuation_url_appends_pid_when_enabled():
         continuation_url
         == "https://example.org/payment?src=trac&survey_token=tok-1&participant_id=p1"
     )
+
+
+def test_build_external_task_continuation_url_renders_study_and_task_placeholders():
+    external_task = StudyExternalTask(
+        study_id=1,
+        task_key="callback_task",
+        name="Callback Task",
+        url="https://example.org/callback?study={study_name}&task={task_key}&token={survey_token}",
+        confirmation_type="callback",
+        tokens=["cb-1"],
+        config={
+            "callback_token_name": "survey_token",
+            "outbound_tokens": [
+                {
+                    "name": "survey_token",
+                    "by_participant": {"p1": "cb-1"},
+                }
+            ],
+        },
+    )
+
+    continuation_url = _build_external_task_continuation_url(
+        external_task,
+        "cb-1",
+        "unit_import_study",
+        participant_id="p1",
+    )
+
+    assert (
+        continuation_url
+        == "https://example.org/callback?study=unit_import_study&task=callback_task&token=cb-1"
+    )
+
+
+def test_build_external_task_continuation_url_renders_additional_outbound_tokens():
+    external_task = StudyExternalTask(
+        study_id=1,
+        task_key="payment",
+        name="Payment Survey",
+        url="https://example.org/payment?survey={survey_token}&site={site_user_token}",
+        confirmation_type="none",
+        tokens=["tok-1"],
+        config={
+            "callback_token_name": "survey_token",
+            "outbound_tokens": [
+                {
+                    "name": "survey_token",
+                    "by_participant": {"p1": "tok-1"},
+                },
+                {
+                    "name": "site_user_token",
+                    "by_participant": {"p1": "site-77"},
+                },
+            ],
+        },
+    )
+
+    continuation_url = _build_external_task_continuation_url(
+        external_task,
+        "tok-1",
+        "unit_import_study",
+        participant_id="p1",
+    )
+
+    assert continuation_url == "https://example.org/payment?survey=tok-1&site=site-77"
 
 
 def test_extract_study_for_validation_requests_selection_when_multiple_studies_present():

@@ -418,25 +418,45 @@
       "external_tasks": [
           {
             "task_key": "depression_survey",
-            "name": "Umfrage zu Depressionssymptomen ausfüllen",
-            "description": "Füllen Sie die verlinkte Umfrage zu Depressionssymptomen aus.",
+            "name": {
+              "de": "Umfrage zu Depressionssymptomen ausfüllen"
+            },
+            "description": {
+              "de": "Füllen Sie die verlinkte Umfrage zu Depressionssymptomen aus."
+            },
             "confirmation_type": "callback",
-            "url": "https://survey.academiccloud.de/f/153111",
-            "tokens": ["dep-bernd-31526357", "dep-sophia-3754687526", "dep-claudia-3576872"],
-            "send_pid": true,
-            "pid_query_param": "participant_id",
-            "config": {"token_query_param": "survey_token"}
+            "outbound_tokens": [
+              {
+                "name": "survey_token",
+                "by_participant": {
+                  "bernd": "dep-bernd-31526357",
+                  "sophia": "dep-sophia-3754687526",
+                  "claudia": "dep-claudia-3576872"
+                }
+              }
+            ],
+            "outbound_url": "https://survey.academiccloud.de/f/153111?participant_id={participant_id}&study_name={study_name}&task={task_key}&survey_token={survey_token}"
           },
           {
             "task_key": "payment_info",
-            "name": "Bankdaten eingeben",
-            "description": "Geben Sie Ihre Bankdaten ein, um nach Abschluss der Studie eine Aufwandsentschädigung zu erhalten.",
+            "name": {
+              "de": "Bankdaten eingeben"
+            },
+            "description": {
+              "de": "Geben Sie Ihre Bankdaten ein, um nach Abschluss der Studie eine Aufwandsentschädigung zu erhalten."
+            },
             "confirmation_type": "callback",
-            "url": "https://survey.academiccloud.de/f/153222",
-            "tokens": ["pay-bernd-123434214", "pay-sophia-987654321", "pay-claudia-567890123"],
-            "send_pid": true,
-            "pid_query_param": "participant_id",
-            "config": {"token_query_param": "pay_token"}
+            "outbound_tokens": [
+              {
+                "name": "pay_token",
+                "by_participant": {
+                  "bernd": "pay-bernd-123434214",
+                  "sophia": "pay-sophia-987654321",
+                  "claudia": "pay-claudia-567890123"
+                }
+              }
+            ],
+            "outbound_url": "https://survey.academiccloud.de/f/153222?participant_id={participant_id}&study_name={study_name}&task={task_key}&pay_token={pay_token}"
           }
       ]
     }

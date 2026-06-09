@@ -22,6 +22,7 @@ from .parsers.studies_config import (
     load_studies_config,
     CfgFileStudies,
     get_external_task_effective_config,
+    get_external_task_callback_tokens,
 )
 from .parsers.activities_config import (
     ActivitiesConfig,
@@ -385,11 +386,17 @@ def _ensure_external_tasks_from_config(
             StudyExternalTask(
                 study_id=study.id,
                 task_key=external_task.task_key,
-                name=external_task.name,
-                description=external_task.description,
-                url=external_task.url,
+                name=external_task.name.get(study.default_language)
+                or next(iter(external_task.name.values())),
+                description=(
+                    (external_task.description or {}).get(study.default_language)
+                    or next(iter((external_task.description or {}).values()), None)
+                ),
+                url=external_task.outbound_url,
                 confirmation_type=external_task.confirmation_type,
-                tokens=list(external_task.tokens),
+                tokens=get_external_task_callback_tokens(
+                    external_task, study_config.study_participant_ids
+                ),
                 config=get_external_task_effective_config(external_task),
             )
         )

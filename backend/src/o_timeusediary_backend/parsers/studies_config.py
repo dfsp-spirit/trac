@@ -41,62 +41,100 @@ class CfgFileLoggedActivity(BaseModel):
     end_minutes: int
 
 
+class CfgFileExternalTaskOutboundToken(BaseModel):
+    name: str
+    by_participant: Dict[str, str] = Field(default_factory=dict)
+
+
 class CfgFileExternalTask(BaseModel):
     """Study-config entry for one external task.
 
     Example:
     {
         "task_key": "payment",
-        "name": "Payment Survey",
-        "description": "Complete payment handoff",
-        "url": "https://example.org/payment?src=trac",
+                "name": {"en": "Payment Survey"},
+                "description": {"en": "Complete payment handoff"},
+                "outbound_url": "https://example.org/payment?src=trac&pid={participant_id}&study={study_name}&task={task_key}&token={survey_token}",
         "confirmation_type": "none",
-        "tokens": ["tok-user-1", "tok-user-2"],
-        "send_pid": true,
-        "pid_query_param": "pid",
-        "config": {"token_query_param": "survey_token"}
+                "outbound_tokens": [
+                    {
+                        "name": "survey_token",
+                        "by_participant": {
+                            "p1": "tok-user-1",
+                            "p2": "tok-user-2"
+                        }
+                    }
+                ],
+                "callback_token_name": "survey_token"
     }
 
     Notes:
-    - "tokens" must contain exactly one token per listed participant.
-        - "config.token_query_param" controls the URL query parameter name used for
-      the assigned token in participant continuation links.
-      If omitted, "token" is used.
-        - If "send_pid" is true, the participant ID is also appended using
-            "pid_query_param" (default: "pid").
+        - "outbound_tokens" can define one or more named token groups.
+        - Each token group must provide exactly one token per listed participant.
+        - "callback_token_name" controls which token group is used for backend callback
+            confirmation. If omitted, the first outbound token group is used.
+        - Supported outbound_url placeholders are:
+            {participant_id}, {study_name}, {task_key}, and all outbound token names.
     """
 
     # Stable machine key for this task in API payloads and callbacks.
     task_key: str
-    # Human-facing task name shown in admin and participant views.
-    name: str
+    # Human-facing localized task name shown in admin and participant views.
+    name: Dict[str, str]
     # Optional long description shown next to the task name.
-    description: Optional[str] = None
-    # Base URL of the external task target (token is appended as query param).
-    url: str
+    description: Optional[Dict[str, str]] = None
+    # URL template of the external task target.
+    outbound_url: str
     # Supported values: "none" (manual completion) or "callback" (backend callback).
     confirmation_type: str = "none"
-    # One token per participant, aligned with study_participant_ids order.
-    tokens: List[str] = Field(default_factory=list)
-    # If true, append the participant ID to continuation_url.
-    send_pid: bool = False
-    # Query parameter key used when send_pid is enabled.
-    pid_query_param: str = "pid"
-    # Extra task settings, e.g. {"token_query_param": "survey_token"}.
-    config: Dict[str, Any] = Field(default_factory=dict)
+    # Named outbound token groups.
+    outbound_tokens: List[CfgFileExternalTaskOutboundToken] = Field(
+        default_factory=list
+    )
+    # Token group used as callback proof token.
+    callback_token_name: Optional[str] = None
+
+
+def _extract_template_placeholders(template: str) -> List[str]:
+    return re.findall(r"\{([a-zA-Z0-9_]+)\}", template or "")
+
+
+def get_external_task_callback_token_name(external_task: CfgFileExternalTask) -> str:
+    if external_task.callback_token_name and external_task.callback_token_name.strip():
+        return external_task.callback_token_name.strip()
+    return external_task.outbound_tokens[0].name
+
+
+def get_external_task_callback_tokens(
+    external_task: CfgFileExternalTask, study_participant_ids: List[str]
+) -> List[str]:
+    callback_token_name = get_external_task_callback_token_name(external_task)
+    callback_token_group = next(
+        token_group
+        for token_group in external_task.outbound_tokens
+        if token_group.name == callback_token_name
+    )
+    return [
+        callback_token_group.by_participant[participant_id]
+        for participant_id in study_participant_ids
+    ]
 
 
 def get_external_task_effective_config(
     external_task: CfgFileExternalTask,
 ) -> Dict[str, Any]:
-    config = (
-        dict(external_task.config) if isinstance(external_task.config, dict) else {}
-    )
-    if external_task.send_pid:
-        pid_query_param = (external_task.pid_query_param or "pid").strip() or "pid"
-        config["send_pid"] = True
-        config["pid_query_param"] = pid_query_param
-    return config
+    return {
+        "name_i18n": dict(external_task.name),
+        "description_i18n": dict(external_task.description or {}),
+        "outbound_tokens": [
+            {
+                "name": token_group.name,
+                "by_participant": dict(token_group.by_participant),
+            }
+            for token_group in external_task.outbound_tokens
+        ],
+        "callback_token_name": get_external_task_callback_token_name(external_task),
+    }
 
 
 _ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES = {"none", "callback"}
@@ -117,7 +155,7 @@ def validate_external_tasks_for_study(
             "external_tasks require allow_unlisted_participants=false so that all participants are explicitly listed"
         )
 
-    participant_count = len(study_participant_ids)
+    participant_ids_set = set(study_participant_ids)
     seen_task_keys: set[str] = set()
 
     for external_task in external_tasks:
@@ -135,14 +173,39 @@ def validate_external_tasks_for_study(
             )
         seen_task_keys.add(external_task.task_key)
 
-        if not isinstance(external_task.name, str) or not external_task.name.strip():
+        if not isinstance(external_task.name, dict) or not external_task.name:
             raise ValueError(
                 f"Study '{study_name_short}': external task '{external_task.task_key}' must define a non-empty name"
             )
 
-        if not isinstance(external_task.url, str) or not external_task.url.strip():
+        if any(
+            not isinstance(language, str)
+            or not language.strip()
+            or not isinstance(text, str)
+            or not text.strip()
+            for language, text in external_task.name.items()
+        ):
             raise ValueError(
-                f"Study '{study_name_short}': external task '{external_task.task_key}' must define a non-empty url"
+                f"Study '{study_name_short}': external task '{external_task.task_key}' has invalid localized name entries"
+            )
+
+        if external_task.description is not None and any(
+            not isinstance(language, str)
+            or not language.strip()
+            or not isinstance(text, str)
+            or not text.strip()
+            for language, text in external_task.description.items()
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' has invalid localized description entries"
+            )
+
+        if (
+            not isinstance(external_task.outbound_url, str)
+            or not external_task.outbound_url.strip()
+        ):
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' must define a non-empty outbound_url"
             )
 
         if (
@@ -154,31 +217,66 @@ def validate_external_tasks_for_study(
                 f"'{external_task.confirmation_type}'. Allowed values: {sorted(_ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES)}"
             )
 
-        if len(external_task.tokens) != participant_count:
+        if not external_task.outbound_tokens:
             raise ValueError(
-                f"Study '{study_name_short}': external task '{external_task.task_key}' must define exactly one token per participant. "
-                f"Expected {participant_count}, got {len(external_task.tokens)}"
+                f"Study '{study_name_short}': external task '{external_task.task_key}' must define at least one outbound token group"
             )
 
-        if any(
-            not isinstance(token, str) or not token.strip()
-            for token in external_task.tokens
-        ):
+        seen_token_group_names: set[str] = set()
+        outbound_token_names: set[str] = set()
+        for token_group in external_task.outbound_tokens:
+            if not isinstance(token_group.name, str) or not re.match(
+                r"^[a-z0-9_]+$", token_group.name
+            ):
+                raise ValueError(
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' has invalid outbound token name '{token_group.name}'"
+                )
+
+            if token_group.name in seen_token_group_names:
+                raise ValueError(
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' has duplicate outbound token group '{token_group.name}'"
+                )
+            seen_token_group_names.add(token_group.name)
+            outbound_token_names.add(token_group.name)
+
+            participant_keys = set(token_group.by_participant.keys())
+            if participant_keys != participant_ids_set:
+                raise ValueError(
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' must define tokens for exactly the study participants"
+                )
+
+            token_values = list(token_group.by_participant.values())
+            if any(
+                not isinstance(token, str) or not token.strip() for token in token_values
+            ):
+                raise ValueError(
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains empty token values"
+                )
+
+            if len(set(token_values)) != len(token_values):
+                raise ValueError(
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains duplicate tokens"
+                )
+
+        callback_token_name = get_external_task_callback_token_name(external_task)
+        if callback_token_name not in outbound_token_names:
             raise ValueError(
-                f"Study '{study_name_short}': external task '{external_task.task_key}' contains empty tokens"
+                f"Study '{study_name_short}': external task '{external_task.task_key}' callback_token_name '{callback_token_name}' is not defined in outbound_tokens"
             )
 
-        if len(set(external_task.tokens)) != len(external_task.tokens):
+        placeholders = set(_extract_template_placeholders(external_task.outbound_url))
+        allowed_placeholders = {"participant_id", "study_name", "task_key"}.union(
+            outbound_token_names
+        )
+        unknown_placeholders = sorted(placeholders - allowed_placeholders)
+        if unknown_placeholders:
             raise ValueError(
-                f"Study '{study_name_short}': external task '{external_task.task_key}' contains duplicate tokens"
+                f"Study '{study_name_short}': external task '{external_task.task_key}' outbound_url contains unsupported placeholders: {unknown_placeholders}"
             )
 
-        if (
-            not isinstance(external_task.pid_query_param, str)
-            or not external_task.pid_query_param.strip()
-        ):
+        if callback_token_name not in placeholders:
             raise ValueError(
-                f"Study '{study_name_short}': external task '{external_task.task_key}' has invalid pid_query_param"
+                f"Study '{study_name_short}': external task '{external_task.task_key}' outbound_url must include callback token placeholder '{{{callback_token_name}}}'"
             )
 
 

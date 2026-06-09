@@ -26,7 +26,7 @@ import csv
 import json
 import re
 from sqlmodel import Session, delete, select
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse, quote
+from urllib.parse import urlencode, quote, urlparse, parse_qsl, urlunparse
 from fastapi.templating import Jinja2Templates
 from .parsers.activities_config import (
     ActivitiesConfig,
@@ -34,6 +34,7 @@ from .parsers.activities_config import (
 )
 from .parsers.studies_config import (
     CfgFileExternalTask,
+    get_external_task_callback_tokens,
     get_external_task_effective_config,
     get_cfg_study_by_name_short,
     validate_external_tasks_for_study,
@@ -127,24 +128,94 @@ def _get_localized_study_text(
 def _build_external_task_continuation_url(
     external_task: StudyExternalTask,
     assigned_token: str,
+    study_name_short: str,
     participant_id: Optional[str] = None,
 ) -> str:
-    parsed_url = urlparse(external_task.url)
+    template = external_task.url or ""
     config = external_task.config if isinstance(external_task.config, dict) else {}
-    token_query_param = (config.get("token_query_param") or "token").strip()
-    send_pid = bool(config.get("send_pid"))
-    pid_query_param = (config.get("pid_query_param") or "pid").strip()
-    query_items = [
-        (key, value)
-        for key, value in parse_qsl(parsed_url.query, keep_blank_values=True)
-        if key != token_query_param
-        and not (send_pid and participant_id and key == pid_query_param)
-    ]
-    query_items.append((token_query_param, assigned_token))
-    if send_pid and participant_id:
-        query_items.append((pid_query_param, participant_id))
+    token_groups = config.get("outbound_tokens")
+    token_groups = token_groups if isinstance(token_groups, list) else []
+
+    token_values: Dict[str, str] = {}
+    callback_token_name = config.get("callback_token_name")
+    callback_token_name = (
+        callback_token_name.strip()
+        if isinstance(callback_token_name, str) and callback_token_name.strip()
+        else "token"
+    )
+
+    for token_group in token_groups:
+        if not isinstance(token_group, dict):
+            continue
+        token_name = token_group.get("name")
+        if not isinstance(token_name, str) or not token_name.strip():
+            continue
+        by_participant = token_group.get("by_participant")
+        if (
+            participant_id
+            and isinstance(by_participant, dict)
+            and participant_id in by_participant
+        ):
+            token_value = by_participant.get(participant_id)
+            if isinstance(token_value, str):
+                token_values[token_name] = token_value
+
+    if callback_token_name:
+        token_values[callback_token_name] = assigned_token
+
+    replacements: Dict[str, str] = {
+        "participant_id": participant_id or "",
+        "study_name": study_name_short,
+        "task_key": external_task.task_key,
+    }
+    replacements.update(token_values)
+
+    placeholders_in_template = set(
+        re.findall(r"\{([a-zA-Z0-9_]+)\}", template or "")
+    )
+
+    def replace_placeholder(match: re.Match[str]) -> str:
+        placeholder = match.group(1)
+        value = replacements.get(placeholder, "")
+        return quote(str(value), safe="")
+
+    rendered_url = re.sub(r"\{([a-zA-Z0-9_]+)\}", replace_placeholder, template)
+
+    # Fallback for previously persisted tasks that used base URLs without
+    # placeholders: ensure callback token and core context still get forwarded.
+    parsed_url = urlparse(rendered_url)
+    query_items = parse_qsl(parsed_url.query, keep_blank_values=True)
+    existing_query_keys = {key for key, _ in query_items}
+
+    if not placeholders_in_template:
+        if callback_token_name and callback_token_name not in existing_query_keys:
+            query_items.append((callback_token_name, assigned_token))
+
+        if participant_id and "participant_id" not in existing_query_keys:
+            query_items.append(("participant_id", participant_id))
+
+        if "study_name" not in existing_query_keys:
+            query_items.append(("study_name", study_name_short))
+
+        if "task" not in existing_query_keys and "task_key" not in existing_query_keys:
+            query_items.append(("task", external_task.task_key))
 
     return urlunparse(parsed_url._replace(query=urlencode(query_items, doseq=True)))
+
+
+def _get_localized_external_task_text(
+    localized_map: Optional[Dict[str, str]],
+    target_language: Optional[str],
+    default_language: str,
+) -> Optional[str]:
+    if not isinstance(localized_map, dict) or not localized_map:
+        return None
+
+    return (
+        localized_map.get(target_language or default_language)
+        or localized_map.get(default_language)
+        or localized_map.get("en")
+    )
 
 
 def _build_external_task_launch_url(
@@ -170,7 +241,10 @@ def _build_external_task_launch_url(
 
 
 def _get_participant_external_tasks(
-    session: Session, study: Study, participant_id: Optional[str]
+    session: Session,
+    study: Study,
+    participant_id: Optional[str],
+    selected_language: Optional[str],
 ) -> List["ParticipantExternalTaskResponse"]:
     if not participant_id:
         return []
@@ -191,24 +265,35 @@ def _get_participant_external_tasks(
         )
     ).all()
 
-    return [
-        ParticipantExternalTaskResponse(
-            task_key=external_task.task_key,
-            name=external_task.name,
-            description=external_task.description,
-            confirmation_type=external_task.confirmation_type,
-            assigned_token=assignment.assigned_token,
-            continuation_url=_build_external_task_launch_url(
-                study.name_short,
-                participant_id,
-                external_task.task_key,
-                assignment.assigned_token,
-            ),
-            is_confirmed=assignment.is_confirmed,
-            confirmed_at=assignment.confirmed_at,
+    tasks: List[ParticipantExternalTaskResponse] = []
+    for assignment, external_task in assigned_rows:
+        config = external_task.config if isinstance(external_task.config, dict) else {}
+        localized_name = _get_localized_external_task_text(
+            config.get("name_i18n"), selected_language, study.default_language
         )
-        for assignment, external_task in assigned_rows
-    ]
+        localized_description = _get_localized_external_task_text(
+            config.get("description_i18n"), selected_language, study.default_language
+        )
+        tasks.append(
+            ParticipantExternalTaskResponse(
+                task_key=external_task.task_key,
+                name=localized_name or external_task.name,
+                description=localized_description
+                if localized_description is not None
+                else external_task.description,
+                confirmation_type=external_task.confirmation_type,
+                assigned_token=assignment.assigned_token,
+                continuation_url=_build_external_task_launch_url(
+                    study.name_short,
+                    participant_id,
+                    external_task.task_key,
+                    assignment.assigned_token,
+                ),
+                is_confirmed=assignment.is_confirmed,
+                confirmed_at=assignment.confirmed_at,
+            )
+        )
+    return tasks
 
 
 def _get_study_participant_association(
@@ -2261,11 +2346,19 @@ def _create_study_from_import_payload(
             StudyExternalTask(
                 study_id=study.id,
                 task_key=external_task_payload.task_key,
-                name=external_task_payload.name,
-                description=external_task_payload.description,
-                url=external_task_payload.url,
+                name=external_task_payload.name.get(default_language)
+                or next(iter(external_task_payload.name.values())),
+                description=(
+                    (external_task_payload.description or {}).get(default_language)
+                    or next(
+                        iter((external_task_payload.description or {}).values()), None
+                    )
+                ),
+                url=external_task_payload.outbound_url,
                 confirmation_type=external_task_payload.confirmation_type,
-                tokens=list(external_task_payload.tokens),
+                tokens=get_external_task_callback_tokens(
+                    external_task_payload, study_payload.study_participant_ids
+                ),
                 config=get_external_task_effective_config(external_task_payload),
             )
         )
@@ -2897,12 +2990,39 @@ async def export_runtime_studies_config(
                 "external_tasks": [
                     {
                         "task_key": external_task.task_key,
-                        "name": external_task.name,
-                        "description": external_task.description,
-                        "url": external_task.url,
+                        "name": (
+                            external_task.config.get("name_i18n")
+                            if isinstance(external_task.config, dict)
+                            and isinstance(external_task.config.get("name_i18n"), dict)
+                            else {study.default_language: external_task.name}
+                        ),
+                        "description": (
+                            external_task.config.get("description_i18n")
+                            if isinstance(external_task.config, dict)
+                            and isinstance(
+                                external_task.config.get("description_i18n"), dict
+                            )
+                            else (
+                                {study.default_language: external_task.description}
+                                if external_task.description
+                                else None
+                            )
+                        ),
+                        "outbound_url": external_task.url,
                         "confirmation_type": external_task.confirmation_type,
-                        "tokens": external_task.tokens,
-                        "config": external_task.config,
+                        "outbound_tokens": (
+                            external_task.config.get("outbound_tokens")
+                            if isinstance(external_task.config, dict)
+                            and isinstance(
+                                external_task.config.get("outbound_tokens"), list
+                            )
+                            else []
+                        ),
+                        "callback_token_name": (
+                            external_task.config.get("callback_token_name")
+                            if isinstance(external_task.config, dict)
+                            else None
+                        ),
                         "participant_assignments": [
                             {
                                 "participant_id": assignment.participant_id,
@@ -4848,7 +4968,7 @@ def get_study_config(
             instructions_completed_at = study_participant.instructions_completed_at
 
     participant_external_tasks = _get_participant_external_tasks(
-        session, study, participant_id
+        session, study, participant_id, selected_language
     )
     all_external_tasks_confirmed = bool(participant_external_tasks) and all(
         external_task.is_confirmed for external_task in participant_external_tasks
@@ -5050,6 +5170,7 @@ def launch_external_task(
     target_url = _build_external_task_continuation_url(
         external_task,
         assignment.assigned_token,
+        study_name_short,
         participant_id=participant_id,
     )
     log_launch(True, "redirect")

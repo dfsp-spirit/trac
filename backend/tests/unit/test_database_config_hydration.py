@@ -310,12 +310,19 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
         external_tasks=[
             {
                 "task_key": "payment",
-                "name": "Payment Survey",
-                "description": "Complete payment handoff.",
-                "url": "https://example.org/payment",
+                "name": {"en": "Payment Survey"},
+                "description": {"en": "Complete payment handoff."},
+                "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&survey_token={survey_token}",
                 "confirmation_type": "none",
-                "tokens": ["tok-1", "tok-2"],
-                "config": {"provider": "example"},
+                "outbound_tokens": [
+                    {
+                        "name": "survey_token",
+                        "by_participant": {
+                            "p1": "tok-1",
+                            "p2": "tok-2",
+                        },
+                    }
+                ],
             }
         ],
     )

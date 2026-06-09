@@ -533,12 +533,19 @@ async def test_admin_export_external_tasks_roundtrip(created_studies_for_cleanup
                 "external_tasks": [
                     {
                         "task_key": "payment",
-                        "name": "Payment Survey",
-                        "description": "Complete payment handoff.",
-                        "url": "https://example.org/payment",
+                        "name": {"en": "Payment Survey"},
+                        "description": {"en": "Complete payment handoff."},
+                        "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&survey_token={survey_token}",
                         "confirmation_type": "none",
-                        "tokens": ["tok-1", "tok-2"],
-                        "config": {"provider": "example"},
+                        "outbound_tokens": [
+                            {
+                                "name": "survey_token",
+                                "by_participant": {
+                                    "p1": "tok-1",
+                                    "p2": "tok-2",
+                                },
+                            }
+                        ],
                     }
                 ],
                 "default_language": "en",
@@ -570,12 +577,20 @@ async def test_admin_export_external_tasks_roundtrip(created_studies_for_cleanup
         assert exported_study["external_tasks"] == [
             {
                 "task_key": "payment",
-                "name": "Payment Survey",
-                "description": "Complete payment handoff.",
-                "url": "https://example.org/payment",
+                "name": {"en": "Payment Survey"},
+                "description": {"en": "Complete payment handoff."},
+                "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&survey_token={survey_token}",
                 "confirmation_type": "none",
-                "tokens": ["tok-1", "tok-2"],
-                "config": {"provider": "example"},
+                "outbound_tokens": [
+                    {
+                        "name": "survey_token",
+                        "by_participant": {
+                            "p1": "tok-1",
+                            "p2": "tok-2",
+                        },
+                    }
+                ],
+                "callback_token_name": "survey_token",
                 "participant_assignments": [
                     {
                         "participant_id": "p1",
@@ -633,23 +648,35 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
                 "external_tasks": [
                     {
                         "task_key": "payment",
-                        "name": "Payment Survey",
-                        "description": "Complete payment handoff.",
-                        "url": "https://example.org/payment?src=trac",
+                        "name": {"en": "Payment Survey"},
+                        "description": {"en": "Complete payment handoff."},
+                        "outbound_url": "https://example.org/payment?src=trac&participant_id={participant_id}&survey_token={survey_token}",
                         "confirmation_type": "none",
-                        "tokens": ["tok-1", "tok-2"],
-                        "send_pid": True,
-                        "pid_query_param": "participant_id",
-                        "config": {"token_query_param": "survey_token"},
+                        "outbound_tokens": [
+                            {
+                                "name": "survey_token",
+                                "by_participant": {
+                                    "p1": "tok-1",
+                                    "p2": "tok-2",
+                                },
+                            }
+                        ],
                     },
                     {
                         "task_key": "callback_only",
-                        "name": "Callback Task",
-                        "description": "Should not be shown yet.",
-                        "url": "https://example.org/callback",
+                        "name": {"en": "Callback Task"},
+                        "description": {"en": "Should not be shown yet."},
+                        "outbound_url": "https://example.org/callback?callback_token={callback_token}",
                         "confirmation_type": "callback",
-                        "tokens": ["cb-1", "cb-2"],
-                        "config": {},
+                        "outbound_tokens": [
+                            {
+                                "name": "callback_token",
+                                "by_participant": {
+                                    "p1": "cb-1",
+                                    "p2": "cb-2",
+                                },
+                            }
+                        ],
                     },
                 ],
                 "default_language": "en",
@@ -733,12 +760,18 @@ async def test_callback_external_task_confirmation_updates_assignment_state(
                 "external_tasks": [
                     {
                         "task_key": "callback_payment",
-                        "name": "Callback Payment",
-                        "description": "Return here after payment.",
-                        "url": "https://example.org/payment-callback?src=trac",
+                        "name": {"en": "Callback Payment"},
+                        "description": {"en": "Return here after payment."},
+                        "outbound_url": "https://example.org/payment-callback?src=trac&callback_token={callback_token}",
                         "confirmation_type": "callback",
-                        "tokens": ["cb-1"],
-                        "config": {},
+                        "outbound_tokens": [
+                            {
+                                "name": "callback_token",
+                                "by_participant": {
+                                    "p1": "cb-1"
+                                },
+                            }
+                        ],
                     }
                 ],
                 "default_language": "en",
