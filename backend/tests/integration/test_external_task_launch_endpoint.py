@@ -32,15 +32,6 @@ async def test_external_task_launch_redirects_to_provider_url_with_assigned_toke
         continuation_url = first_task.get("continuation_url")
         assert continuation_url, "Expected continuation_url in external task payload"
 
-        # If the running backend process still serves the previous behavior
-        # (direct provider links), skip with an actionable hint.
-        parsed_continuation = urlparse(continuation_url)
-        if parsed_continuation.scheme in {"http", "https"} and parsed_continuation.netloc:
-            if parsed_continuation.netloc == "survey.academiccloud.de":
-                pytest.skip(
-                    "Running backend still serves direct external continuation URLs. Restart backend to pick up launch endpoint changes."
-                )
-
         launch_url = urljoin(BASE_SCHEME, continuation_url)
 
         launch_response = await client.get(launch_url)
