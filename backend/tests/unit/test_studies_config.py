@@ -159,6 +159,20 @@ def test_load_studies_config_rejects_external_tasks_with_unsupported_confirmatio
         load_studies_config(str(config_file))
 
 
+def test_load_studies_config_rejects_external_tasks_with_invalid_task_level(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    external_task = _external_task_payload("payment")
+    external_task["task_level"] = 0
+    payload["studies"][0]["external_tasks"] = [external_task]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="task_level must be an integer >= 1"):
+        load_studies_config(str(config_file))
+
+
 def test_load_studies_config_rejects_external_tasks_with_duplicate_task_keys(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()

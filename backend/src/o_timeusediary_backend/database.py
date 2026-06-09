@@ -151,6 +151,26 @@ def _ensure_study_participant_instruction_columns() -> None:
             )
 
 
+def _ensure_external_task_task_level_column() -> None:
+    inspector = inspect(engine)
+    if "study_external_tasks" not in inspector.get_table_names():
+        return
+
+    existing_columns = {
+        column["name"] for column in inspector.get_columns("study_external_tasks")
+    }
+    if "task_level" in existing_columns:
+        return
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "ALTER TABLE study_external_tasks ADD COLUMN task_level INTEGER NOT NULL DEFAULT 1"
+            )
+        )
+        logger.info("Added missing study_external_tasks.task_level column")
+
+
 def _ensure_study_available_activity_i18n_frequency_options_column() -> None:
     inspector = inspect(engine)
     if "study_available_activity_i18n" not in inspector.get_table_names():
@@ -377,10 +397,12 @@ def _ensure_external_tasks_from_config(
     existing_tasks = session.exec(
         select(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
     ).all()
-    existing_task_keys = {task.task_key for task in existing_tasks}
+    existing_tasks_by_key = {task.task_key: task for task in existing_tasks}
 
     for external_task in getattr(study_config, "external_tasks", []):
-        if external_task.task_key in existing_task_keys:
+        existing_task = existing_tasks_by_key.get(external_task.task_key)
+        if existing_task:
+            existing_task.task_level = external_task.task_level
             continue
         session.add(
             StudyExternalTask(
@@ -394,6 +416,7 @@ def _ensure_external_tasks_from_config(
                 ),
                 url=external_task.outbound_url,
                 confirmation_type=external_task.confirmation_type,
+                task_level=external_task.task_level,
                 tokens=get_external_task_callback_tokens(
                     external_task, study_config.study_participant_ids
                 ),
@@ -667,6 +690,7 @@ def create_db_and_tables(do_report_contents: bool = False):
         _ensure_study_text_columns()
         _ensure_is_paused_column()
         _ensure_external_task_assignment_confirmation_columns()
+        _ensure_external_task_task_level_column()
         _ensure_study_participant_instruction_columns()
         _ensure_study_available_activity_i18n_frequency_options_column()
         _ensure_activity_frequency_key_column()

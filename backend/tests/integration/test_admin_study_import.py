@@ -581,6 +581,7 @@ async def test_admin_export_external_tasks_roundtrip(created_studies_for_cleanup
                 "description": {"en": "Complete payment handoff."},
                 "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&survey_token={survey_token}",
                 "confirmation_type": "none",
+                "task_level": 1,
                 "outbound_tokens": [
                     {
                         "name": "survey_token",
@@ -820,6 +821,113 @@ async def test_callback_external_task_confirmation_updates_assignment_state(
         refreshed_task = refreshed_study_config_response.json()["external_tasks"][0]
         assert refreshed_task["is_confirmed"] is True
         assert refreshed_task["confirmed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_external_task_levels_gate_launch_and_visibility(
+    created_studies_for_cleanup,
+):
+    study_name_short = f"it_external_level_{uuid.uuid4().hex[:8]}"
+    activities_payload = _load_activities_template()
+
+    payload = {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"External Task Levels {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Study with level-gated external tasks",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": ["p1"],
+                "allow_unlisted_participants": False,
+                "external_tasks": [
+                    {
+                        "task_key": "depression_survey",
+                        "task_level": 1,
+                        "name": {"en": "Depression Survey"},
+                        "description": {"en": "Complete survey first."},
+                        "outbound_url": "https://example.org/depression?token={survey_token}",
+                        "confirmation_type": "callback",
+                        "outbound_tokens": [
+                            {
+                                "name": "survey_token",
+                                "by_participant": {"p1": "dep-1"},
+                            }
+                        ],
+                    },
+                    {
+                        "task_key": "payment_info",
+                        "task_level": 2,
+                        "name": {"en": "Payment Info"},
+                        "description": {"en": "Only after depression survey."},
+                        "outbound_url": "https://example.org/payment?token={pay_token}",
+                        "confirmation_type": "callback",
+                        "outbound_tokens": [
+                            {
+                                "name": "pay_token",
+                                "by_participant": {"p1": "pay-1"},
+                            }
+                        ],
+                    },
+                ],
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {"en": activities_payload},
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        import_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert import_response.status_code == 200
+        created_studies_for_cleanup.append(study_name_short)
+
+        initial_cfg = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": "p1"},
+        )
+        assert initial_cfg.status_code == 200
+        initial_tasks = {
+            task["task_key"]: task for task in initial_cfg.json()["external_tasks"]
+        }
+        assert initial_tasks["depression_survey"]["continuation_url"]
+        assert initial_tasks["payment_info"]["continuation_url"] == ""
+
+        locked_launch = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/p1/external-tasks/payment_info/launch",
+            params={"assigned_token": "pay-1"},
+            follow_redirects=False,
+        )
+        assert locked_launch.status_code == 409
+
+        confirm_first = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/p1/external-tasks/confirm",
+            json={"task_key": "depression_survey", "assigned_token": "dep-1"},
+        )
+        assert confirm_first.status_code == 200
+
+        unlocked_cfg = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": "p1"},
+        )
+        assert unlocked_cfg.status_code == 200
+        unlocked_tasks = {
+            task["task_key"]: task for task in unlocked_cfg.json()["external_tasks"]
+        }
+        assert unlocked_tasks["payment_info"]["continuation_url"]
 
 
 @pytest.mark.asyncio

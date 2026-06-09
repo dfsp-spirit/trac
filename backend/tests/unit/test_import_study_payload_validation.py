@@ -168,9 +168,9 @@ def test_import_study_payload_accepts_external_tasks():
     payload["allow_unlisted_participants"] = False
     payload["study_participant_ids"] = ["p1", "p2"]
     payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
-    payload["external_tasks"] = [
-        _external_task_payload("payment", participant_ids=["p1", "p2"])
-    ]
+    task_payload = _external_task_payload("payment", participant_ids=["p1", "p2"])
+    task_payload["task_level"] = 2
+    payload["external_tasks"] = [task_payload]
 
     study_payload = ImportStudiesConfigStudy(**payload)
 
@@ -181,6 +181,7 @@ def test_import_study_payload_accepts_external_tasks():
         "p1": "tok-1",
         "p2": "tok-2",
     }
+    assert study_payload.external_tasks[0].task_level == 2
 
 
 def test_validate_import_payload_rejects_external_tasks_for_open_study():

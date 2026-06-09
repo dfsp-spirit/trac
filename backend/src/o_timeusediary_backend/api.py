@@ -218,6 +218,36 @@ def _get_localized_external_task_text(
     )
 
 
+def _get_external_task_level(external_task: StudyExternalTask) -> int:
+    if isinstance(external_task.task_level, int) and external_task.task_level >= 1:
+        return external_task.task_level
+
+    config = external_task.config if isinstance(external_task.config, dict) else {}
+    level_from_config = config.get("task_level")
+    if isinstance(level_from_config, int) and level_from_config >= 1:
+        return level_from_config
+    return 1
+
+
+def _build_participant_external_task_unlock_map(
+    assigned_rows: List[Tuple[StudyExternalTaskAssignment, StudyExternalTask]],
+) -> Dict[int, bool]:
+    rows_with_level: List[Tuple[StudyExternalTaskAssignment, StudyExternalTask, int]] = [
+        (assignment, external_task, _get_external_task_level(external_task))
+        for assignment, external_task in assigned_rows
+    ]
+
+    unlock_by_task_id: Dict[int, bool] = {}
+    for assignment, external_task, task_level in rows_with_level:
+        has_incomplete_lower_level = any(
+            lower_level < task_level and not lower_assignment.is_confirmed
+            for lower_assignment, _, lower_level in rows_with_level
+        )
+        unlock_by_task_id[external_task.id] = not has_incomplete_lower_level
+
+    return unlock_by_task_id
+
+
 def _build_external_task_launch_url(
     study_name_short: str,
     participant_id: str,
@@ -260,10 +290,13 @@ def _get_participant_external_tasks(
             StudyExternalTaskAssignment.participant_id == participant_id,
         )
         .order_by(
+            StudyExternalTask.task_level,
             StudyExternalTaskAssignment.assignment_order,
             StudyExternalTask.task_key,
         )
     ).all()
+
+    unlock_by_task_id = _build_participant_external_task_unlock_map(assigned_rows)
 
     tasks: List[ParticipantExternalTaskResponse] = []
     for assignment, external_task in assigned_rows:
@@ -283,11 +316,15 @@ def _get_participant_external_tasks(
                 else external_task.description,
                 confirmation_type=external_task.confirmation_type,
                 assigned_token=assignment.assigned_token,
-                continuation_url=_build_external_task_launch_url(
-                    study.name_short,
-                    participant_id,
-                    external_task.task_key,
-                    assignment.assigned_token,
+                continuation_url=(
+                    _build_external_task_launch_url(
+                        study.name_short,
+                        participant_id,
+                        external_task.task_key,
+                        assignment.assigned_token,
+                    )
+                    if unlock_by_task_id.get(external_task.id, True)
+                    else ""
                 ),
                 is_confirmed=assignment.is_confirmed,
                 confirmed_at=assignment.confirmed_at,
@@ -2356,6 +2393,7 @@ def _create_study_from_import_payload(
                 ),
                 url=external_task_payload.outbound_url,
                 confirmation_type=external_task_payload.confirmation_type,
+                task_level=external_task_payload.task_level,
                 tokens=get_external_task_callback_tokens(
                     external_task_payload, study_payload.study_participant_ids
                 ),
@@ -3010,6 +3048,7 @@ async def export_runtime_studies_config(
                         ),
                         "outbound_url": external_task.url,
                         "confirmation_type": external_task.confirmation_type,
+                        "task_level": external_task.task_level,
                         "outbound_tokens": (
                             external_task.config.get("outbound_tokens")
                             if isinstance(external_task.config, dict)
@@ -5068,6 +5107,24 @@ def confirm_external_task_callback(
         )
 
     assignment, external_task = assignment_row
+    participant_rows = session.exec(
+        select(StudyExternalTaskAssignment, StudyExternalTask)
+        .join(
+            StudyExternalTask,
+            StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+        )
+        .where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTaskAssignment.participant_id == participant_id,
+        )
+    ).all()
+    unlock_by_task_id = _build_participant_external_task_unlock_map(participant_rows)
+    if not unlock_by_task_id.get(external_task.id, True):
+        raise HTTPException(
+            status_code=409,
+            detail="External task is locked until lower-level tasks are completed",
+        )
+
     if not assignment.is_confirmed:
         assignment.is_confirmed = True
         assignment.confirmed_at = utc_now()
@@ -5167,6 +5224,25 @@ def launch_external_task(
         )
 
     assignment, external_task = assignment_row
+    participant_rows = session.exec(
+        select(StudyExternalTaskAssignment, StudyExternalTask)
+        .join(
+            StudyExternalTask,
+            StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+        )
+        .where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTaskAssignment.participant_id == participant_id,
+        )
+    ).all()
+    unlock_by_task_id = _build_participant_external_task_unlock_map(participant_rows)
+    if not unlock_by_task_id.get(external_task.id, True):
+        log_launch(False, "task_locked")
+        raise HTTPException(
+            status_code=409,
+            detail="External task is locked until lower-level tasks are completed",
+        )
+
     target_url = _build_external_task_continuation_url(
         external_task,
         assignment.assigned_token,

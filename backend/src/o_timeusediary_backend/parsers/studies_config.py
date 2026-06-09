@@ -93,6 +93,8 @@ class CfgFileExternalTask(BaseModel):
     )
     # Token group used as callback proof token.
     callback_token_name: Optional[str] = None
+    # Tasks with higher level are gated until all lower levels are completed.
+    task_level: int = 1
 
 
 def _extract_template_placeholders(template: str) -> List[str]:
@@ -134,6 +136,7 @@ def get_external_task_effective_config(
             for token_group in external_task.outbound_tokens
         ],
         "callback_token_name": get_external_task_callback_token_name(external_task),
+        "task_level": external_task.task_level,
     }
 
 
@@ -215,6 +218,11 @@ def validate_external_tasks_for_study(
             raise ValueError(
                 f"Study '{study_name_short}': external task '{external_task.task_key}' has unsupported confirmation_type "
                 f"'{external_task.confirmation_type}'. Allowed values: {sorted(_ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES)}"
+            )
+
+        if not isinstance(external_task.task_level, int) or external_task.task_level < 1:
+            raise ValueError(
+                f"Study '{study_name_short}': external task '{external_task.task_key}' task_level must be an integer >= 1"
             )
 
         if not external_task.outbound_tokens:

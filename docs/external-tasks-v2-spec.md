@@ -31,6 +31,7 @@ Each external task entry in `external_tasks` uses this structure:
     "de": "Fuellen Sie die verlinkte Umfrage zu Depressionssymptomen aus."
   },
   "confirmation_type": "callback",
+  "task_level": 1,
   "outbound_tokens": [
     {
       "name": "survey_token",
@@ -50,6 +51,7 @@ Notes:
 - `outbound_tokens` supports one or more token groups.
 - `name` inside each token group is the placeholder key (for example `survey_token`).
 - `by_participant` maps participant IDs directly to their token values.
+- `task_level` controls unlock order: tasks at level `N` are locked until all tasks at levels `< N` are confirmed for that participant.
 
 ## 4. Outbound URL Templating
 

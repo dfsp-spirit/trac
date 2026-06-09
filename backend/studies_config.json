@@ -418,6 +418,7 @@
       "external_tasks": [
           {
             "task_key": "depression_survey",
+            "task_level": 1,
             "name": {
               "de": "Umfrage zu Depressionssymptomen ausfüllen"
             },
@@ -439,6 +440,7 @@
           },
           {
             "task_key": "payment_info",
+            "task_level": 2,
             "name": {
               "de": "Bankdaten eingeben"
             },

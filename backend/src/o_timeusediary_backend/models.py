@@ -96,6 +96,7 @@ class StudyExternalTask(SQLModel, table=True):
     description: Optional[str] = None
     url: str
     confirmation_type: str = Field(default="none", index=True)
+    task_level: int = Field(default=1, index=True)
     tokens: List[str] = Field(
         default_factory=list, sa_column=Column(JSON, nullable=False)
     )
