@@ -423,7 +423,14 @@
             i18n.applyTranslations();
 
             try {
-                await confirmCallbackExternalTask(studyConfig);
+                const confirmationResult = await confirmCallbackExternalTask(studyConfig);
+                if (confirmationResult) {
+                    try {
+                        studyConfig = await loadStudyConfig(requestedLanguage || undefined);
+                    } catch (reloadError) {
+                        console.warn('Could not reload study-config after callback confirmation:', reloadError.message);
+                    }
+                }
             } catch (error) {
                 console.warn('Could not confirm callback external task:', error.message);
             }
