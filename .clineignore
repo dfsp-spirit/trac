@@ -1,0 +1,11 @@
+.git/
+.venv/
+venv/
+__pycache__/
+node_modules/
+build/
+dist/
+*.log
+backend/venv/
+backend/.venv/
+frontend/node_modules/
