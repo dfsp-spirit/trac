@@ -230,6 +230,9 @@ async function loadStudiesConfigFromFile() {
     );
     CURRENT_STUDY_CACHE.supported_languages = supportedLanguages;
     CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
+    if (CURRENT_STUDY_CACHE.allow_skip_timeuse === undefined) {
+      CURRENT_STUDY_CACHE.allow_skip_timeuse = true;
+    }
     CURRENT_STUDY_CACHE.day_labels = normalizeDayLabels(
       CURRENT_STUDY_CACHE,
       selectedLanguage
@@ -279,6 +282,7 @@ async function loadStudiesConfigFromFile() {
       study_participant_ids: [],
       allow_unlisted_participants: true,
       require_consent: false,
+      allow_skip_timeuse: true,
       instructions_completed: false,
       participant_has_completed_study: false,
       activities_json_files: { en: 'activities_default.json' },
@@ -485,6 +489,10 @@ async function syncWithBackendConfig() {
 
       if (backendConfig.require_consent !== undefined) {
         CURRENT_STUDY_CACHE.require_consent = backendConfig.require_consent;
+      }
+      if (backendConfig.allow_skip_timeuse !== undefined) {
+        CURRENT_STUDY_CACHE.allow_skip_timeuse =
+          backendConfig.allow_skip_timeuse;
       }
 
       if (backendConfig.consent_given !== undefined) {
