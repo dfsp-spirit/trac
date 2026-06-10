@@ -1,6 +1,17 @@
 TRAC MPIAE Changes
 ===================
 
+Version 0.15.0 -- External tasks refined & Admin interface overhaul
+-------------------------------------------------------------------
+- NEW: refactor external tasks handling to new tasks.html page
+- FIX: Allow creation of studies in admin web interface
+- NEW: allow deleting study in admin interface (with security modal)
+- NEW: Redesign the way external tasks are configured in studies_config.json
+- NEW: Support hierarchy of tasks
+- NEW: Make 'Skip time use reporting' button configurable (#83)
+- FIX: Validate timeline min_coverage in backend (#82)
+
+
 Version 0.14.0 -- Task management and cfg validation tools
 ------------------------------------------------------------
 This release adds three new major features: task management, admin tool to validate cfg files,
