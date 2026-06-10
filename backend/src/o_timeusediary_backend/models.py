@@ -35,6 +35,7 @@ class Study(SQLModel, table=True):
     allow_unlisted_participants: bool = Field(default=True)
     require_consent: bool = Field(default=False)
     is_paused: bool = Field(default=False)
+    allow_skip_timeuse: bool = Field(default=True)
     require_diary_before_external_tasks: bool = Field(default=False)
     default_language: str = Field(default="en")
     study_text_intro: Optional[Dict[str, str]] = Field(

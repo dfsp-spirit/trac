@@ -46,6 +46,7 @@ def _write_studies_config(
     study_participant_ids: list[str],
     activities_logged_by_userid: dict,
     external_tasks: list[dict] | None = None,
+    allow_skip_timeuse: bool = True,
     require_diary_before_external_tasks: bool = False,
 ) -> str:
     studies_payload = {
@@ -68,6 +69,7 @@ def _write_studies_config(
                 "study_text_consent": {"en": "Consent text"},
                 "study_text_end_noconsent": {"en": "No consent text"},
                 "external_tasks": external_tasks or [],
+                "allow_skip_timeuse": allow_skip_timeuse,
                 "require_diary_before_external_tasks": require_diary_before_external_tasks,
                 "activities_json_files": {"en": activities_file},
                 "activities_logged_by_userid": activities_logged_by_userid,
@@ -327,6 +329,7 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
                 ],
             }
         ],
+        allow_skip_timeuse=False,
         require_diary_before_external_tasks=True,
     )
 
@@ -337,6 +340,7 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
             select(Study).where(Study.name_short == "hydration_demo")
         ).first()
         assert study is not None
+        assert study.allow_skip_timeuse is False
         assert study.require_diary_before_external_tasks is True
 
         external_tasks = session.exec(

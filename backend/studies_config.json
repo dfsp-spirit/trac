@@ -336,6 +336,7 @@
       "name": "Pilotstudie Erwachsene Deutsch MPIAE",
       "name_short": "adult_pilot_de",
       "description": "Pilotstudie TimeUse für Erwachsene am MPIAE.",
+      "allow_skip_timeuse": false,
       "day_labels": [
         {
           "name": "monday",

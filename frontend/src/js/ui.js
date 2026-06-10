@@ -925,6 +925,22 @@ function initSkipReportingButton() {
     return;
   }
 
+  const currentStudy = window.studyConfigManager?.getCurrentStudy?.();
+  if (!currentStudy) {
+    setTimeout(initSkipReportingButton, 100);
+    return;
+  }
+
+  if (currentStudy?.allow_skip_timeuse === false) {
+    skipReportingBtn.style.display = 'none';
+    skipReportingBtn.setAttribute('aria-hidden', 'true');
+    skipReportingButtonInitialized = true;
+    return;
+  }
+
+  skipReportingBtn.style.display = '';
+  skipReportingBtn.removeAttribute('aria-hidden');
+
   skipReportingBtn.addEventListener('click', showSkipConfirmationModal);
   skipReportingButtonInitialized = true;
 }

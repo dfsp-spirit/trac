@@ -1716,6 +1716,7 @@ class ImportStudiesConfigStudy(BaseModel):
     activities_json_data: Optional[Dict[str, Dict]] = None
     activities_json_files: Optional[Dict[str, str]] = None
     require_consent: bool = False
+    allow_skip_timeuse: bool = True
     is_paused: bool = False
     require_diary_before_external_tasks: bool = False
     external_tasks: List[CfgFileExternalTask] = Field(default_factory=list)
@@ -2448,6 +2449,7 @@ def _create_study_from_import_payload(
         description=study_payload.description or "",
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         require_consent=study_payload.require_consent,
+        allow_skip_timeuse=study_payload.allow_skip_timeuse,
         is_paused=study_payload.is_paused,
         require_diary_before_external_tasks=study_payload.require_diary_before_external_tasks,
         default_language=default_language,
@@ -3109,6 +3111,7 @@ async def export_runtime_studies_config(
                 "study_participant_ids": participant_ids,
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "require_consent": study.require_consent,
+                "allow_skip_timeuse": study.allow_skip_timeuse,
                 "is_paused": study.is_paused,
                 "external_tasks": [
                     {
@@ -4875,6 +4878,7 @@ class StudyConfigResponse(BaseModel):
     description: str
     allow_unlisted_participants: bool
     require_consent: bool = False
+    allow_skip_timeuse: bool = True
     require_diary_before_external_tasks: bool = False
     data_collection_start: datetime
     data_collection_end: datetime
@@ -5111,6 +5115,7 @@ def get_study_config(
         description=study.description,
         allow_unlisted_participants=study.allow_unlisted_participants,
         require_consent=require_consent,
+        allow_skip_timeuse=study.allow_skip_timeuse,
         require_diary_before_external_tasks=study.require_diary_before_external_tasks,
         data_collection_start=study.data_collection_start,
         data_collection_end=study.data_collection_end,

@@ -104,6 +104,22 @@ def _ensure_require_diary_before_external_tasks_column() -> None:
             logger.info("Added missing studies.require_diary_before_external_tasks column")
 
 
+def _ensure_allow_skip_timeuse_column() -> None:
+    inspector = inspect(engine)
+    if "studies" not in inspector.get_table_names():
+        return
+
+    existing_columns = {column["name"] for column in inspector.get_columns("studies")}
+    if "allow_skip_timeuse" not in existing_columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "ALTER TABLE studies ADD COLUMN allow_skip_timeuse BOOLEAN NOT NULL DEFAULT TRUE"
+                )
+            )
+            logger.info("Added missing studies.allow_skip_timeuse column")
+
+
 def _ensure_external_task_assignment_confirmation_columns() -> None:
     inspector = inspect(engine)
     if "study_external_task_assignments" not in inspector.get_table_names():
@@ -706,6 +722,7 @@ def create_db_and_tables(do_report_contents: bool = False):
         _ensure_study_text_columns()
         _ensure_is_paused_column()
         _ensure_require_diary_before_external_tasks_column()
+        _ensure_allow_skip_timeuse_column()
         _ensure_external_task_assignment_confirmation_columns()
         _ensure_external_task_task_level_column()
         _ensure_study_participant_instruction_columns()
@@ -853,6 +870,14 @@ def create_config_file_studies_in_database(config_path: str):
                         ):
                             existing_study.require_diary_before_external_tasks = (
                                 study_config.require_diary_before_external_tasks
+                            )
+                            study_updated = True
+                        if (
+                            existing_study.allow_skip_timeuse
+                            != study_config.allow_skip_timeuse
+                        ):
+                            existing_study.allow_skip_timeuse = (
+                                study_config.allow_skip_timeuse
                             )
                             study_updated = True
                         if study_config.study_participant_ids:
@@ -1018,6 +1043,7 @@ def create_config_file_studies_in_database(config_path: str):
                         allow_unlisted_participants=study_config.allow_unlisted_participants,
                         require_consent=study_config.require_consent,
                         is_paused=study_config.is_paused,
+                        allow_skip_timeuse=study_config.allow_skip_timeuse,
                         require_diary_before_external_tasks=study_config.require_diary_before_external_tasks,
                         default_language=study_config.default_language,
                         study_text_intro=study_config.study_text_intro,
