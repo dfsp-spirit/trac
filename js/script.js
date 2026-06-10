@@ -134,7 +134,9 @@ function createFrequencyIndicator() {
   const indicator = document.createElement('span');
   indicator.className = 'activity-frequency-indicator';
   indicator.textContent = '⟳';
-  indicator.title = 'Frequency';
+  indicator.title = window.i18n && window.i18n.isReady()
+    ? window.i18n.t('modals.customActivity.frequency')
+    : 'Frequency';
   indicator.setAttribute('aria-hidden', 'true');
   return indicator;
 }
@@ -148,7 +150,9 @@ function populateFrequencySelect(selectElement, options, selectedKey = '') {
 
   const placeholderOption = document.createElement('option');
   placeholderOption.value = '';
-  placeholderOption.textContent = 'No special frequency';
+  placeholderOption.textContent = window.i18n && window.i18n.isReady()
+    ? window.i18n.t('modals.customActivity.frequencyNone')
+    : 'No special frequency';
   selectElement.appendChild(placeholderOption);
 
   options.forEach((option) => {
@@ -205,7 +209,9 @@ function openActivityDetailsModal({
     const shouldShowFrequency = normalizedFrequencyOptions.length > 0;
     frequencyContainer.style.display = shouldShowFrequency ? 'block' : 'none';
     if (frequencyLabel && shouldShowFrequency) {
-      frequencyLabel.textContent = 'Frequency';
+      frequencyLabel.textContent = window.i18n && window.i18n.isReady()
+        ? window.i18n.t('modals.customActivity.frequency')
+        : 'Frequency';
     }
     populateFrequencySelect(
       frequencySelect,

@@ -206,8 +206,8 @@ function createModal() {
                     <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
                 </div>
                 <div id="customActivityFrequencyContainer" style="display: none;">
-                    <label id="customActivityFrequencyLabel" for="customActivityFrequencySelect">Frequency</label>
-                    <select id="customActivityFrequencySelect"></select>
+                  <label id="customActivityFrequencyLabel" for="customActivityFrequencySelect" data-i18n="modals.customActivity.frequency">Frequency</label>
+                  <select id="customActivityFrequencySelect"></select>
                 </div>
                 <div class="button-container">
                     <button id="confirmCustomActivity" class="btn save-btn" data-i18n="buttons.ok">OK</button>

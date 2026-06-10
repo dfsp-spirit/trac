@@ -77,7 +77,9 @@
     "customActivity": {
       "title": "Syötä oma toiminto",
       "childItemTitle": "Syötä arvo kohteelle: {parentActivity}",
-      "placeholder": "Syötä toiminto (max 30 merkkiä)"
+      "placeholder": "Syötä toiminto (max 30 merkkiä)",
+      "frequency": "Taajuus",
+      "frequencyNone": "Ei erityistä taajuutta"
     },
     "addActivity": {
       "title": "Lisää toiminto"
