@@ -1,4 +1,8 @@
 from types import SimpleNamespace
+import os
+
+os.environ.setdefault("TUD_DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("TUD_ALLOWED_ORIGINS", '["http://localhost:3000"]')
 
 from o_timeusediary_backend import api
 

@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from datetime import datetime, timezone
 from io import BytesIO
@@ -6,6 +7,9 @@ from pathlib import Path
 
 import pytest
 from sqlmodel import SQLModel, Session, create_engine, select
+
+os.environ.setdefault("TUD_DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("TUD_ALLOWED_ORIGINS", '["http://localhost:3000"]')
 
 from o_timeusediary_backend.api import (
     create_study_from_validated_uploads,
