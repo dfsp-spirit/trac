@@ -144,6 +144,10 @@
         }
         .ok { color: var(--ok); }
         .error { color: var(--error); }
+        .create-status {
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
         ul {
             margin-left: 1.2rem;
             margin-top: 0.45rem;
@@ -237,6 +241,7 @@
                     <button type="submit">Validate full study</button>
                     <button type="button" id="createStudyBtn" disabled>Create study (create_only, all_or_nothing)</button>
                 </div>
+                <p id="createStudyStatus" class="create-status subtle" aria-live="polite"></p>
                 <p class="hint">By default, filenames from studies_config are used to map uploaded files.</p>
                 <p class="hint" id="createStudyHint">Validate full study first. Creation is only allowed when no existing study has the same name or name_short.</p>
             </form>
@@ -253,7 +258,16 @@
         const fullStudyNameShortSelect = document.getElementById('fullStudyNameShort');
         const createStudyBtn = document.getElementById('createStudyBtn');
         const createStudyHint = document.getElementById('createStudyHint');
+        const createStudyStatus = document.getElementById('createStudyStatus');
         let lastFullStudyValidationEligible = false;
+
+        function setCreateStatus(message, statusClass = 'subtle') {
+            if (!createStudyStatus) {
+                return;
+            }
+            createStudyStatus.className = `create-status ${statusClass}`;
+            createStudyStatus.textContent = message || '';
+        }
 
         function escapeHtml(value) {
             return String(value)
@@ -267,9 +281,13 @@
         function renderResult(payload) {
             resultBox.style.display = 'block';
 
-            const titleClass = payload.ok ? 'ok' : 'error';
-            const titleText = payload.ok ? 'Validation passed' : 'Validation failed';
             const mode = payload.mode || 'unknown';
+            let titleClass = payload.ok ? 'ok' : 'error';
+            let titleText = payload.ok ? 'Validation passed' : 'Validation failed';
+
+            if (mode === 'create_only') {
+                titleText = payload.ok ? 'Study creation succeeded' : 'Study creation failed';
+            }
 
             let summaryHtml = '';
             if (payload.summary && Object.keys(payload.summary).length > 0) {
@@ -541,6 +559,7 @@
 
             createStudyBtn.disabled = true;
             createStudyBtn.textContent = 'Creating...';
+            setCreateStatus('Creating study...', 'subtle');
             try {
                 const response = await fetch('{{ request.scope.root_path }}/api/admin/studies/create-from-files', {
                     method: 'POST',
@@ -549,6 +568,14 @@
                 });
                 const payload = await response.json();
                 renderResult(payload);
+
+                if (payload && payload.ok) {
+                    const createdStudyNameShort = payload?.summary?.study_name_short || selectedStudyNameShort || 'selected study';
+                    setCreateStatus(`Study '${createdStudyNameShort}' was created successfully.`, 'ok');
+                } else {
+                    const firstErrorMessage = payload?.errors?.[0]?.message || 'Study creation failed. Please review the errors below.';
+                    setCreateStatus(firstErrorMessage, 'error');
+                }
             } finally {
                 createStudyBtn.textContent = 'Create study (create_only, all_or_nothing)';
                 createStudyBtn.disabled = !lastFullStudyValidationEligible;
@@ -579,6 +606,7 @@
                     updateFullStudySelectorFromUploadedFile();
                     lastFullStudyValidationEligible = false;
                     updateCreateStudyActionState(null);
+                    setCreateStatus('');
                 });
             }
 
@@ -587,6 +615,7 @@
                 activitiesInput.addEventListener('change', () => {
                     lastFullStudyValidationEligible = false;
                     updateCreateStudyActionState(null);
+                    setCreateStatus('');
                 });
             }
 
@@ -595,6 +624,7 @@
                 languageMapInput.addEventListener('input', () => {
                     lastFullStudyValidationEligible = false;
                     updateCreateStudyActionState(null);
+                    setCreateStatus('');
                 });
             }
 
@@ -603,6 +633,7 @@
                     try {
                         await createStudyFromFullStudyForm();
                     } catch (error) {
+                        setCreateStatus(error.message || String(error), 'error');
                         renderResult({
                             ok: false,
                             mode: 'create_only',
