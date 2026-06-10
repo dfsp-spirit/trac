@@ -130,6 +130,7 @@
     "fillRequired": "Por favor completa todas las actividades requeridas",
     "submitSuccess": "Diario enviado exitosamente",
     "submitError": "Error al enviar el diario",
+    "sending_retry": "Reintentando guardar tu diario (intento {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Cobertura mínima cumplida",
     "timelineCoverageMissing": "{{covered}} de {{required}} minutos requeridos cubiertos",

@@ -130,6 +130,7 @@
     "fillRequired": "Täytä kaikki vaaditut toiminnot",
     "submitSuccess": "Päiväkirja lähetetty onnistuneesti",
     "submitError": "Virhe päiväkirjan lähetyksessä",
+    "sending_retry": "Yritetään tallentaa päiväkirjaa uudelleen (yritys {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Vähimmäiskattavuus täyttyi",
     "timelineCoverageMissing": "{{covered}} / {{required}} vaaditusta minuutista katettu",

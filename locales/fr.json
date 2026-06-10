@@ -130,6 +130,7 @@
     "fillRequired": "Veuillez remplir toutes les activités requises",
     "submitSuccess": "Journal soumis avec succès",
     "submitError": "Erreur lors de la soumission du journal",
+    "sending_retry": "Nouvelle tentative d'enregistrement du journal (essai {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Couverture minimale atteinte",
     "timelineCoverageMissing": "{{covered}} sur {{required}} minutes requises couvertes",

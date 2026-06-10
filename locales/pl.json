@@ -130,6 +130,7 @@
     "fillRequired": "Proszę wypełnić wszystkie wymagane aktywności",
     "submitSuccess": "Dziennik został pomyślnie wysłany",
     "submitError": "Błąd przy wysyłaniu dziennika",
+    "sending_retry": "Ponawianie próby zapisania dziennika (próba {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Minimalne pokrycie spełnione",
     "timelineCoverageMissing": "Pokryto {{covered}} z {{required}} wymaganych minut",
