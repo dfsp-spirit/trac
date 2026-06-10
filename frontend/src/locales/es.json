@@ -77,7 +77,9 @@
     "customActivity": {
       "title": "Ingresa Actividad Personalizada",
       "childItemTitle": "Ingresa {parentActivity} personalizado/a",
-      "placeholder": "Ingresa tu actividad (máx. 30 caracteres)"
+      "placeholder": "Ingresa tu actividad (máx. 30 caracteres)",
+      "frequency": "Frecuencia",
+      "frequencyNone": "Ninguna frecuencia especial"
     },
     "addActivity": {
       "title": "Agregar Actividad"

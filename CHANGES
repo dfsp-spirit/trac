@@ -1,6 +1,11 @@
 TRAC MPIAE Changes
 ===================
 
+Version 0.15.1 -- Lost in Translation
+---------------------------------------
+- FIX: fix missing translation for frequency dialog
+
+
 Version 0.15.0 -- External tasks refined & Admin interface overhaul
 -------------------------------------------------------------------
 - NEW: refactor external tasks handling to new tasks.html page

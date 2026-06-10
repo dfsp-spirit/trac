@@ -77,7 +77,9 @@
     "customActivity": {
       "title": "Eigene Aktivität eingeben",
       "childItemTitle": "Eigenen Wert eingeben für: {parentActivity}",
-      "placeholder": "Geben Sie Ihre Aktivität ein (max. 30 Zeichen)"
+      "placeholder": "Geben Sie Ihre Aktivität ein (max. 30 Zeichen)",
+      "frequency": "Häufigkeit",
+      "frequencyNone": "Keine besondere Häufigkeit"
     },
     "addActivity": {
       "title": "Aktivität hinzufügen"

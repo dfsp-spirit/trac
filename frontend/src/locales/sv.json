@@ -77,7 +77,9 @@
     "customActivity": {
       "title": "Ange egen aktivitet",
       "childItemTitle": "Ange eget värde för: {parentActivity}",
-      "placeholder": "Ange din aktivitet (max 30 tecken)"
+      "placeholder": "Ange din aktivitet (max 30 tecken)",
+      "frequency": "Frekvens",
+      "frequencyNone": "Ingen speciell frekvens"
     },
     "addActivity": {
       "title": "Lägg till aktivitet"
