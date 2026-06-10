@@ -194,12 +194,71 @@
             return getUrlParams().get('completion_status') || 'completed';
         }
 
+        function getReturnUrlStorageKey() {
+            const urlParams = getUrlParams();
+            const studyName = (urlParams.get('study_name') || 'default').trim();
+            const participantId = (urlParams.get('pid') || '').trim();
+            return `trac:return_url:${studyName}:${participantId}`;
+        }
+
+        function persistReturnUrlFromParams() {
+            const rawReturnUrl = (getUrlParams().get('return_url') || '').trim();
+            if (!rawReturnUrl) {
+                return;
+            }
+            try {
+                window.localStorage.setItem(getReturnUrlStorageKey(), rawReturnUrl);
+            } catch (error) {
+                console.warn('Could not persist return_url on tasks page:', error);
+            }
+        }
+
+        function getEffectiveReturnUrl() {
+            const rawReturnUrl = (getUrlParams().get('return_url') || '').trim();
+            if (rawReturnUrl) {
+                return rawReturnUrl;
+            }
+
+            try {
+                const stored = (window.localStorage.getItem(getReturnUrlStorageKey()) || '').trim();
+                return stored || null;
+            } catch (error) {
+                console.warn('Could not read persisted return_url on tasks page:', error);
+                return null;
+            }
+        }
+
+        function appendReturnUrlToTargetUrl(rawTargetUrl) {
+            if (typeof rawTargetUrl !== 'string' || rawTargetUrl.trim() === '') {
+                return rawTargetUrl;
+            }
+
+            const effectiveReturnUrl = getEffectiveReturnUrl();
+            if (!effectiveReturnUrl) {
+                return rawTargetUrl;
+            }
+
+            try {
+                const targetUrl = new URL(rawTargetUrl, window.location.href);
+                if (!targetUrl.searchParams.has('return_url')) {
+                    targetUrl.searchParams.set('return_url', effectiveReturnUrl);
+                }
+                return targetUrl.toString();
+            } catch (error) {
+                return rawTargetUrl;
+            }
+        }
+
         function buildThankYouUrl() {
             const currentUrl = new URL(window.location.href);
             const redirectUrl = new URL('thank-you.html', currentUrl.href);
             currentUrl.searchParams.forEach((value, key) => {
                 redirectUrl.searchParams.set(key, value);
             });
+            const effectiveReturnUrl = getEffectiveReturnUrl();
+            if (effectiveReturnUrl && !redirectUrl.searchParams.has('return_url')) {
+                redirectUrl.searchParams.set('return_url', effectiveReturnUrl);
+            }
             return redirectUrl.toString();
         }
 
@@ -356,7 +415,7 @@
 
                 if (task?.is_confirmed !== true) {
                     if (typeof task?.continuation_url === 'string' && task.continuation_url.trim() !== '') {
-                        title.href = task.continuation_url;
+                        title.href = appendReturnUrlToTargetUrl(task.continuation_url);
                     } else {
                         title.href = '#';
                         title.classList.remove('task-link');
@@ -401,6 +460,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
+            persistReturnUrlFromParams();
+
             if (getCompletionStatus() === 'noconsent') {
                 window.location.href = buildThankYouUrl();
                 return;
