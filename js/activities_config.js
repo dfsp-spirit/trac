@@ -5,11 +5,21 @@ function getUrlParams() {
 }
 
 export function getCurrentStudyName() {
-  return (
-    getUrlParams().get('study_name') ||
-    window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
-    'default'
-  );
+  // Prefer explicit URL param
+  const urlStudy = getUrlParams().get('study_name');
+  if (urlStudy && urlStudy.trim()) return urlStudy.trim();
+
+  // Prefer study selected by studyConfigManager when available
+  const managerStudy = window.studyConfigManager?.getCurrentStudy?.();
+  if (managerStudy && managerStudy.name_short) return managerStudy.name_short;
+
+  // Treat empty DEFAULT_STUDY_NAME as no frontend default
+  if (window.TUD_SETTINGS && window.TUD_SETTINGS.DEFAULT_STUDY_NAME) {
+    const def = window.TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    if (typeof def === 'string' && def.trim()) return def.trim();
+  }
+
+  return 'default';
 }
 
 export function getCurrentParticipantId() {

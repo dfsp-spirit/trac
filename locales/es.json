@@ -45,6 +45,8 @@
     "title": "Consentimiento",
     "eyebrow": "Consentimiento del estudio",
     "subtitle": "Lea la información de consentimiento a continuación antes de comenzar el estudio.",
+    "studyName": "Nombre del estudio",
+    "description": "Descripción",
     "saving": "Guardando consentimiento...",
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
     "loadError": "No se pudo cargar la información de consentimiento."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Seleccione un estudio para continuar",
+    "noStudiesAvailable": "No hay estudios disponibles en el servidor.",
     "loading": "Cargando...",
     "saving": "Guardando...",
     "saved": "Guardado exitosamente",

@@ -45,6 +45,8 @@
     "title": "Consentement",
     "eyebrow": "Consentement à l'étude",
     "subtitle": "Veuillez lire les informations de consentement ci-dessous avant de commencer l'étude.",
+    "studyName": "Nom de l'étude",
+    "description": "Description",
     "saving": "Enregistrement du consentement...",
     "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
     "loadError": "Impossible de charger les informations de consentement."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Veuillez sélectionner une étude pour continuer",
+    "noStudiesAvailable": "Aucune étude disponible sur le serveur.",
     "loading": "Chargement...",
     "saving": "Sauvegarde...",
     "saved": "Sauvegardé avec succès",

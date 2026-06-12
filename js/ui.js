@@ -688,7 +688,8 @@ export function updateCurrentDayDisplay() {
 
   // Determine day name — use getDayDisplayLabel so display_names translations
   // from studies_config.json are respected for the current language.
-  const fallbackDayWord = window.i18n ? window.i18n.t('common.day') : 'Day';
+  const fallbackDayWord =
+    window.i18n && window.i18n.isReady() ? window.i18n.t('common.day') : 'Day';
   let dayName = window.studyConfigManager?.getDayDisplayLabel(dayIndex);
   if (!dayName || /^day_\d+$/i.test(String(dayName))) {
     // getDayDisplayLabel returned a generic placeholder — try raw label as last resort
@@ -722,20 +723,22 @@ export function updateCurrentDayDisplay() {
     return null;
   }
 
-  const studyDayText = window.i18n
-    ? window.i18n.t('messages.studyDayOf', {
-        current: dayIndex + 1,
-        total: studyDaysCount,
-      })
-    : `Day ${dayIndex + 1} of ${studyDaysCount}`;
+  const studyDayText =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('messages.studyDayOf', {
+          current: dayIndex + 1,
+          total: studyDaysCount,
+        })
+      : `Day ${dayIndex + 1} of ${studyDaysCount}`;
 
-  const dayTooltipText = window.i18n
-    ? window.i18n.t('messages.currentDayTooltip', {
-        dayName,
-        current: dayIndex + 1,
-        total: studyDaysCount,
-      })
-    : `${dayName} (Day ${dayIndex + 1} of ${studyDaysCount})`;
+  const dayTooltipText =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('messages.currentDayTooltip', {
+          dayName,
+          current: dayIndex + 1,
+          total: studyDaysCount,
+        })
+      : `${dayName} (Day ${dayIndex + 1} of ${studyDaysCount})`;
 
   timelineTitle.textContent = '';
 

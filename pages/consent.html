@@ -95,6 +95,14 @@
             max-width: 70ch;
         }
 
+        .study-metadata {
+            margin: 8px 0 0;
+            color: var(--secondary-color);
+            font-size: 0.98rem;
+            line-height: 1.3;
+            max-width: 70ch;
+        }
+
         .consent-body {
             padding: 16px 32px 20px;
         }
@@ -228,6 +236,9 @@
         <header class="consent-header">
             <div class="eyebrow"><i class="fas fa-shield-heart" aria-hidden="true"></i><span data-i18n="consent.eyebrow">Study consent</span></div>
             <h1 id="consent-title" data-i18n="consent.title">Consent</h1>
+            <br />
+            <div id="study-metadata" class="study-metadata" aria-live="polite"></div>
+            <br />
             <p class="subtitle" data-i18n="consent.subtitle">Please read the consent information below before starting the study.</p>
         </header>
 
@@ -282,6 +293,19 @@
 
         function getUrlParams() {
             return new URLSearchParams(window.location.search);
+        }
+
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str).replace(/[&<>"']/g, function (s) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                })[s];
+            });
         }
 
         function setStatus(message, isError = false) {
@@ -398,6 +422,28 @@
                 if (consentTextEl) {
                     const consentText = studyConfig?.study_text_consent || '';
                     consentTextEl.innerHTML = consentText ? renderMarkdown(consentText) : '<p>Please review the information before continuing.</p>';
+                }
+
+                // Show study metadata (localized labels: Study Name, Description)
+                const studyMetaEl = document.getElementById('study-metadata');
+                if (studyMetaEl) {
+                    try {
+                        const fullName = studyConfig?.study_name || '';
+                        const desc = studyConfig?.description || '';
+                        const nameLabel = escapeHtml(i18n.t('consent.studyName') || 'Study Name');
+                        const descLabel = escapeHtml(i18n.t('consent.description') || 'Description');
+                        const parts = [];
+                        if (fullName) {
+                            parts.push(`<div><strong>${nameLabel}:</strong> ${escapeHtml(fullName)}</div>`);
+                        }
+                        if (desc) {
+                            parts.push(`<div style="margin-top:0.25rem;color:var(--secondary-color)"><strong>${descLabel}:</strong> ${escapeHtml(desc)}</div>`);
+                        }
+                        studyMetaEl.innerHTML = parts.join('');
+                    } catch (err) {
+                        console.warn('Failed to render study metadata:', err);
+                        studyMetaEl.textContent = '';
+                    }
                 }
 
                 if (studyConfig?.consent_given === true) {

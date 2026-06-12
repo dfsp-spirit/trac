@@ -45,6 +45,8 @@
     "title": "Samtycke",
     "eyebrow": "Samtycke till studien",
     "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
+    "studyName": "Studiets namn",
+    "description": "Beskrivning",
     "saving": "Sparar samtycke...",
     "saveError": "Kunde inte spara samtycket. Försök igen.",
     "loadError": "Kunde inte läsa in samtyckesinformationen."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Välj en studie för att fortsätta",
+    "noStudiesAvailable": "Inga studier finns på servern.",
     "loading": "Laddar...",
     "saving": "Sparar...",
     "saved": "Sparat framgångsrikt",

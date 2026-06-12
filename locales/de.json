@@ -45,6 +45,8 @@
     "title": "Einwilligung",
     "eyebrow": "Studieneinwilligung",
     "subtitle": "Bitte lesen Sie die Einwilligungsinformationen unten, bevor Sie mit der Studie beginnen.",
+    "studyName": "Studienname",
+    "description": "Beschreibung",
     "saving": "Einwilligung wird gespeichert...",
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Bitte wählen Sie eine Studie, um fortzufahren",
+    "noStudiesAvailable": "Keine Studien auf dem Server verfügbar.",
     "loading": "Lädt...",
     "saving": "Speichert...",
     "saved": "Erfolgreich gespeichert",

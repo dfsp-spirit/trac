@@ -1190,7 +1190,11 @@ export async function sendData(
 
     const { pid, studyData } = createCombinedData();
     const study_name_short =
-      studyData.study_name || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+      studyData.study_name ||
+      window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+        : '');
     const day_label_index = studyData.day_label_index || 0;
     console.log(
       'Participant ID (pid):',

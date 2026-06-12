@@ -55,7 +55,16 @@ function getParticipantIdFromUrl() {
 
 function getStudyNameFromUrl() {
   const urlParams = new URLSearchParams(window.location.search);
-  return urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+  const urlStudy = urlParams.get('study_name');
+  if (urlStudy && urlStudy.trim()) return urlStudy.trim();
+
+  // Treat empty string DEFAULT_STUDY_NAME as "no frontend default"
+  if (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME) {
+    const def = TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    if (typeof def === 'string' && def.trim()) return def.trim();
+  }
+
+  return null;
 }
 
 function normalizeLanguageCode(language) {
@@ -198,10 +207,20 @@ function resolveLocalizedStudyText(
 // Load studies config from JSON file (fallback)
 async function loadStudiesConfigFromFile() {
   try {
-    const response = await fetch(TUD_SETTINGS.DEFAULT_STUDIES_FILE);
+    // Determine studies file to load. If TUD_SETTINGS.DEFAULT_STUDIES_FILE is
+    // missing or empty, fall back to the packaged settings/studies_config.json.
+    const studiesFile =
+      TUD_SETTINGS && typeof TUD_SETTINGS.DEFAULT_STUDIES_FILE === 'string' &&
+      TUD_SETTINGS.DEFAULT_STUDIES_FILE.trim()
+        ? TUD_SETTINGS.DEFAULT_STUDIES_FILE
+        : 'settings/studies_config.json';
+
+    console.log('Loading studies config from file:', studiesFile);
+
+    const response = await fetch(studiesFile);
     if (!response.ok) {
       throw new Error(
-        `Failed to load ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}: ${response.status}`
+        `Failed to load ${studiesFile}: ${response.status}`
       );
     }
     STUDIES_CONFIG_CACHE = await response.json();
@@ -273,10 +292,17 @@ async function loadStudiesConfigFromFile() {
       `Error loading ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}:`,
       error.message
     );
+    // If frontend is explicitly configured with empty defaults, do not fabricate
+    // a fallback study. Let caller decide how to handle absence of studies.
+    if (!TUD_SETTINGS || !TUD_SETTINGS.DEFAULT_STUDY_NAME) {
+      CURRENT_STUDY_CACHE = null;
+      return null;
+    }
+
     // Create a minimal default study as last resort
     CURRENT_STUDY_CACHE = {
       name: 'Default Fallback',
-      name_short: TUD_SETTINGS.DEFAULT_STUDY_NAME,
+      name_short: TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default',
       description: 'Fallback study config',
       day_labels: ['default'],
       study_participant_ids: [],
@@ -298,8 +324,62 @@ async function loadStudiesConfigFromFile() {
 // Sync with backend (preferred source)
 async function syncWithBackendConfig() {
   try {
-    const studyName = getStudyNameFromUrl();
+    let studyName = getStudyNameFromUrl();
     const participantId = getParticipantIdFromUrl();
+    const selectedLanguage = getPreferredLanguage(
+      CURRENT_STUDY_CACHE?.supported_languages || [],
+      CURRENT_STUDY_CACHE?.default_language || 'en'
+    );
+
+    // If no studyName was provided via URL or frontend default, ask backend for
+    // active open studies and pick the first one. If backend returns empty,
+    // signal the caller that there are no studies available.
+    if (!studyName) {
+      const openListUrl = `${TUD_SETTINGS.API_BASE_URL}/active_open_study_names`;
+      console.log(`No study specified locally; querying ${openListUrl}`);
+      console.log('TUD_SETTINGS:', TUD_SETTINGS);
+      let listResp = null;
+      try {
+        listResp = await fetchWithBackgroundRetry(openListUrl, 1, 800);
+        console.log('active_open_study_names response status:', listResp && listResp.status);
+      } catch (err) {
+        console.log('Failed to fetch active open study names:', err.message, err);
+        // Let subsequent fetch attempt fail and fallback to file config
+        studyName = null;
+      }
+
+      if (listResp && listResp.ok) {
+        const studiesList = await listResp.json();
+        if (!Array.isArray(studiesList) || studiesList.length === 0) {
+          const noStudiesError = new Error(
+            'No active open studies available from backend.'
+          );
+          noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+          throw noStudiesError;
+        }
+        // If multiple studies are available, surface choice to the UI
+        if (studiesList.length === 1) {
+          studyName = studiesList[0].name_short;
+          console.log(`Auto-selected study from backend: ${studyName}`);
+        } else {
+          // Expose list for the UI and abort initialization so caller can render chooser
+          window.availableOpenStudies = Array.isArray(studiesList)
+            ? studiesList
+            : [];
+          const choiceError = new Error('Multiple open studies available');
+          choiceError.code = 'STUDY_CHOICES_AVAILABLE';
+          throw choiceError;
+        }
+      }
+
+      // Rebuild apiUrl with selected studyName (if any)
+      if (studyName) {
+        apiUrl.pathname = `${TUD_SETTINGS.API_BASE_URL.replace(/https?:\/\//, '')}/studies/${studyName}/study-config`;
+      }
+
+    }
+
+    // Build the final URL to request study-config from backend
     const apiUrl = new URL(
       `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`,
       window.location.origin
@@ -307,27 +387,20 @@ async function syncWithBackendConfig() {
     if (participantId) {
       apiUrl.searchParams.set('participant_id', participantId);
     }
-    const selectedLanguage = getPreferredLanguage(
-      CURRENT_STUDY_CACHE?.supported_languages || [],
-      CURRENT_STUDY_CACHE?.default_language || 'en'
-    );
     if (selectedLanguage) {
       apiUrl.searchParams.set('lang', selectedLanguage);
     }
 
-    console.log(
-      `Attempting to sync study config from backend: ${apiUrl.toString()}`
-    );
+    console.log(`Attempting to sync study config from backend: ${apiUrl.toString()}`);
+    console.log('TUD_SETTINGS.API_BASE_URL:', TUD_SETTINGS.API_BASE_URL, 'studyName:', studyName, 'participantId:', participantId, 'selectedLanguage:', selectedLanguage);
 
     // Use simple retry for background sync (silent backoff, no UI notifications)
     let response;
     try {
       response = await fetchWithBackgroundRetry(apiUrl.toString(), 2, 1200);
+      console.log('study-config fetch response status:', response && response.status);
     } catch (error) {
-      console.log(
-        'Backend unavailable after retries, using file config:',
-        error.message
-      );
+      console.log('Backend unavailable after retries, using file config:', error && error.message, error);
       CURRENT_STUDY_CACHE.source = 'file';
       return CURRENT_STUDY_CACHE;
     }
@@ -660,14 +733,18 @@ async function initializeStudyConfig() {
     await syncWithBackendConfig();
     console.log('Backend sync completed in initializeStudyConfig');
   } catch (error) {
+    // When backend indicates there are no studies or multiple choices available,
+    // propagate these specific codes so the caller can present the correct UI.
     if (
       error?.code === 'STUDY_NOT_AUTHORIZED' ||
       error?.code === 'STUDY_UNAVAILABLE' ||
-      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' ||
+      error?.code === 'NO_STUDIES_AVAILABLE' ||
+      error?.code === 'STUDY_CHOICES_AVAILABLE'
     ) {
       throw error;
     }
-    console.log('Background sync failed:', error.message);
+    console.log('Background sync failed:', error && error.message ? error.message : error);
   }
 
   return CURRENT_STUDY_CACHE;

@@ -45,6 +45,8 @@
     "title": "Suostumus",
     "eyebrow": "Tutkimuksen suostumus",
     "subtitle": "Lue alla olevat suostumustiedot ennen kuin aloitat tutkimuksen.",
+    "studyName": "Tutkimuksen nimi",
+    "description": "Kuvaus",
     "saving": "Tallennetaan suostumusta...",
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
     "loadError": "Suostumustietojen lataaminen epäonnistui."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Valitse tutkimus jatkaaksesi",
+    "noStudiesAvailable": "Palvelimella ei ole saatavilla tutkimuksia.",
     "loading": "Ladataan...",
     "saving": "Tallennetaan...",
     "saved": "Tallennettu onnistuneesti",

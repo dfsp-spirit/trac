@@ -45,6 +45,8 @@
     "title": "Zgoda",
     "eyebrow": "Zgoda na udział w badaniu",
     "subtitle": "Przeczytaj poniższe informacje o zgodzie, zanim rozpoczniesz badanie.",
+    "studyName": "Nazwa badania",
+    "description": "Opis",
     "saving": "Zapisywanie zgody...",
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
     "loadError": "Nie udało się wczytać informacji o zgodzie."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Wybierz badanie, aby kontynuować",
+    "noStudiesAvailable": "Brak dostępnych badań na serwerze.",
     "loading": "Ładowanie...",
     "saving": "Zapisuję...",
     "saved": "Zapisano pomyślnie",

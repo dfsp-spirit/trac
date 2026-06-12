@@ -47,8 +47,10 @@ if (window.i18n) {
 // Check study-specific activities config language from studies_config.json
 const debugStudyName =
   new URLSearchParams(window.location.search).get('study_name') ||
-  window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
-  'default';
+  window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+  (window.TUD_SETTINGS && window.TUD_SETTINGS.DEFAULT_STUDY_NAME
+    ? window.TUD_SETTINGS.DEFAULT_STUDY_NAME
+    : 'default');
 fetch('./settings/studies_config.json')
   .then((response) => response.json())
   .then((studiesConfig) => {

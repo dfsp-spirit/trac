@@ -405,7 +405,9 @@ function getInstructionBannerStorageKey() {
   const urlParams = new URLSearchParams(window.location.search);
   const pid = urlParams.get('pid') || 'anonymous';
   const studyName =
-    urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+    urlParams.get('study_name') ||
+    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME ? TUD_SETTINGS.DEFAULT_STUDY_NAME : '');
   return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 
@@ -4871,7 +4873,12 @@ function getPendingTimelineContext() {
   const urlParams = new URLSearchParams(window.location.search);
   return {
     pid: urlParams.get('pid') || '',
-    study_name: urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME,
+    study_name:
+      window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+      urlParams.get('study_name') ||
+      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+        : ''),
     day_label_index: String(parseInt(urlParams.get('day_label_index')) || 0),
   };
 }
@@ -5293,7 +5300,84 @@ async function init() {
     '==================== Initializing TUD frontend application... ===================='
   );
   try {
-    await window.studyConfigManager?.initializeStudyConfig();
+    try {
+      await window.studyConfigManager?.initializeStudyConfig();
+    } catch (initErr) {
+      if (initErr && initErr.code === 'NO_STUDIES_AVAILABLE') {
+        console.warn('No studies available on server.');
+        // Show friendly message in UI and stop initialization
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const msg = document.createElement('div');
+          msg.className = 'no-studies-message';
+          msg.style.padding = '24px';
+          msg.style.textAlign = 'center';
+          msg.style.color = '#666';
+          msg.style.fontSize = '1.1rem';
+          msg.textContent =
+            window.i18n && window.i18n.isReady()
+              ? window.i18n.t('messages.noStudiesAvailable')
+              : 'No studies available on server.';
+          timelinesWrapper.appendChild(msg);
+        }
+        // Update footer status
+        const footerStatus = document.getElementById('footer_backend_status');
+        if (footerStatus) {
+          footerStatus.textContent =
+            window.i18n && window.i18n.isReady()
+              ? i18n.t('messages.noStudiesAvailable')
+              : 'No studies available on server.';
+          footerStatus.style.color = 'orange';
+        }
+        return; // stop further initialization
+      } else if (initErr && initErr.code === 'STUDY_CHOICES_AVAILABLE') {
+        console.log('Multiple studies available; showing chooser');
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const container = document.createElement('div');
+          container.className = 'study-chooser';
+          container.style.padding = '20px';
+          container.style.textAlign = 'center';
+
+          const title = document.createElement('h2');
+          title.textContent =
+            (window.i18n && window.i18n.isReady()
+              ? window.i18n.t('messages.selectStudy')
+              : 'Please select a study to continue');
+          container.appendChild(title);
+
+          const list = document.createElement('div');
+          list.style.display = 'flex';
+          list.style.flexDirection = 'column';
+          list.style.gap = '8px';
+          list.style.alignItems = 'center';
+
+          const studies = window.availableOpenStudies || [];
+          studies.forEach((s) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn study-choose-btn';
+            btn.style.minWidth = '280px';
+            btn.style.padding = '12px';
+            btn.style.textAlign = 'left';
+            btn.innerHTML = `<strong>${s.name || s.name_short}</strong><div style="font-size:small;color:#666">${s.description || ''}</div>`;
+            btn.addEventListener('click', () => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('study_name', s.name_short);
+              // Reload with chosen study param
+              window.location.href = url.toString();
+            });
+            list.appendChild(btn);
+          });
+
+          container.appendChild(list);
+          timelinesWrapper.appendChild(container);
+        }
+        return; // stop init; user will reload by choosing
+      }
+      throw initErr;
+    }
 
     const currentStudy = window.studyConfigManager?.getCurrentStudy();
     if (!currentStudy) {
@@ -5349,8 +5433,15 @@ async function init() {
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const participantId = urlParams.get('pid');
+    // Prefer study selected/auto-resolved by studyConfigManager; fallback to URL or frontend default
+    const resolvedStudyFromManager =
+      window.studyConfigManager?.getCurrentStudy()?.name_short || null;
     const studyName =
-      urlParams.get('study_name') || TUD_SETTINGS.DEFAULT_STUDY_NAME;
+      resolvedStudyFromManager ||
+      urlParams.get('study_name') ||
+      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+        : '');
     const templateUser = (urlParams.get('template_user') || '').trim() || null;
     const selectedLanguage = getPreferredLanguage(
       currentStudy.supported_languages || [],

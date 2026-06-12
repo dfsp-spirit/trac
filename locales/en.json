@@ -45,6 +45,8 @@
     "title": "Consent",
     "eyebrow": "Study consent",
     "subtitle": "Please read the consent information below before starting the study.",
+    "studyName": "Study Name",
+    "description": "Description",
     "saving": "Saving consent...",
     "saveError": "Could not save consent. Please try again.",
     "loadError": "Could not load the consent information."
@@ -122,6 +124,8 @@
     }
   },
   "messages": {
+    "selectStudy": "Please select a study to continue",
+    "noStudiesAvailable": "No studies available on server.",
     "loading": "Loading...",
     "saving": "Saving...",
     "saved": "Saved successfully",
