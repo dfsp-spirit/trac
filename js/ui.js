@@ -313,9 +313,7 @@ function createModal() {
   const _t = (key, params) =>
     i18n && i18n.isReady() ? i18n.t(key, params) : key;
 
-  const studyEndInfo = isLastStudyDay
-    ? _t('modals.confirmSubmit.studyEnd')
-    : '';
+  const studyEndInfo = isLastStudyDay ? _t('modals.confirmSubmit.studyEnd') : '';
   const infoOnTemplateDate = isLastStudyDay
     ? studyEndInfo
     : _t('modals.confirmSubmit.infoOnTemplate');
@@ -327,13 +325,24 @@ function createModal() {
     currentDay: currentDayIndex + 1,
     totalDays: numStudyDaysCount,
   });
-  const messageText = _t('modals.confirmSubmit.message', { dayLabel });
+
+  // Show the original "cannot change previous days" message only when
+  // previous-day switching buttons are disabled in settings.
+  const showPreviousDaysButtons = Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS);
+  const showCannotChangeMessage = !showPreviousDaysButtons;
+
+  const messageText = showCannotChangeMessage
+    ? _t('modals.confirmSubmit.message', { dayLabel })
+    : '';
+
+  // Use explicit element IDs so i18n language-change updates target the right elements
+  // regardless of whether the message paragraph is present.
   confirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
-                <h3>${titleText}</h3>
-                <p>${messageText}</p>
-                <p data-i18n-html="${
+                <h3 id="confirmationTitle">${titleText}</h3>
+                ${showCannotChangeMessage ? `<p id="confirmationMessage">${messageText}</p>` : ''}
+                <p id="confirmationInfo" data-i18n-html="${
                   isLastStudyDay
                     ? 'modals.confirmSubmit.studyEnd'
                     : 'modals.confirmSubmit.infoOnTemplate'
@@ -348,9 +357,9 @@ function createModal() {
 
   // Update modal text when the user switches language mid-session
   window.addEventListener('i18n:languageChanged', () => {
-    const h3 = confirmationModal.querySelector('h3');
-    const messageP = confirmationModal.querySelector('p:first-of-type');
-    const infoP = confirmationModal.querySelector('p:last-of-type');
+    const h3 = document.getElementById('confirmationTitle');
+    const messageP = document.getElementById('confirmationMessage');
+    const infoP = document.getElementById('confirmationInfo');
     const okBtn = confirmationModal.querySelector('#confirmOk');
     if (h3) {
       h3.textContent = _t('modals.confirmSubmit.title', {
@@ -360,6 +369,7 @@ function createModal() {
       });
     }
     if (messageP) {
+      // Only update if the message paragraph exists (i.e., setting hides it otherwise)
       messageP.textContent = _t('modals.confirmSubmit.message', { dayLabel });
     }
     if (infoP) {
