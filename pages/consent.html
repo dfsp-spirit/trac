@@ -248,7 +248,13 @@
             <div class="eyebrow"><i class="fas fa-shield-heart" aria-hidden="true"></i><span data-i18n="consent.eyebrow">Study consent</span></div>
             <h1 id="consent-title" data-i18n="consent.title">Consent</h1>
             <br />
-            <div id="study-metadata" class="study-metadata" aria-live="polite"></div>
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                <div id="study-metadata" class="study-metadata" aria-live="polite"></div>
+                <div id="consent-language-selector-container" style="margin-left:auto">
+                    <label for="consentLanguageSelector" style="font-size:0.95rem;color:var(--secondary-color);margin-right:0.5rem;">Language</label>
+                    <select id="consentLanguageSelector" aria-label="Select language"></select>
+                </div>
+            </div>
             <br />
             <p class="subtitle" data-i18n="consent.subtitle">Please read the consent information below before starting the study.</p>
         </header>
@@ -485,10 +491,13 @@
 
                 // Show study metadata (localized labels: Study Name, Description)
                 const studyMetaEl = document.getElementById('study-metadata');
+                const langSelector = document.getElementById('consentLanguageSelector');
                 if (studyMetaEl) {
                     try {
                         const fullName = studyConfig?.study_name || '';
-                        const desc = studyConfig?.description || '';
+                        // Prefer the i18n map when present
+                        const selectedLang = studyConfig?.selected_language || (requestedLanguage || 'en');
+                        const desc = (studyConfig?.description_i18n && studyConfig.description_i18n[selectedLang]) || studyConfig?.description || '';
                         const nameLabel = escapeHtml(i18n.t('consent.studyName') || 'Study Name');
                         const descLabel = escapeHtml(i18n.t('consent.description') || 'Description');
                         const parts = [];
@@ -502,6 +511,43 @@
                     } catch (err) {
                         console.warn('Failed to render study metadata:', err);
                         studyMetaEl.textContent = '';
+                    }
+                }
+
+                // Populate language selector
+                if (langSelector) {
+                    try {
+                        const supported = studyConfig?.supported_languages || [studyConfig?.default_language || 'en'];
+                        // Normalize and dedupe
+                        const seen = new Set();
+                        const opts = [];
+                        (supported || []).forEach(l => {
+                            if (!l) return;
+                            const code = String(l).split('-')[0];
+                            if (seen.has(code)) return;
+                            seen.add(code);
+                            opts.push(code);
+                        });
+                        // Clear existing
+                        langSelector.innerHTML = '';
+                        opts.forEach(code => {
+                            const option = document.createElement('option');
+                            option.value = code;
+                            // Show friendly upper-case short code (EN/DE/SV)
+                            option.textContent = code.toUpperCase();
+                            langSelector.appendChild(option);
+                        });
+                        const current = studyConfig?.selected_language || (requestedLanguage || studyConfig?.default_language) || 'en';
+                        langSelector.value = current;
+                        langSelector.addEventListener('change', () => {
+                            const params = getUrlParams();
+                            params.set('lang', langSelector.value);
+                            // Preserve other params
+                            const base = window.location.pathname;
+                            window.location.href = `${base}?${params.toString()}`;
+                        });
+                    } catch (e) {
+                        // ignore
                     }
                 }
 

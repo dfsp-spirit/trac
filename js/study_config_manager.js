@@ -283,6 +283,13 @@ async function loadStudiesConfigFromFile() {
       CURRENT_STUDY_CACHE.default_language || 'en'
     );
 
+    // Resolve study description to a single-language string for frontend consumption.
+    CURRENT_STUDY_CACHE.description = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.description,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+
     console.log(
       `Loaded study from file: ${CURRENT_STUDY_CACHE.name} with ${CURRENT_STUDY_CACHE.day_labels.length} days`
     );
