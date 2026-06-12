@@ -32,21 +32,25 @@
                 radial-gradient(circle at bottom right, rgba(5, 150, 105, 0.08), transparent 28%),
                 linear-gradient(135deg, var(--background-color) 0%, #e2e8f0 100%);
             color: var(--text-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 24px;
+            display: grid;
+            grid-template-columns: 1fr minmax(0, 1100px) 1fr;
+            grid-auto-rows: 1fr;
+            padding: 0;
             box-sizing: border-box;
         }
 
         .consent-shell {
-            width: min(860px, 100%);
+            grid-column: 2;
+            width: 100%;
             background: var(--surface-color);
-            border: 1px solid rgba(226, 232, 240, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.12);
-            overflow: hidden;
-            animation: fadeInUp 0.5s ease-out;
+            border-left: 1px solid rgba(226, 232, 240, 0.95);
+            border-right: 1px solid rgba(226, 232, 240, 0.95);
+            border-top: none;
+            border-bottom: none;
+            border-radius: 0;
+            box-shadow: none;
+            overflow: visible;
+            animation: none;
         }
 
         @keyframes fadeInUp {
@@ -55,9 +59,9 @@
         }
 
         .consent-header {
-            padding: 32px 32px 20px;
+            padding: 24px 32px 12px;
             border-bottom: 1px solid var(--border-color);
-            background: linear-gradient(180deg, rgba(37, 99, 235, 0.05), rgba(37, 99, 235, 0));
+            background: linear-gradient(180deg, rgba(37, 99, 235, 0.02), rgba(37, 99, 235, 0));
         }
 
         .eyebrow {
@@ -92,7 +96,7 @@
         }
 
         .consent-body {
-            padding: 28px 32px 32px;
+            padding: 16px 32px 20px;
         }
 
         .consent-text {
@@ -193,13 +197,17 @@
 
         @media (max-width: 640px) {
             body {
-                padding: 14px;
+                grid-template-columns: 12px 1fr 12px;
+            }
+
+            .consent-shell {
+                grid-column: 2;
             }
 
             .consent-header,
             .consent-body {
-                padding-left: 20px;
-                padding-right: 20px;
+                padding-left: 18px;
+                padding-right: 18px;
             }
 
             .consent-actions {
