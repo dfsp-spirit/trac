@@ -177,8 +177,19 @@
         }
 
         .btn:disabled {
-            cursor: progress;
-            opacity: 0.72;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-primary:disabled {
+            background: #9aa5b1; /* more gray, less green */
+            color: #ffffff;
+            box-shadow: none;
+        }
+        .btn-secondary:disabled {
+            background: #f3f4f6;
+            color: #9aa5b1;
+            border-color: transparent;
         }
 
         .btn-primary {
@@ -244,6 +255,15 @@
 
         <section class="consent-body">
             <div id="study-consent-text" class="consent-text" aria-live="polite"></div>
+
+            <br />
+
+            <div class="consent-checkbox" style="margin-top:18px;">
+                <label style="display:inline-flex;align-items:center;gap:0.6rem;font-size:0.98rem;">
+                    <input id="consentCheckbox" type="checkbox" aria-labelledby="consent-checkbox-label">
+                    <span id="consent-checkbox-label" data-i18n="consent.checkboxLabel" style="font-weight:700">I have read and understood the information on this page.</span>
+                </label>
+            </div>
 
             <div class="consent-actions">
                 <button id="consentAcceptBtn" type="button" class="btn btn-primary" data-i18n="buttons.giveConsent">Give consent and continue</button>
@@ -363,13 +383,52 @@
         function wireButtons() {
             const acceptBtn = document.getElementById('consentAcceptBtn');
             const declineBtn = document.getElementById('consentDeclineBtn');
+            const consentCheckbox = document.getElementById('consentCheckbox');
             if (!acceptBtn || !declineBtn) {
                 return;
             }
 
+            // Require checkbox to be checked before enabling the primary consent button
+            const updateButtonsState = () => {
+                const disabled = !(consentCheckbox && consentCheckbox.checked);
+                acceptBtn.disabled = disabled;
+                declineBtn.disabled = disabled;
+                // tooltip when disabled
+                const tip = (i18n && i18n.t) ? (i18n.t('consent.checkboxTooltip') || 'Please tick the checkbox above') : 'Please tick the checkbox above';
+                try {
+                    acceptBtn.title = disabled ? tip : '';
+                    declineBtn.title = disabled ? tip : '';
+                } catch (e) {
+                    acceptBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                    declineBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                }
+            };
+
+            if (consentCheckbox) {
+                updateButtonsState();
+                consentCheckbox.addEventListener('change', () => {
+                    updateButtonsState();
+                });
+            } else {
+                acceptBtn.disabled = false;
+                declineBtn.disabled = false;
+                acceptBtn.title = '';
+                declineBtn.title = '';
+            }
+
             const setBusy = (busy) => {
-                acceptBtn.disabled = busy;
-                declineBtn.disabled = busy;
+                const checkboxChecked = consentCheckbox ? consentCheckbox.checked : true;
+                const disabled = busy || !checkboxChecked;
+                acceptBtn.disabled = disabled;
+                declineBtn.disabled = disabled;
+                const tip = (i18n && i18n.t) ? (i18n.t('consent.checkboxTooltip') || 'Please tick the checkbox above') : 'Please tick the checkbox above';
+                try {
+                    acceptBtn.title = disabled ? tip : '';
+                    declineBtn.title = disabled ? tip : '';
+                } catch (e) {
+                    acceptBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                    declineBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                }
             };
 
             acceptBtn.addEventListener('click', async () => {

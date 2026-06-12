@@ -46,6 +46,8 @@
     "eyebrow": "Consentimiento del estudio",
     "subtitle": "Lea la información de consentimiento a continuación antes de comenzar el estudio.",
     "studyName": "Nombre del estudio",
+    "checkboxLabel": "He leído y comprendido la información en esta página.",
+    "checkboxTooltip": "Por favor marque la casilla de arriba",
     "description": "Descripción",
     "saving": "Guardando consentimiento...",
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",

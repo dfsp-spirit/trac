@@ -46,6 +46,8 @@
     "eyebrow": "Tutkimuksen suostumus",
     "subtitle": "Lue alla olevat suostumustiedot ennen kuin aloitat tutkimuksen.",
     "studyName": "Tutkimuksen nimi",
+    "checkboxLabel": "Olen lukenut ja ymmärtänyt tällä sivulla esitetyt tiedot.",
+    "checkboxTooltip": "Valitse yllä oleva valintaruutu",
     "description": "Kuvaus",
     "saving": "Tallennetaan suostumusta...",
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",

@@ -46,6 +46,8 @@
     "eyebrow": "Samtycke till studien",
     "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
     "studyName": "Studiets namn",
+    "checkboxLabel": "Jag har läst och förstått informationen på denna sida.",
+    "checkboxTooltip": "Vänligen bocka i rutan ovan",
     "description": "Beskrivning",
     "saving": "Sparar samtycke...",
     "saveError": "Kunde inte spara samtycket. Försök igen.",

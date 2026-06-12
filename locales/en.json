@@ -46,6 +46,8 @@
     "eyebrow": "Study consent",
     "subtitle": "Please read the consent information below before starting the study.",
     "studyName": "Study Name",
+    "checkboxLabel": "I have read and understood the information on this page.",
+    "checkboxTooltip": "Please tick the checkbox above",
     "description": "Description",
     "saving": "Saving consent...",
     "saveError": "Could not save consent. Please try again.",

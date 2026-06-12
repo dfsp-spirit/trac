@@ -46,6 +46,8 @@
     "eyebrow": "Zgoda na udział w badaniu",
     "subtitle": "Przeczytaj poniższe informacje o zgodzie, zanim rozpoczniesz badanie.",
     "studyName": "Nazwa badania",
+    "checkboxLabel": "Przeczytałem/Przeczytałam i zrozumiałem/zrozumiałam informacje na tej stronie.",
+    "checkboxTooltip": "Proszę zaznaczyć powyższe pole wyboru",
     "description": "Opis",
     "saving": "Zapisywanie zgody...",
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",

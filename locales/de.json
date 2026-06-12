@@ -46,6 +46,8 @@
     "eyebrow": "Studieneinwilligung",
     "subtitle": "Bitte lesen Sie die Einwilligungsinformationen unten, bevor Sie mit der Studie beginnen.",
     "studyName": "Studienname",
+    "checkboxLabel": "Ich habe die Informationen auf dieser Seite gelesen und verstanden.",
+    "checkboxTooltip": "Bitte aktivieren Sie das obige Kontrollkästchen",
     "description": "Beschreibung",
     "saving": "Einwilligung wird gespeichert...",
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
