@@ -72,21 +72,7 @@ def _ensure_study_text_columns() -> None:
             logger.info("Added missing studies.%s column", column_name)
 
 
-def _ensure_description_i18n_column() -> None:
-    inspector = inspect(engine)
-    if "studies" not in inspector.get_table_names():
-        return
 
-    existing_columns = {column["name"] for column in inspector.get_columns("studies")}
-    if "description_i18n" in existing_columns:
-        return
-
-    with engine.begin() as connection:
-        # Add JSON column for localized description
-        connection.execute(
-            text("ALTER TABLE studies ADD COLUMN description_i18n JSON")
-        )
-        logger.info("Added missing studies.description_i18n column")
 
 
 def _ensure_is_paused_column() -> None:
@@ -375,28 +361,18 @@ def _hydrate_study_texts_from_config(
             if config_value is not None:
                 setattr(study, field_name, config_value)
                 updated = True
-    # Handle description -> description_i18n migration/initialization
+    # Handle description initialization from config (may be i18n map)
     try:
         description_map = study_config.get_description_map()
     except Exception:
         description_map = {}
 
     if description_map:
-        # If DB doesn't have the i18n map, set it
-        if not getattr(study, "description_i18n", None):
-            study.description_i18n = description_map
+        # Store the i18n map in the single `description` JSON column if DB
+        # doesn't already have a description value.
+        if not getattr(study, "description", None):
+            study.description = description_map
             updated = True
-
-        # Ensure single-string fallback exists in `description`
-        if not study.description:
-            fallback = (
-                description_map.get(study.default_language)
-                or description_map.get(next(iter(description_map.keys())))
-                or None
-            )
-            if fallback:
-                study.description = fallback
-                updated = True
 
     return updated
 
@@ -759,7 +735,6 @@ def create_db_and_tables(do_report_contents: bool = False):
             else:
                 raise
         _ensure_study_text_columns()
-        _ensure_description_i18n_column()
         _ensure_is_paused_column()
         _ensure_require_diary_before_external_tasks_column()
         _ensure_allow_skip_timeuse_column()
@@ -1091,11 +1066,12 @@ def create_config_file_studies_in_database(config_path: str):
                             or next(iter(description_map.values()), None)
                         )
 
+                    # Store either the i18n map (preferred) or a single-string
+                    # fallback into the unified `description` field.
                     study = Study(
                         name=study_config.name,
                         name_short=study_config.name_short,
-                        description=fallback_description,
-                        description_i18n=description_map or None,
+                        description=(description_map or fallback_description),
                         allow_unlisted_participants=study_config.allow_unlisted_participants,
                         require_consent=study_config.require_consent,
                         is_paused=study_config.is_paused,

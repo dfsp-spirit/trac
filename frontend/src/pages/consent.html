@@ -497,7 +497,13 @@
                         const fullName = studyConfig?.study_name || '';
                         // Prefer the i18n map when present
                         const selectedLang = studyConfig?.selected_language || (requestedLanguage || 'en');
-                        const desc = (studyConfig?.description_i18n && studyConfig.description_i18n[selectedLang]) || studyConfig?.description || '';
+                        let desc = '';
+                        const d = studyConfig?.description;
+                        if (d && typeof d === 'object') {
+                            desc = d[selectedLang] || d[studyConfig?.default_language] || d['en'] || '';
+                        } else {
+                            desc = d || '';
+                        }
                         const nameLabel = escapeHtml(i18n.t('consent.studyName') || 'Study Name');
                         const descLabel = escapeHtml(i18n.t('consent.description') || 'Description');
                         const parts = [];

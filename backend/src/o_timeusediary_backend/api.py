@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import logging
 import uuid
-from typing import Dict, List, Optional, Set, Tuple, Any
+from typing import Dict, List, Optional, Set, Tuple, Any, Union
 from datetime import datetime
 import csv
 import json
@@ -313,7 +313,7 @@ def _get_participant_external_tasks(
             config.get("name_i18n"), selected_language, study.default_language
         )
         localized_description = _get_localized_external_task_text(
-            config.get("description_i18n"), selected_language, study.default_language
+            config.get("description"), selected_language, study.default_language
         )
         tasks.append(
             ParticipantExternalTaskResponse(
@@ -2541,11 +2541,12 @@ def _create_study_from_import_payload(
         description_map.get(validated_data["default_language"]) or next(iter(description_map.values()), "")
     )
 
+    # Store either the i18n map (preferred) or a single-string fallback
+    # into the unified `description` field on import.
     study = Study(
         name=study_payload.name,
         name_short=study_payload.name_short,
-        description=fallback_description,
-        description_i18n=description_map or None,
+        description=(description_map or fallback_description),
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         require_consent=study_payload.require_consent,
         allow_skip_timeuse=study_payload.allow_skip_timeuse,
@@ -3206,9 +3207,6 @@ async def export_runtime_studies_config(
                 "name": study.name,
                 "name_short": study.name_short,
                 "description": study.description,
-                "description_i18n": (
-                    study.description_i18n if isinstance(study.description_i18n, dict) else None
-                ),
                 "day_labels": day_labels_export,
                 "study_participant_ids": participant_ids,
                 "allow_unlisted_participants": study.allow_unlisted_participants,
@@ -3225,10 +3223,10 @@ async def export_runtime_studies_config(
                             else {study.default_language: external_task.name}
                         ),
                         "description": (
-                            external_task.config.get("description_i18n")
+                            external_task.config.get("description")
                             if isinstance(external_task.config, dict)
                             and isinstance(
-                                external_task.config.get("description_i18n"), dict
+                                external_task.config.get("description"), dict
                             )
                             else (
                                 {study.default_language: external_task.description}
@@ -5022,8 +5020,7 @@ def copy_cross_user_template_activities(
 class ActiveOpenStudyResponse(BaseModel):
     name_short: str
     name: Optional[str] = None
-    description: Optional[str] = None
-    description_i18n: Optional[Dict[str, str]] = None
+    description: Optional[Union[str, Dict[str, str]]] = None
 
 
 @app.get("/api/active_open_study_names", response_model=List[ActiveOpenStudyResponse])
@@ -5061,7 +5058,6 @@ async def get_active_open_study_names(session: Session = Depends(get_session)):
                 name_short=study.name_short,
                 name=study.name,
                 description=study.description,
-                description_i18n=(study.description_i18n if isinstance(study.description_i18n, dict) else None),
             )
             for study in studies
         ]
@@ -5106,8 +5102,7 @@ class ParticipantExternalTaskResponse(BaseModel):
 class StudyConfigResponse(BaseModel):
     study_name: str
     study_name_short: str
-    description: str
-    description_i18n: Optional[Dict[str, str]] = None
+    description: Optional[Union[str, Dict[str, str]]] = None
     allow_unlisted_participants: bool
     require_consent: bool = False
     allow_skip_timeuse: bool = True
@@ -5343,14 +5338,15 @@ def get_study_config(
 
     # Resolve localized study description for the selected language when possible
     localized_description = _get_localized_study_text(
-        study, "description_i18n", selected_language
-    ) or study.description
+        study, "description", selected_language
+    )
+    if localized_description is None and isinstance(study.description, str):
+        localized_description = study.description
 
     return StudyConfigResponse(
         study_name=study.name,
         study_name_short=study.name_short,
         description=localized_description,
-        description_i18n=(study.description_i18n if isinstance(study.description_i18n, dict) else None),
         allow_unlisted_participants=study.allow_unlisted_participants,
         require_consent=require_consent,
         allow_skip_timeuse=study.allow_skip_timeuse,

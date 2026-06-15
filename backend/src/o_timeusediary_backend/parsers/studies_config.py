@@ -135,7 +135,7 @@ def get_external_task_effective_config(
 ) -> Dict[str, Any]:
     return {
         "name_i18n": dict(external_task.name),
-        "description_i18n": dict(external_task.description or {}),
+        "description": dict(external_task.description or {}),
         "outbound_tokens": [
             {
                 "name": token_group.name,
