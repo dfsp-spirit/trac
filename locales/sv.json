@@ -170,6 +170,9 @@
     "message": "Tack för att du deltar i vår <span class=\"app-name\">TRAC</span>-studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
     "continueLink": "Klicka här för att fortsätta."
   },
+  "taskPage": {
+    "title": "TRAC Uppgifter"
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Ansluter till backend...",

@@ -170,6 +170,9 @@
     "message": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research.",
     "continueLink": "Click here to continue."
   },
+  "taskPage": {
+    "title": "TRAC Tasks"
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Connecting to backend...",
