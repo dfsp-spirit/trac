@@ -171,7 +171,10 @@
     "continueLink": "Klicka här för att fortsätta."
   },
   "taskPage": {
-    "title": "TRAC Uppgifter"
+    "title": "TRAC Uppgifter",
+    "heading": "Slutliga uppgifter",
+    "subtitle": "Vänligen genomför följande uppgifter innan du avslutar studien.",
+    "continueLink": "Fortsätt till slutsidan"
   },
   "footer": {
     "title": "TRAC",

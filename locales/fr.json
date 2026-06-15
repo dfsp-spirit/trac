@@ -171,7 +171,10 @@
     "continueLink": "Cliquez ici pour continuer."
   },
   "taskPage": {
-    "title": "TRAC Tâches"
+    "title": "TRAC Tâches",
+    "heading": "Tâches finales",
+    "subtitle": "Veuillez effectuer les tâches suivantes avant de terminer l'étude.",
+    "continueLink": "Continuer vers la page finale"
   },
   "footer": {
     "title": "TRAC",

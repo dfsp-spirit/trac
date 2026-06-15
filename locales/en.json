@@ -171,7 +171,10 @@
     "continueLink": "Click here to continue."
   },
   "taskPage": {
-    "title": "TRAC Tasks"
+    "title": "TRAC Tasks",
+    "heading": "Final Tasks",
+    "subtitle": "Please complete the following tasks before finishing the study.",
+    "continueLink": "Continue to final page"
   },
   "footer": {
     "title": "TRAC",
