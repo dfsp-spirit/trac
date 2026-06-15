@@ -170,6 +170,9 @@
     "message": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">O-ELIDDI</span>. Twoje odpowiedzi zostały zapisane i będą miały wartość w badaniach naukowych.",
     "continueLink": "Kliknij tutaj, aby kontynuować."
   },
+  "taskPage": {
+    "title": "TRAC Zadania"
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Łączenie z backendem...",
