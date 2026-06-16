@@ -11,6 +11,11 @@ class TUDBackendSettings:
         self.debug = (
             True if os.getenv("TUD_DEBUG", "false").lower() == "true" else False
         )
+        self.startup_mode: str = os.getenv("TUD_STARTUP_MODE", "serve").lower()
+        if self.startup_mode not in {"serve", "bootstrap"}:
+            raise ValueError(
+                "TUD_STARTUP_MODE must be either 'serve' or 'bootstrap'."
+            )
         self.studies_config_path: str = os.getenv(
             "TUD_STUDIES_CONFIG_PATH", "studies_config.json"
         )  # Backend file with studies configuration

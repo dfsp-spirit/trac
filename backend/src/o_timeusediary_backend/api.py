@@ -406,8 +406,14 @@ async def lifespan(app: FastAPI):
     if settings.debug:
         print("Debug mode enabled.")
 
-    logger.info("Running startup tasks...")
-    create_db_and_tables(settings.print_db_contents_on_startup)
+    logger.info("Running startup tasks in mode '%s'...", settings.startup_mode)
+    if settings.startup_mode == "bootstrap":
+        create_db_and_tables(settings.print_db_contents_on_startup)
+    else:
+        logger.info(
+            "Startup mode is 'serve'; skipping schema/bootstrap tasks. "
+            "Use TUD_STARTUP_MODE=bootstrap for explicit startup bootstrap."
+        )
     logger.info(
         f"Running with rootpath '{settings.rootpath}' and allowed origins: '{settings.allowed_origins}'."
     )
