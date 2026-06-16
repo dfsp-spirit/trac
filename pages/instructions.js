@@ -100,7 +100,14 @@ function resolveLocalizedStudyText(
 async function loadStudyConfigForInstructions(language) {
   const urlParams = getUrlParams();
   const studyName =
-    urlParams.get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+    urlParams.get('study_name') ||
+    window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+    null;
+  if (!studyName) {
+    const noStudiesError = new Error('No studies available.');
+    noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+    throw noStudiesError;
+  }
   const participantId = urlParams.get('pid');
   const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
   const endpointUrl = new URL(
@@ -242,7 +249,12 @@ function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {
 async function markInstructionsCompletedInBackend() {
   const urlParams = getUrlParams();
   const studyName =
-    urlParams.get('study_name') || window.TUD_SETTINGS?.STUDY_NAME || 'default';
+    urlParams.get('study_name') ||
+    window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+    null;
+  if (!studyName) {
+    return;
+  }
   const participantId = urlParams.get('pid');
   if (!participantId) {
     return;

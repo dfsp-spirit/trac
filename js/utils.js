@@ -760,8 +760,15 @@ export function createCombinedData() {
   }
 
   const urlParams = new URLSearchParams(window.location.search);
-  const study_name = urlParams.get('study_name') || 'default';
-  studyData.study_name = study_name;
+  const study_name =
+    urlParams.get('study_name') ||
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+      ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+      : '');
+  if (study_name) {
+    studyData.study_name = study_name;
+  }
 
   // --- Prepare Participant Data ---
   const viewportWidth = window.innerWidth;

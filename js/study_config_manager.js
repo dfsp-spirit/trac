@@ -30,8 +30,8 @@ if (!TUD_SETTINGS) {
   TUD_SETTINGS = {
     API_BASE_URL: 'http://localhost:8000/api',
     ALLOW_NO_UID: true,
-    STUDY_NAME: 'default',
-    DEFAULT_STUDIES_FILE: 'settings/studies_config.json',
+    DEFAULT_STUDY_NAME: null,
+    DEFAULT_STUDIES_FILE: null,
   };
   console.warn(
     'TUD_SETTINGS not found in window! Creating fallback and trying to reach API at http://localhost:8000/api. Please ensure TUD_SETTINGS is properly defined in your HTML template for production use.'
@@ -208,12 +208,17 @@ function resolveLocalizedStudyText(
 async function loadStudiesConfigFromFile() {
   try {
     // Determine studies file to load. If TUD_SETTINGS.DEFAULT_STUDIES_FILE is
-    // missing or empty, fall back to the packaged settings/studies_config.json.
+    // missing or empty, skip local fallback entirely.
     const studiesFile =
       TUD_SETTINGS && typeof TUD_SETTINGS.DEFAULT_STUDIES_FILE === 'string' &&
       TUD_SETTINGS.DEFAULT_STUDIES_FILE.trim()
         ? TUD_SETTINGS.DEFAULT_STUDIES_FILE
-        : 'settings/studies_config.json';
+        : null;
+
+    if (!studiesFile) {
+      CURRENT_STUDY_CACHE = null;
+      return null;
+    }
 
     console.log('Loading studies config from file:', studiesFile);
 
@@ -227,14 +232,16 @@ async function loadStudiesConfigFromFile() {
 
     // Find current study
     const studyName = getStudyNameFromUrl();
-    CURRENT_STUDY_CACHE = STUDIES_CONFIG_CACHE.studies.find(
+    const studies = Array.isArray(STUDIES_CONFIG_CACHE?.studies)
+      ? STUDIES_CONFIG_CACHE.studies
+      : [];
+
+    CURRENT_STUDY_CACHE = studies.find(
       (s) => s.name_short === studyName
     );
 
     if (!CURRENT_STUDY_CACHE) {
-      throw new Error(
-        `Study "${studyName}" not found in ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}`
-      );
+      throw new Error(`Study "${studyName}" not found in ${studiesFile}`);
     }
 
     const supportedLanguages = Object.keys(
@@ -296,35 +303,11 @@ async function loadStudiesConfigFromFile() {
     return CURRENT_STUDY_CACHE;
   } catch (error) {
     console.error(
-      `Error loading ${TUD_SETTINGS.DEFAULT_STUDIES_FILE}:`,
+      `Error loading ${TUD_SETTINGS?.DEFAULT_STUDIES_FILE || 'local studies file'}:`,
       error.message
     );
-    // If frontend is explicitly configured with empty defaults, do not fabricate
-    // a fallback study. Let caller decide how to handle absence of studies.
-    if (!TUD_SETTINGS || !TUD_SETTINGS.DEFAULT_STUDY_NAME) {
-      CURRENT_STUDY_CACHE = null;
-      return null;
-    }
-
-    // Create a minimal default study as last resort
-    CURRENT_STUDY_CACHE = {
-      name: 'Default Fallback',
-      name_short: TUD_SETTINGS.DEFAULT_STUDY_NAME || 'default',
-      description: 'Fallback study config',
-      day_labels: ['default'],
-      study_participant_ids: [],
-      allow_unlisted_participants: true,
-      require_consent: false,
-      allow_skip_timeuse: true,
-      instructions_completed: false,
-      participant_has_completed_study: false,
-      activities_json_files: { en: 'activities_default.json' },
-      supported_languages: ['en'],
-      selected_language: 'en',
-      data_collection_start: '2024-01-01T00:00:00Z',
-      data_collection_end: '2026-12-31T23:59:59Z',
-    };
-    return CURRENT_STUDY_CACHE;
+    CURRENT_STUDY_CACHE = null;
+    return null;
   }
 }
 
@@ -333,7 +316,7 @@ async function syncWithBackendConfig() {
   try {
     let studyName = getStudyNameFromUrl();
     const participantId = getParticipantIdFromUrl();
-    const selectedLanguage = getPreferredLanguage(
+    const selectedLanguageFromContext = getPreferredLanguage(
       CURRENT_STUDY_CACHE?.supported_languages || [],
       CURRENT_STUDY_CACHE?.default_language || 'en'
     );
@@ -351,8 +334,11 @@ async function syncWithBackendConfig() {
         console.log('active_open_study_names response status:', listResp && listResp.status);
       } catch (err) {
         console.log('Failed to fetch active open study names:', err.message, err);
-        // Let subsequent fetch attempt fail and fallback to file config
-        studyName = null;
+        const noStudiesError = new Error(
+          'No studies available because backend is unreachable and no local fallback is configured.'
+        );
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
       }
 
       if (listResp && listResp.ok) {
@@ -379,11 +365,12 @@ async function syncWithBackendConfig() {
         }
       }
 
-      // Rebuild apiUrl with selected studyName (if any)
-      if (studyName) {
-        apiUrl.pathname = `${TUD_SETTINGS.API_BASE_URL.replace(/https?:\/\//, '')}/studies/${studyName}/study-config`;
-      }
+    }
 
+    if (!studyName) {
+      const noStudiesError = new Error('No studies available.');
+      noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+      throw noStudiesError;
     }
 
     // Build the final URL to request study-config from backend
@@ -407,6 +394,13 @@ async function syncWithBackendConfig() {
       response = await fetchWithBackgroundRetry(apiUrl.toString(), 2, 1200);
       console.log('study-config fetch response status:', response && response.status);
     } catch (error) {
+      if (!CURRENT_STUDY_CACHE) {
+        const noStudiesError = new Error(
+          'No studies available because backend is unreachable and no local fallback is configured.'
+        );
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
+      }
       console.log('Backend unavailable after retries, using file config:', error && error.message, error);
       CURRENT_STUDY_CACHE.source = 'file';
       return CURRENT_STUDY_CACHE;
@@ -690,6 +684,11 @@ async function syncWithBackendConfig() {
       participantIdRequiredError.status = 400;
       throw participantIdRequiredError;
     } else {
+      if (!CURRENT_STUDY_CACHE) {
+        const noStudiesError = new Error('No studies available.');
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
+      }
       console.log(`Backend returned ${response.status}, using file config`);
       CURRENT_STUDY_CACHE.source = 'file';
       return CURRENT_STUDY_CACHE;
@@ -701,6 +700,16 @@ async function syncWithBackendConfig() {
       error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
     ) {
       throw error;
+    }
+    if (error?.code === 'NO_STUDIES_AVAILABLE') {
+      throw error;
+    }
+    if (!CURRENT_STUDY_CACHE) {
+      const noStudiesError = new Error(
+        'No studies available because backend is unreachable and no local fallback is configured.'
+      );
+      noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+      throw noStudiesError;
     }
     console.log('Backend unavailable, using file config:', error.message);
     CURRENT_STUDY_CACHE.source = 'file';
@@ -767,6 +776,12 @@ async function initializeStudyConfig() {
       throw error;
     }
     console.log('Background sync failed:', error && error.message ? error.message : error);
+  }
+
+  if (!CURRENT_STUDY_CACHE) {
+    const noStudiesError = new Error('No studies available.');
+    noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+    throw noStudiesError;
   }
 
   return CURRENT_STUDY_CACHE;

@@ -19,7 +19,7 @@ export function getCurrentStudyName() {
     if (typeof def === 'string' && def.trim()) return def.trim();
   }
 
-  return 'default';
+  return null;
 }
 
 export function getCurrentParticipantId() {
@@ -39,7 +39,7 @@ export function getCachedActivitiesConfig() {
 }
 
 function getActivitiesCacheKey(studyName, lang) {
-  return `${studyName || 'default'}::${lang || 'default'}`;
+  return `${studyName || ''}::${lang || ''}`;
 }
 
 function getActivitiesConfigFromCache(studyName, lang) {
@@ -109,10 +109,20 @@ export async function loadLocalActivitiesConfig({
   lang = getCurrentLanguage(),
   settingsBasePath = 'settings',
 } = {}) {
+  if (!studyName) {
+    throw new Error(
+      'No study configured. Unable to load local activities configuration.'
+    );
+  }
+
   const studiesConfig = await loadStudiesConfig(settingsBasePath);
-  const study =
-    studiesConfig?.studies?.find((s) => s.name_short === studyName) ||
-    studiesConfig?.studies?.[0];
+  const study = studiesConfig?.studies?.find((s) => s.name_short === studyName);
+
+  if (!study) {
+    throw new Error(
+      `Study "${studyName}" not found in ${settingsBasePath}/studies_config.json`
+    );
+  }
   const filesByLang =
     study?.activities_json_files || study?.activities_json_file || null;
 
