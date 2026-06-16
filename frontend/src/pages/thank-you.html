@@ -222,7 +222,13 @@
 
         async function loadStudyConfig(language) {
             const urlParams = new URLSearchParams(window.location.search);
-            const studyName = urlParams.get('study_name') || 'default';
+            const studyName =
+                urlParams.get('study_name') ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                null;
+            if (!studyName) {
+                throw new Error('No studies available.');
+            }
             const participantId = urlParams.get('pid');
             const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
             const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);

@@ -203,7 +203,11 @@
 
         function getReturnUrlStorageKey() {
             const urlParams = getUrlParams();
-            const studyName = (urlParams.get('study_name') || 'default').trim();
+            const studyName = (
+                urlParams.get('study_name') ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                ''
+            ).trim();
             const participantId = (urlParams.get('pid') || '').trim();
             return `trac:return_url:${studyName}:${participantId}`;
         }
@@ -271,7 +275,13 @@
 
         async function loadStudyConfig(language) {
             const urlParams = getUrlParams();
-            const studyName = urlParams.get('study_name') || 'default';
+            const studyName =
+                urlParams.get('study_name') ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                null;
+            if (!studyName) {
+                throw new Error('No studies available.');
+            }
             const participantId = urlParams.get('pid');
             const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
             const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);
@@ -315,8 +325,15 @@
             }
 
             const urlParams = getUrlParams();
-            const studyName = urlParams.get('study_name') || studyConfig?.study_name_short || 'default';
+            const studyName =
+                urlParams.get('study_name') ||
+                studyConfig?.study_name_short ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                null;
             const participantId = urlParams.get('pid');
+            if (!studyName) {
+                return null;
+            }
             if (!participantId) {
                 return null;
             }
