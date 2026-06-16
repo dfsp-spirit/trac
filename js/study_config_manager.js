@@ -621,6 +621,21 @@ async function syncWithBackendConfig() {
         }
       }
 
+      // The backend is authoritative for the study identity. The local
+      // settings/studies_config.json bootstrap file may not list every study
+      // (e.g. restricted studies), in which case loadStudiesConfigFromFile()
+      // fell back to a minimal 'default' study. Always trust the backend's
+      // short name so downstream consumers (activities-config fetch, submit
+      // URLs, ...) target the correct study.
+      const backendStudyNameShort =
+        backendConfig.study_name_short || studyName || null;
+      if (backendStudyNameShort) {
+        CURRENT_STUDY_CACHE.name_short = backendStudyNameShort;
+      }
+      if (backendConfig.study_name) {
+        CURRENT_STUDY_CACHE.name = backendConfig.study_name;
+      }
+
       // Store full backend config for reference
       CURRENT_STUDY_CACHE.backend_config = backendConfig;
       CURRENT_STUDY_CACHE.source = 'backend';

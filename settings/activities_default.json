@@ -11,7 +11,7 @@
   },
   "timeline": {
     "primary": {
-      "name": "Main Activity",
+      "name": "Main Activity FRONTEND FILE",
       "description": "",
       "mode": "single-choice",
       "min_coverage": 10,
@@ -555,7 +555,7 @@
       ]
     },
     "secondary": {
-      "name": "Secondary Activity",
+      "name": "Secondary Activity FRONTEND FILE activities_default.json",
       "description": "",
       "mode": "single-choice",
       "min_coverage": 0,

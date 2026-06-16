@@ -1,9 +1,9 @@
 {
   "studies": [
     {
-      "name": "Default Weekly Study for Adults",
+      "name": "Default Weekly Study for Adults FRONTEND",
       "name_short": "default",
-      "description": "Default Study for Adults at KI, filled out by themselves",
+      "description": "Default Study from FRONTEND demo file",
       "day_labels": [
         {
           "name": "monday",
