@@ -63,21 +63,49 @@ TUD_ROOTPATH=/
 
 Install the backend into a virtual environment and start it with a WSGI server such as `uvicorn` (development) or `gunicorn` (production).
 
-Startup/import mode (short):
-- `TUD_STARTUP_MODE=serve` (recommended runtime default): starts API without startup schema/data bootstrap.
-- `TUD_STARTUP_MODE=bootstrap` (compatibility mode): keeps legacy startup bootstrap behavior.
+Backend startup modes (3 practical ways):
 
-Schema management is migration-first: run `uv run tud db upgrade` explicitly during deployment/startup scripts.
+1. **Explicit ops mode (recommended for production and CI)**
 
-You can also import studies explicitly:
+    Run schema migrations and optional study import explicitly, then start backend in `serve` mode:
+
+    ```bash
+    cd backend/
+    uv run tud db upgrade
+    uv run tud studies import --config studies_config.json   # optional, only when you want to (re)import config
+    TUD_STARTUP_MODE=serve uv run gunicorn -c ../deployment/gunicorn_conf.py o_timeusediary_backend.api:app
+    ```
+
+2. **Serve mode (`TUD_STARTUP_MODE=serve`, default)**
+
+    Starts the API only. No startup schema bootstrap and no startup study import are executed.
+    Use this together with explicit `tud db upgrade` and optional `tud studies import` commands.
+
+3. **Bootstrap mode (`TUD_STARTUP_MODE=bootstrap`, compatibility mode)**
+
+    Starts the API and also runs startup bootstrap tasks (schema init + study import from configured `studies_config`).
+    This is mainly for compatibility/development workflows.
+
+Minimal examples:
 
 ```bash
 cd backend/
+
+# 1) Recommended explicit ops mode
 uv run tud db upgrade
 uv run tud studies import --config studies_config.json
+TUD_STARTUP_MODE=serve uv run gunicorn --reload -c ../deployment/gunicorn_conf.dev.py o_timeusediary_backend.api:app
+
+# 2) Serve mode only (expects schema/data already prepared)
+TUD_STARTUP_MODE=serve uv run gunicorn --reload -c ../deployment/gunicorn_conf.dev.py o_timeusediary_backend.api:app
+
+# 3) Bootstrap mode (legacy-style startup bootstrap)
+TUD_STARTUP_MODE=bootstrap uv run gunicorn --reload -c ../deployment/gunicorn_conf.dev.py o_timeusediary_backend.api:app
 ```
 
-You can inspect the current DB migration revision via:
+Schema management is migration-first: run `uv run tud db upgrade` explicitly during deployment/startup scripts.
+
+You can also inspect the current DB migration revision via:
 
 ```bash
 cd backend/
@@ -85,15 +113,19 @@ uv run tud db current
 ```
 
 
-### Important: Large Request Handling
+### Important: Large Request Handling for non-root users in local development
 
-TRAC supports exporting and importing study configurations with embedded activity definitions, which can result in large HTTP POST request bodies (typically 10-50 KB depending on the number of activities and languages supported). Most web servers require special configuration to handle large request bodies. In particular:
+TRAC supports exporting and importing study configurations with embedded activity definitions, which can result in large HTTP POST request bodies (typically 10-50 KB depending on the number of activities and languages supported).
+
+For nginx, the size can become so large that it writes requests to a temp dir instead of relying on in-memory handling. This is no problem normally, as a dir for that should be configured by default, but for the dev scripts, where you run nginx without root priviledges as your own user, that directory is not usable. You will therefor need to:
 
 - **nginx**: Configure a `client_body_temp_path` directive in your nginx configuration to a directory where the nginx process has write permissions. See the [developer documentation](dev_tools/local_nginx/README.md) for details.
 - **Apache**: Ensure the `LimitRequestBody` directive is set high enough (default 10 MB should be sufficient).
 - **Other web servers**: Verify that large POST body handling is configured appropriately for your setup.
 
 If you encounter HTTP 413 (Payload Too Large) or 500 errors when importing study configurations, the root cause is typically insufficient request body handling configuration in your web server.
+
+As mentioned before, this should NOT be need for production.
 
 
 ### 3. Study Configuration

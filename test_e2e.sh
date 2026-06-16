@@ -1,6 +1,14 @@
 #!/bin/sh
 #
-# Finish dev installation before running this, and have sll services running via './run_dev_nginx_both.bash' in another terminal before starting this...
+# How to run this script reliably:
+# 1) From repo root, start services in another terminal:
+#      ./run_dev_nginx_both.bash
+#    This starts nginx + backend and serves frontend at http://localhost:3000/report/.
+# 2) Keep that terminal open while tests run.
+# 3) In a second terminal, from repo root, run:
+#      ./test_e2e.sh
+#
+# E2E tests expect frontend + backend + proxy to be available on the dev-nginx URLs.
 #
 # You can run individual tests via:
 #

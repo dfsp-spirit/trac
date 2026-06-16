@@ -9,9 +9,10 @@ Use this skill when the user asks to run backend integration tests that cover AP
 
 ## Steps
 1. Confirm repository root is current working directory.
-2. Execute `./test_backend_integration.sh`.
-3. If script prerequisites fail, report what service/environment is missing.
-4. Return test outcome with failing test names/paths when applicable.
+2. Ensure backend services are running before tests (recommended: start `./run_dev_nginx_both.bash` in another terminal and keep it running).
+3. Execute `./test_backend_integration.sh`.
+4. If script prerequisites fail, report what service/environment is missing and how to start it.
+5. Return test outcome with failing test names/paths when applicable.
 
 ## Expected Output
 - Command executed

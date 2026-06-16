@@ -16,8 +16,10 @@ Use this skill to implement or modify TRAC backend behavior in FastAPI.
 2. Implement changes using FastAPI patterns already present in the codebase.
 3. Preserve request/response validation and explicit schema handling.
 4. Ensure deployment path assumptions remain compatible with reverse proxy usage (`root_path` style deployments).
-5. Run the smallest relevant backend tests first, then broaden if needed.
-6. Report changed endpoints/behavior and test coverage performed.
+5. Keep startup behavior aligned with `TUD_STARTUP_MODE` (`serve` vs `bootstrap`), with `serve` as the default runtime path.
+6. Prefer migration-first and explicit import workflows (`tud db upgrade`, optional `tud studies import`) over implicit startup bootstrap behavior.
+7. Run the smallest relevant backend tests first, then broaden if needed.
+8. Report changed endpoints/behavior and test coverage performed.
 
 ## Quality Checks
 - Input validation is explicit and enforced.

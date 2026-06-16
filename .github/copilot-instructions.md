@@ -5,7 +5,7 @@ TRAC (Time-use Research Activity Collector) is a research application for captur
 ## 1. High-Level Architecture
 - **Frontend (`frontend/src/`)**: Pure, vanilla JS client (no SPA framework or bundler). Relies on `frontend/src/settings/tud_settings.js` to point to `/api`.
 - **Backend (`backend/`)**: FastAPI/Python app managed with `uv`. Serves the REST API and the template-based Admin portal.
-- **Database (`database/`)**: PostgreSQL schema mapped via SQLModel. Hydrated from `backend/studies_config.json` at startup.
+- **Database (`database/`)**: PostgreSQL schema mapped via SQLModel and managed via Alembic migrations. Preferred flow is explicit `tud db upgrade` and optional explicit `tud studies import`; startup bootstrap import exists only in compatibility mode (`TUD_STARTUP_MODE=bootstrap`).
 
 ---
 

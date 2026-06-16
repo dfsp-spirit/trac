@@ -23,11 +23,11 @@ The app is not in production yet and not v1.0, so there is no need to add extra 
 - **Scope**: Implements business logic, API validation, study orchestration, secure credential check, participant status, basic authentication for administrators, and HTML reports.
 
 ### 3. Database Agent
-- **Domain**: PostgreSQL Schema, Seeding/Hydration, and Data Models.
+- **Domain**: PostgreSQL Schema, Alembic Migrations, Explicit Study Import, and Data Models.
 - **Key Files**: `database/` (Creation/Drop scripts), `backend/src/o_timeusediary_backend/models.py`
 - **Operational Skill**: [Database Skill](skills/database/SKILL.md)
 - **Documentation**: [Database Agent Documentation](docs/agents/database.md)
-- **Scope**: Structures SQLModel databases. Manages initial JSON ingestion (`backend/studies_config.json`, `backend/activities_*.json`), and database lifecycle constraints.
+- **Scope**: Structures SQLModel databases and migration lifecycle. Manages explicit JSON ingestion (`backend/studies_config.json`, `backend/activities_*.json`) via CLI/admin workflows, and database lifecycle constraints.
 
 ### 4. Integration & QA Agent
 - **Domain**: End-to-End (E2E) testing, Unit/Integration tests, CI Pipelines, and Dev Nginx proxies.
