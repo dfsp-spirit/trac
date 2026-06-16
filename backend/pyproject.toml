@@ -21,6 +21,7 @@ keywords = ["research", "computational-biology", "data-analysis"]
 
 
 dependencies = [
+    "alembic>=1.14.0",
     "fastapi>=0.104.0",
     "python-multipart>=0.0.9",
     "uvicorn[standard]>=0.24.0", # Development server
@@ -33,6 +34,9 @@ dependencies = [
     "pytest>=9.0.0",
 ]
 requires-python = ">=3.11"
+
+[project.scripts]
+tud = "o_timeusediary_backend.cli:main"
 
 [project.optional-dependencies]
 dev = [

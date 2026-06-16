@@ -36,7 +36,6 @@ from .parsers.studies_config import (
     CfgFileExternalTask,
     get_external_task_callback_tokens,
     get_external_task_effective_config,
-    get_cfg_study_by_name_short,
     validate_external_tasks_for_study,
 )
 import secrets
@@ -269,6 +268,20 @@ def _build_external_task_launch_url(
         f"{root_prefix}/api/studies/{encoded_study}/participants/{encoded_participant}"
         f"/external-tasks/{encoded_task}/launch?{query}"
     )
+
+
+def _get_study_blob_languages(session: Session, study_id: int) -> List[str]:
+    blob_languages = session.exec(
+        select(StudyActivityConfigBlob.language)
+        .where(StudyActivityConfigBlob.study_id == study_id)
+        .order_by(StudyActivityConfigBlob.language)
+    ).all()
+    supported_languages = [
+        _normalize_language_code(language) or language
+        for language in blob_languages
+        if (_normalize_language_code(language) or language)
+    ]
+    return list(dict.fromkeys(supported_languages))
 
 
 def _get_participant_external_tasks(
@@ -1386,14 +1399,9 @@ async def admin_overview(
     studies_data = []
 
     for study in studies:
-        cfg_study = get_cfg_study_by_name_short(
-            study.name_short, settings.studies_config_path
-        )
-        supported_cfg_languages = (
-            cfg_study.get_supported_languages()
-            if cfg_study
-            else [study.default_language]
-        )
+        supported_cfg_languages = _get_study_blob_languages(session, study.id) or [
+            study.default_language
+        ]
         cfg_language_query_param = f"cfg_lang_{study.name_short}"
         selected_cfg_language = (
             request.query_params.get(cfg_language_query_param) or study.default_language
@@ -1620,7 +1628,7 @@ async def admin_overview(
         studies_data.append(
             {
                 "study": study,
-                "require_consent": bool(getattr(cfg_study, "require_consent", False)),
+                "require_consent": bool(study.require_consent),
                 "day_labels": day_labels,
                 "is_actively_collecting": study_is_currently_collecting,
                 "timelines": timelines,
@@ -3105,36 +3113,19 @@ async def export_runtime_studies_config(
     activities_by_study: Dict = {}
 
     for study in studies:
-        cfg_study = get_cfg_study_by_name_short(
-            study.name_short, settings.studies_config_path
-        )
-
         day_labels = session.exec(
             select(DayLabel)
             .where(DayLabel.study_id == study.id)
             .order_by(DayLabel.display_order)
         ).all()
 
-        if cfg_study:
-            day_label_lookup = {
-                day_label.name: day_label for day_label in cfg_study.day_labels
-            }
-        else:
-            day_label_lookup = {}
-
         day_labels_export = []
         for day_label in day_labels:
-            cfg_day_label = day_label_lookup.get(day_label.name)
-            if cfg_day_label:
-                display_names = cfg_day_label.get_display_names(study.default_language)
-            else:
-                display_names = {study.default_language: day_label.display_name}
-
             day_labels_export.append(
                 {
                     "name": day_label.name,
                     "display_order": day_label.display_order,
-                    "display_names": display_names,
+                    "display_names": {study.default_language: day_label.display_name},
                 }
             )
 
@@ -3188,42 +3179,25 @@ async def export_runtime_studies_config(
         ).all()
         blob_by_lang = {blob.language: blob.activities_json_data for blob in blob_rows}
 
-        if cfg_study:
-            activities_json_files = cfg_study.get_supported_activities_json_files()
-            supported_languages = cfg_study.get_supported_languages()
-            if not activities_json_files and blob_by_lang:
-                activities_json_files = {
-                    language: f"db_blob://{study.name_short}/{language}"
-                    for language in sorted(blob_by_lang.keys())
-                }
-                supported_languages = sorted(blob_by_lang.keys())
-        else:
-            if blob_by_lang:
-                activities_json_files = {
-                    language: f"db_blob://{study.name_short}/{language}"
-                    for language in sorted(blob_by_lang.keys())
-                }
-                supported_languages = sorted(blob_by_lang.keys())
-            else:
-                activities_json_files = {
-                    study.default_language: study.activities_json_url
-                }
-                supported_languages = [study.default_language]
-
         activity_configs_for_study: Dict = {}
-        for lang, activity_file_path in activities_json_files.items():
-            if lang in blob_by_lang:
-                activity_configs_for_study[lang] = blob_by_lang[lang]
-                continue
-
-            try:
-                activity_configs_for_study[lang] = (
-                    _load_json_file_with_studies_config_base(activity_file_path)
+        if blob_by_lang:
+            activity_configs_for_study.update(blob_by_lang)
+            supported_languages = sorted(blob_by_lang.keys())
+            activities_json_files = {
+                language: f"db_blob://{study.name_short}/{language}"
+                for language in supported_languages
+            }
+        else:
+            supported_languages = [study.default_language]
+            activities_json_files = {
+                study.default_language: f"db_blob://{study.name_short}/{study.default_language}"
+            }
+            activity_configs_for_study[study.default_language] = {
+                "error": (
+                    "No DB-backed activities config blob available for this study. "
+                    "Import the study configuration first."
                 )
-            except Exception as error:
-                activity_configs_for_study[lang] = {
-                    "error": f"Could not load activities file '{activity_file_path}': {error}"
-                }
+            }
 
         activities_by_study[study.name_short] = activity_configs_for_study
 
@@ -5624,28 +5598,11 @@ def get_study_config(
                     f"Provided participant_id '{participant_id}' doesn't exist for open study '{study_name_short}'"
                 )
 
-    cfg_study = get_cfg_study_by_name_short(
-        study_name_short, settings.studies_config_path
-    )
     normalized_lang = _normalize_language_code(lang)
     selected_language = normalized_lang or study.default_language
-    supported_languages: List[str] = [study.default_language]
-    if cfg_study:
-        supported_languages = [
-            _normalize_language_code(language) or language
-            for language in cfg_study.get_supported_languages()
-        ]
-    else:
-        blob_languages = session.exec(
-            select(StudyActivityConfigBlob.language)
-            .where(StudyActivityConfigBlob.study_id == study.id)
-            .order_by(StudyActivityConfigBlob.language)
-        ).all()
-        if blob_languages:
-            supported_languages = [
-                _normalize_language_code(language) or language
-                for language in blob_languages
-            ]
+    supported_languages: List[str] = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
 
     if selected_language not in supported_languages:
         selected_language = study.default_language
@@ -5684,18 +5641,11 @@ def get_study_config(
 
     day_label_responses = []
     for day_label in day_labels:
-        display_name = day_label.display_name
-        if cfg_study:
-            localized_display_name = cfg_study.get_day_label_display_name(
-                day_label.name, selected_language
-            )
-            if localized_display_name:
-                display_name = localized_display_name
         day_label_responses.append(
             DayLabelConfigResponse(
                 name=day_label.name,
                 display_order=day_label.display_order,
-                display_name=display_name,
+                display_name=day_label.display_name,
             )
         )
 

@@ -9,10 +9,7 @@ from ..parsers.activities_config import (
     compute_activity_path_from_config,
     get_activity_codes_set,
     get_all_activity_codes,
-    load_activities_config,
 )
-from ..parsers.studies_config import get_cfg_study_by_name_short
-from ..settings import settings
 
 
 def _normalize_language_code(language: Optional[str]) -> Optional[str]:
@@ -56,10 +53,10 @@ def get_study_activities_config_model(
     study: Study,
     lang: Optional[str] = None,
 ) -> Tuple[ActivitiesConfig, str, str]:
-    """Return ActivitiesConfig for a study with DB-first lookup.
+    """Return ActivitiesConfig for a study using DB blobs only.
 
     Returns: (ActivitiesConfig, source, selected_language)
-    source: db_blob | file
+    source: db_blob
     """
     normalized_lang = _normalize_language_code(lang)
     lookup_languages = _lookup_languages(normalized_lang, study.default_language)
@@ -71,24 +68,13 @@ def get_study_activities_config_model(
             continue
         return ActivitiesConfig(**blob.activities_json_data), "db_blob", language
 
-    cfg_study = get_cfg_study_by_name_short(
-        study.name_short, settings.studies_config_path
+    raise HTTPException(
+        status_code=500,
+        detail=(
+            f"Study '{study.name_short}' is missing DB-backed activities config blobs. "
+            "Import the study configuration before serving this study."
+        ),
     )
-    file_path_for_lang = None
-    if cfg_study:
-        file_path_for_lang = cfg_study.get_activities_json_file_for_language(
-            normalized_lang
-        )
-    if not file_path_for_lang:
-        file_path_for_lang = study.activities_json_url
-
-    config = load_activities_config(file_path_for_lang)
-    selected_language = (
-        _normalize_language_code(normalized_lang)
-        or _normalize_language_code(study.default_language)
-        or "en"
-    )
-    return config, "file", selected_language
 
 
 def get_study_activities_config_model_by_short_name(

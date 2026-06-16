@@ -61,7 +61,28 @@ TUD_API_ADMIN_PASSWORD=<admin_password>
 TUD_ROOTPATH=/
 ```
 
-Install the backend into a virtual environment and start it with a WSGI server such as `uvicorn` (development) or `gunicorn` (production). The backend will automatically create the database tables and load study configuration from `studies_config.json` on first startup.
+Install the backend into a virtual environment and start it with a WSGI server such as `uvicorn` (development) or `gunicorn` (production).
+
+Startup/import mode (short):
+- `TUD_STARTUP_MODE=serve` (recommended runtime default): starts API without startup schema/data bootstrap.
+- `TUD_STARTUP_MODE=bootstrap` (compatibility mode): keeps legacy startup bootstrap behavior.
+
+Schema management is migration-first: run `uv run tud db upgrade` explicitly during deployment/startup scripts.
+
+You can also import studies explicitly:
+
+```bash
+cd backend/
+uv run tud db upgrade
+uv run tud studies import --config studies_config.json
+```
+
+You can inspect the current DB migration revision via:
+
+```bash
+cd backend/
+uv run tud db current
+```
 
 
 ### Important: Large Request Handling
@@ -77,7 +98,7 @@ If you encounter HTTP 413 (Payload Too Large) or 500 errors when importing study
 
 ### 3. Study Configuration
 
-Studies are defined in `backend/studies_config.json`. Each entry specifies the study name, supported languages, the days to cover, participant handling (open or invite-only via `allow_unlisted_participants`), and references to one or more activity list files (`backend/activities_*.json`). When the backend starts it registers any new studies listed in this file; existing studies are left unchanged.
+Studies are defined in `backend/studies_config.json`. Each entry specifies the study name, supported languages, the days to cover, participant handling (open or invite-only via `allow_unlisted_participants`), and references to one or more activity list files (`backend/activities_*.json`). Import this file via admin endpoints or the CLI command shown above.
 
 Each study uses `name_short` as its technical identifier. This short name is important because it is used by the frontend configuration and in participant invitation links via the `study_name` URL parameter.
 
