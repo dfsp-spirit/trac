@@ -11,7 +11,7 @@
   },
   "timeline": {
     "primary": {
-      "name": "Main Activity",
+      "name": "Main Activity FRONTEND FILE activities.json",
       "description": "",
       "mode": "single-choice",
       "min_coverage": 10,
