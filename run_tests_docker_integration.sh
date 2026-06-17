@@ -15,8 +15,11 @@ case "$DBMS" in
     mariadb)
         COMPOSE_FILES=("docker-compose.dev.yml" "docker-compose.dev.mariadb.yml")
         ;;
+    mssql)
+        COMPOSE_FILES=("docker-compose.dev.yml" "docker-compose.dev.mssql.yml")
+        ;;
     *)
-        echo "Usage: $0 [postgres|mariadb]"
+        echo "Usage: $0 [postgres|mariadb|mssql]"
         exit 1
         ;;
 esac

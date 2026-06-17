@@ -1,0 +1,52 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: timeusediary_SA_password_123!
+      MSSQL_PID: Developer
+    volumes:
+      - trac-dev-mssql-data:/var/opt/mssql
+
+  mssql-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      - db
+    restart: "no"
+    environment:
+      MSSQL_SA_PASSWORD: timeusediary_SA_password_123!
+    entrypoint:
+      - /bin/bash
+      - -lc
+      - |
+        set -e
+        for i in {1..60}; do
+          /opt/mssql-tools18/bin/sqlcmd -S db -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "SELECT 1" && break
+          echo "Waiting for SQL Server to become ready ($$i/60)..."
+          sleep 2
+        done
+
+        /opt/mssql-tools18/bin/sqlcmd -S db -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "IF DB_ID(N'timeusediary_db') IS NULL CREATE DATABASE [timeusediary_db];"
+        /opt/mssql-tools18/bin/sqlcmd -S db -U sa -P "$$MSSQL_SA_PASSWORD" -C -Q "IF SUSER_ID(N'timeusediary_user') IS NULL CREATE LOGIN [timeusediary_user] WITH PASSWORD = N'timeusediary_Password1!', CHECK_POLICY = ON; ELSE ALTER LOGIN [timeusediary_user] WITH PASSWORD = N'timeusediary_Password1!', CHECK_POLICY = ON;"
+        /opt/mssql-tools18/bin/sqlcmd -S db -U sa -P "$$MSSQL_SA_PASSWORD" -C -d timeusediary_db -Q "IF DATABASE_PRINCIPAL_ID(N'timeusediary_user') IS NULL CREATE USER [timeusediary_user] FOR LOGIN [timeusediary_user]; IF NOT EXISTS (SELECT 1 FROM sys.database_role_members rm JOIN sys.database_principals r ON rm.role_principal_id = r.principal_id JOIN sys.database_principals m ON rm.member_principal_id = m.principal_id WHERE r.name = 'db_owner' AND m.name = 'timeusediary_user') ALTER ROLE [db_owner] ADD MEMBER [timeusediary_user];"
+
+  backend:
+    depends_on:
+      db:
+        condition: service_started
+      mssql-init:
+        condition: service_completed_successfully
+    command: >-
+      sh -lc "uv sync --dev &&
+      uv pip install 'pymssql>=2.3.0' &&
+      uv run gunicorn --reload -c /workspace/dev_tools/docker/gunicorn_conf.docker.py
+      o_timeusediary_backend.api:app"
+    volumes:
+      - ./backend:/workspace/backend
+      - ./dev_tools/docker:/workspace/dev_tools/docker:ro
+      - trac-dev-backend-venv:/workspace/backend/.venv
+      - trac-dev-uv-cache:/root/.cache/uv
+      - ./dev_tools/docker/backend_settings/.env.dev-docker.mssql:/workspace/backend/.env:ro
+
+volumes:
+  trac-dev-mssql-data:

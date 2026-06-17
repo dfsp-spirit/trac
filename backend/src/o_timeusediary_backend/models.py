@@ -1,7 +1,7 @@
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from sqlalchemy import DateTime, UniqueConstraint, Column
+from sqlalchemy import DateTime, UniqueConstraint, Column, String
 
 from .utils import utc_now
 
@@ -9,7 +9,9 @@ from .utils import utc_now
 class Participant(SQLModel, table=True):
     __tablename__ = "participants"
 
-    id: str = Field(primary_key=True)  # External ID like "bernddasbrot", "annasmith"
+    id: str = Field(
+        primary_key=True, sa_type=String(255)
+    )  # External ID like "bernddasbrot", "annasmith"
     created_at: datetime = Field(
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -29,8 +31,8 @@ class Study(SQLModel, table=True):
     __tablename__ = "studies"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
-    name_short: str = Field(index=True, unique=True)
+    name: str = Field(index=True, sa_type=String(255))
+    name_short: str = Field(index=True, unique=True, sa_type=String(255))
     # `description` stores either a single-string fallback or a localized
     # language->text map. Persisted as JSON so it can hold either form.
     description: Optional[Union[str, Dict[str, str]]] = Field(
@@ -41,7 +43,7 @@ class Study(SQLModel, table=True):
     is_paused: bool = Field(default=False)
     allow_skip_timeuse: bool = Field(default=True)
     require_diary_before_external_tasks: bool = Field(default=False)
-    default_language: str = Field(default="en")
+    default_language: str = Field(default="en", sa_type=String(32))
     study_text_intro: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
@@ -57,7 +59,7 @@ class Study(SQLModel, table=True):
     study_text_consent: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
-    activities_json_url: str
+    activities_json_url: str = Field(sa_type=String(2048))
     data_collection_start: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
     )
@@ -97,11 +99,11 @@ class StudyExternalTask(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id", index=True)
-    task_key: str = Field(index=True)
-    name: str
+    task_key: str = Field(index=True, sa_type=String(255))
+    name: str = Field(sa_type=String(512))
     description: Optional[str] = None
-    url: str
-    confirmation_type: str = Field(default="none", index=True)
+    url: str = Field(sa_type=String(2048))
+    confirmation_type: str = Field(default="none", index=True, sa_type=String(64))
     task_level: int = Field(default=1, index=True)
     tokens: List[str] = Field(
         default_factory=list, sa_column=Column(JSON, nullable=False)
@@ -141,8 +143,10 @@ class StudyExternalTaskAssignment(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     external_task_id: int = Field(foreign_key="study_external_tasks.id", index=True)
-    participant_id: str = Field(foreign_key="participants.id", index=True)
-    assigned_token: str = Field(index=True)
+    participant_id: str = Field(
+        foreign_key="participants.id", index=True, sa_type=String(255)
+    )
+    assigned_token: str = Field(index=True, sa_type=String(512))
     assignment_order: int = Field(default=0, index=True)
     is_confirmed: bool = Field(default=False, index=True)
     confirmed_at: Optional[datetime] = Field(
@@ -173,9 +177,9 @@ class StudyActivityConfigBlob(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id", index=True)
-    language: str = Field(index=True)
+    language: str = Field(index=True, sa_type=String(32))
     activities_json_data: Dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
-    content_hash: Optional[str] = Field(default=None, index=True)
+    content_hash: Optional[str] = Field(default=None, index=True, sa_type=String(128))
     created_at: datetime = Field(
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -200,10 +204,10 @@ class StudyAvailableTimeline(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id", index=True)
-    timeline_key: str = Field(index=True)
-    display_name: str
+    timeline_key: str = Field(index=True, sa_type=String(255))
+    display_name: str = Field(sa_type=String(255))
     description: Optional[str] = None
-    mode: str = Field(index=True)
+    mode: str = Field(index=True, sa_type=String(64))
     min_coverage: Optional[int] = None
     sort_order: int = Field(default=0, index=True)
     created_at: datetime = Field(
@@ -231,7 +235,7 @@ class StudyAvailableCategory(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id", index=True)
     timeline_id: int = Field(foreign_key="study_available_timelines.id", index=True)
-    category_name: str = Field(index=True)
+    category_name: str = Field(index=True, sa_type=String(255))
     sort_order: int = Field(default=0, index=True)
     created_at: datetime = Field(
         default_factory=utc_now,
@@ -286,8 +290,8 @@ class StudyAvailableActivityI18n(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     activity_id: int = Field(foreign_key="study_available_activities.id", index=True)
-    language: str = Field(index=True)
-    name: str = Field(index=True)
+    language: str = Field(index=True, sa_type=String(32))
+    name: str = Field(index=True, sa_type=String(255))
     label: Optional[str] = None
     short: Optional[str] = None
     vshort: Optional[str] = None
@@ -317,9 +321,13 @@ class DayLabel(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    name: str = Field(index=True)  # e.g., "monday", "typical_weekend"
+    name: str = Field(
+        index=True, sa_type=String(255)
+    )  # e.g., "monday", "typical_weekend"
     display_order: int = Field(default=0)  # For ordering in UI
-    display_name: str = Field(index=True)  # e.g., "Monday", "Typical Weekend"
+    display_name: str = Field(
+        index=True, sa_type=String(255)
+    )  # e.g., "Monday", "Typical Weekend"
 
     # Relationships
     study: Study = Relationship(back_populates="day_labels")
@@ -336,10 +344,12 @@ class Timeline(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    name: str = Field(index=True)  # "primary", "digitalmediause", "device"
-    display_name: str  # "Main Activity", "Digital Media Use", "Device"
+    name: str = Field(
+        index=True, sa_type=String(255)
+    )  # "primary", "digitalmediause", "device"
+    display_name: str = Field(sa_type=String(255))  # "Main Activity", "Digital Media Use", "Device"
     description: Optional[str] = None
-    mode: str = Field(index=True)  # "single-choice", "multiple-choice"
+    mode: str = Field(index=True, sa_type=String(64))  # "single-choice", "multiple-choice"
     min_coverage: Optional[int] = None
 
     # Relationships
@@ -357,7 +367,7 @@ class StudyParticipant(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    participant_id: str = Field(foreign_key="participants.id")
+    participant_id: str = Field(foreign_key="participants.id", sa_type=String(255))
     consent_given: Optional[bool] = Field(default=None)
     consent_decided_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
@@ -381,7 +391,7 @@ class Activity(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    participant_id: str = Field(foreign_key="participants.id")
+    participant_id: str = Field(foreign_key="participants.id", sa_type=String(255))
     day_label_id: int = Field(
         foreign_key="day_labels.id"
     )  # Links to specific day label
@@ -392,14 +402,16 @@ class Activity(SQLModel, table=True):
     start_minutes: int  # Minutes since midnight (0-1439)
     end_minutes: int  # Minutes since midnight (0-1439)
     activity_name: str = Field(
-        index=True
+        index=True, sa_type=String(512)
     )  # Name of the activity as per activities.json, or for a custom input the value the user entered
-    activity_path_frontend: str
-    color: Optional[str] = None  # e.g., "#FF0000", used in frontend for display
+    activity_path_frontend: str = Field(sa_type=String(1024))
+    color: Optional[str] = Field(
+        default=None, sa_type=String(64)
+    )  # e.g., "#FF0000", used in frontend for display
     category: Optional[str] = (
         None  # e.g., "leisure", "work", "commuting", used for grouping in frontend
     )
-    frequency_key: Optional[str] = Field(default=None, index=True)
+    frequency_key: Optional[str] = Field(default=None, index=True, sa_type=String(128))
 
     # Hierarchy information
     parent_activity_code: Optional[int] = Field(default=None, index=True)

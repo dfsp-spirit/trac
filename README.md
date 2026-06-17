@@ -419,6 +419,7 @@ Helper scripts are provided to run tests against the containerized stack:
 ./run_tests_docker_integration.sh   # backend integration tests only (PostgreSQL default)
 ./run_tests_docker_integration.sh postgres
 ./run_tests_docker_integration.sh mariadb
+./run_tests_docker_integration.sh mssql
 
 # Run E2E tests fully inside Docker (Playwright container)
 ./run_tests_docker.sh e2e
@@ -437,6 +438,12 @@ For MariaDB:
 
 ```bash
 docker compose -f docker-compose.dev.yml -f docker-compose.dev.mariadb.yml up -d --build
+```
+
+For Microsoft SQL Server:
+
+```bash
+docker compose -f docker-compose.dev.yml -f docker-compose.dev.mssql.yml up -d --build
 ```
 
 The E2E test command uses the `e2e` service in `docker-compose.dev.yml`, which installs frontend test dependencies inside the container and runs Playwright there. This is useful when you want to avoid installing Node.js/Playwright on the host.
