@@ -381,12 +381,12 @@ async function syncWithBackendConfig() {
     if (participantId) {
       apiUrl.searchParams.set('participant_id', participantId);
     }
-    if (selectedLanguage) {
-      apiUrl.searchParams.set('lang', selectedLanguage);
+    if (selectedLanguageFromContext) {
+      apiUrl.searchParams.set('lang', selectedLanguageFromContext);
     }
 
     console.log(`Attempting to sync study config from backend: ${apiUrl.toString()}`);
-    console.log('TUD_SETTINGS.API_BASE_URL:', TUD_SETTINGS.API_BASE_URL, 'studyName:', studyName, 'participantId:', participantId, 'selectedLanguage:', selectedLanguage);
+    console.log('TUD_SETTINGS.API_BASE_URL:', TUD_SETTINGS.API_BASE_URL, 'studyName:', studyName, 'participantId:', participantId, 'selectedLanguage:', selectedLanguageFromContext);
 
     // Use simple retry for background sync (silent backoff, no UI notifications)
     let response;
