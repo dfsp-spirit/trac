@@ -422,10 +422,32 @@ async function syncWithBackendConfig() {
         }
       );
 
+      // Backend is authoritative and may return studies that are not listed in
+      // local settings/studies_config.json. Ensure the cache exists so the
+      // merge/update logic below works for backend-only studies.
+      if (!CURRENT_STUDY_CACHE || typeof CURRENT_STUDY_CACHE !== 'object') {
+        CURRENT_STUDY_CACHE = {
+          name_short: studyName || null,
+          name: backendConfig.study_name || studyName || null,
+          day_labels: [],
+          supported_languages: Array.isArray(backendConfig.supported_languages)
+            ? backendConfig.supported_languages
+            : [],
+          default_language: backendConfig.default_language || 'en',
+          selected_language:
+            normalizeLanguageCode(backendConfig.selected_language) ||
+            selectedLanguageFromContext ||
+            normalizeLanguageCode(backendConfig.default_language) ||
+            'en',
+          allow_skip_timeuse: true,
+          external_tasks: [],
+        };
+      }
+
       // Update current study cache with backend data
       const selectedLanguageFromConfig =
         normalizeLanguageCode(backendConfig.selected_language) ||
-        selectedLanguage ||
+        selectedLanguageFromContext ||
         CURRENT_STUDY_CACHE.selected_language ||
         CURRENT_STUDY_CACHE.default_language ||
         'en';
