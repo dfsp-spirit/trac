@@ -2,8 +2,9 @@
 
 This repository utilizes specialized AI Developer Agents to maintain and build features for TRAC. Each agent specializes in a distinct layer of the architecture, referencing targeted skills and rules.
 
-The app is not in production yet and not v1.0, so there is no need to add extra code for backwards compatibility or migrating the database, so do not do that. It just bloats code base and leads to more complexity. We can change cfg file syntax or DB schema at will.
+The app is not in production yet and not v1.0, so there is no need to add extra code for backwards compatibility, so do not do that. It just bloats code base and leads to more complexity. We recently adapted alembic for DB schema management though.
 
+While we use postgres as DBMS, we strive not to tie our app to this DBMS.
 ---
 
 ## Agent Directory & Core Responsibilities

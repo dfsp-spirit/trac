@@ -1,0 +1,26 @@
+services:
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: timeusediary_db
+      MARIADB_USER: timeusediary_user
+      MARIADB_PASSWORD: timeusediary_password
+      MARIADB_ROOT_PASSWORD: timeusediary_root_password
+    volumes:
+      - trac-dev-mariadb-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "localhost", "-u", "root", "-p$$MARIADB_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    volumes:
+      - ./backend:/workspace/backend
+      - ./dev_tools/docker:/workspace/dev_tools/docker:ro
+      - trac-dev-backend-venv:/workspace/backend/.venv
+      - trac-dev-uv-cache:/root/.cache/uv
+      - ./dev_tools/docker/backend_settings/.env.dev-docker.mariadb:/workspace/backend/.env:ro
+
+volumes:
+  trac-dev-mariadb-data:
