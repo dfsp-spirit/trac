@@ -109,9 +109,7 @@ test('admin file validation mode 4 validates and creates selected embedded study
   await expect(page.locator('#validationResult')).toContainText('Validation passed');
   await expect(page.locator('#validationResult')).toContainText('full_study_embedded');
 
-  const createButton = mode4Form.getByRole('button', {
-    name: 'Create study (create_only, all_or_nothing)',
-  });
+  const createButton = mode4Form.locator('#createEmbeddedStudyBtn');
   await expect(createButton).toBeEnabled();
 
   await createButton.click();

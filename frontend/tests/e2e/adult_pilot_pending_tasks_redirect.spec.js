@@ -16,14 +16,27 @@ function getBasicAuthHeader() {
   return { Authorization: `Basic ${auth}` };
 }
 
-function getParticipantIdForProject(projectName) {
-  if (projectName === 'firefox') {
-    return 'claudia';
-  }
-  if (projectName === 'webkit') {
-    return 'bernd';
-  }
-  return 'sophia';
+const PENDING_TASKS_PARTICIPANT_POOL = [
+  'pending_01',
+  'pending_02',
+  'pending_03',
+  'pending_04',
+  'pending_05',
+  'pending_06',
+  'pending_07',
+  'pending_08',
+  'pending_09',
+  'pending_10',
+  'pending_11',
+  'pending_12',
+];
+
+function pickParticipantIdForRun(testInfo) {
+  const repeatEachIndex = Number.isInteger(testInfo.repeatEachIndex)
+    ? testInfo.repeatEachIndex
+    : 0;
+  const poolIndex = repeatEachIndex % PENDING_TASKS_PARTICIPANT_POOL.length;
+  return PENDING_TASKS_PARTICIPANT_POOL[poolIndex];
 }
 
 function pickSubmissionTemplate(activitiesConfig) {
@@ -134,7 +147,7 @@ test('adult_pilot_de: bernd with pending external tasks lands on tasks page afte
   );
 
   const adminHeaders = getBasicAuthHeader();
-  const participantId = getParticipantIdForProject(testInfo.project.name);
+  const participantId = pickParticipantIdForRun(testInfo);
 
   // Idempotency reset: remove prior participant data in this study while keeping assignment.
   const resetResponse = await request.delete(

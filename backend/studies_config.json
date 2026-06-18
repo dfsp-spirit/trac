@@ -419,7 +419,23 @@
       "study_text_end_noconsent": {
         "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
       },
-      "study_participant_ids": ["bernd", "sophia", "claudia"],
+      "study_participant_ids": [
+        "bernd",
+        "sophia",
+        "claudia",
+        "pending_01",
+        "pending_02",
+        "pending_03",
+        "pending_04",
+        "pending_05",
+        "pending_06",
+        "pending_07",
+        "pending_08",
+        "pending_09",
+        "pending_10",
+        "pending_11",
+        "pending_12"
+      ],
       "allow_unlisted_participants": false,
       "default_language": "de",
       "supported_languages": [
@@ -448,7 +464,19 @@
                 "by_participant": {
                   "bernd": "dep-bernd-31526357",
                   "sophia": "dep-sophia-3754687526",
-                  "claudia": "dep-claudia-3576872"
+                  "claudia": "dep-claudia-3576872",
+                  "pending_01": "dep-pending-01-817362",
+                  "pending_02": "dep-pending-02-928174",
+                  "pending_03": "dep-pending-03-736281",
+                  "pending_04": "dep-pending-04-162837",
+                  "pending_05": "dep-pending-05-546219",
+                  "pending_06": "dep-pending-06-493761",
+                  "pending_07": "dep-pending-07-209437",
+                  "pending_08": "dep-pending-08-384750",
+                  "pending_09": "dep-pending-09-617352",
+                  "pending_10": "dep-pending-10-845293",
+                  "pending_11": "dep-pending-11-573804",
+                  "pending_12": "dep-pending-12-260948"
                 }
               }
             ],
@@ -470,7 +498,19 @@
                 "by_participant": {
                   "bernd": "pay-bernd-123434214",
                   "sophia": "pay-sophia-987654321",
-                  "claudia": "pay-claudia-567890123"
+                  "claudia": "pay-claudia-567890123",
+                  "pending_01": "pay-pending-01-981237",
+                  "pending_02": "pay-pending-02-472601",
+                  "pending_03": "pay-pending-03-615298",
+                  "pending_04": "pay-pending-04-703461",
+                  "pending_05": "pay-pending-05-258934",
+                  "pending_06": "pay-pending-06-146572",
+                  "pending_07": "pay-pending-07-864205",
+                  "pending_08": "pay-pending-08-392618",
+                  "pending_09": "pay-pending-09-507124",
+                  "pending_10": "pay-pending-10-634097",
+                  "pending_11": "pay-pending-11-275316",
+                  "pending_12": "pay-pending-12-718450"
                 }
               }
             ],
