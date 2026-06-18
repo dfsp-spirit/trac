@@ -4,17 +4,21 @@ TRAC MPIAE Changes
 
 Version 0.16.0 -- DBMS Diversity
 -------------------------------
-- NEW: Support MariaDB and MS SQL in addition to PostgrSQL
+- NEW: Support MariaDB and MS SQL in addition to PostgrSQL, see #87, #97
 - DEV: Add scripts and Dockerfiles to run all integration tests on all 3 different DBMS, see run_tests_docker_integration.sh script and related files
-- BRK: Use Alembic for schema management. Split app into 2 different starup modes, one for creating schema and adding data from the cfg files into the database, and one standard startup mode that uses only the database contents. Make sure to read the new docs and start your app in the proper way.
+- BRK: Use Alembic for schema management. Split app into 2 different starup modes, one for creating schema and adding data from the cfg files into the database, and one standard startup mode that uses only the database contents. Make sure to read the new docs and start your app in the proper way. You may need to run `tud db upgrade` and optional `tud studies import` explicitely before starting the app.
 - SEC: Update various dependencies to latest versions
 - FIX: add missing i18n on tasks page
 - NEW: add endpoint and admin interface to delete task tokens
 - NEW: add endpoint and admin interface to add task tokens
-- NEW: Improve admin interface to allow managing task tokens
+- NEW: Improve admin interface to allow managing task tokens (#92, #95, #88)
 - NEW: support showing imprint and data privacy links in footer, see #84
 - NEW: show language selector on consent page for multi-lan studies
-- NEW: improve consent page: add tick box, require it to activate buttons
+- NEW: improve consent page: add tick box & require it to activate buttons
+- FIX: fix day submit message in submit day modal #90
+- FIX: make frontend design between pages more consistent #89
+- BRK: add i18n for the description field of studies in studies_config.json file. Move from `"description": "good"` to `"description": { "de" : "good", "en": "good"}`
+- NEW: allow creation of study from studies config file with embedded activities in admin interface. This is the format we also use when exporting a studies_config file in admin interface.
 
 
 Version 0.15.1 -- Lost in Translation
