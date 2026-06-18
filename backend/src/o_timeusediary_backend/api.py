@@ -1584,6 +1584,14 @@ async def admin_overview(
             select(Timeline).where(Timeline.study_id == study.id)
         ).all()
 
+        study_days_count = len(day_labels)
+        external_task_rows = session.exec(
+            select(StudyExternalTask)
+            .where(StudyExternalTask.study_id == study.id)
+            .order_by(StudyExternalTask.task_key)
+        ).all()
+        study_has_external_tasks = bool(external_task_rows)
+
         # Get participants for this study
         study_participants = session.exec(
             select(StudyParticipant).where(StudyParticipant.study_id == study.id)
@@ -1605,6 +1613,32 @@ async def admin_overview(
                     or 0
                 )
 
+                participant_has_completed_study = _is_participant_study_complete(
+                    session=session,
+                    study=study,
+                    participant_id=participant.id,
+                    study_days_count=study_days_count,
+                )
+
+                participant_external_tasks = (
+                    _get_participant_external_tasks(
+                        session=session,
+                        study=study,
+                        participant_id=participant.id,
+                        selected_language=study.default_language,
+                        study_days_count=study_days_count,
+                    )
+                    if study_has_external_tasks
+                    else []
+                )
+                participant_all_external_tasks_completed = (
+                    bool(participant_external_tasks)
+                    and all(
+                        external_task.is_confirmed
+                        for external_task in participant_external_tasks
+                    )
+                )
+
                 participants.append(
                     {
                         "id": participant.id,
@@ -1613,6 +1647,8 @@ async def admin_overview(
                         "consent_given": sp.consent_given,
                         "consent_decided_at": sp.consent_decided_at,
                         "activity_count": participant_activity_count,
+                        "has_completed_study": participant_has_completed_study,
+                        "all_external_tasks_completed": participant_all_external_tasks_completed,
                     }
                 )
 
@@ -1730,11 +1766,6 @@ async def admin_overview(
             or 0
         )
 
-        external_task_rows = session.exec(
-            select(StudyExternalTask)
-            .where(StudyExternalTask.study_id == study.id)
-            .order_by(StudyExternalTask.task_key)
-        ).all()
         external_tasks = []
         external_task_assignment_count = 0
         for external_task in external_task_rows:
