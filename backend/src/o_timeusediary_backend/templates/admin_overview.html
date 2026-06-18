@@ -750,7 +750,8 @@
 
                 <!-- Export buttons section -->
                 <div class="export-buttons" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef;">
-                    <strong style="display: block; margin-bottom: 0.5rem; color: #495057;">Export {{ study_data.total_activities_logged }} Activities:</strong>
+                    <strong style="display: block; margin-bottom: 0.5rem; color: #495057;">Export Study Results (currently {{ study_data.total_activities_logged }} Activities):</strong>
+                    <p>This exports your <strong>research data</strong> for further scientific data analysis or reporting. You get a CSV file with the time use data submitted by the participants.</p>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     {% if study_data.total_activities_logged > 0 %}
                         <a href="{{ request.scope.root_path }}/api/admin/export/{{ study_data.study.name_short }}/activities?format=csv"
@@ -771,17 +772,22 @@
                     {% else %}
                         <span class="export-btn disabled"
                             style="display: inline-block; padding: 0.5rem 1rem; background: #cccccc; color: #666666; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; cursor: not-allowed; opacity: 0.6;">
-                            📥 Download CSV (No activities)
+                            📥 Download CSV not available (No activities yet)
                         </span>
                         <span class="export-btn disabled"
                             style="display: inline-block; padding: 0.5rem 1rem; background: #cccccc; color: #666666; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; cursor: not-allowed; opacity: 0.6;">
-                            📥 Download JSON (No activities)
+                            📥 Download JSON not available (No activities yet)
                         </span>
                         <span class="export-btn disabled"
                             style="display: inline-block; padding: 0.5rem 1rem; background: #cccccc; color: #666666; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; cursor: not-allowed; opacity: 0.6;">
-                            📥 Download CSV Without Metadata (No activities)
+                            📥 Download CSV Without Metadata not available (No activities yet)
                         </span>
                     {% endif %}
+                </div>
+                <div class="export-cfg-buttons" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef;">
+                    <strong style="display: block; margin-bottom: 0.5rem; color: #495057;">Export server runtime setup</strong>
+                    <p>This exports the <strong>study setup</strong> on the server, <strong>without</strong> the actual research data. It can be used to prepare the same, empty study again on this or another server. What you get is the study configuration file and the files defining available activities.</p>
+                    <p>The files exported here can be used on the <a href="{{ request.scope.root_path }}/admin/file-validation">File Validation page</a> to create a new study based on the current configuration.</p>
                         <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study_data.study.name_short }}"
                            download="studies_config_{{ study_data.study.name_short }}_{{ current_time.strftime('%Y-%m-%d') }}.json"
                            class="export-btn"
