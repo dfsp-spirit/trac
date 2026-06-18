@@ -281,7 +281,6 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
             "name",
             "name_short",
             "supported_languages",
-            "activities_logged_by_userid",
             "study_participant_ids",
             "activities_json_data",
             "require_consent",
@@ -297,7 +296,6 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
             exported_study["default_language"] in exported_study["supported_languages"]
         )
 
-        assert "activities_logged_by_userid" in exported_study
         assert isinstance(exported_study["activities_json_data"], dict)
         assert (
             exported_study["default_language"] in exported_study["activities_json_data"]

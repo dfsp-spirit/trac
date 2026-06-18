@@ -187,7 +187,7 @@ async def test_admin_import_roundtrip_from_runtime_config_export_uses_embedded_a
         exported_study["name"] = f"Roundtrip Import {roundtrip_study_name_short}"
         exported_study["name_short"] = roundtrip_study_name_short
         exported_study.pop("activities_json_files", None)
-        exported_study.pop("activities_logged_by_userid", None)
+        assert "activities_logged_by_userid" not in exported_study
 
         import_payload = {
             "mode": "create_only",

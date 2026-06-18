@@ -3468,11 +3468,11 @@ async def export_runtime_studies_config(
     """Export runtime study setup as a studies_config-like structure plus activities definitions.
 
     The export contains two top-level keys:
-    - studies_config: compatible studies list with runtime participant IDs and logged activities by participant and study day
+    - studies_config: compatible studies list with runtime participant IDs
     - activities: map keyed by study_name_short with the loaded activities.json content per language
 
     Note:
-    - participant IDs are random external IDs and are used as object keys in participant-grouped maps.
+    - participant IDs are random external IDs.
     """
     study_query = select(Study).order_by(Study.name_short)
     if study_name:
@@ -3660,7 +3660,6 @@ async def export_runtime_studies_config(
                 "study_text_consent": study.study_text_consent,
                 "data_collection_start": study.data_collection_start,
                 "data_collection_end": study.data_collection_end,
-                "activities_logged_by_userid": logged_activities,
             }
         )
 
