@@ -172,7 +172,12 @@
 
         <div class="header">
             <h1>File Validation</h1>
-            <p>Validate studies and activities files in-memory without creating or deleting studies.</p>
+            <p>Validate studies and activities files in-memory without creating or deleting studies by default.</p>
+            <ul>
+                <li>Modes 1 and 2 only validate activity files, without requiring a full study specification.</li>
+                <li>Modes 3 and 4 both validate the full configuration needed to create a new study: the relevant studies_config.json section and the related activities files. After successful validation, the study can be created on this page.</li>
+                <li>Note that modes 3 and 4 only differ in the required input format. If you have your activities for a study in separate files (specified in field 'activities_json_files'), use mode 3. If your activities are embedded into the studies_config.json file in field 'activities_json_data', use mode 4.</li>
+            </ul>
             <div class="meta">
                 <div><strong>Admin:</strong> {{ current_admin }}</div>
                 <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
@@ -190,12 +195,12 @@
                 <div class="actions">
                     <button type="submit">Validate single file</button>
                 </div>
-                <p class="hint">Tip: language-cross checks are skipped in this mode.</p>
+                <p class="hint">Language-cross checks are not possible in this mode. If you have several activity files in different languages and need to ensure consistency, prefer mode 2.</p>
             </form>
 
             <form class="card validation-form" data-mode="activities_multilang">
                 <h2>2) Activities cross-language set</h2>
-                <p class="subtle">Checks consistency across one activities file per language.</p>
+                <p class="subtle">Checks consistency across several activity files (one per language).</p>
                 <div class="field">
                     <label for="multiSupportedLanguages">Supported languages (comma-separated)</label>
                     <input id="multiSupportedLanguages" name="supported_languages_csv" type="text" placeholder="en,de,sv" required>
@@ -212,6 +217,7 @@
                     <label for="multiLanguageMap">Optional language map JSON (lang -&gt; filename)</label>
                     <textarea id="multiLanguageMap" name="activities_language_map" placeholder='{"en":"activities_default.json","de":"activities_default.de.json"}'></textarea>
                 </div>
+                <p class="hint">If no language map is provided, the 'language' field in each activities file is used to map uploaded files.</p>
                 <div class="actions">
                     <button type="submit">Validate language set</button>
                 </div>
@@ -237,13 +243,34 @@
                     <label for="fullLanguageMap">Optional language map JSON (lang -&gt; filename)</label>
                     <textarea id="fullLanguageMap" name="activities_language_map" placeholder='{"en":"activities_default.json","de":"activities_default.de.json"}'></textarea>
                 </div>
+                <p class="hint">If no language map is provided, filenames from studies_config.json and the the 'language' field in each activities filea re used to map uploaded files.</p>
                 <div class="actions">
                     <button type="submit">Validate full study</button>
-                    <button type="button" id="createStudyBtn" disabled>Create study (create_only, all_or_nothing)</button>
+                    <button type="button" id="createStudyBtn" disabled>Create study</button>
                 </div>
                 <p id="createStudyStatus" class="create-status subtle" aria-live="polite"></p>
-                <p class="hint">By default, filenames from studies_config are used to map uploaded files.</p>
+
                 <p class="hint" id="createStudyHint">Validate full study first. Creation is only allowed when no existing study has the same name or name_short.</p>
+            </form>
+
+            <form class="card validation-form" data-mode="full_study_embedded">
+                <h2>4) Full study from one embedded studies_config</h2>
+                <p class="subtle">Checks one selected study from studies_config where activities are embedded as activities_json_data.</p>
+                <div class="field">
+                    <label for="embeddedStudyConfigFile">studies_config.json (contains activities_json_data)</label>
+                    <input id="embeddedStudyConfigFile" name="studies_config_file" type="file" accept=".json" required>
+                </div>
+                <div class="field" id="embeddedStudySelectorField" style="display:none;">
+                    <label for="embeddedStudyNameShort">Study to validate (from uploaded studies_config)</label>
+                    <select id="embeddedStudyNameShort" name="full_study_name_short"></select>
+                    <p class="hint">If multiple studies are found, select one and validate again.</p>
+                </div>
+                <div class="actions">
+                    <button type="submit">Validate embedded full study</button>
+                    <button type="button" id="createEmbeddedStudyBtn" disabled>Create study</button>
+                </div>
+                <p id="createEmbeddedStudyStatus" class="create-status subtle" aria-live="polite"></p>
+                <p class="hint" id="createEmbeddedStudyHint">Validate embedded full study first. Creation is only allowed when no existing study has the same name or name_short.</p>
             </form>
         </div>
 
@@ -259,7 +286,14 @@
         const createStudyBtn = document.getElementById('createStudyBtn');
         const createStudyHint = document.getElementById('createStudyHint');
         const createStudyStatus = document.getElementById('createStudyStatus');
+        const embeddedStudyForm = document.querySelector('.validation-form[data-mode="full_study_embedded"]');
+        const embeddedStudySelectorField = document.getElementById('embeddedStudySelectorField');
+        const embeddedStudyNameShortSelect = document.getElementById('embeddedStudyNameShort');
+        const createEmbeddedStudyBtn = document.getElementById('createEmbeddedStudyBtn');
+        const createEmbeddedStudyHint = document.getElementById('createEmbeddedStudyHint');
+        const createEmbeddedStudyStatus = document.getElementById('createEmbeddedStudyStatus');
         let lastFullStudyValidationEligible = false;
+        let lastEmbeddedStudyValidationEligible = false;
 
         function setCreateStatus(message, statusClass = 'subtle') {
             if (!createStudyStatus) {
@@ -267,6 +301,14 @@
             }
             createStudyStatus.className = `create-status ${statusClass}`;
             createStudyStatus.textContent = message || '';
+        }
+
+        function setEmbeddedCreateStatus(message, statusClass = 'subtle') {
+            if (!createEmbeddedStudyStatus) {
+                return;
+            }
+            createEmbeddedStudyStatus.className = `create-status ${statusClass}`;
+            createEmbeddedStudyStatus.textContent = message || '';
         }
 
         function escapeHtml(value) {
@@ -320,6 +362,8 @@
 
             updateFullStudySelector(payload);
             updateCreateStudyActionState(payload);
+            updateEmbeddedStudySelector(payload);
+            updateEmbeddedCreateStudyActionState(payload);
         }
 
         function updateCreateStudyActionState(payload) {
@@ -394,6 +438,44 @@
             fullStudySelectorField.style.display = uniqueStudies.length > 1 ? 'block' : 'none';
         }
 
+        function setEmbeddedStudySelectorOptions(studyNameShorts, preserveCurrentValue = true) {
+            if (!embeddedStudySelectorField || !embeddedStudyNameShortSelect) {
+                return;
+            }
+
+            const previousValue = preserveCurrentValue
+                ? embeddedStudyNameShortSelect.value
+                : '';
+            const uniqueStudies = [...new Set(
+                (studyNameShorts || [])
+                    .map((value) => String(value || '').trim())
+                    .filter((value) => value.length > 0)
+            )];
+
+            embeddedStudyNameShortSelect.innerHTML = '';
+            const placeholderOption = document.createElement('option');
+            placeholderOption.value = '';
+            placeholderOption.textContent = '-- Select study_name_short --';
+            embeddedStudyNameShortSelect.appendChild(placeholderOption);
+
+            uniqueStudies.forEach((studyNameShort) => {
+                const option = document.createElement('option');
+                option.value = studyNameShort;
+                option.textContent = studyNameShort;
+                embeddedStudyNameShortSelect.appendChild(option);
+            });
+
+            if (previousValue && uniqueStudies.includes(previousValue)) {
+                embeddedStudyNameShortSelect.value = previousValue;
+            } else if (uniqueStudies.length === 1) {
+                embeddedStudyNameShortSelect.value = uniqueStudies[0];
+            } else {
+                embeddedStudyNameShortSelect.value = '';
+            }
+
+            embeddedStudySelectorField.style.display = uniqueStudies.length > 1 ? 'block' : 'none';
+        }
+
         async function updateFullStudySelectorFromUploadedFile() {
             if (!fullStudyForm) {
                 return;
@@ -422,6 +504,34 @@
             }
         }
 
+        async function updateEmbeddedStudySelectorFromUploadedFile() {
+            if (!embeddedStudyForm) {
+                return;
+            }
+
+            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
+            if (!studiesFileInput || !studiesFileInput.files || !studiesFileInput.files.length) {
+                setEmbeddedStudySelectorOptions([], false);
+                return;
+            }
+
+            const studiesFile = studiesFileInput.files[0];
+            try {
+                const rawText = await studiesFile.text();
+                const parsed = JSON.parse(rawText);
+                const studies = Array.isArray(parsed?.studies) ? parsed.studies : [];
+                const names = studies
+                    .map((study) => (study && typeof study === 'object' ? study.name_short : null))
+                    .filter((name) => typeof name === 'string' && name.trim().length > 0)
+                    .map((name) => name.trim());
+
+                setEmbeddedStudySelectorOptions(names, false);
+            } catch (_error) {
+                // Keep selector hidden when file is invalid; backend submission will show validation details.
+                setEmbeddedStudySelectorOptions([], false);
+            }
+        }
+
         function updateFullStudySelector(payload) {
             if (!fullStudyForm || !fullStudySelectorField || !fullStudyNameShortSelect) {
                 return;
@@ -443,6 +553,29 @@
 
             setFullStudySelectorOptions(availableStudies, true);
             fullStudySelectorField.style.display = 'block';
+        }
+
+        function updateEmbeddedStudySelector(payload) {
+            if (!embeddedStudyForm || !embeddedStudySelectorField || !embeddedStudyNameShortSelect) {
+                return;
+            }
+
+            const mode = payload && payload.mode;
+            const summary = (payload && payload.summary) || {};
+            const availableStudies = Array.isArray(summary.available_studies)
+                ? summary.available_studies
+                : [];
+            const needsSelection = mode === 'full_study_embedded' && summary.selection_required === true;
+
+            if (!needsSelection) {
+                if (payload && payload.ok) {
+                    embeddedStudySelectorField.style.display = 'none';
+                }
+                return;
+            }
+
+            setEmbeddedStudySelectorOptions(availableStudies, true);
+            embeddedStudySelectorField.style.display = 'block';
         }
 
         async function submitValidationForm(form, mode) {
@@ -506,6 +639,20 @@
                 }
             }
 
+            if (mode === 'full_study_embedded') {
+                const studiesFileInput = form.querySelector('input[name="studies_config_file"]');
+                const selectedStudyNameShort = form.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
+
+                if (!studiesFileInput.files.length) {
+                    throw new Error('Please upload one studies_config file.');
+                }
+
+                fd.append('studies_config_file', studiesFileInput.files[0]);
+                if (selectedStudyNameShort) {
+                    fd.append('full_study_name_short', selectedStudyNameShort);
+                }
+            }
+
             submitButton.disabled = true;
             submitButton.textContent = 'Validating...';
 
@@ -521,7 +668,9 @@
                 submitButton.disabled = false;
                 submitButton.textContent = mode === 'single_activities'
                     ? 'Validate single file'
-                    : (mode === 'activities_multilang' ? 'Validate language set' : 'Validate full study');
+                    : (mode === 'activities_multilang'
+                        ? 'Validate language set'
+                        : (mode === 'full_study' ? 'Validate full study' : 'Validate embedded full study'));
             }
         }
 
@@ -546,6 +695,7 @@
             }
 
             const fd = new FormData();
+            fd.append('mode', 'full_study');
             fd.append('studies_config_file', studiesFileInput.files[0]);
             if (selectedStudyNameShort) {
                 fd.append('full_study_name_short', selectedStudyNameShort);
@@ -579,6 +729,87 @@
             } finally {
                 createStudyBtn.textContent = 'Create study (create_only, all_or_nothing)';
                 createStudyBtn.disabled = !lastFullStudyValidationEligible;
+            }
+        }
+
+        function updateEmbeddedCreateStudyActionState(payload) {
+            if (!createEmbeddedStudyBtn || !createEmbeddedStudyHint) {
+                return;
+            }
+
+            const isEmbeddedPayload = payload && payload.mode === 'full_study_embedded';
+            const isValidationSuccess = isEmbeddedPayload && payload.ok === true;
+            const creationEligible = Boolean(payload?.summary?.creation_eligible);
+
+            lastEmbeddedStudyValidationEligible = isValidationSuccess && creationEligible;
+            createEmbeddedStudyBtn.disabled = !lastEmbeddedStudyValidationEligible;
+
+            if (!isEmbeddedPayload) {
+                createEmbeddedStudyHint.textContent =
+                    'Validate embedded full study first. Creation is only allowed when no existing study has the same name or name_short.';
+                return;
+            }
+
+            if (!isValidationSuccess) {
+                createEmbeddedStudyHint.textContent =
+                    'Validation failed. Fix errors before creating a study.';
+                return;
+            }
+
+            if (creationEligible) {
+                createEmbeddedStudyHint.textContent =
+                    'Validation passed and no conflicts found. You can create this study now.';
+                return;
+            }
+
+            createEmbeddedStudyHint.textContent =
+                'Validation passed, but creation is blocked because a study with the same name or name_short already exists.';
+        }
+
+        async function createStudyFromEmbeddedForm() {
+            if (!embeddedStudyForm) {
+                return;
+            }
+            if (!lastEmbeddedStudyValidationEligible) {
+                throw new Error('Please run a successful embedded full study validation without conflicts before creating.');
+            }
+
+            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
+            const selectedStudyNameShort = embeddedStudyForm.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
+
+            if (!studiesFileInput.files.length) {
+                throw new Error('Please upload one studies_config file.');
+            }
+
+            const fd = new FormData();
+            fd.append('mode', 'full_study_embedded');
+            fd.append('studies_config_file', studiesFileInput.files[0]);
+            if (selectedStudyNameShort) {
+                fd.append('full_study_name_short', selectedStudyNameShort);
+            }
+
+            createEmbeddedStudyBtn.disabled = true;
+            createEmbeddedStudyBtn.textContent = 'Creating...';
+            setEmbeddedCreateStatus('Creating study...', 'subtle');
+            try {
+                const response = await fetch('{{ request.scope.root_path }}/api/admin/studies/create-from-files', {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                });
+                const payload = await response.json();
+                renderResult(payload);
+
+                if (payload && payload.ok) {
+                    const createdStudyNameShort = payload?.summary?.study_name_short || selectedStudyNameShort || 'selected study';
+                    setEmbeddedCreateStatus(`Study '${createdStudyNameShort}' was created successfully.`, 'ok');
+                } else {
+                    const firstErrorMessage = payload?.errors?.[0]?.message || 'Study creation failed. Please review the errors below.';
+                    setEmbeddedCreateStatus(firstErrorMessage, 'error');
+                }
+            } finally {
+                createEmbeddedStudyBtn.textContent = 'Create study (create_only, all_or_nothing)';
+                createEmbeddedStudyBtn.disabled = !lastEmbeddedStudyValidationEligible;
             }
         }
 
@@ -634,6 +865,38 @@
                         await createStudyFromFullStudyForm();
                     } catch (error) {
                         setCreateStatus(error.message || String(error), 'error');
+                        renderResult({
+                            ok: false,
+                            mode: 'create_only',
+                            summary: {},
+                            errors: [{
+                                message: error.message || String(error),
+                                path: null,
+                                type: 'client_error',
+                            }],
+                        });
+                    }
+                });
+            }
+        }
+
+        if (embeddedStudyForm) {
+            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
+            if (studiesFileInput) {
+                studiesFileInput.addEventListener('change', () => {
+                    updateEmbeddedStudySelectorFromUploadedFile();
+                    lastEmbeddedStudyValidationEligible = false;
+                    updateEmbeddedCreateStudyActionState(null);
+                    setEmbeddedCreateStatus('');
+                });
+            }
+
+            if (createEmbeddedStudyBtn) {
+                createEmbeddedStudyBtn.addEventListener('click', async () => {
+                    try {
+                        await createStudyFromEmbeddedForm();
+                    } catch (error) {
+                        setEmbeddedCreateStatus(error.message || String(error), 'error');
                         renderResult({
                             ok: false,
                             mode: 'create_only',

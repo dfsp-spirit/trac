@@ -2749,6 +2749,46 @@ async def _prepare_full_study_import_from_uploads(
     return import_study_payload, validated, available_studies
 
 
+async def _prepare_embedded_full_study_import_from_upload(
+    *,
+    studies_config_file: UploadFile,
+    full_study_name_short: Optional[str],
+) -> Tuple[ImportStudiesConfigStudy, Dict[str, Any], List[str]]:
+    studies_config_json = await _parse_json_upload(
+        studies_config_file,
+        "studies_config file",
+    )
+    (
+        study,
+        available_studies,
+        selection_required,
+    ) = _extract_study_from_studies_config_for_validation(
+        studies_config_json,
+        selected_study_name_short=full_study_name_short,
+    )
+
+    if selection_required:
+        raise ValueError(
+            "Uploaded studies_config contains multiple studies. "
+            "Select one study_name_short and validate again."
+        )
+
+    embedded_activities = study.get("activities_json_data")
+    if not isinstance(embedded_activities, dict) or not embedded_activities:
+        raise ValueError(
+            "Selected study in studies_config must include non-empty activities_json_data"
+        )
+
+    study_payload_dict = dict(study)
+    study_payload_dict.pop("activities_json_file", None)
+    study_payload_dict.pop("activities_json_files", None)
+    study_payload_dict["activities_json_data"] = embedded_activities
+
+    import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
+    validated = _validate_import_study_payload(import_study_payload)
+    return import_study_payload, validated, available_studies
+
+
 def _create_study_from_import_payload(
     session: Session,
     study_payload: ImportStudiesConfigStudy,
@@ -3939,11 +3979,13 @@ async def validate_files_in_memory(
     - single_activities: one activities JSON file
     - activities_multilang: several activities files + language config
     - full_study: studies_config (one or more studies) + activities files
+    - full_study_embedded: one studies_config (one or more studies) with embedded activities_json_data
     """
     allowed_modes = {
         "single_activities",
         "activities_multilang",
         "full_study",
+        "full_study_embedded",
     }
     if mode not in allowed_modes:
         raise HTTPException(
@@ -4033,54 +4075,67 @@ async def validate_files_in_memory(
                 "errors": [],
             }
 
-        if studies_config_file is None:
-            raise ValueError("full_study mode requires a studies_config file upload")
+        if mode in {"full_study", "full_study_embedded"}:
+            if studies_config_file is None:
+                raise ValueError(f"{mode} mode requires a studies_config file upload")
 
-        studies_config_json = await _parse_json_upload(
-            studies_config_file,
-            "studies_config file",
-        )
-        (
-            study,
-            available_studies,
-            selection_required,
-        ) = _extract_study_from_studies_config_for_validation(
-            studies_config_json,
-            selected_study_name_short=full_study_name_short,
-        )
-
-        if selection_required:
-            return {
-                "ok": False,
-                "mode": mode,
-                "summary": {
-                    "selection_required": True,
-                    "available_studies": sorted(available_studies),
-                },
-                "errors": [
-                    {
-                        "message": (
-                            "Uploaded studies_config contains multiple studies. "
-                            "Select one study_name_short and validate again."
-                        ),
-                        "path": "studies",
-                        "type": "selection_required",
-                    }
-                ],
-            }
-
-        # The studies_config upload has already been read once to decide whether
-        # selection is required. Rewind before passing it to the shared parser.
-        await studies_config_file.seek(0)
-
-        import_study_payload, validated, available_studies = (
-            await _prepare_full_study_import_from_uploads(
-                studies_config_file=studies_config_file,
-                activities_files=activities_files,
-                activities_language_map=activities_language_map,
-                full_study_name_short=full_study_name_short,
+            studies_config_json = await _parse_json_upload(
+                studies_config_file,
+                "studies_config file",
             )
-        )
+            (
+                study,
+                available_studies,
+                selection_required,
+            ) = _extract_study_from_studies_config_for_validation(
+                studies_config_json,
+                selected_study_name_short=full_study_name_short,
+            )
+
+            if selection_required:
+                return {
+                    "ok": False,
+                    "mode": mode,
+                    "summary": {
+                        "selection_required": True,
+                        "available_studies": sorted(available_studies),
+                    },
+                    "errors": [
+                        {
+                            "message": (
+                                "Uploaded studies_config contains multiple studies. "
+                                "Select one study_name_short and validate again."
+                            ),
+                            "path": "studies",
+                            "type": "selection_required",
+                        }
+                    ],
+                }
+
+            # The studies_config upload has already been read once to decide whether
+            # selection is required. Rewind before passing it to the shared parser.
+            await studies_config_file.seek(0)
+
+            if mode == "full_study":
+                import_study_payload, validated, available_studies = (
+                    await _prepare_full_study_import_from_uploads(
+                        studies_config_file=studies_config_file,
+                        activities_files=activities_files,
+                        activities_language_map=activities_language_map,
+                        full_study_name_short=full_study_name_short,
+                    )
+                )
+            else:
+                import_study_payload, validated, available_studies = (
+                    await _prepare_embedded_full_study_import_from_upload(
+                        studies_config_file=studies_config_file,
+                        full_study_name_short=full_study_name_short,
+                    )
+                )
+        else:
+            raise ValueError(
+                f"Unsupported mode '{mode}'. Allowed: {sorted(allowed_modes)}"
+            )
 
         parsed_activities_by_lang: Dict[str, ActivitiesConfig] = validated[
             "parsed_activities_by_lang"
@@ -4200,6 +4255,7 @@ async def validate_files_in_memory(
 
 @app.post("/api/admin/studies/create-from-files")
 async def create_study_from_validated_uploads(
+    mode: str = Form("full_study"),
     full_study_name_short: Optional[str] = Form(None),
     activities_language_map: Optional[str] = Form(None),
     activities_files: List[UploadFile] = File(default_factory=list),
@@ -4214,26 +4270,47 @@ async def create_study_from_validated_uploads(
     - all_or_nothing
     - fail if study with same name_short or same name already exists
     """
+    normalized_mode = mode if isinstance(mode, str) else "full_study"
+    normalized_mode = normalized_mode.strip() or "full_study"
+
+    allowed_modes = {
+        "full_study",
+        "full_study_embedded",
+    }
+    if normalized_mode not in allowed_modes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported mode '{normalized_mode}'. Allowed: {sorted(allowed_modes)}",
+        )
+
     if studies_config_file is None:
         raise HTTPException(
             status_code=400,
-            detail="full_study creation requires a studies_config file upload",
+            detail=f"{normalized_mode} creation requires a studies_config file upload",
         )
-    if not activities_files:
+    if normalized_mode == "full_study" and not activities_files:
         raise HTTPException(
             status_code=400,
             detail="full_study creation requires related activities files",
         )
 
     try:
-        import_study_payload, validated_data, available_studies = (
-            await _prepare_full_study_import_from_uploads(
-                studies_config_file=studies_config_file,
-                activities_files=activities_files,
-                activities_language_map=activities_language_map,
-                full_study_name_short=full_study_name_short,
+        if normalized_mode == "full_study":
+            import_study_payload, validated_data, available_studies = (
+                await _prepare_full_study_import_from_uploads(
+                    studies_config_file=studies_config_file,
+                    activities_files=activities_files,
+                    activities_language_map=activities_language_map,
+                    full_study_name_short=full_study_name_short,
+                )
             )
-        )
+        else:
+            import_study_payload, validated_data, available_studies = (
+                await _prepare_embedded_full_study_import_from_upload(
+                    studies_config_file=studies_config_file,
+                    full_study_name_short=full_study_name_short,
+                )
+            )
 
         existing_by_name_short = session.exec(
             select(Study).where(Study.name_short == import_study_payload.name_short)
@@ -4265,7 +4342,7 @@ async def create_study_from_validated_uploads(
             current_admin,
             (
                 "created study from validated full-study package "
-                f"(study_name_short='{import_study_payload.name_short}', mode=create_only, transaction_mode=all_or_nothing)"
+                f"(study_name_short='{import_study_payload.name_short}', source_mode='{normalized_mode}', mode=create_only, transaction_mode=all_or_nothing)"
             ),
         )
 

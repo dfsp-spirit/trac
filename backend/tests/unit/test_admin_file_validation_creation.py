@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+import copy
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -60,6 +61,63 @@ def _build_full_study_uploads(
         )
 
     return studies_config_upload, activities_uploads
+
+
+def _build_embedded_study_payload(
+    studies_config_payload: dict,
+    selected_study_name_short: str,
+) -> dict:
+    selected_study = copy.deepcopy(
+        _get_study_by_name_short(studies_config_payload, selected_study_name_short)
+    )
+    language_to_file = selected_study.get("activities_json_files") or {}
+    if not isinstance(language_to_file, dict) or not language_to_file:
+        raise AssertionError("Selected study has no activities_json_files mapping")
+
+    activities_json_data = {}
+    for language, activities_filename in language_to_file.items():
+        activities_path = _backend_root() / str(activities_filename)
+        activities_json_data[language] = json.loads(
+            activities_path.read_text(encoding="utf-8")
+        )
+
+    selected_study.pop("activities_json_file", None)
+    selected_study.pop("activities_json_files", None)
+    selected_study["activities_json_data"] = activities_json_data
+    return selected_study
+
+
+def _build_embedded_studies_config_upload(
+    studies_config_payload: dict,
+    selected_study_name_short: str,
+    include_second_study: bool,
+) -> UploadFile:
+    selected_study = _build_embedded_study_payload(
+        studies_config_payload,
+        selected_study_name_short,
+    )
+    studies = [selected_study]
+
+    if include_second_study:
+        second_study_name_short = None
+        for study in studies_config_payload.get("studies", []):
+            candidate_name_short = str(study.get("name_short") or "").strip()
+            if candidate_name_short and candidate_name_short != selected_study_name_short:
+                second_study_name_short = candidate_name_short
+                break
+        if not second_study_name_short:
+            raise AssertionError("Could not find an alternate study for multi-study test upload")
+
+        second_study = _build_embedded_study_payload(
+            studies_config_payload,
+            second_study_name_short,
+        )
+        studies.append(second_study)
+
+    return _make_upload_file(
+        "studies_config.json",
+        json.dumps({"studies": studies}).encode("utf-8"),
+    )
 
 
 @pytest.fixture
@@ -205,6 +263,100 @@ async def test_create_from_files_creates_only_selected_study_when_config_contain
 
     assert create_payload["ok"] is True
     assert create_payload["summary"]["created"] == 1
+
+    all_studies = db_session.exec(select(Study)).all()
+    assert len(all_studies) == 1
+    assert all_studies[0].name_short == selected_study_name_short
+
+
+@pytest.mark.asyncio
+async def test_full_study_embedded_requires_selection_for_multi_study_upload(db_session):
+    studies_config_payload = _load_studies_config_payload()
+    studies_config_upload = _build_embedded_studies_config_upload(
+        studies_config_payload,
+        selected_study_name_short="default",
+        include_second_study=True,
+    )
+
+    response_payload = await validate_files_in_memory(
+        mode="full_study_embedded",
+        default_language=None,
+        supported_languages_csv=None,
+        activities_language_map=None,
+        full_study_name_short=None,
+        activities_file=None,
+        activities_files=[],
+        studies_config_file=studies_config_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert response_payload["ok"] is False
+    assert response_payload["mode"] == "full_study_embedded"
+    assert response_payload["summary"]["selection_required"] is True
+    assert "default" in response_payload["summary"]["available_studies"]
+    assert any(
+        error.get("type") == "selection_required"
+        for error in response_payload.get("errors", [])
+    )
+
+
+@pytest.mark.asyncio
+async def test_full_study_embedded_validation_and_create_selected_study(db_session):
+    studies_config_payload = _load_studies_config_payload()
+
+    random_suffix = uuid.uuid4().hex[:8]
+    selected_study_name_short = f"embedded_new_{random_suffix}"
+    selected_study_name = f"Embedded Study Copy {random_suffix}"
+
+    default_study = _get_study_by_name_short(studies_config_payload, "default")
+    default_study["name_short"] = selected_study_name_short
+    default_study["name"] = selected_study_name
+
+    studies_config_upload = _build_embedded_studies_config_upload(
+        studies_config_payload,
+        selected_study_name_short=selected_study_name_short,
+        include_second_study=True,
+    )
+
+    validation_payload = await validate_files_in_memory(
+        mode="full_study_embedded",
+        default_language=None,
+        supported_languages_csv=None,
+        activities_language_map=None,
+        full_study_name_short=selected_study_name_short,
+        activities_file=None,
+        activities_files=[],
+        studies_config_file=studies_config_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert validation_payload["ok"] is True
+    assert validation_payload["mode"] == "full_study_embedded"
+    assert validation_payload["summary"]["creation_eligible"] is True
+
+    # Rebuild upload because UploadFile stream is consumed.
+    studies_config_upload = _build_embedded_studies_config_upload(
+        studies_config_payload,
+        selected_study_name_short=selected_study_name_short,
+        include_second_study=True,
+    )
+
+    create_payload = await create_study_from_validated_uploads(
+        mode="full_study_embedded",
+        full_study_name_short=selected_study_name_short,
+        activities_language_map=None,
+        activities_files=[],
+        studies_config_file=studies_config_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert create_payload["ok"] is True
+    assert create_payload["mode"] == "create_only"
+    assert create_payload["summary"]["created"] == 1
+    assert create_payload["summary"]["study_name_short"] == selected_study_name_short
 
     all_studies = db_session.exec(select(Study)).all()
     assert len(all_studies) == 1
