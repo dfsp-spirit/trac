@@ -3563,14 +3563,7 @@ async def export_runtime_studies_config(
         activity_configs_for_study: Dict = {}
         if blob_by_lang:
             activity_configs_for_study.update(blob_by_lang)
-            activities_json_files = {
-                language: f"db_blob://{study.name_short}/{language}"
-                for language in supported_languages
-            }
         else:
-            activities_json_files = {
-                study.default_language: f"db_blob://{study.name_short}/{study.default_language}"
-            }
             activity_configs_for_study[study.default_language] = {
                 "error": (
                     "No DB-backed activities config blob available for this study. "
@@ -3659,7 +3652,6 @@ async def export_runtime_studies_config(
                 ],
                 "default_language": study.default_language,
                 "supported_languages": supported_languages,
-                "activities_json_files": activities_json_files,
                 "activities_json_data": activity_configs_for_study,
                 "study_text_intro": study.study_text_intro,
                 "study_text_end_completed": study.study_text_end_completed,

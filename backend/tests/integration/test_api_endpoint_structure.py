@@ -302,6 +302,7 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert (
             exported_study["default_language"] in exported_study["activities_json_data"]
         )
+        assert "activities_json_files" not in exported_study
 
         assert study_name_short in runtime_config_export_data["activities"]
 
