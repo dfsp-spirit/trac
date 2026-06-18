@@ -899,6 +899,7 @@
                             {% if study_data.external_task_count > 0 %}
                             <p><strong>All external tasks completed:</strong> {{ "Yes" if participant.all_external_tasks_completed else "No" }}</p>
                             {% endif %}
+                            <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a></p>
                         </div>
                         {% endfor %}
                     </div>

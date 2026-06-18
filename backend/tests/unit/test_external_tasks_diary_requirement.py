@@ -66,3 +66,19 @@ def test_expected_return_url_template_fills_known_study_and_task(monkeypatch):
         "&callback_task_key=depression_survey"
         "&callback_token={assigned_token}"
     )
+
+
+def test_build_frontend_study_join_url_builds_concrete_participant_link(monkeypatch):
+    monkeypatch.setenv("TUD_FRONTEND_URL", "https://frontend.example.org/report/")
+
+    url = api._build_frontend_study_join_url(
+        study_name_short="adult pilot/de",
+        participant_id="user 1",
+    )
+
+    assert (
+        url
+        == "https://frontend.example.org/report/index.html"
+        "?pid=user+1"
+        "&study_name=adult+pilot%2Fde"
+    )

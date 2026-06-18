@@ -286,6 +286,17 @@ def _build_external_task_expected_return_url_template(
     )
 
 
+def _build_frontend_study_join_url(study_name_short: str, participant_id: str) -> str:
+    frontend_url = settings.frontend_url
+    query = urlencode(
+        {
+            "pid": participant_id,
+            "study_name": study_name_short,
+        }
+    )
+    return f"{frontend_url}/index.html?{query}"
+
+
 def _get_study_blob_languages(session: Session, study_id: int) -> List[str]:
     blob_languages = session.exec(
         select(StudyActivityConfigBlob.language)
@@ -1649,6 +1660,10 @@ async def admin_overview(
                         "activity_count": participant_activity_count,
                         "has_completed_study": participant_has_completed_study,
                         "all_external_tasks_completed": participant_all_external_tasks_completed,
+                        "study_join_url": _build_frontend_study_join_url(
+                            study.name_short,
+                            participant.id,
+                        ),
                     }
                 )
 
