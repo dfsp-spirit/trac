@@ -1544,377 +1544,83 @@ async def admin_overview(
         )
         return HTMLResponse(content="".join(fallback_parts))
 
-    # Prepare data structure for template
+    # Lightweight overview: build minimal study data for the table
     studies_data = []
 
+    now_utc = _coerce_utc_aware(utc_now())
+    try:
+        now_utc_naive = _to_utc_naive(now_utc)
+    except TypeError:
+        now_utc_naive = None
+
     for study in studies:
-        supported_cfg_languages = _get_study_blob_languages(session, study.id) or [
-            study.default_language
-        ]
-        cfg_language_query_param = f"cfg_lang_{study.name_short}"
-        selected_cfg_language = (
-            request.query_params.get(cfg_language_query_param) or study.default_language
-        )
-        if selected_cfg_language not in supported_cfg_languages:
-            selected_cfg_language = study.default_language
-
-        activities_config, activities_config_source, selected_cfg_language_effective = (
-            get_study_activities_config_model(
-                session=session,
-                study=study,
-                lang=selected_cfg_language,
-            )
-        )
-        selected_cfg_language = selected_cfg_language_effective
-
-        # Get day labels for this study
-        day_labels = session.exec(
-            select(DayLabel)
-            .where(DayLabel.study_id == study.id)
-            .order_by(DayLabel.display_order)
-        ).all()
-
-        now_utc = _coerce_utc_aware(utc_now())
-        try:
-            now_utc_naive = _to_utc_naive(now_utc)
-            study_is_currently_collecting = (
-                _to_utc_naive(study.data_collection_start)
-                <= now_utc_naive
-                <= _to_utc_naive(study.data_collection_end)
-                and not study.is_paused
-            )
-        except TypeError as exc:
-            logger.warning(
-                "Falling back to non-collecting state for study '%s' due to datetime mismatch: %s",
-                study.name_short,
-                exc,
-            )
-            study_is_currently_collecting = False
-
-        # Get timelines for this study
-        timelines = session.exec(
-            select(Timeline).where(Timeline.study_id == study.id)
-        ).all()
-
-        study_days_count = len(day_labels)
-        external_task_rows = session.exec(
-            select(StudyExternalTask)
-            .where(StudyExternalTask.study_id == study.id)
-            .order_by(StudyExternalTask.task_key)
-        ).all()
-        study_has_external_tasks = bool(external_task_rows)
-
-        # Get participants for this study
-        study_participants = session.exec(
-            select(StudyParticipant).where(StudyParticipant.study_id == study.id)
-        ).all()
-
-        # Get participant details
-        participants = []
-        for sp in study_participants:
-            participant = session.get(Participant, sp.participant_id)
-            if participant:
-                # Get activity count for this participant in this study
-                participant_activity_count = (
-                    session.exec(
-                        select(func.count(Activity.id)).where(
-                            Activity.study_id == study.id,
-                            Activity.participant_id == participant.id,
-                        )
-                    ).first()
-                    or 0
-                )
-
-                participant_has_completed_study = _is_participant_study_complete(
-                    session=session,
-                    study=study,
-                    participant_id=participant.id,
-                    study_days_count=study_days_count,
-                )
-
-                participant_external_tasks = (
-                    _get_participant_external_tasks(
-                        session=session,
-                        study=study,
-                        participant_id=participant.id,
-                        selected_language=study.default_language,
-                        study_days_count=study_days_count,
-                    )
-                    if study_has_external_tasks
-                    else []
-                )
-                participant_all_external_tasks_completed = (
-                    bool(participant_external_tasks)
-                    and all(
-                        external_task.is_confirmed
-                        for external_task in participant_external_tasks
-                    )
-                )
-
-                participants.append(
-                    {
-                        "id": participant.id,
-                        "created_at": participant.created_at,
-                        "joined_study_at": sp.created_at,
-                        "consent_given": sp.consent_given,
-                        "consent_decided_at": sp.consent_decided_at,
-                        "activity_count": participant_activity_count,
-                        "has_completed_study": participant_has_completed_study,
-                        "all_external_tasks_completed": participant_all_external_tasks_completed,
-                        "study_join_url": _build_frontend_study_join_url(
-                            study.name_short,
-                            participant.id,
-                        ),
-                    }
-                )
-
-        # Get logged activities from DB for this study (first 10 for preview)
-        if mysql_like_backend:
-            activities = []
-        else:
-            try:
-                activities = session.exec(
-                    select(Activity)
-                    .where(Activity.study_id == study.id)
-                    .order_by(Activity.created_at.desc())
-                    .limit(10)
-                ).all()
-            except TypeError as exc:
-                logger.warning(
-                    "Skipping activity preview query for study '%s' due to datetime mismatch: %s",
-                    study.name_short,
-                    exc,
-                )
-                activities = []
-
-        # Enrich activities with related data
-        enriched_activities = []
-        for activity in activities:
-            try:
-                participant = session.get(Participant, activity.participant_id)
-                day_label = session.get(DayLabel, activity.day_label_id)
-                timeline = session.get(Timeline, activity.timeline_id)
-
-                enriched_activities.append(
-                    {
-                        "id": activity.id,
-                        "participant_id": activity.participant_id,
-                        "participant_name": participant.id if participant else "Unknown",
-                        "day_label": day_label.name if day_label else "Unknown",
-                        "day_display_order": day_label.display_order if day_label else 0,
-                        "day_display_name": day_label.display_name
-                        if day_label
-                        else "Unknown",
-                        "timeline": timeline.name if timeline else "Unknown",
-                        "timeline_display_name": timeline.display_name
-                        if timeline
-                        else "Unknown",
-                        "activity_code": activity.activity_code,
-                        "activity_name": activity.activity_name,
-                        "activity_path_frontend": activity.activity_path_frontend,
-                        "category": activity.category,
-                        "start_minutes": activity.start_minutes,
-                        "end_minutes": activity.end_minutes,
-                        "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
-                        "duration": activity.end_minutes - activity.start_minutes,
-                        "parent_activity_code": activity.parent_activity_code,
-                        "created_at": activity.created_at,
-                    }
-                )
-            except TypeError as exc:
-                logger.warning(
-                    "Skipping activity preview row for study '%s' due to datetime mismatch: %s",
-                    study.name_short,
-                    exc,
-                )
-                continue
-
-        if mysql_like_backend:
-            last_study_activity = None
-        else:
-            try:
-                last_study_activity = session.exec(
-                    select(Activity)
-                    .where(Activity.study_id == study.id)
-                    .order_by(Activity.created_at.desc())
-                    .limit(1)
-                ).first()
-            except TypeError as exc:
-                logger.warning(
-                    "Skipping last activity query for study '%s' due to datetime mismatch: %s",
-                    study.name_short,
-                    exc,
-                )
-                last_study_activity = None
-
-        last_study_activity_time = (
-            last_study_activity.created_at if last_study_activity else None
-        )
-
-        # create a string like "3h 15m ago" for last_study_activity_time
-        last_activity_time_str_ago = None
-        if last_study_activity_time:
-            try:
-                elapsed_seconds = max(
-                    0,
-                    int(
-                        (
-                            _to_utc_naive(now_utc)
-                            - _to_utc_naive(last_study_activity_time)
-                        ).total_seconds()
-                    ),
-                )
-                hours, remainder = divmod(elapsed_seconds, 3600)
-                minutes, _ = divmod(remainder, 60)
-                last_activity_time_str_ago = f"{hours}h {minutes}m ago"
-            except TypeError as exc:
-                logger.warning(
-                    "Skipping relative activity time for study '%s' due to datetime mismatch: %s",
-                    study.name_short,
-                    exc,
-                )
-
-        # Get total activity count for this study in database
-        total_activities_logged = (
+        # Aggregate counts (cheap)
+        participant_count = (
             session.exec(
-                select(func.count(Activity.id)).where(Activity.study_id == study.id)
+                select(func.count(StudyParticipant.id))
+                .where(StudyParticipant.study_id == study.id)
+            ).first()
+            or 0
+        )
+        activity_count = (
+            session.exec(
+                select(func.count(Activity.id))
+                .where(Activity.study_id == study.id)
+            ).first()
+            or 0
+        )
+        external_task_count = (
+            session.exec(
+                select(func.count(StudyExternalTask.id))
+                .where(StudyExternalTask.study_id == study.id)
+            ).first()
+            or 0
+        )
+        external_task_assignment_count = (
+            session.exec(
+                select(func.count(StudyExternalTaskAssignment.id))
+                .join(
+                    StudyExternalTask,
+                    StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+                )
+                .where(StudyExternalTask.study_id == study.id)
             ).first()
             or 0
         )
 
-        external_tasks = []
-        external_task_assignment_count = 0
-        for external_task in external_task_rows:
-            assignment_rows = session.exec(
-                select(StudyExternalTaskAssignment)
-                .where(StudyExternalTaskAssignment.external_task_id == external_task.id)
-                .order_by(
-                    StudyExternalTaskAssignment.assignment_order,
-                    StudyExternalTaskAssignment.participant_id,
-                )
-            ).all()
-            external_task_assignment_count += len(assignment_rows)
-            external_tasks.append(
-                {
-                    "task_key": external_task.task_key,
-                    "name": external_task.name,
-                    "description": external_task.description,
-                    "url": external_task.url,
-                    "expected_return_url": _build_external_task_expected_return_url_template(
-                        study.name_short,
-                        external_task.task_key,
-                    ),
-                    "confirmation_type": external_task.confirmation_type,
-                    "token_count": len(external_task.tokens),
-                    "assignment_count": len(assignment_rows),
-                    "assignments": [
-                        {
-                            "participant_id": assignment.participant_id,
-                            "assigned_token": assignment.assigned_token,
-                            "assignment_order": assignment.assignment_order,
-                            "is_confirmed": assignment.is_confirmed,
-                            "confirmed_at": assignment.confirmed_at,
-                        }
-                        for assignment in assignment_rows
-                    ],
-                }
+        try:
+            study_is_collecting = (
+                now_utc_naive is not None
+                and _to_utc_naive(study.data_collection_start)
+                <= now_utc_naive
+                <= _to_utc_naive(study.data_collection_end)
+                and not study.is_paused
             )
+        except TypeError:
+            study_is_collecting = False
 
-        num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfg_per_timeline(
-            activities_config
-        )
-        num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfg_per_timeline(
-            activities_config
-        )
-        activities_cfg_text = get_activities_cfg_text_for_config(
-            activities_config, short=True, no_duplicate_parts=True
+        description_text = (
+            study.description.get(study.default_language)
+            if isinstance(study.description, dict)
+            else study.description
         )
 
-        num_activities_in_cfgfile_total = sum(
-            num_activities_in_cfgfile_by_timeline.values()
-        )
-        num_categories_in_cfgfile_total = sum(
-            num_categories_in_cfgfile_per_timeline.values()
-        )
-
-        # Get timeline statistics
-        timeline_stats = []
-        for timeline in timelines:
-            timeline_activity_count = (
-                session.exec(
-                    select(func.count(Activity.id)).where(
-                        Activity.study_id == study.id,
-                        Activity.timeline_id == timeline.id,
-                    )
-                ).first()
-                or 0
-            )
-
-            timeline_num_activities_cfg_file: int = (
-                num_activities_in_cfgfile_by_timeline.get(timeline.name, 0)
-            )
-            timeline_num_categories_cfg_file: int = (
-                num_categories_in_cfgfile_per_timeline.get(timeline.name, 0)
-            )
-
-            timeline_stats.append(
-                {
-                    "name": timeline.name,
-                    "display_name": timeline.display_name,
-                    "mode": timeline.mode,
-                    "activity_count": timeline_activity_count,  # instances recorded in database by participants
-                    "activity_count_cfg_file": timeline_num_activities_cfg_file,  # different ones available in activities.json
-                    "category_count_cfg_file": timeline_num_categories_cfg_file,  # different ones available in activities.json
-                    "description": timeline.description,
-                    "min_coverage": timeline.min_coverage,
-                }
-            )
-
-        studies_data.append(
-            {
-                "study": study,
-                "require_consent": bool(study.require_consent),
-                "day_labels": day_labels,
-                "is_actively_collecting": study_is_currently_collecting,
-                "timelines": timelines,
-                "timeline_stats": timeline_stats,
-                "participants": participants,
-                "external_tasks": external_tasks,
-                "external_task_count": len(external_tasks),
-                "external_task_assignment_count": external_task_assignment_count,
-                "activities_preview": enriched_activities,
-                "total_activities_logged": total_activities_logged,
-                "total_activities_cfg": num_activities_in_cfgfile_total,
-                "total_categories_cfg": num_categories_in_cfgfile_total,
-                "activities_cfg_text": activities_cfg_text,  # condensed text view of config-file activities
-                "activities_cfg_source": activities_config_source,
-                "supported_cfg_languages": supported_cfg_languages,
-                "selected_cfg_language": selected_cfg_language,
-                "cfg_language_query_param": cfg_language_query_param,
-                "last_activity_time": last_study_activity_time,  # when last activity was logged for this study by a user
-                "last_activity_time_str_ago": last_activity_time_str_ago,  # human readable "3h 15m ago"
-                "participant_count": len(participants),
-                "description_text": (
-                    study.description.get(study.default_language)
-                    if isinstance(study.description, dict)
-                    else study.description
-                ),
-                "frontend_open_join_url": (
-                    f"{settings.frontend_url}/index.html?{urlencode({'study_name': study.name_short})}"
-                    if study.allow_unlisted_participants
-                    else None
-                ),
-            }
-        )
+        studies_data.append({
+            "study": study,
+            "description_text": description_text,
+            "participant_count": participant_count,
+            "activity_count": activity_count,
+            "external_task_count": external_task_count,
+            "external_task_assignment_count": external_task_assignment_count,
+            "is_actively_collecting": study_is_collecting,
+        })
 
     # Get database-wide statistics
     total_studies = len(studies)
-
     total_participants = session.exec(select(func.count(Participant.id))).first() or 0
-
     total_activities_all = session.exec(select(func.count(Activity.id))).first() or 0
 
-    # Get recent activities (last 10 overall)
+    # Recent activities (last 20 overall)
     if mysql_like_backend:
         recent_activities = []
     else:
@@ -1977,6 +1683,357 @@ async def admin_overview(
         "current_time": utc_now(),
     }
     template = templates.get_template("admin_overview.html")
+    html_content = template.render(context_dict)
+    return HTMLResponse(content=html_content)
+
+
+@app.get(
+    "/admin/study/{name_short}",
+    name="Admin Study Detail Page",
+    response_class=HTMLResponse,
+)
+async def admin_study_detail(
+    request: Request,
+    name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """
+    Admin study detail page showing all information for a single study.
+    Shows timelines, participants, external tasks, activities, day labels, and cfg activities.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == name_short)
+    ).first()
+
+    if not study:
+        return HTMLResponse(
+            content=f"<html><body><h1>Study '{name_short}' not found</h1>"
+                    f"<a href='{request.scope.root_path}/admin'>Back to overview</a></body></html>",
+            status_code=404,
+        )
+
+    logger.info(
+        "Admin '%s' accessed study detail page for '%s'.",
+        current_admin,
+        study.name_short,
+    )
+    audit_admin_action(current_admin, f"opened study detail page for '{study.name_short}'")
+
+    mysql_like_backend = settings.database_url.startswith("mysql")
+
+    # --- Query lightweight study data ---
+    supported_cfg_languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    selected_cfg_language = (
+        request.query_params.get("cfg_lang") or study.default_language
+    )
+    if selected_cfg_language not in supported_cfg_languages:
+        selected_cfg_language = study.default_language
+
+    activities_config, activities_config_source, selected_cfg_language_effective = (
+        get_study_activities_config_model(
+            session=session,
+            study=study,
+            lang=selected_cfg_language,
+        )
+    )
+    selected_cfg_language = selected_cfg_language_effective
+
+    day_labels = session.exec(
+        select(DayLabel)
+        .where(DayLabel.study_id == study.id)
+        .order_by(DayLabel.display_order)
+    ).all()
+
+    now_utc = _coerce_utc_aware(utc_now())
+    try:
+        now_utc_naive = _to_utc_naive(now_utc)
+        study_is_currently_collecting = (
+            _to_utc_naive(study.data_collection_start)
+            <= now_utc_naive
+            <= _to_utc_naive(study.data_collection_end)
+            and not study.is_paused
+        )
+    except TypeError as exc:
+        logger.warning(
+            "Falling back to non-collecting state for study '%s': %s",
+            study.name_short, exc,
+        )
+        study_is_currently_collecting = False
+
+    timelines = session.exec(
+        select(Timeline).where(Timeline.study_id == study.id)
+    ).all()
+
+    study_days_count = len(day_labels)
+
+    external_task_rows = session.exec(
+        select(StudyExternalTask)
+        .where(StudyExternalTask.study_id == study.id)
+        .order_by(StudyExternalTask.task_key)
+    ).all()
+    study_has_external_tasks = bool(external_task_rows)
+
+    # --- Participants (limited to most recent 50) ---
+    study_participants = session.exec(
+        select(StudyParticipant)
+        .where(StudyParticipant.study_id == study.id)
+        .order_by(StudyParticipant.created_at.desc())
+        .limit(50)
+    ).all()
+
+    participants = []
+    for sp in study_participants:
+        participant = session.get(Participant, sp.participant_id)
+        if participant:
+            participant_activity_count = (
+                session.exec(
+                    select(func.count(Activity.id)).where(
+                        Activity.study_id == study.id,
+                        Activity.participant_id == participant.id,
+                    )
+                ).first()
+                or 0
+            )
+            participant_has_completed_study = _is_participant_study_complete(
+                session=session, study=study,
+                participant_id=participant.id, study_days_count=study_days_count,
+            )
+            participant_external_tasks = (
+                _get_participant_external_tasks(
+                    session=session, study=study,
+                    participant_id=participant.id,
+                    selected_language=study.default_language,
+                    study_days_count=study_days_count,
+                )
+                if study_has_external_tasks
+                else []
+            )
+            participant_all_external_tasks_completed = (
+                bool(participant_external_tasks)
+                and all(
+                    et.is_confirmed for et in participant_external_tasks
+                )
+            )
+            participants.append({
+                "id": participant.id,
+                "created_at": participant.created_at,
+                "joined_study_at": sp.created_at,
+                "consent_given": sp.consent_given,
+                "consent_decided_at": sp.consent_decided_at,
+                "activity_count": participant_activity_count,
+                "has_completed_study": participant_has_completed_study,
+                "all_external_tasks_completed": participant_all_external_tasks_completed,
+                "study_join_url": _build_frontend_study_join_url(
+                    study.name_short, participant.id,
+                ),
+            })
+
+    participant_count = (
+        session.exec(
+            select(func.count(StudyParticipant.id))
+            .where(StudyParticipant.study_id == study.id)
+        ).first()
+        or 0
+    )
+
+    # --- Activities (last 10) ---
+    if mysql_like_backend:
+        activities = []
+    else:
+        try:
+            activities = session.exec(
+                select(Activity)
+                .where(Activity.study_id == study.id)
+                .order_by(Activity.created_at.desc())
+                .limit(10)
+            ).all()
+        except TypeError as exc:
+            logger.warning(
+                "Skipping activity preview for study '%s': %s",
+                study.name_short, exc,
+            )
+            activities = []
+
+    enriched_activities = []
+    for activity in activities:
+        try:
+            participant = session.get(Participant, activity.participant_id)
+            day_label = session.get(DayLabel, activity.day_label_id)
+            timeline = session.get(Timeline, activity.timeline_id)
+            enriched_activities.append({
+                "id": activity.id,
+                "participant_id": activity.participant_id,
+                "participant_name": participant.id if participant else "Unknown",
+                "day_label": day_label.name if day_label else "Unknown",
+                "day_display_order": day_label.display_order if day_label else 0,
+                "day_display_name": day_label.display_name if day_label else "Unknown",
+                "timeline": timeline.name if timeline else "Unknown",
+                "timeline_display_name": timeline.display_name if timeline else "Unknown",
+                "activity_code": activity.activity_code,
+                "activity_name": activity.activity_name,
+                "activity_path_frontend": activity.activity_path_frontend,
+                "category": activity.category,
+                "start_minutes": activity.start_minutes,
+                "end_minutes": activity.end_minutes,
+                "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
+                "duration": activity.end_minutes - activity.start_minutes,
+                "parent_activity_code": activity.parent_activity_code,
+                "created_at": activity.created_at,
+            })
+        except TypeError as exc:
+            logger.warning("Skipping activity row for study '%s': %s", study.name_short, exc)
+            continue
+
+    if mysql_like_backend:
+        last_study_activity = None
+    else:
+        try:
+            last_study_activity = session.exec(
+                select(Activity)
+                .where(Activity.study_id == study.id)
+                .order_by(Activity.created_at.desc())
+                .limit(1)
+            ).first()
+        except TypeError as exc:
+            logger.warning(
+                "Skipping last activity query for study '%s': %s",
+                study.name_short, exc,
+            )
+            last_study_activity = None
+
+    last_study_activity_time = (
+        last_study_activity.created_at if last_study_activity else None
+    )
+    last_activity_time_str_ago = None
+    if last_study_activity_time:
+        try:
+            elapsed_seconds = max(
+                0, int((_to_utc_naive(now_utc) - _to_utc_naive(last_study_activity_time)).total_seconds())
+            )
+            hours, remainder = divmod(elapsed_seconds, 3600)
+            minutes, _ = divmod(remainder, 60)
+            last_activity_time_str_ago = f"{hours}h {minutes}m ago"
+        except TypeError as exc:
+            logger.warning(
+                "Skipping relative activity time for study '%s': %s",
+                study.name_short, exc,
+            )
+
+    total_activities_logged = (
+        session.exec(
+            select(func.count(Activity.id)).where(Activity.study_id == study.id)
+        ).first()
+        or 0
+    )
+
+    # --- External tasks ---
+    external_tasks = []
+    external_task_assignment_count = 0
+    for external_task in external_task_rows:
+        assignment_rows = session.exec(
+            select(StudyExternalTaskAssignment)
+            .where(StudyExternalTaskAssignment.external_task_id == external_task.id)
+            .order_by(StudyExternalTaskAssignment.assignment_order, StudyExternalTaskAssignment.participant_id)
+        ).all()
+        external_task_assignment_count += len(assignment_rows)
+        external_tasks.append({
+            "task_key": external_task.task_key,
+            "name": external_task.name,
+            "description": external_task.description,
+            "url": external_task.url,
+            "expected_return_url": _build_external_task_expected_return_url_template(
+                study.name_short, external_task.task_key,
+            ),
+            "confirmation_type": external_task.confirmation_type,
+            "token_count": len(external_task.tokens),
+            "assignment_count": len(assignment_rows),
+            "assignments": [
+                {
+                    "participant_id": assignment.participant_id,
+                    "assigned_token": assignment.assigned_token,
+                    "assignment_order": assignment.assignment_order,
+                    "is_confirmed": assignment.is_confirmed,
+                    "confirmed_at": assignment.confirmed_at,
+                }
+                for assignment in assignment_rows
+            ],
+        })
+
+    # --- Timeline stats ---
+    num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfg_per_timeline(activities_config)
+    num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfg_per_timeline(activities_config)
+    activities_cfg_text = get_activities_cfg_text_for_config(activities_config, short=True, no_duplicate_parts=True)
+
+    num_activities_in_cfgfile_total = sum(num_activities_in_cfgfile_by_timeline.values())
+    num_categories_in_cfgfile_total = sum(num_categories_in_cfgfile_per_timeline.values())
+
+    timeline_stats = []
+    for timeline in timelines:
+        timeline_activity_count = (
+            session.exec(
+                select(func.count(Activity.id)).where(
+                    Activity.study_id == study.id,
+                    Activity.timeline_id == timeline.id,
+                )
+            ).first()
+            or 0
+        )
+        timeline_stats.append({
+            "name": timeline.name,
+            "display_name": timeline.display_name,
+            "mode": timeline.mode,
+            "activity_count": timeline_activity_count,
+            "activity_count_cfg_file": num_activities_in_cfgfile_by_timeline.get(timeline.name, 0),
+            "category_count_cfg_file": num_categories_in_cfgfile_per_timeline.get(timeline.name, 0),
+            "description": timeline.description,
+            "min_coverage": timeline.min_coverage,
+        })
+
+    # --- Description text ---
+    description_text = (
+        study.description.get(study.default_language)
+        if isinstance(study.description, dict)
+        else study.description
+    )
+
+    # --- Open join URL ---
+    frontend_open_join_url = (
+        f"{settings.frontend_url}/index.html?{urlencode({'study_name': study.name_short})}"
+        if study.allow_unlisted_participants
+        else None
+    )
+
+    context_dict = {
+        "request": request,
+        "current_admin": current_admin,
+        "study": study,
+        "description_text": description_text,
+        "participants": participants,
+        "participant_count": participant_count,
+        "day_labels": day_labels,
+        "timeline_stats": timeline_stats,
+        "external_tasks": external_tasks,
+        "external_task_count": len(external_tasks),
+        "external_task_assignment_count": external_task_assignment_count,
+        "activities_preview": enriched_activities,
+        "total_activities_logged": total_activities_logged,
+        "total_activities_cfg": num_activities_in_cfgfile_total,
+        "total_categories_cfg": num_categories_in_cfgfile_total,
+        "activities_cfg_text": activities_cfg_text,
+        "activities_cfg_source": activities_config_source,
+        "supported_cfg_languages": supported_cfg_languages,
+        "selected_cfg_language": selected_cfg_language,
+        "last_activity_time": last_study_activity_time,
+        "last_activity_time_str_ago": last_activity_time_str_ago,
+        "is_actively_collecting": study_is_currently_collecting,
+        "require_consent": bool(study.require_consent),
+        "frontend_open_join_url": frontend_open_join_url,
+        "current_time": utc_now(),
+    }
+    template = templates.get_template("admin_study_detail.html")
     html_content = template.render(context_dict)
     return HTMLResponse(content=html_content)
 

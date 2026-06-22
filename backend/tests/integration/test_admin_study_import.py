@@ -616,10 +616,21 @@ async def test_admin_export_external_tasks_roundtrip(created_studies_for_cleanup
             auth=ADMIN_AUTH,
         )
         assert admin_page_response.status_code == 200
-        assert "External Tasks" in admin_page_response.text
-        assert "Payment Survey" in admin_page_response.text
-        assert "tok-1" in admin_page_response.text
-        assert "tok-2" in admin_page_response.text
+        # Overview page should show the study name and external task count
+        assert study_name_short in admin_page_response.text
+        assert "Ext. Tasks" in admin_page_response.text
+        assert "2" in admin_page_response.text  # external task count column
+
+        # Detailed external task info is on the study detail page
+        detail_response = await client.get(
+            f"{BASE_URL}/admin/study/{study_name_short}",
+            auth=ADMIN_AUTH,
+        )
+        assert detail_response.status_code == 200
+        assert "External Tasks" in detail_response.text
+        assert "Payment Survey" in detail_response.text
+        assert "tok-1" in detail_response.text
+        assert "tok-2" in detail_response.text
 
 
 @pytest.mark.asyncio

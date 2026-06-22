@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUD Admin - {{ study.name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .admin-nav {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .admin-nav-link {
+            display: inline-block;
+            padding: 0.55rem 0.9rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #374151;
+            background: #e5e7eb;
+        }
+        .admin-nav-link.active { color: white; background: #4f46e5; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .header-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .stat-card {
+            background: white;
+            padding: 1.25rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; margin-bottom: 0.25rem; }
+        .stat-label { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+        .study-meta {
+            display: flex;
+            gap: 2rem;
+            margin-top: 1rem;
+            color: #6c757d;
+            font-size: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+        .badge-study { background: #e3f2fd; color: #1976d2; }
+        .badge-timeline { background: #f3e5f5; color: #7b1fa2; }
+        .badge-participant { background: #e8f5e9; color: #388e3c; }
+        .badge-paused { background: #dc3545; color: white; font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 4px; font-weight: 600; margin-left: 0.5rem; vertical-align: middle; }
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .tab {
+            padding: 1rem 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #6c757d;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        .tab:hover { background: #e9ecef; }
+        .tab.active { color: #667eea; border-bottom: 3px solid #667eea; background: white; }
+        .tab-content { padding: 1.5rem; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .timeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .timeline-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        .table-container { overflow-x: auto; margin: 1rem 0; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        th { background: #f8f9fa; padding: 0.75rem 1rem; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #e9ecef; }
+        td { padding: 0.75rem 1rem; border-bottom: 1px solid #e9ecef; }
+        tr:hover { background: #f8f9fa; }
+        .participant-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        .participant-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 4px solid #4caf50;
+        }
+        .activity-path { font-family: 'Courier New', monospace; font-size: 0.85rem; color: #666; background: #f8f9fa; padding: 0.25rem 0.5rem; border-radius: 4px; margin-top: 0.25rem; }
+        .time-cell { font-family: 'Courier New', monospace; font-weight: 500; }
+        .empty-state { text-align: center; padding: 3rem; color: #6c757d; }
+        .export-btn {
+            display: inline-block; padding: 0.5rem 1rem; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;
+        }
+        .export-btn:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .export-btn.disabled { background: #cccccc; color: #666; cursor: not-allowed; opacity: 0.6; }
+        .window-controls { margin-top: 1rem; padding: 1rem; border: 1px solid #e9ecef; border-radius: 6px; background: #f8f9fa; }
+        .window-controls h4 { margin-bottom: 0.65rem; color: #495057; }
+        .window-controls-row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
+        .window-control-field { display: flex; flex-direction: column; gap: 0.25rem; }
+        .window-control-field input { padding: 0.45rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff; color: #212529; }
+        .window-btn { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+        .window-btn-save { background: #0d6efd; }
+        .window-btn-pause { background: #dc3545; }
+        .window-btn-unpause { background: #198754; }
+        .window-status-msg { margin-top: 0.5rem; font-size: 0.9rem; }
+        .danger-zone { margin-top: 1rem; padding: 1rem; border: 1px solid #f3c2c0; border-radius: 6px; background: #fff5f5; }
+        .danger-zone h4 { color: #8b1c13; margin-bottom: 0.45rem; }
+        .danger-btn { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #b42318; }
+        .danger-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+        .danger-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); z-index: 1200; padding: 1rem; }
+        .danger-modal.open { display: flex; }
+        .danger-modal-card { width: 100%; max-width: 560px; background: #fff; border-radius: 10px; border: 2px solid #b42318; box-shadow: 0 12px 40px rgba(0,0,0,0.25); padding: 1.25rem; }
+        .danger-modal-title { margin-bottom: 0.4rem; font-size: 2rem; line-height: 1; color: #8b1c13; font-weight: 800; letter-spacing: -0.02em; text-transform: uppercase; }
+        .danger-modal-warning { color: #8b1c13; font-weight: 700; margin-bottom: 0.6rem; }
+        .danger-modal-hint { margin-bottom: 0.4rem; color: #4b5563; }
+        .danger-modal-input { width: 100%; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.65rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.92rem; }
+        .danger-modal-actions { display: flex; gap: 0.65rem; flex-wrap: wrap; margin-top: 0.9rem; }
+        .secondary-btn { border: 1px solid #d1d5db; border-radius: 6px; padding: 0.5rem 0.85rem; color: #111827; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #fff; }
+        .danger-modal-status { min-height: 1.25rem; margin-top: 0.6rem; font-size: 0.9rem; font-weight: 600; }
+        .danger-modal-status.error { color: #b42318; }
+        .danger-modal-status.ok { color: #0f5132; }
+        .pagination { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: center; align-items: center; }
+        .page-btn { padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .page-btn:disabled { background: #cccccc; cursor: not-allowed; }
+        .back-link { display: inline-block; margin-bottom: 1rem; color: #667eea; text-decoration: none; font-weight: 500; }
+        .back-link:hover { text-decoration: underline; }
+        :root {
+            --bg: #f7f4ed; --surface: #f7f4ed; --text: #1c1c1c; --muted: #5f5f5d;
+            --border: #eceae4; --border-strong: rgba(28,28,28,0.4);
+            --dark-btn-text: #fcfbf8;
+            --focus-shadow: rgba(0,0,0,0.1) 0px 4px 12px;
+            --inset-shadow: rgba(255,255,255,0.2) 0px 0.5px 0px 0px inset, rgba(0,0,0,0.2) 0px 0px 0px 0.5px inset, rgba(0,0,0,0.05) 0px 1px 2px 0px;
+        }
+        body { font-family: "Camera Plain Variable", ui-sans-serif, system-ui, -apple-system, sans-serif; color: var(--text); background: var(--bg); }
+        .container { max-width: 1280px; }
+        .admin-nav-link { font-weight: 400; color: var(--text); background: transparent; border: 1px solid var(--border-strong); }
+        .admin-nav-link.active { color: var(--dark-btn-text); background: var(--text); border-color: var(--text); box-shadow: var(--inset-shadow); }
+        .header { background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: none; border-radius: 12px; }
+        .header h1 { font-weight: 600; line-height: 1.05; letter-spacing: -1.2px; }
+        .header p { color: var(--muted); }
+        .header-info { border-top-color: var(--border); }
+        .stat-card, .timeline-card, .participant-card, table { background: var(--surface); border-color: var(--border); box-shadow: none; }
+        .tabs, .tab-content, th, tr:hover, .activity-path { background: rgba(28,28,28,0.03); }
+        .tab { color: var(--muted); font-weight: 400; }
+        .tab.active { color: var(--text); border-bottom-color: var(--border-strong); background: var(--surface); }
+        .stat-value { color: var(--text); font-weight: 600; letter-spacing: -0.9px; }
+        .stat-label, .empty-state, .activity-path { color: var(--muted); }
+        .badge { border-radius: 9999px; border: 1px solid var(--border-strong); background: transparent; color: var(--text); font-weight: 400; }
+        .export-btn { background: transparent !important; color: var(--text) !important; border: 1px solid var(--border-strong) !important; border-radius: 6px !important; font-weight: 400 !important; box-shadow: none !important; }
+        .export-btn:hover { box-shadow: var(--focus-shadow) !important; transform: none; }
+        .export-btn.disabled { background: rgba(28,28,28,0.03) !important; color: rgba(28,28,28,0.5) !important; border-color: var(--border) !important; }
+        .page-btn { background: var(--text); color: var(--dark-btn-text); border: 1px solid var(--text); box-shadow: var(--inset-shadow); border-radius: 6px; }
+        .page-btn:disabled { background: rgba(28,28,28,0.2); border-color: rgba(28,28,28,0.2); }
+        @media (max-width: 768px) {
+            .header-info { flex-direction: column; align-items: flex-start; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .study-meta { flex-direction: column; gap: 0.5rem; }
+            .tabs { flex-wrap: wrap; }
+            .tab { flex: 1; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="admin-nav">
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin">← Overview</a>
+            <a class="admin-nav-link active" href="{{ request.scope.root_path }}/admin/study/{{ study.name_short }}">{{ study.name_short }}</a>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/participant-management">Participant Management</a>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
+        </nav>
+
+        <div class="header">
+            <h1>{{ study.name }} <span class="badge badge-study">{{ study.name_short }}</span>{% if study.is_paused %} <span class="badge-paused">PAUSED</span>{% endif %}</h1>
+            <p>{{ description_text }}</p>
+            <div class="header-info">
+                <div><strong>Admin:</strong> {{ current_admin }}</div>
+                <div><strong>Study ID:</strong> {{ study.id }}</div>
+                <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value">{{ participant_count }}</div><div class="stat-label">Participants</div></div>
+            <div class="stat-card"><div class="stat-value">{{ total_activities_logged }}</div><div class="stat-label">Activities</div></div>
+            <div class="stat-card"><div class="stat-value">{{ external_task_count }}</div><div class="stat-label">External Tasks</div></div>
+            <div class="stat-card"><div class="stat-value">{{ "Yes" if is_actively_collecting else "No" }}</div><div class="stat-label">Collecting Data</div></div>
+            <div class="stat-card"><div class="stat-value">{{ total_activities_cfg }}</div><div class="stat-label">Cfg Activities</div></div>
+            <div class="stat-card"><div class="stat-value">{{ total_categories_cfg }}</div><div class="stat-label">Cfg Categories</div></div>
+        </div>
+
+        <div class="study-meta">
+            <div><strong>Requires consent:</strong> {{ "Yes" if require_consent else "No" }}</div>
+            <div><strong>Unlisted Participants:</strong> {{ "Allowed" if study.allow_unlisted_participants else "Restricted" }}</div>
+            <div><strong>Data Collection:</strong> {{ study.data_collection_start.strftime('%Y-%m-%d') }} to {{ study.data_collection_end.strftime('%Y-%m-%d') }}</div>
+            <div><strong>Created:</strong> {{ study.created_at.strftime('%Y-%m-%d') }}</div>
+            <div><strong>Last Activity:</strong> {{ last_activity_time.strftime('%Y-%m-%d %H:%M:%S') if last_activity_time else 'N/A' }}</div>
+            <div><strong>Last Activity (Ago):</strong> {{ last_activity_time_str_ago if last_activity_time_str_ago else 'N/A' }}</div>
+            <div><strong>Default Language:</strong> {{ study.default_language }}</div>
+        </div>
+
+        <!-- Export buttons -->
+        <div style="margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 8px;">
+            <strong style="display: block; margin-bottom: 0.5rem;">Export Study Data:</strong>
+            <p style="margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem;">
+                Download research data (CSV/JSON) or the server runtime config for this study.
+            </p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if total_activities_logged > 0 %}
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">📥 Download CSV</a>
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">📥 Download JSON</a>
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">📥 CSV Without Metadata</a>
+                {% else %}
+                <span class="export-btn disabled">📥 Download CSV not available (No activities yet)</span>
+                <span class="export-btn disabled">📥 Download JSON not available (No activities yet)</span>
+                <span class="export-btn disabled">📥 CSV Without Metadata not available (No activities yet)</span>
+                {% endif %}
+            </div>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
+                <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('timelines-{{ study.name_short }}', this)">Timelines ({{ timeline_stats|length }})</button>
+            <button class="tab" onclick="switchTab('participants-{{ study.name_short }}', this)">Participants ({{ participant_count }})</button>
+            <button class="tab" onclick="switchTab('externaltasks-{{ study.name_short }}', this)">External Tasks ({{ external_task_count }})</button>
+            <button class="tab" onclick="switchTab('activities-{{ study.name_short }}', this)">DB Logged Activities ({{ total_activities_logged }})</button>
+            <button class="tab" onclick="switchTab('daylabels-{{ study.name_short }}', this)">Day Labels ({{ day_labels|length }})</button>
+            <button class="tab" onclick="switchTab('cfgactivities-{{ study.name_short }}', this)">Cfg File Activities ({{ total_activities_cfg }})</button>
+        </div>
+
+        <div class="tab-content">
+            <!-- Timelines Tab -->
+            <div id="timelines-{{ study.name_short }}" class="tab-panel active">
+                <div class="timeline-grid">
+                    {% for timeline_stat in timeline_stats %}
+                    <div class="timeline-card">
+                        <h3>{{ timeline_stat.display_name }} <span class="badge badge-timeline">{{ timeline_stat.name }}</span></h3>
+                        <p><strong>Mode:</strong> {{ timeline_stat.mode }}</p>
+                        <p><strong>Activities logged:</strong> {{ timeline_stat.activity_count }}</p>
+                        <p><strong>Different Activities in config:</strong> {{ timeline_stat.activity_count_cfg_file }}</p>
+                        <p><strong>Different Categories in config:</strong> {{ timeline_stat.category_count_cfg_file }}</p>
+                        {% if timeline_stat.min_coverage %}
+                        <p><strong>Min Coverage:</strong> {{ timeline_stat.min_coverage }} minutes</p>
+                        {% else %}
+                        <p><strong>Min Coverage:</strong> None (Users can submit day with this timeline empty)</p>
+                        {% endif %}
+                        {% if timeline_stat.description %}
+                        <p><strong>Description:</strong> {{ timeline_stat.description }}</p>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Participants Tab -->
+            <div id="participants-{{ study.name_short }}" class="tab-panel">
+                {% if frontend_open_join_url %}
+                <div style="margin-bottom: 1rem;">
+                    <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                        ➕ Join as new user
+                    </a>
+                    <p style="margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem;">
+                        Open study — anyone can join without pre-registration.
+                    </p>
+                </div>
+                {% endif %}
+                {% if participants %}
+                <div class="participant-list">
+                    {% for participant in participants %}
+                    <div class="participant-card">
+                        <h3>{{ participant.id }} <span class="badge badge-participant">{{ participant.activity_count }} activities</span></h3>
+                        <p><strong>Joined Study:</strong> {{ participant.joined_study_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>Created:</strong> {{ participant.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                        <p><strong>Time-use completed:</strong> {{ "Yes" if participant.has_completed_study else "No" }}</p>
+                        {% if external_task_count > 0 %}
+                        <p><strong>All external tasks completed:</strong> {{ "Yes" if participant.all_external_tasks_completed else "No" }}</p>
+                        {% endif %}
+                        <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a></p>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if participant_count > participants|length %}
+                <div class="pagination">
+                    <span>Showing the most recent {{ participants|length }} of {{ participant_count }} participants</span>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="empty-state"><p>No participants yet</p></div>
+                {% endif %}
+            </div>
+
+            <!-- External Tasks Tab -->
+            <div id="externaltasks-{{ study.name_short }}" class="tab-panel">
+                {% if external_tasks %}
+                <div class="timeline-grid">
+                    {% for external_task in external_tasks %}
+                    <div class="timeline-card">
+                        <h3>{{ external_task.name }} <span class="badge badge-timeline">{{ external_task.task_key }}</span></h3>
+                        <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
+                        <p><strong>Configured tokens:</strong> {{ external_task.token_count }}</p>
+                        <p><strong>Assignments:</strong> {{ external_task.assignment_count }}</p>
+                        <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
+                        <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
+                        {% if external_task.description %}
+                        <p><strong>Description:</strong> {{ external_task.description }}</p>
+                        {% endif %}
+                        {% if external_task.assignments %}
+                        <div class="table-container" style="margin-top: 0.75rem;">
+                            <table>
+                                <thead><tr><th>Order</th><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
+                                <tbody>
+                                    {% for assignment in external_task.assignments %}
+                                    <tr>
+                                        <td>{{ assignment.assignment_order }}</td>
+                                        <td>{{ assignment.participant_id }}</td>
+                                        <td>{{ assignment.assigned_token }}</td>
+                                        <td>{% if assignment.is_confirmed %}yes{% if assignment.confirmed_at %} ({{ assignment.confirmed_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% else %}no{% endif %}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state"><p>No external tasks configured for this study.</p></div>
+                {% endif %}
+            </div>
+
+            <!-- Activities Tab -->
+            <div id="activities-{{ study.name_short }}" class="tab-panel">
+                {% if activities_preview %}
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>ID</th><th>Participant</th><th>Day</th><th>Timeline</th><th>Activity</th><th>Time</th><th>Duration</th><th>Created</th></tr></thead>
+                        <tbody>
+                            {% for activity in activities_preview %}
+                            <tr>
+                                <td>{{ activity.id }}</td>
+                                <td>{{ activity.participant_name }}</td>
+                                <td>{{ activity.day_label }}</td>
+                                <td>{{ activity.timeline }}</td>
+                                <td>{{ activity.activity_name }} <small>( Code: {{ activity.activity_code }} )</small><br><div class="activity-path">{{ activity.activity_path_frontend }}</div></td>
+                                <td class="time-cell">{{ activity.time_range }}</td>
+                                <td>{{ activity.duration }} min</td>
+                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <span>Showing the most recent {{ activities_preview|length }} of {{ total_activities_logged }} activities</span>
+                </div>
+                {% else %}
+                <div class="empty-state"><p>No activities recorded yet by users in the database for this study.</p></div>
+                {% endif %}
+            </div>
+
+            <!-- Day Labels Tab -->
+            <div id="daylabels-{{ study.name_short }}" class="tab-panel">
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Name</th><th>Display Order</th><th>Display Name</th></tr></thead>
+                        <tbody>
+                            {% for day_label in day_labels %}
+                            <tr><td>{{ day_label.name }}</td><td>{{ day_label.display_order }}</td><td>{{ day_label.display_name }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Cfg Activities Tab -->
+            <div id="cfgactivities-{{ study.name_short }}" class="tab-panel">
+                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem;">
+                    <label for="cfg-lang-{{ study.name_short }}" style="font-weight: 600;">Language:</label>
+                    <select id="cfg-lang-{{ study.name_short }}"
+                        onchange="onCfgLanguageChange(this, '{{ study.name_short }}')"
+                        style="padding: 0.35rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff;">
+                        {% for lang in supported_cfg_languages %}
+                        <option value="{{ lang }}" {% if lang == selected_cfg_language %}selected{% endif %}>{{ lang|upper }}</option>
+                        {% endfor %}
+                    </select>
+                    <span style="color: #6c757d; font-size: 0.85rem;">Showing config preview for <strong>{{ selected_cfg_language|upper }}</strong></span>
+                </div>
+                <p style="margin-bottom: 0.75rem; color: #6c757d; font-size: 0.9rem;">
+                    Activities defined in the config file for this study. Each activity line shows its numeric code followed by its <code>frontend_path</code>. Child items are indented one level further than their parent.
+                </p>
+                <pre style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; background: #f8f9fa; padding: 1rem 1.25rem; border-radius: 6px; overflow-x: auto; white-space: pre; border: 1px solid #e9ecef;">{{ activities_cfg_text }}</pre>
+            </div>
+        </div>
+
+        <!-- Collection Window Controls -->
+        <div class="window-controls">
+            <h4>Collection Window Controls</h4>
+            <div class="window-controls-row">
+                <div class="window-control-field">
+                    <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
+                    <input id="window-start-{{ study.id }}" type="date" value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="window-control-field">
+                    <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
+                    <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}">
+                </div>
+                <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')">Save Window</button>
+                {% if study.is_paused %}
+                <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)">&#9654; Unpause Study</button>
+                {% else %}
+                <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)">&#9646;&#9646; Pause Study</button>
+                {% endif %}
+            </div>
+            <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="danger-zone">
+            <h4>Danger Zone</h4>
+            <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
+            <div style="margin-top: 0.65rem;">
+                <button type="button" class="danger-btn open-delete-study-btn"
+                    data-study-id="{{ study.id }}"
+                    data-study-name-short="{{ study.name_short }}"
+                    data-study-name="{{ study.name | e }}">
+                    Delete Study
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div id="deleteStudyModal" class="danger-modal" role="dialog" aria-modal="true" aria-labelledby="deleteStudyModalTitle">
+        <div class="danger-modal-card">
+            <h2 id="deleteStudyModalTitle" class="danger-modal-title">Danger</h2>
+            <p class="danger-modal-warning">This is the nuclear option: deleting a study will remove everything connected to it and cannot be undone.</p>
+            <p class="danger-modal-hint" id="deleteStudyModalTarget"></p>
+            <p class="danger-modal-hint">To confirm, type the study <strong>name_short</strong> exactly (case-sensitive):</p>
+            <input id="deleteStudyConfirmInput" class="danger-modal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type name_short to confirm">
+            <div class="danger-modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeDeleteStudyModal()">Cancel</button>
+                <button type="button" id="deleteStudyConfirmBtn" class="danger-btn" disabled>Delete permanently</button>
+            </div>
+            <div id="deleteStudyModalStatus" class="danger-modal-status"></div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
+        const deleteStudyModal = document.getElementById('deleteStudyModal');
+        const deleteStudyModalTarget = document.getElementById('deleteStudyModalTarget');
+        const deleteStudyConfirmInput = document.getElementById('deleteStudyConfirmInput');
+        const deleteStudyConfirmBtn = document.getElementById('deleteStudyConfirmBtn');
+        const deleteStudyModalStatus = document.getElementById('deleteStudyModalStatus');
+        const deleteStudyModalTitle = document.getElementById('deleteStudyModalTitle');
+        let deleteStudyContext = null;
+
+        function setDeleteModalStatus(message, statusClass = '') {
+            if (!deleteStudyModalStatus) return;
+            deleteStudyModalStatus.textContent = message || '';
+            deleteStudyModalStatus.className = `danger-modal-status ${statusClass}`.trim();
+        }
+
+        function openDeleteStudyModal(studyId, studyNameShort, studyName) {
+            if (!deleteStudyModal || !deleteStudyConfirmInput || !deleteStudyConfirmBtn) return;
+            deleteStudyContext = { studyId: String(studyId), studyNameShort: String(studyNameShort), studyName: String(studyName || '') };
+            if (deleteStudyModalTarget) {
+                deleteStudyModalTarget.innerHTML = `Target study: <strong>${deleteStudyContext.studyName}</strong> (<code>${deleteStudyContext.studyNameShort}</code>)`;
+            }
+            if (deleteStudyModalTitle) deleteStudyModalTitle.textContent = 'Danger';
+            deleteStudyConfirmInput.value = '';
+            deleteStudyConfirmBtn.disabled = true;
+            setDeleteModalStatus('Type the exact name_short to enable permanent deletion.');
+            deleteStudyModal.classList.add('open');
+            deleteStudyConfirmInput.focus();
+        }
+
+        function closeDeleteStudyModal() {
+            if (!deleteStudyModal) return;
+            deleteStudyModal.classList.remove('open');
+            deleteStudyConfirmInput.value = '';
+            deleteStudyConfirmBtn.disabled = true;
+            setDeleteModalStatus('');
+            deleteStudyContext = null;
+        }
+
+        function updateDeleteConfirmState() {
+            if (!deleteStudyContext || !deleteStudyConfirmInput || !deleteStudyConfirmBtn) return;
+            const typed = deleteStudyConfirmInput.value;
+            const matches = typed === deleteStudyContext.studyNameShort;
+            deleteStudyConfirmBtn.disabled = !matches;
+            if (!typed) { setDeleteModalStatus('Type the exact name_short to enable permanent deletion.'); return; }
+            if (!matches) { setDeleteModalStatus('Typed value does not match the required name_short.', 'error'); return; }
+            setDeleteModalStatus('Name confirmed. You can now delete permanently.', 'ok');
+        }
+
+        async function deleteStudyFromModal() {
+            if (!deleteStudyContext || !deleteStudyConfirmBtn || !deleteStudyConfirmInput) return;
+            if (deleteStudyConfirmInput.value !== deleteStudyContext.studyNameShort) {
+                setDeleteModalStatus('Typed value does not match the required name_short.', 'error');
+                deleteStudyConfirmBtn.disabled = true;
+                return;
+            }
+            deleteStudyConfirmBtn.disabled = true;
+            deleteStudyConfirmBtn.textContent = 'Deleting...';
+            setDeleteModalStatus('Deleting study and related data...', '');
+            try {
+                const response = await fetch(`${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(deleteStudyContext.studyNameShort)}`, { method: 'DELETE' });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    setDeleteModalStatus(payload.detail || 'Failed to delete study.', 'error');
+                    deleteStudyConfirmBtn.textContent = 'Delete permanently';
+                    updateDeleteConfirmState();
+                    return;
+                }
+                setDeleteModalStatus('Study deleted successfully. Redirecting...', 'ok');
+                setTimeout(() => { window.location.href = `${ADMIN_ROOT_PATH}/admin`; }, 700);
+            } catch (error) {
+                setDeleteModalStatus(`Request failed: ${error.message}`, 'error');
+                deleteStudyConfirmBtn.textContent = 'Delete permanently';
+                updateDeleteConfirmState();
+            }
+        }
+
+        function formatDateUtc(dateObj) { return dateObj.toISOString().slice(0, 10); }
+
+        function showWindowStatus(studyId, message, isError = false) {
+            const statusEl = document.getElementById(`window-status-${studyId}`);
+            if (!statusEl) return;
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? '#b42318' : '#0f5132';
+        }
+
+        async function saveStudyCollectionWindow(studyNameShort, studyId) {
+            const startInput = document.getElementById(`window-start-${studyId}`);
+            const endInput = document.getElementById(`window-end-${studyId}`);
+            if (!startInput || !endInput) return;
+            const startDate = startInput.value;
+            const endDate = endInput.value;
+            if (!startDate || !endDate) { showWindowStatus(studyId, 'Start and end date are required.', true); return; }
+            if (startDate >= endDate) { showWindowStatus(studyId, 'Start date must be earlier than end date.', true); return; }
+            try {
+                const response = await fetch(`${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/collection-window`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_collection_start: `${startDate}T00:00:00Z`, data_collection_end: `${endDate}T23:59:59Z` })
+                });
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    showWindowStatus(studyId, errorPayload.detail || 'Failed to update collection window.', true);
+                    return;
+                }
+                showWindowStatus(studyId, 'Collection window updated. Reloading…');
+                setTimeout(() => { window.location.reload(); }, 700);
+            } catch (error) { showWindowStatus(studyId, `Request failed: ${error.message}`, true); }
+        }
+
+        async function setPauseState(studyNameShort, studyId, pause) {
+            const action = pause ? 'pause' : 'unpause';
+            const label = pause ? 'Pausing' : 'Unpausing';
+            showWindowStatus(studyId, `${label} study…`);
+            try {
+                const response = await fetch(`${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/${action}`, { method: 'PATCH' });
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    showWindowStatus(studyId, errorPayload.detail || `Failed to ${action} study.`, true);
+                    return;
+                }
+                showWindowStatus(studyId, `Study ${action}d. Reloading…`);
+                setTimeout(() => { window.location.reload(); }, 700);
+            } catch (error) { showWindowStatus(studyId, `Request failed: ${error.message}`, true); }
+        }
+
+        function switchTab(tabId, button) {
+            const container = button.closest('.tab-content') || button.parentElement.nextElementSibling;
+            const allTabs = button.parentElement.querySelectorAll('.tab');
+            allTabs.forEach(tab => tab.classList.remove('active'));
+            container.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            button.classList.add('active');
+            const activePanel = document.getElementById(tabId);
+            if (activePanel) activePanel.classList.add('active');
+        }
+
+        function onCfgLanguageChange(selectEl, studyNameShort) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('cfg_lang', selectEl.value);
+            window.location.href = url.toString();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('.open-delete-study-btn').forEach((button) => {
+                button.addEventListener('click', () => openDeleteStudyModal(button.dataset.studyId, button.dataset.studyNameShort, button.dataset.studyName));
+            });
+            if (deleteStudyConfirmInput) deleteStudyConfirmInput.addEventListener('input', updateDeleteConfirmState);
+            if (deleteStudyConfirmBtn) deleteStudyConfirmBtn.addEventListener('click', deleteStudyFromModal);
+            if (deleteStudyModal) deleteStudyModal.addEventListener('click', (event) => { if (event.target === deleteStudyModal) closeDeleteStudyModal(); });
+            document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && deleteStudyModal && deleteStudyModal.classList.contains('open')) closeDeleteStudyModal(); });
+
+            const url = new URL(window.location.href);
+            const requestedTabId = url.searchParams.get('tab');
+            if (requestedTabId) {
+                const tabButton = document.querySelector(`.tab[onclick*="'${requestedTabId}'"]`);
+                if (tabButton) switchTab(requestedTabId, tabButton);
+            }
+        });
+    </script>
+</body>
+</html>
