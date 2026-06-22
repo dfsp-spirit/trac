@@ -731,7 +731,7 @@
         <div class="study-section" id="study-section-{{ study_data.study.id }}" data-study-id="{{ study_data.study.id }}">
             <div class="study-header">
                 <h2>{{ study_data.study.name }} <span class="badge badge-study">{{ study_data.study.name_short }}</span>{% if study_data.study.is_paused %} <span class="badge-paused">PAUSED</span>{% endif %}</h2>
-                <p>{{ study_data.study.description }}</p>
+                <p>{{ study_data.description_text }}</p>
                 <div class="study-meta">
                     <div><strong>ID:</strong> {{ study_data.study.id }}</div>
                     <div><strong>Requires consent:</strong> {{ "Yes" if study_data.require_consent else "No" }}</div>

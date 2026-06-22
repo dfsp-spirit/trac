@@ -701,6 +701,36 @@ class CfgFileStudy(BaseModel):
                     f"{text_field_name} is missing translations for supported_languages: {missing_languages}"
                 )
 
+        # Validate description: if it's a localized map, it must contain the
+        # default language and all supported languages.
+        if isinstance(self.description, dict):
+            if self.default_language not in self.description:
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    f'description is a localized map but is missing the default_language '
+                    f'"{self.default_language}". Add a description for "{self.default_language}".'
+                )
+            missing_desc_languages = sorted(
+                required_languages - set(self.description.keys())
+            )
+            if missing_desc_languages:
+                raise ValueError(
+                    f"Study '{self.name_short}': "
+                    f"description is missing translations for supported languages: "
+                    f"{missing_desc_languages}. If description is provided as a "
+                    f"localized map, it must include all supported languages."
+                )
+        elif isinstance(self.description, str):
+            # Legacy single-string description: valid for the default language.
+            # No further cross-language check needed.
+            pass
+        elif self.description is not None:
+            raise ValueError(
+                f"Study '{self.name_short}': "
+                f"description must be either a string or a localized map (dict), "
+                f"got {type(self.description).__name__}."
+            )
+
         return self
 
     @model_validator(mode="after")
