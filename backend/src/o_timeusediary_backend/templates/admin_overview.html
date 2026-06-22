@@ -900,6 +900,16 @@
 
                 <!-- Participants Tab -->
                 <div id="participants-{{ study_data.study.id }}" class="tab-panel">
+                    {% if study_data.frontend_open_join_url %}
+                    <div style="margin-bottom: 1rem;">
+                        <a href="{{ study_data.frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            ➕ Join as new user
+                        </a>
+                        <p style="margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem;">
+                            Open study — anyone can join without pre-registration.
+                        </p>
+                    </div>
+                    {% endif %}
                     {% if study_data.participants %}
                     <div class="participant-list">
                         {% for participant in study_data.participants %}

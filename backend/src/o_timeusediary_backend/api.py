@@ -1894,6 +1894,11 @@ async def admin_overview(
                 "last_activity_time": last_study_activity_time,  # when last activity was logged for this study by a user
                 "last_activity_time_str_ago": last_activity_time_str_ago,  # human readable "3h 15m ago"
                 "participant_count": len(participants),
+                "frontend_open_join_url": (
+                    f"{settings.frontend_url}/index.html?{urlencode({'study_name': study.name_short})}"
+                    if study.allow_unlisted_participants
+                    else None
+                ),
             }
         )
 
