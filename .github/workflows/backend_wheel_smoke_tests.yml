@@ -59,6 +59,7 @@ jobs:
           TUD_ROOTPATH: ""
           TUD_FRONTEND_URL: http://localhost:3000/report/
           TUD_STUDIES_CONFIG_PATH: /tmp/tud-wheel-runtime/studies_config.json
+          TUD_EXTERNAL_TASK_HMAC_SECRETS: '{"test_hmac_key":"integration-test-secret-do-not-use-in-production"}'
         run: |
           cd /tmp/tud-wheel-runtime
           /tmp/tud-wheel-venv/bin/tud db upgrade
