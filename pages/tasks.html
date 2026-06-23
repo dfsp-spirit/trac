@@ -315,7 +315,8 @@
                 return null;
             }
 
-            return { taskKey, assignedToken };
+            const hmac = (urlParams.get('hmac') || '').trim();
+            return { taskKey, assignedToken, hmac: hmac || undefined };
         }
 
         async function confirmCallbackExternalTask(studyConfig) {
@@ -350,6 +351,7 @@
                     body: JSON.stringify({
                         task_key: callbackParams.taskKey,
                         assigned_token: callbackParams.assignedToken,
+                        ...(callbackParams.hmac ? { hmac: callbackParams.hmac } : {}),
                     }),
                 }
             );
