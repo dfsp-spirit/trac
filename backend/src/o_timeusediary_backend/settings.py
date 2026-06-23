@@ -157,5 +157,38 @@ class TUDBackendSettings:
         value = os.getenv("TUD_ADMIN_AUDIT_LOG_BACKUP_COUNT", "10")
         return int(value)
 
+    @property
+    def external_task_hmac_secrets(self) -> dict[str, str]:
+        """HMAC shared secrets for external task callback signing, keyed by reference name.
+
+        Reads `TUD_EXTERNAL_TASK_HMAC_SECRETS` as a JSON object mapping
+        reference names to hex-encoded secret strings.  Returns an empty
+        dict when the variable is unset so that callers can simply check
+        membership.
+        """
+        raw = (os.getenv("TUD_EXTERNAL_TASK_HMAC_SECRETS") or "").strip()
+        if not raw:
+            return {}
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "TUD_EXTERNAL_TASK_HMAC_SECRETS must be a valid JSON object."
+            ) from exc
+        if not isinstance(parsed, dict):
+            raise ValueError(
+                "TUD_EXTERNAL_TASK_HMAC_SECRETS must be a JSON object (key → secret)."
+            )
+        for key, value in parsed.items():
+            if not isinstance(key, str) or not key.strip():
+                raise ValueError(
+                    "TUD_EXTERNAL_TASK_HMAC_SECRETS keys must be non-empty strings."
+                )
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(
+                    f"TUD_EXTERNAL_TASK_HMAC_SECRETS value for '{key}' must be a non-empty string."
+                )
+        return dict(parsed)
+
 
 settings = TUDBackendSettings()

@@ -166,6 +166,7 @@ Studies may include `external_tasks` entries in `backend/studies_config.json` to
 - `confirmation_type`:  must be "callback" (callback means the study expects a confirmation on return)
 - `outbound_tokens`: array of token definitions; each has a `name` and a `by_participant` map of participant id → token string
 - `outbound_url`: URL template containing placeholders which will be substituted per-participant. Common placeholders: `{participant_id}`, `{study_name}`, `{task_key}`, and token placeholders matching the `outbound_tokens` `name` (for example `{pay_token}`)
+- `hmac_secret_reference`: (optional) name of a shared secret in `TUD_EXTERNAL_TASK_HMAC_SECRETS` for HMAC-signed callbacks
 
 Example (excerpt from `backend/studies_config.json` used in the pilot studies):
 
@@ -212,6 +213,54 @@ How it works at runtime
 Notes
 - The confirmation responsibility moved from `thank-you.html` to `pages/tasks.html` — receivers and integrators should redirect back to `pages/tasks.html` (see example above).
 - Token names in `outbound_tokens` must match the placeholders used in `outbound_url` so the backend can substitute the correct per-participant token.
+
+#### HMAC-Signed Callbacks (Optional Per-Task)
+
+To prevent participants from forging callback confirmations, individual
+external tasks can opt into **HMAC-signed return URLs**.  This requires
+a shared secret between TRAC and the remote system's backend.
+
+**Configuration**
+
+1. Add the shared secret to `.env`:
+
+   ```
+   TUD_EXTERNAL_TASK_HMAC_SECRETS='{"survey_hub_v1":"a1b2c3d4e5f6..."}'
+   ```
+
+   Generate a secret with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
+
+2. Reference it in the task definition in `studies_config.json`:
+
+   ```json
+   {
+     "task_key": "depression_survey",
+     ...
+     "hmac_secret_reference": "survey_hub_v1"
+   }
+   ```
+
+**Remote system contract**
+
+After the participant completes the task, the remote system must compute:
+
+```
+message    = "study_name|participant_id|task_key|assigned_token"
+signature  = HMAC-SHA256(shared_secret, message) → hex string
+```
+
+And append `&hmac={signature}` to the redirect URL.  TRAC verifies
+the signature before accepting the callback.
+
+**Security properties**
+
+- Without HMAC a participant who knows their own token can self-confirm.
+- With HMAC the return URL must be signed by someone who knows the
+  secret — i.e. the remote system's backend, not the browser.
+- Different `hmac_secret_reference` values for different remote systems
+  ensure a compromise of one system cannot affect tasks on another.
+- If `hmac_secret_reference` is absent, the original token-only flow
+  is used (backward compatible).
 
 
 

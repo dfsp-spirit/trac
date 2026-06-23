@@ -103,6 +103,10 @@ class CfgFileExternalTask(BaseModel):
     callback_token_name: Optional[str] = None
     # Tasks with higher level are gated until all lower levels are completed.
     task_level: int = 1
+    # Optional reference to an HMAC shared secret (configured in .env) used
+    # to sign callback return URLs. When set the remote system must include a
+    # valid HMAC in the callback query string.
+    hmac_secret_reference: Optional[str] = None
 
 
 def _extract_template_placeholders(template: str) -> List[str]:
@@ -133,7 +137,7 @@ def get_external_task_callback_tokens(
 def get_external_task_effective_config(
     external_task: CfgFileExternalTask,
 ) -> Dict[str, Any]:
-    return {
+    result: Dict[str, Any] = {
         "name_i18n": dict(external_task.name),
         "description": dict(external_task.description or {}),
         "outbound_tokens": [
@@ -146,9 +150,36 @@ def get_external_task_effective_config(
         "callback_token_name": get_external_task_callback_token_name(external_task),
         "task_level": external_task.task_level,
     }
+    if external_task.hmac_secret_reference:
+        result["hmac_secret_reference"] = external_task.hmac_secret_reference
+    return result
 
 
 _ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES = {"none", "callback"}
+
+
+def _validate_hmac_secret_reference(
+    *,
+    study_name_short: str,
+    task_key: str,
+    hmac_secret_reference: str,
+) -> None:
+    """Validate that a task's hmac_secret_reference exists in the configured secrets."""
+    if not isinstance(hmac_secret_reference, str) or not hmac_secret_reference.strip():
+        raise ValueError(
+            f"Study '{study_name_short}': external task '{task_key}' "
+            "hmac_secret_reference must be a non-empty string"
+        )
+    # Defer import of settings to avoid circular dependency at module level.
+    from ..settings import settings  # noqa: PLC0415
+
+    available_secrets = settings.external_task_hmac_secrets
+    if hmac_secret_reference not in available_secrets:
+        raise ValueError(
+            f"Study '{study_name_short}': external task '{task_key}' "
+            f"hmac_secret_reference '{hmac_secret_reference}' not found in "
+            "TUD_EXTERNAL_TASK_HMAC_SECRETS. Configure this secret in your .env file."
+        )
 
 
 def validate_external_tasks_for_study(
@@ -228,7 +259,10 @@ def validate_external_tasks_for_study(
                 f"'{external_task.confirmation_type}'. Allowed values: {sorted(_ALLOWED_EXTERNAL_TASK_CONFIRMATION_TYPES)}"
             )
 
-        if not isinstance(external_task.task_level, int) or external_task.task_level < 1:
+        if (
+            not isinstance(external_task.task_level, int)
+            or external_task.task_level < 1
+        ):
             raise ValueError(
                 f"Study '{study_name_short}': external task '{external_task.task_key}' task_level must be an integer >= 1"
             )
@@ -263,7 +297,8 @@ def validate_external_tasks_for_study(
 
             token_values = list(token_group.by_participant.values())
             if any(
-                not isinstance(token, str) or not token.strip() for token in token_values
+                not isinstance(token, str) or not token.strip()
+                for token in token_values
             ):
                 raise ValueError(
                     f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains empty token values"
@@ -293,6 +328,13 @@ def validate_external_tasks_for_study(
         if callback_token_name not in placeholders:
             raise ValueError(
                 f"Study '{study_name_short}': external task '{external_task.task_key}' outbound_url must include callback token placeholder '{{{callback_token_name}}}'"
+            )
+
+        if external_task.hmac_secret_reference:
+            _validate_hmac_secret_reference(
+                study_name_short=study_name_short,
+                task_key=external_task.task_key,
+                hmac_secret_reference=external_task.hmac_secret_reference,
             )
 
 
@@ -439,9 +481,7 @@ class CfgFileStudy(BaseModel):
     @model_validator(mode="after")
     def validate_name_short(self) -> "CfgFileStudy":
         if not self.name_short:
-            raise ValueError(
-                f"Study '{self.name}': name_short cannot be empty"
-            )
+            raise ValueError(f"Study '{self.name}': name_short cannot be empty")
 
         # Check for URL-friendly characters only: lowercase a-z, numbers 0-9, underscore
         if not re.match(r"^[a-z0-9_]+$", self.name_short):
@@ -707,7 +747,7 @@ class CfgFileStudy(BaseModel):
             if self.default_language not in self.description:
                 raise ValueError(
                     f"Study '{self.name_short}': "
-                    f'description is a localized map but is missing the default_language '
+                    f"description is a localized map but is missing the default_language "
                     f'"{self.default_language}". Add a description for "{self.default_language}".'
                 )
             missing_desc_languages = sorted(

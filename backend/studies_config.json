@@ -638,6 +638,7 @@
               "de": "Geben Sie Ihre Bankdaten ein, um nach Abschluss der Studie eine Aufwandsentschädigung zu erhalten."
             },
             "confirmation_type": "callback",
+            "hmac_secret_reference": "test_hmac_key",
             "outbound_tokens": [
               {
                 "name": "pay_token",

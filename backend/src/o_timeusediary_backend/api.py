@@ -70,6 +70,7 @@ from .database import (
 )
 from pathlib import Path
 import hashlib
+import hmac as hmac_lib
 from .api_deps.activities import get_study_activity_codes
 from .api_deps.available_activities import (
     get_activities_cfg_text_for_config,
@@ -81,7 +82,6 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, update
 from io import StringIO, BytesIO
 from pydantic import BaseModel, Field, model_validator, ConfigDict
-from typing import Union
 import o_timeusediary_backend
 
 from .utils import utc_now, get_time_for_minutes_from_midnight
@@ -172,9 +172,7 @@ def _build_external_task_continuation_url(
     }
     replacements.update(token_values)
 
-    placeholders_in_template = set(
-        re.findall(r"\{([a-zA-Z0-9_]+)\}", template or "")
-    )
+    placeholders_in_template = set(re.findall(r"\{([a-zA-Z0-9_]+)\}", template or ""))
 
     def replace_placeholder(match: re.Match[str]) -> str:
         placeholder = match.group(1)
@@ -231,10 +229,80 @@ def _get_external_task_level(external_task: StudyExternalTask) -> int:
     return 1
 
 
+def _get_hmac_secret_reference_from_task(
+    external_task: StudyExternalTask,
+) -> Optional[str]:
+    """Extract hmac_secret_reference from a persisted external task config."""
+    config = external_task.config if isinstance(external_task.config, dict) else {}
+    ref = config.get("hmac_secret_reference")
+    if isinstance(ref, str) and ref.strip():
+        return ref.strip()
+    return None
+
+
+def _validate_callback_hmac(
+    *,
+    external_task: StudyExternalTask,
+    hmac_from_client: Optional[str],
+    study_name_short: str,
+    participant_id: str,
+    task_key: str,
+    assigned_token: str,
+) -> None:
+    """Validate the HMAC signature on an external-task callback when required.
+
+    If the task has no ``hmac_secret_reference`` configured this function is a
+    no-op (backward-compatible token-only behaviour).
+
+    When a reference *is* configured the HMAC is mandatory.  The expected
+    signature is computed from the canonical message::
+
+        HMAC-SHA256(secret, "study_name|participant_id|task_key|assigned_token")
+
+    The comparison uses constant-time digest comparison to prevent timing leaks.
+    """
+    config = external_task.config if isinstance(external_task.config, dict) else {}
+    hmac_secret_reference = config.get("hmac_secret_reference")
+    if not isinstance(hmac_secret_reference, str) or not hmac_secret_reference.strip():
+        return  # no HMAC configured for this task → skip
+
+    available_secrets = settings.external_task_hmac_secrets
+    shared_secret = available_secrets.get(hmac_secret_reference)
+    if not shared_secret:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"HMAC secret reference '{hmac_secret_reference}' not found "
+                "in TUD_EXTERNAL_TASK_HMAC_SECRETS."
+            ),
+        )
+
+    if not hmac_from_client or not hmac_from_client.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="HMAC signature is required for this external task callback.",
+        )
+
+    message = f"{study_name_short}|{participant_id}|{task_key}|{assigned_token}"
+    expected_hmac = hmac_lib.new(
+        shared_secret.encode("utf-8"),
+        message.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not secrets.compare_digest(expected_hmac, hmac_from_client):
+        raise HTTPException(
+            status_code=403,
+            detail="HMAC signature verification failed.",
+        )
+
+
 def _build_participant_external_task_unlock_map(
     assigned_rows: List[Tuple[StudyExternalTaskAssignment, StudyExternalTask]],
 ) -> Dict[int, bool]:
-    rows_with_level: List[Tuple[StudyExternalTaskAssignment, StudyExternalTask, int]] = [
+    rows_with_level: List[
+        Tuple[StudyExternalTaskAssignment, StudyExternalTask, int]
+    ] = [
         (assignment, external_task, _get_external_task_level(external_task))
         for assignment, external_task in assigned_rows
     ]
@@ -275,17 +343,22 @@ def _build_external_task_launch_url(
 def _build_external_task_expected_return_url_template(
     study_name_short: str,
     task_key: str,
+    *,
+    hmac_secret_reference: Optional[str] = None,
 ) -> str:
     frontend_url = settings.frontend_url
     encoded_study = quote(study_name_short, safe="")
     encoded_task = quote(task_key, safe="")
-    return (
+    base_url = (
         f"{frontend_url}/pages/tasks.html"
         f"?study_name={encoded_study}"
         "&pid={participant_id}"
         f"&callback_task_key={encoded_task}"
         "&callback_token={assigned_token}"
     )
+    if hmac_secret_reference:
+        base_url += "&hmac={hmac_signature}"
+    return base_url
 
 
 def _build_frontend_study_join_url(study_name_short: str, participant_id: str) -> str:
@@ -549,7 +622,9 @@ def _to_utc_naive(value: datetime) -> datetime:
     return value.replace(tzinfo=None)
 
 
-def _align_datetime_to_reference_tz_style(value: datetime, reference: datetime) -> datetime:
+def _align_datetime_to_reference_tz_style(
+    value: datetime, reference: datetime
+) -> datetime:
     """Align datetime tz-style with the persisted reference value for safe ORM updates."""
     normalized_value = _coerce_utc_aware(value)
     if reference.tzinfo is None:
@@ -1042,7 +1117,10 @@ def _validate_timeline_min_coverage(
         )
 
     insufficient_timeline_coverage: List[Dict[str, object]] = []
-    for timeline_key, required_min_coverage in required_min_coverage_by_timeline.items():
+    for (
+        timeline_key,
+        required_min_coverage,
+    ) in required_min_coverage_by_timeline.items():
         if required_min_coverage <= 0:
             continue
 
@@ -1474,9 +1552,7 @@ async def admin_overview(
     mysql_like_backend = settings.database_url.startswith("mysql")
 
     if mysql_like_backend:
-        export_link = (
-            f"{request.scope.get('root_path', '')}/api/admin/export/studies-runtime-config"
-        )
+        export_link = f"{request.scope.get('root_path', '')}/api/admin/export/studies-runtime-config"
         fallback_parts = [
             "<!DOCTYPE html><html><head><title>TUD Admin Overview</title></head><body>",
             "<h1>TUD Admin Overview</h1>",
@@ -1495,7 +1571,9 @@ async def admin_overview(
             fallback_parts.append(f"<h3>{html.escape(study.name_short)}</h3><ul>")
             for external_task in study_external_tasks:
                 config = (
-                    external_task.config if isinstance(external_task.config, dict) else {}
+                    external_task.config
+                    if isinstance(external_task.config, dict)
+                    else {}
                 )
                 localized_name = _get_localized_external_task_text(
                     config.get("name_i18n"),
@@ -1511,7 +1589,7 @@ async def admin_overview(
                 )
                 fallback_parts.append(
                     "<div><strong>Expected Return URL:</strong> "
-                    f"{html.escape(_build_external_task_expected_return_url_template(study.name_short, external_task.task_key))}"
+                    f"{html.escape(_build_external_task_expected_return_url_template(study.name_short, external_task.task_key, hmac_secret_reference=_get_hmac_secret_reference_from_task(external_task)))}"
                     "</div>"
                 )
 
@@ -1541,7 +1619,7 @@ async def admin_overview(
             fallback_parts.append("</ul>")
 
         fallback_parts.append(
-            f"<a href=\"{export_link}\">Export runtime config</a></body></html>"
+            f'<a href="{export_link}">Export runtime config</a></body></html>'
         )
         return HTMLResponse(content="".join(fallback_parts))
 
@@ -1558,22 +1636,23 @@ async def admin_overview(
         # Aggregate counts (cheap)
         participant_count = (
             session.exec(
-                select(func.count(StudyParticipant.id))
-                .where(StudyParticipant.study_id == study.id)
+                select(func.count(StudyParticipant.id)).where(
+                    StudyParticipant.study_id == study.id
+                )
             ).first()
             or 0
         )
         activity_count = (
             session.exec(
-                select(func.count(Activity.id))
-                .where(Activity.study_id == study.id)
+                select(func.count(Activity.id)).where(Activity.study_id == study.id)
             ).first()
             or 0
         )
         external_task_count = (
             session.exec(
-                select(func.count(StudyExternalTask.id))
-                .where(StudyExternalTask.study_id == study.id)
+                select(func.count(StudyExternalTask.id)).where(
+                    StudyExternalTask.study_id == study.id
+                )
             ).first()
             or 0
         )
@@ -1582,7 +1661,8 @@ async def admin_overview(
                 select(func.count(StudyExternalTaskAssignment.id))
                 .join(
                     StudyExternalTask,
-                    StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
+                    StudyExternalTask.id
+                    == StudyExternalTaskAssignment.external_task_id,
                 )
                 .where(StudyExternalTask.study_id == study.id)
             ).first()
@@ -1606,15 +1686,17 @@ async def admin_overview(
             else study.description
         )
 
-        studies_data.append({
-            "study": study,
-            "description_text": description_text,
-            "participant_count": participant_count,
-            "activity_count": activity_count,
-            "external_task_count": external_task_count,
-            "external_task_assignment_count": external_task_assignment_count,
-            "is_actively_collecting": study_is_collecting,
-        })
+        studies_data.append(
+            {
+                "study": study,
+                "description_text": description_text,
+                "participant_count": participant_count,
+                "activity_count": activity_count,
+                "external_task_count": external_task_count,
+                "external_task_assignment_count": external_task_assignment_count,
+                "is_actively_collecting": study_is_collecting,
+            }
+        )
 
     # Get database-wide statistics
     total_studies = len(studies)
@@ -1651,7 +1733,9 @@ async def admin_overview(
                     "participant_id": activity.participant_id,
                     "participant_name": participant.id if participant else "Unknown",
                     "day_label": day_label.name if day_label else "Unknown",
-                    "day_display_name": day_label.display_name if day_label else "Unknown",
+                    "day_display_name": day_label.display_name
+                    if day_label
+                    else "Unknown",
                     "day_display_order": day_label.display_order if day_label else 0,
                     "category": activity.category if activity else "Unknown",
                     "timeline": timeline.name if timeline else "Unknown",
@@ -1703,14 +1787,12 @@ async def admin_study_detail(
     Admin study detail page showing all information for a single study.
     Shows timelines, participants, external tasks, activities, day labels, and cfg activities.
     """
-    study = session.exec(
-        select(Study).where(Study.name_short == name_short)
-    ).first()
+    study = session.exec(select(Study).where(Study.name_short == name_short)).first()
 
     if not study:
         return HTMLResponse(
             content=f"<html><body><h1>Study '{name_short}' not found</h1>"
-                    f"<a href='{request.scope.root_path}/admin'>Back to overview</a></body></html>",
+            f"<a href='{request.scope.root_path}/admin'>Back to overview</a></body></html>",
             status_code=404,
         )
 
@@ -1719,7 +1801,9 @@ async def admin_study_detail(
         current_admin,
         study.name_short,
     )
-    audit_admin_action(current_admin, f"opened study detail page for '{study.name_short}'")
+    audit_admin_action(
+        current_admin, f"opened study detail page for '{study.name_short}'"
+    )
 
     mysql_like_backend = settings.database_url.startswith("mysql")
 
@@ -1760,7 +1844,8 @@ async def admin_study_detail(
     except TypeError as exc:
         logger.warning(
             "Falling back to non-collecting state for study '%s': %s",
-            study.name_short, exc,
+            study.name_short,
+            exc,
         )
         study_is_currently_collecting = False
 
@@ -1799,12 +1884,15 @@ async def admin_study_detail(
                 or 0
             )
             participant_has_completed_study = _is_participant_study_complete(
-                session=session, study=study,
-                participant_id=participant.id, study_days_count=study_days_count,
+                session=session,
+                study=study,
+                participant_id=participant.id,
+                study_days_count=study_days_count,
             )
             participant_external_tasks = (
                 _get_participant_external_tasks(
-                    session=session, study=study,
+                    session=session,
+                    study=study,
                     participant_id=participant.id,
                     selected_language=study.default_language,
                     study_days_count=study_days_count,
@@ -1812,30 +1900,31 @@ async def admin_study_detail(
                 if study_has_external_tasks
                 else []
             )
-            participant_all_external_tasks_completed = (
-                bool(participant_external_tasks)
-                and all(
-                    et.is_confirmed for et in participant_external_tasks
-                )
+            participant_all_external_tasks_completed = bool(
+                participant_external_tasks
+            ) and all(et.is_confirmed for et in participant_external_tasks)
+            participants.append(
+                {
+                    "id": participant.id,
+                    "created_at": participant.created_at,
+                    "joined_study_at": sp.created_at,
+                    "consent_given": sp.consent_given,
+                    "consent_decided_at": sp.consent_decided_at,
+                    "activity_count": participant_activity_count,
+                    "has_completed_study": participant_has_completed_study,
+                    "all_external_tasks_completed": participant_all_external_tasks_completed,
+                    "study_join_url": _build_frontend_study_join_url(
+                        study.name_short,
+                        participant.id,
+                    ),
+                }
             )
-            participants.append({
-                "id": participant.id,
-                "created_at": participant.created_at,
-                "joined_study_at": sp.created_at,
-                "consent_given": sp.consent_given,
-                "consent_decided_at": sp.consent_decided_at,
-                "activity_count": participant_activity_count,
-                "has_completed_study": participant_has_completed_study,
-                "all_external_tasks_completed": participant_all_external_tasks_completed,
-                "study_join_url": _build_frontend_study_join_url(
-                    study.name_short, participant.id,
-                ),
-            })
 
     participant_count = (
         session.exec(
-            select(func.count(StudyParticipant.id))
-            .where(StudyParticipant.study_id == study.id)
+            select(func.count(StudyParticipant.id)).where(
+                StudyParticipant.study_id == study.id
+            )
         ).first()
         or 0
     )
@@ -1854,7 +1943,8 @@ async def admin_study_detail(
         except TypeError as exc:
             logger.warning(
                 "Skipping activity preview for study '%s': %s",
-                study.name_short, exc,
+                study.name_short,
+                exc,
             )
             activities = []
 
@@ -1864,28 +1954,36 @@ async def admin_study_detail(
             participant = session.get(Participant, activity.participant_id)
             day_label = session.get(DayLabel, activity.day_label_id)
             timeline = session.get(Timeline, activity.timeline_id)
-            enriched_activities.append({
-                "id": activity.id,
-                "participant_id": activity.participant_id,
-                "participant_name": participant.id if participant else "Unknown",
-                "day_label": day_label.name if day_label else "Unknown",
-                "day_display_order": day_label.display_order if day_label else 0,
-                "day_display_name": day_label.display_name if day_label else "Unknown",
-                "timeline": timeline.name if timeline else "Unknown",
-                "timeline_display_name": timeline.display_name if timeline else "Unknown",
-                "activity_code": activity.activity_code,
-                "activity_name": activity.activity_name,
-                "activity_path_frontend": activity.activity_path_frontend,
-                "category": activity.category,
-                "start_minutes": activity.start_minutes,
-                "end_minutes": activity.end_minutes,
-                "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
-                "duration": activity.end_minutes - activity.start_minutes,
-                "parent_activity_code": activity.parent_activity_code,
-                "created_at": activity.created_at,
-            })
+            enriched_activities.append(
+                {
+                    "id": activity.id,
+                    "participant_id": activity.participant_id,
+                    "participant_name": participant.id if participant else "Unknown",
+                    "day_label": day_label.name if day_label else "Unknown",
+                    "day_display_order": day_label.display_order if day_label else 0,
+                    "day_display_name": day_label.display_name
+                    if day_label
+                    else "Unknown",
+                    "timeline": timeline.name if timeline else "Unknown",
+                    "timeline_display_name": timeline.display_name
+                    if timeline
+                    else "Unknown",
+                    "activity_code": activity.activity_code,
+                    "activity_name": activity.activity_name,
+                    "activity_path_frontend": activity.activity_path_frontend,
+                    "category": activity.category,
+                    "start_minutes": activity.start_minutes,
+                    "end_minutes": activity.end_minutes,
+                    "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
+                    "duration": activity.end_minutes - activity.start_minutes,
+                    "parent_activity_code": activity.parent_activity_code,
+                    "created_at": activity.created_at,
+                }
+            )
         except TypeError as exc:
-            logger.warning("Skipping activity row for study '%s': %s", study.name_short, exc)
+            logger.warning(
+                "Skipping activity row for study '%s': %s", study.name_short, exc
+            )
             continue
 
     if mysql_like_backend:
@@ -1901,7 +1999,8 @@ async def admin_study_detail(
         except TypeError as exc:
             logger.warning(
                 "Skipping last activity query for study '%s': %s",
-                study.name_short, exc,
+                study.name_short,
+                exc,
             )
             last_study_activity = None
 
@@ -1912,7 +2011,12 @@ async def admin_study_detail(
     if last_study_activity_time:
         try:
             elapsed_seconds = max(
-                0, int((_to_utc_naive(now_utc) - _to_utc_naive(last_study_activity_time)).total_seconds())
+                0,
+                int(
+                    (
+                        _to_utc_naive(now_utc) - _to_utc_naive(last_study_activity_time)
+                    ).total_seconds()
+                ),
             )
             hours, remainder = divmod(elapsed_seconds, 3600)
             minutes, _ = divmod(remainder, 60)
@@ -1920,7 +2024,8 @@ async def admin_study_detail(
         except TypeError as exc:
             logger.warning(
                 "Skipping relative activity time for study '%s': %s",
-                study.name_short, exc,
+                study.name_short,
+                exc,
             )
 
     total_activities_logged = (
@@ -1937,39 +2042,58 @@ async def admin_study_detail(
         assignment_rows = session.exec(
             select(StudyExternalTaskAssignment)
             .where(StudyExternalTaskAssignment.external_task_id == external_task.id)
-            .order_by(StudyExternalTaskAssignment.assignment_order, StudyExternalTaskAssignment.participant_id)
+            .order_by(
+                StudyExternalTaskAssignment.assignment_order,
+                StudyExternalTaskAssignment.participant_id,
+            )
         ).all()
         external_task_assignment_count += len(assignment_rows)
-        external_tasks.append({
-            "task_key": external_task.task_key,
-            "name": external_task.name,
-            "description": external_task.description,
-            "url": external_task.url,
-            "expected_return_url": _build_external_task_expected_return_url_template(
-                study.name_short, external_task.task_key,
-            ),
-            "confirmation_type": external_task.confirmation_type,
-            "token_count": len(external_task.tokens),
-            "assignment_count": len(assignment_rows),
-            "assignments": [
-                {
-                    "participant_id": assignment.participant_id,
-                    "assigned_token": assignment.assigned_token,
-                    "assignment_order": assignment.assignment_order,
-                    "is_confirmed": assignment.is_confirmed,
-                    "confirmed_at": assignment.confirmed_at,
-                }
-                for assignment in assignment_rows
-            ],
-        })
+        external_tasks.append(
+            {
+                "task_key": external_task.task_key,
+                "name": external_task.name,
+                "description": external_task.description,
+                "url": external_task.url,
+                "expected_return_url": _build_external_task_expected_return_url_template(
+                    study.name_short,
+                    external_task.task_key,
+                    hmac_secret_reference=_get_hmac_secret_reference_from_task(
+                        external_task
+                    ),
+                ),
+                "confirmation_type": external_task.confirmation_type,
+                "token_count": len(external_task.tokens),
+                "assignment_count": len(assignment_rows),
+                "assignments": [
+                    {
+                        "participant_id": assignment.participant_id,
+                        "assigned_token": assignment.assigned_token,
+                        "assignment_order": assignment.assignment_order,
+                        "is_confirmed": assignment.is_confirmed,
+                        "confirmed_at": assignment.confirmed_at,
+                    }
+                    for assignment in assignment_rows
+                ],
+            }
+        )
 
     # --- Timeline stats ---
-    num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfg_per_timeline(activities_config)
-    num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfg_per_timeline(activities_config)
-    activities_cfg_text = get_activities_cfg_text_for_config(activities_config, short=True, no_duplicate_parts=True)
+    num_activities_in_cfgfile_by_timeline = get_num_activities_in_cfg_per_timeline(
+        activities_config
+    )
+    num_categories_in_cfgfile_per_timeline = get_num_categories_in_cfg_per_timeline(
+        activities_config
+    )
+    activities_cfg_text = get_activities_cfg_text_for_config(
+        activities_config, short=True, no_duplicate_parts=True
+    )
 
-    num_activities_in_cfgfile_total = sum(num_activities_in_cfgfile_by_timeline.values())
-    num_categories_in_cfgfile_total = sum(num_categories_in_cfgfile_per_timeline.values())
+    num_activities_in_cfgfile_total = sum(
+        num_activities_in_cfgfile_by_timeline.values()
+    )
+    num_categories_in_cfgfile_total = sum(
+        num_categories_in_cfgfile_per_timeline.values()
+    )
 
     timeline_stats = []
     for timeline in timelines:
@@ -1982,16 +2106,22 @@ async def admin_study_detail(
             ).first()
             or 0
         )
-        timeline_stats.append({
-            "name": timeline.name,
-            "display_name": timeline.display_name,
-            "mode": timeline.mode,
-            "activity_count": timeline_activity_count,
-            "activity_count_cfg_file": num_activities_in_cfgfile_by_timeline.get(timeline.name, 0),
-            "category_count_cfg_file": num_categories_in_cfgfile_per_timeline.get(timeline.name, 0),
-            "description": timeline.description,
-            "min_coverage": timeline.min_coverage,
-        })
+        timeline_stats.append(
+            {
+                "name": timeline.name,
+                "display_name": timeline.display_name,
+                "mode": timeline.mode,
+                "activity_count": timeline_activity_count,
+                "activity_count_cfg_file": num_activities_in_cfgfile_by_timeline.get(
+                    timeline.name, 0
+                ),
+                "category_count_cfg_file": num_categories_in_cfgfile_per_timeline.get(
+                    timeline.name, 0
+                ),
+                "description": timeline.description,
+                "min_coverage": timeline.min_coverage,
+            }
+        )
 
     # --- Description text ---
     description_text = (
@@ -2016,9 +2146,7 @@ async def admin_study_detail(
     study_end = _to_utc_naive(study.data_collection_end).replace(
         hour=23, minute=59, second=59, microsecond=0
     )
-    today = _to_utc_naive(now_utc).replace(
-        hour=23, minute=59, second=59, microsecond=0
-    )
+    today = _to_utc_naive(now_utc).replace(hour=23, minute=59, second=59, microsecond=0)
     chart_end = min(study_end, today)
 
     # Find last activity date for each participant (proxy for time-use diary completion)
@@ -2041,7 +2169,8 @@ async def admin_study_detail(
         except TypeError as exc:
             logger.warning(
                 "Skipping completion chart data for study '%s': %s",
-                study.name_short, exc,
+                study.name_short,
+                exc,
             )
 
     # For ET studies, find the date each participant completed ALL external tasks
@@ -2059,7 +2188,7 @@ async def admin_study_detail(
                     )
                     .where(
                         StudyExternalTaskAssignment.external_task_id.in_(et_task_ids),
-                        StudyExternalTaskAssignment.is_confirmed == True,
+                        StudyExternalTaskAssignment.is_confirmed,
                     )
                     .group_by(StudyExternalTaskAssignment.participant_id)
                 ).all()
@@ -2074,13 +2203,12 @@ async def admin_study_detail(
                     if pid in confirmed_dates:
                         # Verify all tasks are confirmed for this participant
                         all_confirmed = session.exec(
-                            select(func.count(StudyExternalTaskAssignment.id))
-                            .where(
+                            select(func.count(StudyExternalTaskAssignment.id)).where(
                                 StudyExternalTaskAssignment.external_task_id.in_(
                                     et_task_ids
                                 ),
                                 StudyExternalTaskAssignment.participant_id == pid,
-                                StudyExternalTaskAssignment.is_confirmed == False,
+                                ~StudyExternalTaskAssignment.is_confirmed,
                             )
                         ).first()
                         if all_confirmed is not None and all_confirmed == 0:
@@ -2090,7 +2218,8 @@ async def admin_study_detail(
         except TypeError as exc:
             logger.warning(
                 "Skipping ET completion chart data for study '%s': %s",
-                study.name_short, exc,
+                study.name_short,
+                exc,
             )
 
     # Build day-by-day cumulative series
@@ -2105,15 +2234,11 @@ async def admin_study_detail(
         day_str = day.strftime("%Y-%m-%d")
         completion_dates.append(day_str)
         tu_count += sum(
-            1
-            for d in last_activity_per_participant.values()
-            if d == day.date()
+            1 for d in last_activity_per_participant.values() if d == day.date()
         )
         timeuse_cumulative.append(tu_count)
         all_count += sum(
-            1
-            for d in last_all_completed_per_participant.values()
-            if d == day.date()
+            1 for d in last_all_completed_per_participant.values() if d == day.date()
         )
         all_completed_cumulative.append(all_count)
 
@@ -2184,7 +2309,6 @@ class DeletePreviewResponse(BaseModel):
     matched: int
     not_found: int
     items: List[DeletePreviewItem]
-
 
 
 class UpdateStudyCollectionWindowRequest(BaseModel):
@@ -2646,10 +2770,7 @@ def _build_split_export_activities_relative_path(
 ) -> str:
     safe_study = _sanitize_export_filename_part(study_name_short)
     safe_language = _sanitize_export_filename_part(language)
-    return (
-        f"activities/{safe_study}/"
-        f"activities_{safe_study}_{safe_language}.json"
-    )
+    return f"activities/{safe_study}/" f"activities_{safe_study}_{safe_language}.json"
 
 
 def _load_json_file_with_studies_config_base(file_path: str) -> dict:
@@ -3085,12 +3206,16 @@ def _create_study_from_import_payload(
     description_map: Dict[str, str] = {}
     if isinstance(study_payload.description, dict):
         description_map = dict(study_payload.description)
-    elif isinstance(study_payload.description, str) and study_payload.description.strip():
-        description_map = {validated_data["default_language"]: study_payload.description}
+    elif (
+        isinstance(study_payload.description, str) and study_payload.description.strip()
+    ):
+        description_map = {
+            validated_data["default_language"]: study_payload.description
+        }
 
-    fallback_description = (
-        description_map.get(validated_data["default_language"]) or next(iter(description_map.values()), "")
-    )
+    fallback_description = description_map.get(
+        validated_data["default_language"]
+    ) or next(iter(description_map.values()), "")
 
     # Store either the i18n map (preferred) or a single-string fallback
     # into the unified `description` field on import.
@@ -3963,9 +4088,7 @@ async def export_runtime_studies_config(
             content=archive_buffer.getvalue(),
             media_type="application/zip",
         )
-        response.headers["Content-Disposition"] = (
-            f"attachment; filename={zip_filename}"
-        )
+        response.headers["Content-Disposition"] = f"attachment; filename={zip_filename}"
         response.headers["Content-Type"] = "application/zip"
         return response
 
@@ -4062,7 +4185,6 @@ async def admin_participant_management(
             .order_by(StudyExternalTask.task_key)
         ).all()
         external_task_ids = [t.id for t in external_tasks]
-        external_task_keys = [t.task_key for t in external_tasks]
 
         assignments = []
         if external_task_ids:
@@ -4107,7 +4229,9 @@ async def admin_participant_management(
                     "consent_given": association.consent_given,
                     "consent_decided_at": association.consent_decided_at,
                     "activity_count": participant_activity_count,
-                    "tokens": assignments_by_participant.get(participant.id, {}) if assignments_by_participant else {},
+                    "tokens": assignments_by_participant.get(participant.id, {})
+                    if assignments_by_participant
+                    else {},
                 }
             )
 
@@ -4130,7 +4254,9 @@ async def admin_participant_management(
             .where(StudyExternalTask.study_id == selected_study.id)
             .order_by(StudyExternalTask.task_key)
         ).all()
-        context_dict["selected_study_external_task_keys"] = [t.task_key for t in external_tasks]
+        context_dict["selected_study_external_task_keys"] = [
+            t.task_key for t in external_tasks
+        ]
         context_dict["selected_study_external_task_count"] = len(external_tasks)
     template = templates.get_template("admin_participant_management.html")
     html_content = template.render(context_dict)
@@ -4154,9 +4280,13 @@ async def import_external_task_tokens(
     upserted into `study_external_task_assignments` (existing assignments will be
     replaced).
     """
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     external_tasks = session.exec(
         select(StudyExternalTask)
@@ -4166,14 +4296,18 @@ async def import_external_task_tokens(
     task_keys = [t.task_key for t in external_tasks]
 
     if not task_keys:
-        raise HTTPException(status_code=400, detail="Study has no external tasks configured")
+        raise HTTPException(
+            status_code=400, detail="Study has no external tasks configured"
+        )
 
     # Read CSV
     try:
         raw = await file.read()
         text = raw.decode("utf-8-sig")
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to read uploaded file: {e}")
+        raise HTTPException(
+            status_code=400, detail=f"Failed to read uploaded file: {e}"
+        )
 
     reader = csv.DictReader(StringIO(text))
     headers = [h for h in reader.fieldnames or []]
@@ -4225,7 +4359,9 @@ async def import_external_task_tokens(
             token = (row.get(key) or "").strip()
             if token == "":
                 # record but skip empty tokens
-                errors.append(f"Line {lineno}: empty token for task '{key}' and pid '{pid}'")
+                errors.append(
+                    f"Line {lineno}: empty token for task '{key}' and pid '{pid}'"
+                )
                 continue
 
             task = tasks_by_key.get(key)
@@ -4435,9 +4571,7 @@ async def generate_external_task_tokens(
         session.commit()
     except Exception as e:
         session.rollback()
-        raise HTTPException(
-            status_code=500, detail=f"Database commit failed: {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"Database commit failed: {e}")
 
     audit_admin_action(
         current_admin,
@@ -4740,20 +4874,24 @@ async def validate_files_in_memory(
             await studies_config_file.seek(0)
 
             if mode == "full_study":
-                import_study_payload, validated, available_studies = (
-                    await _prepare_full_study_import_from_uploads(
-                        studies_config_file=studies_config_file,
-                        activities_files=activities_files,
-                        activities_language_map=activities_language_map,
-                        full_study_name_short=full_study_name_short,
-                    )
+                (
+                    import_study_payload,
+                    validated,
+                    available_studies,
+                ) = await _prepare_full_study_import_from_uploads(
+                    studies_config_file=studies_config_file,
+                    activities_files=activities_files,
+                    activities_language_map=activities_language_map,
+                    full_study_name_short=full_study_name_short,
                 )
             else:
-                import_study_payload, validated, available_studies = (
-                    await _prepare_embedded_full_study_import_from_upload(
-                        studies_config_file=studies_config_file,
-                        full_study_name_short=full_study_name_short,
-                    )
+                (
+                    import_study_payload,
+                    validated,
+                    available_studies,
+                ) = await _prepare_embedded_full_study_import_from_upload(
+                    studies_config_file=studies_config_file,
+                    full_study_name_short=full_study_name_short,
                 )
         else:
             raise ValueError(
@@ -4919,20 +5057,24 @@ async def create_study_from_validated_uploads(
 
     try:
         if normalized_mode == "full_study":
-            import_study_payload, validated_data, available_studies = (
-                await _prepare_full_study_import_from_uploads(
-                    studies_config_file=studies_config_file,
-                    activities_files=activities_files,
-                    activities_language_map=activities_language_map,
-                    full_study_name_short=full_study_name_short,
-                )
+            (
+                import_study_payload,
+                validated_data,
+                available_studies,
+            ) = await _prepare_full_study_import_from_uploads(
+                studies_config_file=studies_config_file,
+                activities_files=activities_files,
+                activities_language_map=activities_language_map,
+                full_study_name_short=full_study_name_short,
             )
         else:
-            import_study_payload, validated_data, available_studies = (
-                await _prepare_embedded_full_study_import_from_upload(
-                    studies_config_file=studies_config_file,
-                    full_study_name_short=full_study_name_short,
-                )
+            (
+                import_study_payload,
+                validated_data,
+                available_studies,
+            ) = await _prepare_embedded_full_study_import_from_upload(
+                studies_config_file=studies_config_file,
+                full_study_name_short=full_study_name_short,
             )
 
         existing_by_name_short = session.exec(
@@ -5362,7 +5504,6 @@ async def reseed_external_tasks_for_participant(
     }
 
 
-
 @app.post("/api/admin/studies/{study_name_short}/delete-tokens/by-pid/preview")
 async def preview_delete_tokens_by_pid(
     study_name_short: str,
@@ -5371,9 +5512,13 @@ async def preview_delete_tokens_by_pid(
     session: Session = Depends(get_session),
 ):
     """Preview which StudyExternalTaskAssignment rows would be deleted for the given study+task when supplying participant ids."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     task = session.exec(
         select(StudyExternalTask).where(
@@ -5382,7 +5527,10 @@ async def preview_delete_tokens_by_pid(
         )
     ).first()
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'",
+        )
 
     normalized = [p.strip() for p in payload.participant_ids if (p or "").strip()]
     items: List[DeletePreviewItem] = []
@@ -5395,12 +5543,24 @@ async def preview_delete_tokens_by_pid(
             )
         ).first()
         if assignment:
-            items.append(DeletePreviewItem(input_value=inp, found=True, participant_id=assignment.participant_id, assigned_token=assignment.assigned_token))
+            items.append(
+                DeletePreviewItem(
+                    input_value=inp,
+                    found=True,
+                    participant_id=assignment.participant_id,
+                    assigned_token=assignment.assigned_token,
+                )
+            )
             matched += 1
         else:
             items.append(DeletePreviewItem(input_value=inp, found=False))
 
-    resp = DeletePreviewResponse(total_input=len(normalized), matched=matched, not_found=len(normalized)-matched, items=items)
+    resp = DeletePreviewResponse(
+        total_input=len(normalized),
+        matched=matched,
+        not_found=len(normalized) - matched,
+        items=items,
+    )
     return jsonable_encoder(resp)
 
 
@@ -5412,9 +5572,13 @@ async def preview_delete_tokens_by_token(
     session: Session = Depends(get_session),
 ):
     """Preview which StudyExternalTaskAssignment rows would be deleted for the given study+task when supplying tokens."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     task = session.exec(
         select(StudyExternalTask).where(
@@ -5423,7 +5587,10 @@ async def preview_delete_tokens_by_token(
         )
     ).first()
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'",
+        )
 
     normalized = [t.strip() for t in payload.tokens if (t or "").strip()]
     items: List[DeletePreviewItem] = []
@@ -5436,12 +5603,24 @@ async def preview_delete_tokens_by_token(
             )
         ).first()
         if assignment:
-            items.append(DeletePreviewItem(input_value=tok, found=True, participant_id=assignment.participant_id, assigned_token=assignment.assigned_token))
+            items.append(
+                DeletePreviewItem(
+                    input_value=tok,
+                    found=True,
+                    participant_id=assignment.participant_id,
+                    assigned_token=assignment.assigned_token,
+                )
+            )
             matched += 1
         else:
             items.append(DeletePreviewItem(input_value=tok, found=False))
 
-    resp = DeletePreviewResponse(total_input=len(normalized), matched=matched, not_found=len(normalized)-matched, items=items)
+    resp = DeletePreviewResponse(
+        total_input=len(normalized),
+        matched=matched,
+        not_found=len(normalized) - matched,
+        items=items,
+    )
     return jsonable_encoder(resp)
 
 
@@ -5453,9 +5632,13 @@ async def commit_delete_tokens_by_pid(
     session: Session = Depends(get_session),
 ):
     """Delete StudyExternalTaskAssignment rows scoped to the study+task for the provided participant ids."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     task = session.exec(
         select(StudyExternalTask).where(
@@ -5464,24 +5647,43 @@ async def commit_delete_tokens_by_pid(
         )
     ).first()
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'",
+        )
 
     normalized = [p.strip() for p in payload.participant_ids if (p or "").strip()]
     deleted = 0
     for pid in normalized:
-        count = session.exec(
-            delete(StudyExternalTaskAssignment).where(
-                StudyExternalTaskAssignment.external_task_id == task.id,
-                StudyExternalTaskAssignment.participant_id == pid,
-            )
-        ).rowcount or 0
+        count = (
+            session.exec(
+                delete(StudyExternalTaskAssignment).where(
+                    StudyExternalTaskAssignment.external_task_id == task.id,
+                    StudyExternalTaskAssignment.participant_id == pid,
+                )
+            ).rowcount
+            or 0
+        )
         deleted += int(count)
 
     session.commit()
-    logger.info("Admin '%s' deleted %s token assignments by participant for study '%s' task '%s'", current_admin, deleted, study_name_short, payload.task_key)
-    audit_admin_action(current_admin, f"deleted {deleted} token assignments by participant for study '{study_name_short}' task '{payload.task_key}'")
+    logger.info(
+        "Admin '%s' deleted %s token assignments by participant for study '%s' task '%s'",
+        current_admin,
+        deleted,
+        study_name_short,
+        payload.task_key,
+    )
+    audit_admin_action(
+        current_admin,
+        f"deleted {deleted} token assignments by participant for study '{study_name_short}' task '{payload.task_key}'",
+    )
 
-    return {"deleted": deleted, "study_name_short": study_name_short, "task_key": payload.task_key}
+    return {
+        "deleted": deleted,
+        "study_name_short": study_name_short,
+        "task_key": payload.task_key,
+    }
 
 
 @app.post("/api/admin/studies/{study_name_short}/delete-tokens/by-token/commit")
@@ -5492,9 +5694,13 @@ async def commit_delete_tokens_by_token(
     session: Session = Depends(get_session),
 ):
     """Delete StudyExternalTaskAssignment rows scoped to the study+task for the provided tokens."""
-    study = session.exec(select(Study).where(Study.name_short == study_name_short)).first()
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
     if not study:
-        raise HTTPException(status_code=404, detail=f"Study '{study_name_short}' not found")
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
 
     task = session.exec(
         select(StudyExternalTask).where(
@@ -5503,24 +5709,43 @@ async def commit_delete_tokens_by_token(
         )
     ).first()
     if not task:
-        raise HTTPException(status_code=404, detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task '{payload.task_key}' not found in study '{study_name_short}'",
+        )
 
     normalized = [t.strip() for t in payload.tokens if (t or "").strip()]
     deleted = 0
     for tok in normalized:
-        count = session.exec(
-            delete(StudyExternalTaskAssignment).where(
-                StudyExternalTaskAssignment.external_task_id == task.id,
-                StudyExternalTaskAssignment.assigned_token == tok,
-            )
-        ).rowcount or 0
+        count = (
+            session.exec(
+                delete(StudyExternalTaskAssignment).where(
+                    StudyExternalTaskAssignment.external_task_id == task.id,
+                    StudyExternalTaskAssignment.assigned_token == tok,
+                )
+            ).rowcount
+            or 0
+        )
         deleted += int(count)
 
     session.commit()
-    logger.info("Admin '%s' deleted %s token assignments by token for study '%s' task '%s'", current_admin, deleted, study_name_short, payload.task_key)
-    audit_admin_action(current_admin, f"deleted {deleted} token assignments by token for study '{study_name_short}' task '{payload.task_key}'")
+    logger.info(
+        "Admin '%s' deleted %s token assignments by token for study '%s' task '%s'",
+        current_admin,
+        deleted,
+        study_name_short,
+        payload.task_key,
+    )
+    audit_admin_action(
+        current_admin,
+        f"deleted {deleted} token assignments by token for study '{study_name_short}' task '{payload.task_key}'",
+    )
 
-    return {"deleted": deleted, "study_name_short": study_name_short, "task_key": payload.task_key}
+    return {
+        "deleted": deleted,
+        "study_name_short": study_name_short,
+        "task_key": payload.task_key,
+    }
 
 
 @app.delete("/api/admin/studies/{study_name_short}")
@@ -6671,6 +6896,7 @@ def get_study_config(
 class ConfirmExternalTaskCallbackPayload(BaseModel):
     task_key: str
     assigned_token: str
+    hmac: Optional[str] = None
 
 
 class CompleteInstructionsPayload(BaseModel):
@@ -6740,6 +6966,17 @@ def confirm_external_task_callback(
         )
 
     assignment, external_task = assignment_row
+
+    # --- HMAC validation (optional, per-task) ---
+    _validate_callback_hmac(
+        external_task=external_task,
+        hmac_from_client=payload.hmac,
+        study_name_short=study_name_short,
+        participant_id=participant_id,
+        task_key=payload.task_key,
+        assigned_token=payload.assigned_token,
+    )
+
     participant_rows = session.exec(
         select(StudyExternalTaskAssignment, StudyExternalTask)
         .join(
@@ -6898,7 +7135,9 @@ def launch_external_task(
         participant_id=participant_id,
     )
     log_launch(True, "redirect")
-    return RedirectResponse(url=target_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT)
+    return RedirectResponse(
+        url=target_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT
+    )
 
 
 @app.post(
