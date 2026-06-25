@@ -182,5 +182,8 @@
     "backend_status_connecting": "Verbindung zum Backend wird hergestellt...",
     "backend_status_connected": "Mit Backend verbunden",
     "backend_status_error": "Fehler bei der Verbindung zum Backend"
+  },
+  "idleTimeout": {
+    "tooltip": "Inaktivitäts-Zeitüberschreitung. Klicken Sie hier, um zu bestätigen, dass Sie noch da sind, und der Timer wird zurückgesetzt."
   }
 }

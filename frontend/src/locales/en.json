@@ -182,5 +182,8 @@
     "backend_status_connecting": "Connecting to backend...",
     "backend_status_connected": "Connected to backend",
     "backend_status_error": "Error connecting to backend"
+  },
+  "idleTimeout": {
+    "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
   }
 }
