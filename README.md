@@ -406,7 +406,12 @@ You can verify that all services are operational by running the integration test
 
 We recommend to also run the E2E tests, see next section.
 
-You can now connect to [http://localhost:3000](http://localhost:3000) to access nginx. The default nginx page will show details on how to access the frontend, admin interface, and API.
+You can now connect to [http://localhost:3000](http://localhost:3000) to access nginx. The default nginx page will show details on how to access the frontend, admin interface, and API. If you did not change the default configuration, the URLs are:
+
+* frontend for default study: [/report/index.html](http://localhost:3000/report/index.html)
+* backend (requires admin credentials from your backend/.env file): [/tud_backend/admin](http://localhost:3000/tud_backend/admin)
+* API: [/tud_backend/api](http://localhost:3000/tud_backend/api)
+* API docs: [/tud_backend/docs](http://localhost:3000/tud_backend/docs)
 
 #### Running Tests Locally (Without Docker)
 
