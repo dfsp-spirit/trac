@@ -5354,6 +5354,17 @@ async function init() {
           list.style.gap = '8px';
           list.style.alignItems = 'center';
 
+          // Resolve a possibly-localized description (string or {lang:text} map)
+          // to a plain string using the URL lang param or falling back to 'en'.
+          const urlLang = new URLSearchParams(window.location.search).get('lang') || 'en';
+          function resolveChooserDescription(desc) {
+            if (typeof desc === 'string') return desc;
+            if (desc && typeof desc === 'object') {
+              return desc[urlLang] || desc['en'] || Object.values(desc).find(v => typeof v === 'string') || '';
+            }
+            return '';
+          }
+
           const studies = window.availableOpenStudies || [];
           studies.forEach((s) => {
             const btn = document.createElement('button');
@@ -5361,7 +5372,8 @@ async function init() {
             btn.style.minWidth = '280px';
             btn.style.padding = '12px';
             btn.style.textAlign = 'left';
-            btn.innerHTML = `<strong>${s.name || s.name_short}</strong><div style="font-size:small;color:#666">${s.description || ''}</div>`;
+            const desc = resolveChooserDescription(s.description);
+            btn.innerHTML = `<strong>${s.name || s.name_short}</strong><div style="font-size:small;color:#666">${desc}</div><div style="font-size:x-small;color:#999;margin-top:2px">${s.name_short || ''}</div>`;
             btn.addEventListener('click', () => {
               const url = new URL(window.location.href);
               url.searchParams.set('study_name', s.name_short);
