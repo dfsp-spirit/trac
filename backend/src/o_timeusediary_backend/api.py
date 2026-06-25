@@ -6594,15 +6594,26 @@ async def get_active_open_study_names(session: Session = Depends(get_session)):
             .order_by(Study.name_short)  # Optional: order alphabetically
         ).all()
 
-        # Create response objects with the required fields
-        study_responses = [
-            ActiveOpenStudyResponse(
-                name_short=study.name_short,
-                name=study.name,
-                description=study.description,
+        # Create response objects with the required fields.
+        # Resolve localized description dicts to a plain string using the
+        # study's default_language so the frontend always receives a string.
+        study_responses = []
+        for study in studies:
+            if isinstance(study.description, dict):
+                desc = (
+                    study.description.get(study.default_language)
+                    or study.description.get("en")
+                    or next(iter(study.description.values()), "")
+                )
+            else:
+                desc = study.description
+            study_responses.append(
+                ActiveOpenStudyResponse(
+                    name_short=study.name_short,
+                    name=study.name,
+                    description=desc,
+                )
             )
-            for study in studies
-        ]
 
         logger.info(f"Found {len(study_responses)} active open studies")
 
