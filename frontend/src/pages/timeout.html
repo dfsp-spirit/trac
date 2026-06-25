@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="timeout.title">Session Timed Out - TRAC</title>
+    <link href="/assets/fonts/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/fonts/fontawesome/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #475569;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        html { height: 100%; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+            color: var(--text-color);
+            display: grid;
+            grid-template-columns: 1fr minmax(0, 640px) 1fr;
+            grid-auto-rows: 1fr;
+        }
+
+        .timeout-container {
+            grid-column: 2;
+            width: 100%;
+            margin: 0;
+            padding: 36px 28px;
+            background: white;
+            border-left: 1px solid rgba(226, 232, 240, 0.95);
+            border-right: 1px solid rgba(226, 232, 240, 0.95);
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .timeout-icon {
+            font-size: 64px;
+            color: #dc2626;
+            margin-bottom: 8px;
+        }
+
+        .timeout-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #991b1b;
+            margin: 0;
+        }
+
+        .timeout-message {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: var(--secondary-color);
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .timeout-custom-text {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--secondary-color);
+            max-width: 420px;
+            margin: 0 auto;
+            padding: 12px 16px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 640px) {
+            .timeout-container {
+                padding: 24px 16px;
+                gap: 16px;
+            }
+            .timeout-icon { font-size: 48px; }
+            .timeout-title { font-size: 1.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="timeout-container">
+        <div class="timeout-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <h1 class="timeout-title" id="timeoutTitle">Session Timed Out</h1>
+        <p class="timeout-message" id="timeoutMessage">
+            Your session has ended due to inactivity. For security and data integrity reasons, you cannot return to your previous session.
+        </p>
+        <div class="timeout-custom-text" id="timeoutCustomText" style="display: none;"></div>
+    </div>
+
+    <script>
+        (function () {
+            // Try to read custom text from sessionStorage
+            var customTextEl = document.getElementById('timeoutCustomText');
+            try {
+                var customText = sessionStorage.getItem('tud_timeout_custom_text');
+                if (customText) {
+                    customTextEl.textContent = customText;
+                    customTextEl.style.display = 'block';
+                    sessionStorage.removeItem('tud_timeout_custom_text');
+                }
+            } catch (_e) { /* ignore */ }
+
+            // Prevent back button from returning to diary page by
+            // pushing a duplicate state and trapping popstate
+            if (window.history && window.history.pushState) {
+                // Push state so the current page is also at the top of history
+                history.pushState(null, document.title, location.href);
+                window.addEventListener('popstate', function () {
+                    // Push again so the user cannot go back
+                    history.pushState(null, document.title, location.href);
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

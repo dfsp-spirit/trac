@@ -615,6 +615,30 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     ):
                         existing_study.allow_skip_timeuse = study_config.allow_skip_timeuse
                         study_updated = True
+                    if (
+                        existing_study.inactivity_timeout_minutes
+                        != study_config.inactivity_timeout_minutes
+                    ):
+                        existing_study.inactivity_timeout_minutes = (
+                            study_config.inactivity_timeout_minutes
+                        )
+                        study_updated = True
+                    if (
+                        existing_study.inactivity_timeout_stress_time_left
+                        != study_config.inactivity_timeout_stress_time_left
+                    ):
+                        existing_study.inactivity_timeout_stress_time_left = (
+                            study_config.inactivity_timeout_stress_time_left
+                        )
+                        study_updated = True
+                    if (
+                        existing_study.inactivity_page_custom_text
+                        != study_config.inactivity_page_custom_text
+                    ):
+                        existing_study.inactivity_page_custom_text = (
+                            study_config.inactivity_page_custom_text
+                        )
+                        study_updated = True
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
                             existing_participant = session.exec(
@@ -808,6 +832,9 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     activities_json_url=default_activities_url,
                     data_collection_start=study_config.data_collection_start,
                     data_collection_end=study_config.data_collection_end,
+                    inactivity_timeout_minutes=study_config.inactivity_timeout_minutes,
+                    inactivity_timeout_stress_time_left=study_config.inactivity_timeout_stress_time_left,
+                    inactivity_page_custom_text=study_config.inactivity_page_custom_text,
                 )
                 session.add(study)
                 # Keep study creation in the same transaction as dependent rows.

@@ -45,6 +45,7 @@ import {
   TIMELINE_HOURS,
   TUD_FRONTEND_VERSION,
 } from './constants.js';
+import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
 import { checkAndRequestPID } from './utils.js';
 
 // Make window.selectedActivity a global property that persists across DOM changes
@@ -5434,6 +5435,13 @@ async function init() {
     window.timelineManager.studyDaysCount =
       window.studyConfigManager.getStudyDaysCount();
     window.timelineManager.dayLabels = currentStudy.day_labels;
+
+    // Start inactivity timeout timer if configured for this study
+    startIdleTimer({
+      inactivity_timeout_minutes: currentStudy.inactivity_timeout_minutes ?? 0,
+      inactivity_timeout_stress_time_left: currentStudy.inactivity_timeout_stress_time_left ?? 5,
+      inactivity_page_custom_text: currentStudy.inactivity_page_custom_text ?? null,
+    });
 
     // Now sync URL parameters so they are stored in timelineManager.study
     syncURLParamsToStudy();

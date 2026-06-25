@@ -2342,6 +2342,9 @@ class ImportStudiesConfigStudy(BaseModel):
     study_text_consent: Optional[Dict[str, str]] = None
     data_collection_start: datetime
     data_collection_end: datetime
+    inactivity_timeout_minutes: int = 0
+    inactivity_timeout_stress_time_left: int = 5
+    inactivity_page_custom_text: Optional[Dict[str, str]] = None
 
 
 class UpdateConsentRequest(BaseModel):
@@ -6681,6 +6684,10 @@ class StudyConfigResponse(BaseModel):
     timelines: List[TimelineConfigResponse]
     day_labels: List[DayLabelConfigResponse]
     study_days_count: int
+    # Inactivity timeout configuration
+    inactivity_timeout_minutes: int = 0
+    inactivity_timeout_stress_time_left: int = 5
+    inactivity_page_custom_text: Optional[Dict[str, str]] = None
 
 
 @app.get(
@@ -6901,6 +6908,9 @@ def get_study_config(
         timelines=timeline_responses,
         day_labels=day_label_responses,
         study_days_count=len(day_labels),
+        inactivity_timeout_minutes=study.inactivity_timeout_minutes,
+        inactivity_timeout_stress_time_left=study.inactivity_timeout_stress_time_left,
+        inactivity_page_custom_text=study.inactivity_page_custom_text,
     )
 
 

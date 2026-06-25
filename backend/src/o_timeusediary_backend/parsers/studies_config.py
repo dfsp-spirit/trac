@@ -368,6 +368,19 @@ class CfgFileStudy(BaseModel):
     activities_logged_by_userid: Dict[str, Dict[str, List[CfgFileLoggedActivity]]] = (
         Field(default_factory=dict)
     )
+    # Inactivity timeout configuration
+    inactivity_timeout_minutes: int = Field(
+        default=0,
+        description="Minutes of user inactivity before session timeout. Set to 0 to disable.",
+    )
+    inactivity_timeout_stress_time_left: int = Field(
+        default=5,
+        description="When time left drops below this (minutes), switch to stressed display with seconds.",
+    )
+    inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Localized markdown-lite text shown on the timeout page.",
+    )
 
     def get_activities_json_files(self) -> Dict[str, str]:
         if isinstance(self.activities_json_files, dict) and self.activities_json_files:

@@ -1,5 +1,6 @@
 import { DEBUG_MODE, MINUTES_PER_DAY } from './constants.js';
 import { hideLoadingModal } from './ui.js';
+import { stopIdleTimer } from './idle_timeout.js';
 
 // ============================================================================
 // RETRY HELPER - Smart fetch with intelligent retry logic
@@ -1161,6 +1162,9 @@ export async function sendData(
   // TODO: change default back to 'datapipe'. options: 'datapipe', 'csv', 'json'
   // Sync URL parameters before sending data, so that URL params are included in study data
   syncURLParamsToStudy();
+
+  // Stop the inactivity timer before data submission
+  stopIdleTimer();
 
   if (options.mode === 'datapipe') {
     // Call the function that sends data to DataPipe

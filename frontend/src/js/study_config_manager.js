@@ -591,6 +591,20 @@ async function syncWithBackendConfig() {
           backendConfig.allow_skip_timeuse;
       }
 
+      // Inactivity timeout configuration
+      if (backendConfig.inactivity_timeout_minutes !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_timeout_minutes =
+          backendConfig.inactivity_timeout_minutes;
+      }
+      if (backendConfig.inactivity_timeout_stress_time_left !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_timeout_stress_time_left =
+          backendConfig.inactivity_timeout_stress_time_left;
+      }
+      if (backendConfig.inactivity_page_custom_text !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_page_custom_text =
+          backendConfig.inactivity_page_custom_text;
+      }
+
       if (backendConfig.consent_given !== undefined) {
         CURRENT_STUDY_CACHE.consent_given = backendConfig.consent_given;
       }

@@ -70,6 +70,12 @@ class Study(SQLModel, table=True):
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+    # Inactivity timeout configuration
+    inactivity_timeout_minutes: int = Field(default=0)
+    inactivity_timeout_stress_time_left: int = Field(default=5)
+    inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
 
     # Relationships
     day_labels: List["DayLabel"] = Relationship(back_populates="study")
