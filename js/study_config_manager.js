@@ -605,6 +605,15 @@ async function syncWithBackendConfig() {
           backendConfig.inactivity_page_custom_text;
       }
 
+      // Study-specific footer links
+      if (backendConfig.footer_links !== undefined) {
+        CURRENT_STUDY_CACHE.footer_links = backendConfig.footer_links;
+      }
+      if (backendConfig.hide_server_wide_links !== undefined) {
+        CURRENT_STUDY_CACHE.hide_server_wide_links =
+          backendConfig.hide_server_wide_links;
+      }
+
       if (backendConfig.consent_given !== undefined) {
         CURRENT_STUDY_CACHE.consent_given = backendConfig.consent_given;
       }
@@ -819,6 +828,10 @@ async function initializeStudyConfig() {
     noStudiesError.code = 'NO_STUDIES_AVAILABLE';
     throw noStudiesError;
   }
+
+  // Notify footer.js and other consumers that study config is ready
+  window.TUD_STUDY_CONFIG = CURRENT_STUDY_CACHE;
+  window.dispatchEvent(new CustomEvent('tud:studyConfigReady'));
 
   return CURRENT_STUDY_CACHE;
 }
