@@ -182,5 +182,8 @@
     "backend_status_connecting": "Łączenie z backendem...",
     "backend_status_connected": "Połączono z backendem",
     "backend_status_error": "Błąd przy łączeniu z backendem"
+  },
+  "idleTimeout": {
+    "tooltip": "Limit czasu bezczynności. Kliknij, aby potwierdzić, że wciąż tu jesteś i zresetować licznik czasu."
   }
 }

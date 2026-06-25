@@ -182,5 +182,8 @@
     "backend_status_connecting": "Conectando al backend...",
     "backend_status_connected": "Conectado al backend",
     "backend_status_error": "Error al conectar con el backend"
+  },
+  "idleTimeout": {
+    "tooltip": "Tiempo de inactividad agotado. Haga clic para confirmar que sigue aquí y reiniciar el temporizador."
   }
 }

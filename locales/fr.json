@@ -182,5 +182,8 @@
     "backend_status_connecting": "Connexion au backend...",
     "backend_status_connected": "Connecté au backend",
     "backend_status_error": "Erreur de connexion au backend"
+  },
+  "idleTimeout": {
+    "tooltip": "Délai d'inactivité. Cliquez pour confirmer votre présence et réinitialiser le minuteur."
   }
 }
