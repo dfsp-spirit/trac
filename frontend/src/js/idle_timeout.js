@@ -58,7 +58,8 @@ function _createTimerDOM() {
   _timerContainer.id = 'idleTimeoutIndicator';
   _timerContainer.setAttribute('aria-label', 'Inactivity timer');
   _timerContainer.setAttribute('role', 'timer');
-  _timerContainer.title = window.i18n?.t('idleTimeout.tooltip') || 'Idle Timeout. Click to confirm you are still here and reset the timer.';
+  _timerContainer.setAttribute('data-i18n-title', 'idleTimeout.tooltip');
+  _timerContainer.title = 'Idle Timeout. Click to confirm you are still here and reset the timer.';
 
   // Progress bar (shown only in stressed phase)
   _progressBar = document.createElement('div');
@@ -78,6 +79,9 @@ function _createTimerDOM() {
   });
 
   document.body.appendChild(_timerContainer);
+
+  // Apply i18n title translation if available (also handles language switches)
+  window.i18n?.applyTranslations();
 }
 
 function _removeTimerDOM() {
