@@ -49,6 +49,7 @@
     "checkboxLabel": "Ich habe die Informationen auf dieser Seite gelesen und verstanden.",
     "checkboxTooltip": "Bitte aktivieren Sie das obige Kontrollkästchen",
     "description": "Beschreibung",
+    "studyNameShort": "Studienkürzel",
     "saving": "Einwilligung wird gespeichert...",
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden."

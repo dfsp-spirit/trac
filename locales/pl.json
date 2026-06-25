@@ -49,6 +49,7 @@
     "checkboxLabel": "Przeczytałem/Przeczytałam i zrozumiałem/zrozumiałam informacje na tej stronie.",
     "checkboxTooltip": "Proszę zaznaczyć powyższe pole wyboru",
     "description": "Opis",
+    "studyNameShort": "Skrócona nazwa badania",
     "saving": "Zapisywanie zgody...",
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
     "loadError": "Nie udało się wczytać informacji o zgodzie."

@@ -49,6 +49,7 @@
     "checkboxLabel": "Jag har läst och förstått informationen på denna sida.",
     "checkboxTooltip": "Vänligen bocka i rutan ovan",
     "description": "Beskrivning",
+    "studyNameShort": "Studiets kortnamn",
     "saving": "Sparar samtycke...",
     "saveError": "Kunde inte spara samtycket. Försök igen.",
     "loadError": "Kunde inte läsa in samtyckesinformationen."

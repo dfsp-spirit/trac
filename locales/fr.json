@@ -49,6 +49,7 @@
     "checkboxLabel": "J'ai lu et compris les informations de cette page.",
     "checkboxTooltip": "Veuillez cocher la case ci-dessus",
     "description": "Description",
+    "studyNameShort": "Nom court de l'étude",
     "saving": "Enregistrement du consentement...",
     "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
     "loadError": "Impossible de charger les informations de consentement."

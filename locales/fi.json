@@ -49,6 +49,7 @@
     "checkboxLabel": "Olen lukenut ja ymmärtänyt tällä sivulla esitetyt tiedot.",
     "checkboxTooltip": "Valitse yllä oleva valintaruutu",
     "description": "Kuvaus",
+    "studyNameShort": "Tutkimuksen lyhytnimi",
     "saving": "Tallennetaan suostumusta...",
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
     "loadError": "Suostumustietojen lataaminen epäonnistui."

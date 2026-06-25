@@ -49,6 +49,7 @@
     "checkboxLabel": "He leído y comprendido la información en esta página.",
     "checkboxTooltip": "Por favor marque la casilla de arriba",
     "description": "Descripción",
+    "studyNameShort": "Nombre corto del estudio",
     "saving": "Guardando consentimiento...",
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
     "loadError": "No se pudo cargar la información de consentimiento."

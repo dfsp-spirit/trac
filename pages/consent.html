@@ -508,6 +508,7 @@
                 if (studyMetaEl) {
                     try {
                         const fullName = studyConfig?.study_name || '';
+                        const nameShort = studyConfig?.study_name_short || '';
                         // Prefer the i18n map when present
                         const selectedLang = studyConfig?.selected_language || (requestedLanguage || 'en');
                         let desc = '';
@@ -518,10 +519,14 @@
                             desc = d || '';
                         }
                         const nameLabel = escapeHtml(i18n.t('consent.studyName') || 'Study Name');
+                        const nameShortLabel = escapeHtml(i18n.t('consent.studyNameShort') || 'Study Short Name');
                         const descLabel = escapeHtml(i18n.t('consent.description') || 'Description');
                         const parts = [];
                         if (fullName) {
                             parts.push(`<div><strong>${nameLabel}:</strong> ${escapeHtml(fullName)}</div>`);
+                        }
+                        if (nameShort) {
+                            parts.push(`<div style="margin-top:0.25rem;color:var(--secondary-color)"><strong>${nameShortLabel}:</strong> <code>${escapeHtml(nameShort)}</code></div>`);
                         }
                         if (desc) {
                             parts.push(`<div style="margin-top:0.25rem;color:var(--secondary-color)"><strong>${descLabel}:</strong> ${escapeHtml(desc)}</div>`);
