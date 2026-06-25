@@ -628,44 +628,6 @@ export function isOverlapping(elem1, elem2) {
   );
 }
 
-export function createTimelineDataFrame() {
-  const data = [];
-
-  Object.keys(window.timelineManager.activities).forEach((timelineKey) => {
-    const activities = window.timelineManager.activities[timelineKey];
-
-    activities.forEach((activity) => {
-      const row = {
-        // Basic fields
-        timelineKey: timelineKey,
-        activity: activity.activity,
-        category: activity.category,
-        startTime: activity.startTime,
-        endTime: activity.endTime,
-        blockLength: activity.blockLength,
-        color: activity.color,
-
-        // Enhanced context for recreation
-        parentActivity: activity.parentName || activity.activity,
-        selected: activity.selected || activity.activity,
-        isCustomInput: activity.isCustomInput || false,
-        originalSelection: activity.originalSelection || null,
-        frequencyKey: activity.frequencyKey || null,
-
-        // For proper ordering and positioning
-        startMinutes: activity.startMinutes,
-        endMinutes: activity.endMinutes,
-
-        // Unique identifier
-        id: activity.id,
-      };
-      data.push(row);
-    });
-  });
-
-  return data;
-}
-
 // Generates a JSON representation of the timeline data for the backend,
 // using snake_case for field names.
 export function createTimelineJSON(stringify = false) {
@@ -725,178 +687,6 @@ export function createTimelineJSON(stringify = false) {
   }
 
   return JSON.stringify(full_data, null, 2);
-}
-
-/**
- * Creates combined timeline and participant data for sending to any target.
- * This function handles all data preparation and combination logic.
- */
-export function createCombinedData() {
-  // --- Prepare Timeline Data ---
-  const timelineData = createTimelineDataFrame();
-
-  // Get study data if available
-  let studyData = window.timelineManager?.study || {};
-  let pid;
-
-  // Check if ppid exists and is not empty
-  const hasPpid =
-    (studyData.ppid !== undefined &&
-      studyData.ppid !== null &&
-      studyData.ppid !== '') ||
-    (studyData.PPID !== undefined &&
-      studyData.PPID !== null &&
-      studyData.PPID !== '');
-
-  if (hasPpid) {
-    // Use ppid as pid when ppid is not empty
-    pid = studyData.ppid || studyData.PPID;
-  } else if (!('pid' in studyData) && !('PID' in studyData)) {
-    // Generate random pid if neither pid nor ppid exists
-    pid = ('0000000000000000' + Math.floor(Math.random() * 1e16)).slice(-16);
-    studyData.pid = pid;
-  } else {
-    // Use existing pid if ppid doesn't exist but pid does
-    pid = studyData.pid || studyData.PID;
-  }
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const study_name =
-    urlParams.get('study_name') ||
-    window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
-    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
-      ? TUD_SETTINGS.DEFAULT_STUDY_NAME
-      : '');
-  if (study_name) {
-    studyData.study_name = study_name;
-  }
-
-  // --- Prepare Participant Data ---
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  const layoutHorizontal = viewportWidth >= 1440;
-
-  // Get browser info if available
-  let browserInfo = { name: 'unknown', version: 'unknown' };
-  if (window.bowser) {
-    const browserParser = window.bowser.getParser(window.navigator.userAgent);
-    browserInfo = {
-      name: browserParser.getBrowserName(),
-      version: browserParser.getBrowserVersion(),
-    };
-  }
-
-  // Determine session_id based on whether ppid exists
-  const session_id =
-    hasPpid && (studyData.survey || studyData.SURVEY)
-      ? studyData.survey || studyData.SURVEY
-      : studyData.SESSION_ID || null;
-
-  // Combine timeline and participant data
-  const combinedData = timelineData.map((row) => ({
-    timelineKey: row.timelineKey,
-    activity: row.activity,
-    category: row.category,
-    startTime: row.startTime,
-    endTime: row.endTime,
-    frequencyKey: row.frequencyKey || null,
-    pid: pid,
-    diaryWave: studyData.DIARY_WAVE ? parseInt(studyData.DIARY_WAVE) : null,
-    viewportWidth,
-    viewportHeight,
-    layoutHorizontal,
-    browserName: browserInfo.name,
-    browserVersion: browserInfo.version,
-    instructions: studyData.instructions === 'completed',
-    PROLIFIC_PID: studyData.PROLIFIC_PID || null,
-    STUDY_ID: studyData.STUDY_ID || null,
-    SESSION_ID: session_id,
-  }));
-
-  return {
-    combinedData,
-    pid,
-    studyData,
-  };
-}
-
-/**
- * Sends timeline and participant data to DataPipe API.
- *
- * This function performs the following steps:
- * 1. Prepare the combined data using createCombinedData().
- * 2. Send the data to DataPipe API endpoint.
- * 3. Handle redirect to thank you page.
- */
-export async function sendDataToDataPipe() {
-  try {
-    // Get combined data using the refactored function
-    const { combinedData, pid } = createCombinedData();
-
-    // Convert to CSV format
-    const csvData = convertArrayToCSV(combinedData);
-
-    // Generate unique filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `timeline_${pid}_${timestamp}.csv`;
-
-    // Send to DataPipe API
-    const response = await fetch('https://pipe.jspsych.org/api/data/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: '*/*',
-      },
-      body: JSON.stringify({
-        experimentID:
-          window.timelineManager?.general?.experimentID || 'eR8ENvJPgQth',
-        filename: filename,
-        data: csvData,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `DataPipe API request failed: ${response.status} ${response.statusText}`
-      );
-    }
-
-    console.log('Data sent to DataPipe successfully');
-
-    // Hide loading modal before redirect
-    hideLoadingModal();
-
-    // Handle redirect to thank you page
-    const redirectUrl = window.timelineManager?.general?.primary_redirect_url;
-
-    if (redirectUrl) {
-      // Check if it's a relative URL (like our thank-you.html page)
-      if (!redirectUrl.startsWith('http')) {
-        // For relative URLs, just redirect directly
-        window.location.href = redirectUrl;
-      } else {
-        // For external URLs, preserve existing URL parameters
-        const currentParams = new URLSearchParams(window.location.search);
-        const separator = redirectUrl.includes('?') ? '&' : '?';
-        const finalRedirectUrl =
-          redirectUrl +
-          (currentParams.toString()
-            ? separator + currentParams.toString()
-            : '');
-
-        window.location.href = finalRedirectUrl;
-      }
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('Error sending data to DataPipe:', error);
-
-    // Hide loading modal on error
-    hideLoadingModal();
-
-    return { success: false, error: error.message };
-  }
 }
 
 export function validateMinCoverage(coverage) {
@@ -1105,234 +895,133 @@ export function validateTimeMarkers(startTime, endTime) {
   return true;
 }
 
-// Helper function to convert an array of objects into a CSV string
-function convertArrayToCSV(array) {
-  if (array.length === 0) {
-    return '';
-  }
-  const keys = Object.keys(array[0]);
-  const csvRows = [];
-  // header row
-  csvRows.push(keys.join(','));
-  // data rows
-  array.forEach((row) => {
-    const values = keys.map((key) => {
-      let value = row[key] || '';
-      // escape quotes by doubling, and enclose in quotes if needed
-      value = String(value).replace(/"/g, '""');
-      if (value.search(/("|,|\n)/g) >= 0) {
-        value = `"${value}"`;
-      }
-      return value;
-    });
-    csvRows.push(values.join(','));
-  });
-  return csvRows.join('\n');
-}
-
-// Helper function to trigger a CSV download in the browser
-function downloadCSV(csvString, filename) {
-  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.setAttribute('href', url);
-  link.setAttribute('download', filename);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
 /**
- * sendData function to either send data via DataPipe or download as CSV locally.
- *
- * @param {Object} options - Options to control the sending behavior.
- *   Use { mode: 'datapipe' } to upload via DataPipe API,
- *   or { mode: 'csv' } to trigger a CSV file download.
- *   During development, the default is 'datapipe' mode.
+ * Submit timeline data to the backend API.
  */
 export async function sendData(
   options = {
-    mode: 'json',
     shouldRedirect: false,
     isLastDay: false,
     currentDayIndex: 0,
   }
 ) {
-  // TODO: change default back to 'datapipe'. options: 'datapipe', 'csv', 'json'
-  // Sync URL parameters before sending data, so that URL params are included in study data
+  // Sync URL parameters before sending data
   syncURLParamsToStudy();
 
   // Stop the inactivity timer before data submission
   stopIdleTimer();
 
-  if (options.mode === 'datapipe') {
-    // Call the function that sends data to DataPipe
-    return await sendDataToDataPipe();
-  } else if (options.mode === 'csv') {
-    // Create timeline data frame and convert to CSV for download
-    const dataFrame = createTimelineDataFrame();
+  // Build activity data JSON from timeline state
+  const activitiesDataJSON = createTimelineJSON(false);
 
-    // Temporary console logging for debugging
-    console.log('=== DATA FRAME FOR CSV ===');
-    console.log('Full data structure:', JSON.stringify(dataFrame, null, 2));
-    console.log('Number of records:', dataFrame.length);
-    console.log('Study parameters:', window.timelineManager.study);
-    console.log(
-      'Columns:',
-      dataFrame.length > 0 ? Object.keys(dataFrame[0]) : []
+  if (typeof TUD_SETTINGS === 'undefined') {
+    console.error(
+      'TUD_SETTINGS variable not available, please include settings/tud_settings.js before using this function.'
     );
-    console.log('================================');
-    const csv = convertArrayToCSV(dataFrame);
-    downloadCSV(csv, 'timeline_data.csv');
+  }
 
-    // Hide loading modal after CSV download
-    hideLoadingModal();
-    return { success: true };
-  } else if (options.mode === 'json') {
-    // Create timeline data frame and convert to JSON for download
-    const activitiesDataJSON = createTimelineJSON(false);
+  const urlParams = new URLSearchParams(window.location.search);
+  const pid = urlParams.get('pid');
+  const study_name_short =
+    urlParams.get('study_name') ||
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+      ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+      : '');
+  const day_label_index = parseInt(urlParams.get('day_label_index')) || 0;
 
-    if (typeof TUD_SETTINGS === 'undefined') {
-      console.error(
-        'TUD_SETTINGS variable not available, please include settings/tud_settings.js before using this function.'
-      );
-    }
+  console.log(
+    'Participant ID (pid):',
+    pid,
+    'Study Name:',
+    study_name_short,
+    'Day Label Index:',
+    day_label_index
+  );
 
-    const { pid, studyData } = createCombinedData();
-    const study_name_short =
-      studyData.study_name ||
-      window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
-      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
-        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
-        : '');
-    const day_label_index = studyData.day_label_index || 0;
-    console.log(
-      'Participant ID (pid):',
-      pid,
-      'Study Name:',
-      study_name_short,
-      'Day Label Index:',
-      day_label_index
-    );
+  const dayLabel =
+    window.studyConfigManager?.getDayLabel(day_label_index) ||
+    `day_${day_label_index + 1}`;
 
-    // We only extract some relevant fields to send to backend.
+  const jsonString = JSON.stringify(activitiesDataJSON, null, 2);
 
-    console.log('=== DEBUG getDayLabel ===');
-    console.log(
-      'day_label_index:',
-      day_label_index,
-      'type:',
-      typeof day_label_index
-    );
-    console.log('studyConfigManager exists:', !!window.studyConfigManager);
-    console.log(
-      'getDayLabel function exists:',
-      !!window.studyConfigManager?.getDayLabel
-    );
+  const api_url = TUD_SETTINGS.API_BASE_URL; // includes the "/api" part
+  const api_submit_url = `${api_url}/studies/${study_name_short}/participants/${pid}/day_labels/${dayLabel}/activities`;
 
-    const dayLabelTest =
-      window.studyConfigManager?.getDayLabel(day_label_index);
-    console.log(
-      'dayLabelTest result:',
-      dayLabelTest,
-      'type:',
-      typeof dayLabelTest
-    );
+  console.log('=== DATA FOR JSON ===');
+  console.log(
+    'Full data structure we send to backend at ' + api_submit_url + ':',
+    jsonString
+  );
+  console.log('Number of records:', activitiesDataJSON.activities?.length || 0);
 
-    const dayLabel =
-      window.studyConfigManager?.getDayLabel(day_label_index) ||
-      `day_${day_label_index + 1}`;
-    console.log('dayLabel final:', dayLabel, 'type:', typeof dayLabel);
+  // Send JSON data to backend API with smart retry for transient errors
+  try {
+    console.log('Sending data to backend API at', api_submit_url);
 
-    // Also check what's in the study config:
-    const currentStudy = window.studyConfigManager?.getCurrentStudy();
-    console.log('Current study:', currentStudy);
-    console.log('Day labels:', currentStudy?.day_labels);
-
-    const jsonString = JSON.stringify(activitiesDataJSON, null, 2);
-
-    const api_url = TUD_SETTINGS.API_BASE_URL; // includes the "/api" part
-
-    const api_submit_url = `${api_url}/studies/${study_name_short}/participants/${pid}/day_labels/${dayLabel}/activities`;
-
-    console.log('=== DATA FRAME FOR JSON ===');
-    console.log(
-      'Full data structure we send to backend at ' + api_submit_url + ':',
-      jsonString
-    );
-    console.log('Number of records:', activitiesDataJSON.length);
-
-    // Send JSON data to backend API with smart retry for transient errors
-    try {
-      console.log('Sending data to backend API at', api_submit_url);
-
-      // Use smart retry: retry on server errors (5xx), don't retry on client errors (4xx)
-      const response = await fetchWithSmartRetry(
-        api_submit_url,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: jsonString,
+    // Use smart retry: retry on server errors (5xx), don't retry on client errors (4xx)
+    const response = await fetchWithSmartRetry(
+      api_submit_url,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
         },
-        {
-          maxRetries: 2,
-          delayMs: 2000,
-          skipRetryStatuses: [], // Retry all server errors (5xx)
-          onRetry: ({ attempt, maxRetries, nextDelayMs }) => {
-            // Show progress to user via toast
-            const retryMsg = window.i18n
-              ? window.i18n.t('messages.sending_retry', { attempt, maxRetries })
-              : `Trying again to save your diary (attempt ${attempt}/${
-                  maxRetries + 1
-                })...`;
-            if (window.showToast) {
-              window.showToast(retryMsg, 'info', nextDelayMs + 500);
-            }
-          },
-        }
+        body: jsonString,
+      },
+      {
+        maxRetries: 2,
+        delayMs: 2000,
+        skipRetryStatuses: [], // Retry all server errors (5xx)
+        onRetry: ({ attempt, maxRetries, nextDelayMs }) => {
+          // Show progress to user via toast
+          const retryMsg = window.i18n
+            ? window.i18n.t('messages.sending_retry', { attempt, maxRetries })
+            : `Trying again to save your diary (attempt ${attempt}/${
+                maxRetries + 1
+              })...`;
+          if (window.showToast) {
+            window.showToast(retryMsg, 'info', nextDelayMs + 500);
+          }
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Backend API request failed: ${response.status} ${response.statusText}`
       );
-
-      if (!response.ok) {
-        throw new Error(
-          `Backend API request failed: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const responseData = await response.json();
-      console.log('Data sent to backend API successfully:', responseData);
-
-      if (typeof window.__TRAC_CLEAR_PENDING_STATE === 'function') {
-        window.__TRAC_CLEAR_PENDING_STATE();
-      }
-
-      // Handle redirect if needed
-      if (options.shouldRedirect) {
-        console.log(
-          'Handling day navigation after successful data submission. isLastDay:',
-          options.isLastDay,
-          'currentDayIndex:',
-          options.currentDayIndex
-        );
-        await handleDayNavigation(options.isLastDay, options.currentDayIndex);
-      }
-      return { success: true, data: responseData };
-    } catch (error) {
-      console.error('Error sending data to backend API:', error);
-      console.log(
-        'Is the backend running and accessible at',
-        api_submit_url,
-        '?'
-      );
-      return { success: false, error: error?.message || String(error) };
-    } finally {
-      hideLoadingModal();
     }
-  } else {
-    throw new Error(`Unsupported send mode: ${options.mode}`);
+
+    const responseData = await response.json();
+    console.log('Data sent to backend API successfully:', responseData);
+
+    if (typeof window.__TRAC_CLEAR_PENDING_STATE === 'function') {
+      window.__TRAC_CLEAR_PENDING_STATE();
+    }
+
+    // Handle redirect if needed
+    if (options.shouldRedirect) {
+      console.log(
+        'Handling day navigation after successful data submission. isLastDay:',
+        options.isLastDay,
+        'currentDayIndex:',
+        options.currentDayIndex
+      );
+      await handleDayNavigation(options.isLastDay, options.currentDayIndex);
+    }
+    return { success: true, data: responseData };
+  } catch (error) {
+    console.error('Error sending data to backend API:', error);
+    console.log(
+      'Is the backend running and accessible at',
+      api_submit_url,
+      '?'
+    );
+    return { success: false, error: error?.message || String(error) };
+  } finally {
+    hideLoadingModal();
   }
 }
 
@@ -1470,8 +1159,18 @@ export function syncURLParamsToStudy() {
     window.timelineManager.study = {};
   }
 
-  // Sync all URL parameters into the study object
-  for (const [key, value] of urlParams) {
-    window.timelineManager.study[key] = value;
+  // Only copy known URL params into studyData — prevents accidental leakage
+  // of frontend-only params (e.g., custom_page_title, lang) to the backend.
+  const ALLOWED_STUDY_PARAMS = [
+    'pid',
+    'study_name',
+    'day_label_index',
+    'completion_status',
+  ];
+  for (const key of ALLOWED_STUDY_PARAMS) {
+    const value = urlParams.get(key);
+    if (value !== null) {
+      window.timelineManager.study[key] = value;
+    }
   }
 }

@@ -414,7 +414,6 @@ function createModal() {
 
       // Send data with redirect flag
       const result = await sendData({
-        mode: 'json',
         shouldRedirect: true,
         isLastDay: isLastDay,
         currentDayIndex: currentDayIndex,
