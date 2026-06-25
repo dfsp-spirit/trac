@@ -120,6 +120,32 @@ Each study uses `name_short` as its technical identifier. This short name is imp
 
 TRAC also supports study-level internationalization. In `studies_config.json`, each study defines a `default_language` and a list of `supported_languages`. Study texts such as introductions, end messages, and day labels can be provided per language. Activity lists can also be language-specific via `activities_json_files`, which maps language codes to separate `activities_*.json` files. On the frontend, the language is chosen in this order: `lang` URL parameter if present, otherwise the browser language if supported, otherwise the study's default language.
 
+#### Inactivity Timeout
+
+Each study can optionally configure an **inactivity timeout** that ends the participant's session after a period of no user interaction, helping to protect study data integrity. Three per-study fields control this behavior in `studies_config.json`:
+
+| Field | Type | Description |
+|---|---|---|
+| `inactivity_timeout_minutes` | integer | Duration of inactivity (in minutes) after which the session is automatically ended. Omit or set to `0` to disable the timeout. |
+| `inactivity_timeout_stress_time_left` | integer | When the remaining time drops below this threshold (in minutes), a visual countdown indicator appears in the frontend to warn the participant. |
+| `inactivity_page_custom_text` | object | Localized message object (e.g., `{ "en": "...", "de": "..." }`) displayed on the inactivity expiration page, explaining why the session ended. |
+
+Example configuration:
+
+```json
+{
+    "inactivity_timeout_minutes": 30,
+    "inactivity_timeout_stress_time_left": 5,
+    "inactivity_page_custom_text": {
+        "en": "Your session has ended because you were inactive for 30 minutes. This is required to protect the integrity of the study data. Thank you for your understanding.",
+        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Dies ist notwendig, um die Integrität der Studiendaten zu schützen. Vielen Dank für Ihr Verständnis.",
+        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Detta krävs för att skydda studiedatas integritet. Tack för din förståelse."
+    }
+}
+```
+
+When the inactivity timeout triggers, the frontend redirects the participant to the `inactivity.html` page, which displays the localized `inactivity_page_custom_text` message.
+
 Participants access the app via an invitation link containing their unique ID. For open studies any visitor is assigned an ID automatically.
 
 #### Participant Invitation Links
