@@ -30,6 +30,12 @@ export function getCurrentLanguage() {
   return getUrlParams().get('lang') || null;
 }
 
+export function getCustomPageTitle() {
+  const raw = getUrlParams().get('custom_page_title');
+  if (raw && raw.trim()) return raw.trim();
+  return null;
+}
+
 export function getApiBaseUrl() {
   return window.TUD_SETTINGS?.API_BASE_URL || '/api';
 }

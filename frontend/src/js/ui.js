@@ -756,6 +756,17 @@ export function updateCurrentDayDisplay() {
   dayDisplay.title = dayTooltipText;
   timelineTitle.appendChild(dayDisplay);
 
+  // Custom page title from URL param (frontend-only, not sent to backend)
+  const customTitle = urlParams.get('custom_page_title');
+  if (customTitle && customTitle.trim()) {
+    timelineTitle.appendChild(document.createTextNode(' '));
+    const customTitleSpan = document.createElement('span');
+    customTitleSpan.id = 'customPageTitle';
+    customTitleSpan.className = 'timeline-header-emphasis';
+    customTitleSpan.textContent = `\u2014 ${customTitle.trim()}`;
+    timelineTitle.appendChild(customTitleSpan);
+  }
+
   return document.getElementById('currentDayDisplay');
 }
 

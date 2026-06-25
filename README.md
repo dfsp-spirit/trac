@@ -165,6 +165,7 @@ All invitation URL parameters are listed below. Parameters are read from the que
 | `lang` | No | Language override as an ISO 639-1 two-letter code (e.g., `en`, `de`, `sv`). When omitted, the browser language is used if supported by the study; otherwise the study's `default_language` is used. |
 | `template_user` | No | Participant ID of another user whose timeline entries should be copied as a starting point when the participant first opens the diary. Useful when a parent enters similar data for siblings, for example. |
 | `return_url` | No | A fully URL-encoded absolute URL to which the participant is redirected after completing the study (shown as a link on the thank-you page). Must be properly encoded (e.g., `https%3A%2F%2Fexample.org%2Ffinish`). |
+| `custom_page_title` | No | Arbitrary text displayed next to the day label on all diary pages (e.g., `&custom_page_title=for%20Child%20A`). Useful for reminding participants which child or context they are currently reporting for when filling out the study multiple times. This is a frontend-only convenience feature — the value is never sent to or stored in the backend. |
 
 ¹ `pid` is required for invite-only studies. For open studies (`allow_unlisted_participants: true`) a missing `pid` is replaced with a randomly generated, fresh ID automatically.
 
@@ -183,6 +184,9 @@ https://your.domain.example.com/report/index.html?study_name=study1&pid=c303282d
 
 # Return to an external system after completion
 https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123
+
+# Add a custom page title to remind the participant which child they are reporting for
+https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&custom_page_title=for%20Child%20A
 ```
 
 #### External Tasks (external integrations)
