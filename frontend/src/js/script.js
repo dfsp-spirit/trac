@@ -10,7 +10,6 @@ import {
 import {
   getCurrentTimelineData,
   getCurrentTimelineKey,
-  createTimelineDataFrame,
   sendData,
   getPostDiaryRedirectPath,
   validateMinCoverage,
@@ -5188,7 +5187,6 @@ async function saveAndSwitchToDay(targetDayIndex) {
   });
 
   const result = await sendData({
-    mode: 'json',
     shouldRedirect: false,
     isLastDay: false,
     currentDayIndex,

@@ -116,9 +116,9 @@
       "inactivity_timeout_minutes": 30,
       "inactivity_timeout_stress_time_left": 5,
       "inactivity_page_custom_text": {
-        "en": "Your session has ended because you were inactive for 30 minutes. This is required to protect the integrity of the study data. Thank you for your understanding.",
-        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Dies ist notwendig, um die Integrität der Studiendaten zu schützen. Vielen Dank für Ihr Verständnis.",
-        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Detta krävs för att skydda studiedatas integritet. Tack för din förståelse."
+        "en": "Your session has ended because you were inactive for 30 minutes. Please use your invitation link to continue.",
+        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Bitte verwenden Sie Ihren Einladungslink, um fortzufahren.",
+        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Vänligen använd din inbjudningslänk för att fortsätta."
       }
     },
     {
