@@ -2345,6 +2345,8 @@ class ImportStudiesConfigStudy(BaseModel):
     inactivity_timeout_minutes: int = 0
     inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
+    footer_links: Optional[List[Dict[str, Any]]] = None
+    hide_server_wide_links: bool = False
 
 
 class UpdateConsentRequest(BaseModel):
@@ -3240,6 +3242,11 @@ def _create_study_from_import_payload(
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
+        inactivity_timeout_minutes=study_payload.inactivity_timeout_minutes,
+        inactivity_timeout_stress_time_left=study_payload.inactivity_timeout_stress_time_left,
+        inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
+        footer_links=study_payload.footer_links,
+        hide_server_wide_links=study_payload.hide_server_wide_links,
     )
     session.add(study)
     session.flush()
@@ -6688,6 +6695,9 @@ class StudyConfigResponse(BaseModel):
     inactivity_timeout_minutes: int = 0
     inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
+    # Study-specific footer links
+    footer_links: Optional[List[Dict[str, Any]]] = None
+    hide_server_wide_links: bool = False
 
 
 @app.get(
@@ -6911,6 +6921,8 @@ def get_study_config(
         inactivity_timeout_minutes=study.inactivity_timeout_minutes,
         inactivity_timeout_stress_time_left=study.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study.inactivity_page_custom_text,
+        footer_links=study.footer_links,
+        hide_server_wide_links=study.hide_server_wide_links,
     )
 
 

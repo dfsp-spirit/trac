@@ -76,6 +76,11 @@ class Study(SQLModel, table=True):
     inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # Study-specific footer links
+    footer_links: Optional[List[Dict[str, Any]]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    hide_server_wide_links: bool = Field(default=False)
 
     # Relationships
     day_labels: List["DayLabel"] = Relationship(back_populates="study")

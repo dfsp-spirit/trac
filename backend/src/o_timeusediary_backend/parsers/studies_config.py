@@ -338,6 +338,16 @@ def validate_external_tasks_for_study(
             )
 
 
+class CfgFileFooterLink(BaseModel):
+    """A study-specific footer link with localized title."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: Dict[str, str]
+    target_url: str
+    in_new_tab: bool = True
+
+
 class CfgFileStudy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -380,6 +390,15 @@ class CfgFileStudy(BaseModel):
     inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
         default=None,
         description="Localized markdown-lite text shown on the timeout page.",
+    )
+    # Study-specific footer links
+    footer_links: Optional[List["CfgFileFooterLink"]] = Field(
+        default=None,
+        description="Optional list of study-specific footer links to display alongside server-wide legal links.",
+    )
+    hide_server_wide_links: bool = Field(
+        default=False,
+        description="When true, hide the server-wide legal links (imprint/privacy) from the footer.",
     )
 
     def get_activities_json_files(self) -> Dict[str, str]:
@@ -794,6 +813,26 @@ class CfgFileStudy(BaseModel):
             study_participant_ids=self.study_participant_ids,
             external_tasks=self.external_tasks,
         )
+        return self
+
+    @model_validator(mode="after")
+    def validate_footer_links(self) -> "CfgFileStudy":
+        if self.footer_links is None:
+            return self
+        for idx, link in enumerate(self.footer_links):
+            if not isinstance(link.title, dict) or not link.title:
+                raise ValueError(
+                    f"Study '{self.name_short}': footer_links[{idx}] title must be a non-empty localized map"
+                )
+            for lang, text in link.title.items():
+                if not isinstance(text, str) or not text.strip():
+                    raise ValueError(
+                        f"Study '{self.name_short}': footer_links[{idx}] title['{lang}'] must be a non-empty string"
+                    )
+            if not isinstance(link.target_url, str) or not link.target_url.strip():
+                raise ValueError(
+                    f"Study '{self.name_short}': footer_links[{idx}] target_url must be a non-empty string"
+                )
         return self
 
 

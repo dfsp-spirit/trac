@@ -639,6 +639,23 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                             study_config.inactivity_page_custom_text
                         )
                         study_updated = True
+                    # Footer links: serialize CfgFileFooterLink objects to plain dicts for JSON storage
+                    config_footer_links = None
+                    if study_config.footer_links is not None:
+                        config_footer_links = [
+                            link.model_dump() for link in study_config.footer_links
+                        ]
+                    if existing_study.footer_links != config_footer_links:
+                        existing_study.footer_links = config_footer_links
+                        study_updated = True
+                    if (
+                        existing_study.hide_server_wide_links
+                        != study_config.hide_server_wide_links
+                    ):
+                        existing_study.hide_server_wide_links = (
+                            study_config.hide_server_wide_links
+                        )
+                        study_updated = True
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
                             existing_participant = session.exec(

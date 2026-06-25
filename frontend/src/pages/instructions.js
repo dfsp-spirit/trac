@@ -306,6 +306,9 @@ function updateLayout() {
       studyConfig = await loadStudyConfigForInstructions(
         requestedLanguage || undefined
       );
+      // Store globally for footer.js and other consumers
+      window.TUD_STUDY_CONFIG = studyConfig;
+      window.dispatchEvent(new CustomEvent('tud:studyConfigReady'));
     } catch (studyConfigError) {
       if (
         studyConfigError?.code === 'STUDY_UNAVAILABLE' ||
