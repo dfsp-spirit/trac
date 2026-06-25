@@ -251,6 +251,10 @@ body {
   font-weight: 400;
 }
 
+#customPageTitle {
+  font-weight: 700;
+}
+
 .timeline-description {
   color: #808080;
   font-size: clamp(11px, 1.25vw, 13px);
