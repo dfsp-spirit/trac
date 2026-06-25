@@ -58,7 +58,7 @@ function _createTimerDOM() {
   _timerContainer.id = 'idleTimeoutIndicator';
   _timerContainer.setAttribute('aria-label', 'Inactivity timer');
   _timerContainer.setAttribute('role', 'timer');
-  _timerContainer.title = 'Click to confirm you are still here';
+  _timerContainer.title = 'Idle Timeout. Click to confirm you are still here and reset the timer.';
 
   // Progress bar (shown only in stressed phase)
   _progressBar = document.createElement('div');
