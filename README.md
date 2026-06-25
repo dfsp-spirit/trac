@@ -424,6 +424,8 @@ npm install
 npx playwright install --with-deps chromium firefox webkit
 ```
 
+Note: If you get errors on `npm install`, e.g. about unsupported engine, the most likely reason is an outdated `npm` installation. We highly recommend to install [nvm](https://github.com/nvm-sh/nvm), then run `nvm install node` to get the latest stable node/npm version.
+
 ### Development With Docker Compose
 
 If you prefer a container-based development setup, this repo also includes `docker-compose.dev.yml`. It starts three services:
