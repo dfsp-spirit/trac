@@ -134,7 +134,27 @@
         "de": "activities_ki_adults_de.json"
       },
       "data_collection_start": "2024-01-01T00:00:00Z",
-      "data_collection_end": "2026-12-31T23:59:59Z"
+      "data_collection_end": "2026-12-31T23:59:59Z",
+      "footer_links": [
+        {
+          "title": {
+            "en": "Study Information",
+            "sv": "Studieinformation",
+            "de": "Studieninformation"
+          },
+          "target_url": "https://example.com/study-info",
+          "in_new_tab": true
+        },
+        {
+          "title": {
+            "en": "Contact",
+            "sv": "Kontakt",
+            "de": "Kontakt"
+          },
+          "target_url": "https://example.com/contact",
+          "in_new_tab": false
+        }
+      ]
     },
     {
       "name": "Weekly Study for 15 year olds",

@@ -133,6 +133,14 @@ test('reload preserves unsaved timeline activities from local draft state', asyn
     .first();
   await expect(block).toBeVisible();
 
+  // Wait for draft to be persisted to localStorage (debounce is 100ms in persistPendingTimelineStateSoon)
+  await expect
+    .poll(
+      () => page.evaluate(() => localStorage.getItem('trac.timelineDraftState.v1')),
+      { timeout: 5000, message: 'Waiting for draft to be persisted to localStorage before reload' }
+    )
+    .toBeTruthy();
+
   await page.reload({ waitUntil: 'domcontentloaded' });
   await enterDiaryIfNeeded(page);
   await expect(timeline).toBeVisible();
