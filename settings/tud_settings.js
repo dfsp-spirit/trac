@@ -11,11 +11,7 @@ const TUD_SETTINGS = {
     FOOTER_LINK_LABELS: {
         en: { imprint: 'Imprint', privacy: 'Data Protection Information' },
         sv: { imprint: 'Impressum', privacy: 'Integritet' },
-        de: { imprint: 'Impressum', privacy: 'Datenschutz' },
-        es: { imprint: 'Aviso legal', privacy: 'Protección de datos' },
-        fi: { imprint: 'Julkaisija', privacy: 'Tietosuoja' },
-        fr: { imprint: 'Mentions légales', privacy: 'Protection des données' },
-        pl: { imprint: 'Impressum', privacy: 'Ochrona danych' }
+        de: { imprint: 'Impressum', privacy: 'Datenschutz' }
     }
 };
 
