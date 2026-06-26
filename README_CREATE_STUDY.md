@@ -10,26 +10,47 @@ deployment instructions.
 
 ## Table of Contents
 
-1. [Quick Start](#quick-start)
-2. [Configuration Overview](#configuration-overview)
-   - [The Two File Types](#the-two-file-types)
-   - [Open vs. Invite-Only Studies](#open-vs-invite-only-studies)
-   - [Languages and Internationalization](#languages-and-internationalization)
-   - [Importing Your Configuration](#importing-your-configuration)
-   - [Validating and Creating Studies via the Admin Web Interface](#validating-and-creating-studies-via-the-admin-web-interface)
-3. [The `studies_config.json` File](#the-studies_configjson-file)
-   - [Field Reference Table](#field-reference-table)
-   - [Inactivity Timeout](#inactivity-timeout)
-   - [External Tasks (External Integrations)](#external-tasks-external-integrations)
-   - [HMAC-Signed Callbacks (Optional Per-Task)](#hmac-signed-callbacks-optional-per-task)
-   - [Participant Invitation Links](#participant-invitation-links)
-   - [Footer Links](#footer-links)
-   - [Full Example](#full-example)
-4. [The Activities File](#the-activities-file)
-   - [Structure Overview](#structure-overview)
-   - [Activity Field Reference](#activity-field-reference)
-   - [Activity Types (Standard, Custom Input, Child, Child Custom)](#activity-types)
-   - [Full Example Activities File](#full-example-activities-file)
+- [How to Create a Study in TRAC](#how-to-create-a-study-in-trac)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+  - [Configuration Overview](#configuration-overview)
+    - [The Two File Types](#the-two-file-types)
+    - [Open vs. Invite-Only Studies](#open-vs-invite-only-studies)
+    - [Languages and Internationalization](#languages-and-internationalization)
+    - [Importing Your Configuration on the command line (server admin only)](#importing-your-configuration-on-the-command-line-server-admin-only)
+    - [Validating and Creating Studies via the Admin Web Interface](#validating-and-creating-studies-via-the-admin-web-interface)
+  - [The `studies_config.json` File](#the-studies_configjson-file)
+    - [Field Reference Table](#field-reference-table)
+      - [Study Identity \& Display](#study-identity--display)
+      - [Participant Handling](#participant-handling)
+      - [Day Configuration](#day-configuration)
+      - [Languages \& Activities](#languages--activities)
+      - [Study Text (Localized)](#study-text-localized)
+      - [Study Flow Control](#study-flow-control)
+      - [Data Collection Window](#data-collection-window)
+      - [Inactivity Timeout](#inactivity-timeout)
+      - [External Tasks](#external-tasks)
+      - [Footer Links](#footer-links)
+      - [Pre-Logged Activities (Admin)](#pre-logged-activities-admin)
+    - [Inactivity Timeout](#inactivity-timeout-1)
+    - [External Tasks (External Integrations)](#external-tasks-external-integrations)
+      - [External Task Fields](#external-task-fields)
+      - [How External Tasks Work at Runtime](#how-external-tasks-work-at-runtime)
+    - [HMAC-Signed Callbacks (Optional Per-Task)](#hmac-signed-callbacks-optional-per-task)
+    - [Participant Invitation Links](#participant-invitation-links)
+    - [Footer Links](#footer-links-1)
+    - [Full Example](#full-example)
+  - [The Activities File](#the-activities-file)
+    - [Structure Overview](#structure-overview)
+      - [General Settings](#general-settings)
+      - [Timelines](#timelines)
+    - [Activity Field Reference](#activity-field-reference)
+    - [Activity Types](#activity-types)
+      - [1. Standard Activity](#1-standard-activity)
+      - [2. Custom Input Activity](#2-custom-input-activity)
+      - [3. Parent Activity with Children](#3-parent-activity-with-children)
+      - [4. Child Activity with Custom Input](#4-child-activity-with-custom-input)
+    - [Full Example Activities File](#full-example-activities-file)
 
 ---
 
@@ -39,7 +60,7 @@ deployment instructions.
    days, participants, etc.).
 2. Create one or more activities files (e.g., `activities_my_study_en.json`)
    that define the timelines and activity codes for each supported language.
-3. Import them into the running backend:
+3. Import them into the running backend, via the admin web interface or via command line on the server:
 
    ```bash
    cd backend/
@@ -74,10 +95,10 @@ for API-based import workflows).
 
 - **Open study** (`allow_unlisted_participants: true`): Any visitor can
   participate.  If no `pid` is given in the URL, a random ID is generated
-  automatically.  You do not need to pre-list participants.
+  automatically.  You do not need to pre-list participants. Great to invite an entire mailinglist.
 - **Invite-only (closed) study** (`allow_unlisted_participants: false`): Only
   participants whose IDs appear in `study_participant_ids` can access the
-  study.  External tasks (see below) require a closed study.
+  study. Great to limit access to a set of participants with specific requirements on demographics, that you recruited/ filtered in an exernal tool.
 
 ### Languages and Internationalization
 
@@ -100,7 +121,7 @@ The frontend selects the display language in this order:
 
 Activity lists can also be language-specific via `activities_json_files`.
 
-### Importing Your Configuration
+### Importing Your Configuration on the command line (server admin only)
 
 Once your JSON files are ready, import them with the CLI:
 
@@ -188,10 +209,9 @@ defines a single study.
 | `default_language` | string | No | 2-letter ISO 639-1 code. Default: `"en"`. |
 | `supported_languages` | `[string]` | No | List of 2-letter language codes available in the frontend. If omitted, derived from the keys of `activities_json_files` / `activities_json_data`. |
 | `activities_json_files` | `{lang: filename}` | Conditional¹ | Map of language code → activities JSON file path (relative to the config file directory). |
-| `activities_json_file` | string or `{lang: filename}` | Conditional¹ | Legacy single-file variant. Prefer `activities_json_files`. |
 | `activities_json_data` | `{lang: object}` | Conditional¹ | Inline activities data (the full activities JSON object), keyed by language. Use this instead of referencing external files when importing via the API. |
 
-¹ At least one of `activities_json_files`, `activities_json_file`, or `activities_json_data` must be present.
+¹ At least one of `activities_json_files` or `activities_json_data` must be present.
 
 #### Study Text (Localized)
 
@@ -211,7 +231,7 @@ multiple languages, every supported language must have an entry.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `require_consent` | boolean | No | If `true`, the participant must accept the consent text before proceeding. Default: `false`. |
-| `allow_skip_timeuse` | boolean | No | If `true`, the participant can skip the time-use reporting and still reach the end page. If `false`, they must fill out the diary. Default: `true`. |
+| `allow_skip_timeuse` | boolean | No | If `true`, the participant can skip the time-use reporting via a button and still reach the end page. If `false`, the skip button is not displayed and they must fill out the diary to reach the end page. Default: `true`. |
 | `is_paused` | boolean | No | If `true`, the study is paused and participants cannot submit new data. Default: `false`. |
 
 #### Data Collection Window
@@ -241,7 +261,7 @@ multiple languages, every supported language must have an entry.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `footer_links` | `[object]` | No | Array of study-specific footer links. Each link has `title` (localized map), `target_url` (string), and `in_new_tab` (boolean, default `true`). |
-| `hide_server_wide_links` | boolean | No | If `true`, hides the server-wide legal links (imprint/privacy) from the footer for this study. Default: `false`. |
+| `hide_server_wide_links` | boolean | No | If `true`, hides the server-wide legal links (imprint/privacy) from the footer for this study. DIsplaying these is legally required in some countries, so check legislation before removing these. (Server-wide links are configured in the frontend in the `tud_settings.json` file.) Default: `false`. |
 
 #### Pre-Logged Activities (Admin)
 
