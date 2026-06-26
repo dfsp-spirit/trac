@@ -119,7 +119,27 @@
         "en": "Your session has ended because you were inactive for 30 minutes. Please use your invitation link to continue.",
         "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Bitte verwenden Sie Ihren Einladungslink, um fortzufahren.",
         "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Vänligen använd din inbjudningslänk för att fortsätta."
-      }
+      },
+      "footer_links": [
+        {
+          "title": {
+            "en": "Study Information",
+            "sv": "Studieinformation",
+            "de": "Studieninformation"
+          },
+          "target_url": "https://example.com/study-info",
+          "in_new_tab": true
+        },
+        {
+          "title": {
+            "en": "Contact",
+            "sv": "Kontakt",
+            "de": "Kontakt"
+          },
+          "target_url": "https://example.com/contact",
+          "in_new_tab": false
+        }
+      ]
     },
     {
       "name": "Weekly Study for 15 year olds",

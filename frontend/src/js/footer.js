@@ -73,9 +73,10 @@
         }
 
         function findContainerForFooter() {
-            // Prefer an existing global #footer
+            // Prefer an existing global #footer — return its parent so we can
+            // append into it (the #footer element itself is reused as targetFooter).
             let footerEl = document.getElementById('footer');
-            if (footerEl) return footerEl;
+            if (footerEl) return footerEl.parentElement || document.body;
 
             // Common main containers (consent, thank-you, tasks, instructions)
             const candidates = [
