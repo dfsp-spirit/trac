@@ -114,186 +114,26 @@ As mentioned before, this should NOT be need for production.
 
 ### 3. Study Configuration
 
-Studies are defined in one or more `studies_config` files (for example `backend/studies_config.json`). Each entry specifies the study name, supported languages, the days to cover, participant handling (open or invite-only via `allow_unlisted_participants`), and references to one or more activity list files (`backend/activities_*.json`). You can import one file or multiple files via admin endpoints or the CLI command shown above.
+> **👉 Scientists and study administrators**: See the dedicated guide
+> **[How to Create a Study](README_CREATE_STUDY.md)** for comprehensive
+> documentation on defining studies, configuring `studies_config.json`,
+> creating activities files, setting up external tasks, managing invitation
+> links, and using the admin web interface to validate and import your
+> configuration.
 
-Each study uses `name_short` as its technical identifier. This short name is important because it is used by the frontend configuration and in participant invitation links via the `study_name` URL parameter.
+Studies are defined in `studies_config.json` files and imported via the CLI:
 
-TRAC also supports study-level internationalization. In `studies_config.json`, each study defines a `default_language` and a list of `supported_languages`. Study texts such as introductions, end messages, and day labels can be provided per language. Activity lists can also be language-specific via `activities_json_files`, which maps language codes to separate `activities_*.json` files. On the frontend, the language is chosen in this order: `lang` URL parameter if present, otherwise the browser language if supported, otherwise the study's default language.
-
-#### Inactivity Timeout
-
-Each study can optionally configure an **inactivity timeout** that ends the participant's session after a period of no user interaction, helping to protect study data integrity. Three per-study fields control this behavior in `studies_config.json`:
-
-| Field | Type | Description |
-|---|---|---|
-| `inactivity_timeout_minutes` | integer | Duration of inactivity (in minutes) after which the session is automatically ended. Omit or set to `0` to disable the timeout. |
-| `inactivity_timeout_stress_time_left` | integer | When the remaining time drops below this threshold (in minutes), a visual countdown indicator appears in the frontend to warn the participant. |
-| `inactivity_page_custom_text` | object | Localized message object (e.g., `{ "en": "...", "de": "..." }`) displayed on the inactivity expiration page, explaining why the session ended. |
-
-Example configuration:
-
-```json
-{
-    "inactivity_timeout_minutes": 30,
-    "inactivity_timeout_stress_time_left": 5,
-    "inactivity_page_custom_text": {
-        "en": "Your session has ended because you were inactive for 30 minutes. This is required to protect the integrity of the study data. Thank you for your understanding.",
-        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Dies ist notwendig, um die Integrität der Studiendaten zu schützen. Vielen Dank für Ihr Verständnis.",
-        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Detta krävs för att skydda studiedatas integritet. Tack för din förståelse."
-    }
-}
+```bash
+cd backend/
+uv run tud studies import --config studies_config.json
 ```
 
-When the inactivity timeout triggers, the frontend redirects the participant to the `inactivity.html` page, which displays the localized `inactivity_page_custom_text` message.
+The admin web interface at `<TUD_ROOTPATH>/admin` also lets you validate and
+import study configurations interactively through the browser.
 
-Participants access the app via an invitation link containing their unique ID. For open studies any visitor is assigned an ID automatically.
-
-#### Participant Invitation Links
-
-TRAC identifies participants primarily through the `pid` URL parameter together with the target study in `study_name`. A minimal invitation link therefore looks like this:
-
-```text
-https://your.domain.example.com/report/index.html?study_name=default&pid=PARTICIPANT_ID
-```
-
-All invitation URL parameters are listed below. Parameters are read from the query string of `index.html` and preserved across page navigations (instructions, consent, tasks, thank-you) automatically.
-
-| Parameter | Required | Description |
-|---|---|---|
-| `study_name` | Yes | The study short name (`name_short` in `studies_config.json`). Identifies which study configuration to load. |
-| `pid` | Yes¹ | The participant identifier. For invite-only studies this must match a pre-assigned participant; for open studies any value is accepted and a new participant record is created if needed. |
-| `lang` | No | Language override as an ISO 639-1 two-letter code (e.g., `en`, `de`, `sv`). When omitted, the browser language is used if supported by the study; otherwise the study's `default_language` is used. |
-| `template_user` | No | Participant ID of another user whose timeline entries should be copied as a starting point when the participant first opens the diary. Useful when a parent enters similar data for siblings, for example. |
-| `return_url` | No | A fully URL-encoded absolute URL to which the participant is redirected after completing the study (shown as a link on the thank-you page). Must be properly encoded (e.g., `https%3A%2F%2Fexample.org%2Ffinish`). |
-| `custom_page_title` | No | Arbitrary text displayed next to the day label on all diary pages (e.g., `&custom_page_title=for%20Child%20A`). Useful for reminding participants which child or context they are currently reporting for when filling out the study multiple times. This is a frontend-only convenience feature — the value is never sent to or stored in the backend. |
-
-¹ `pid` is required for invite-only studies. For open studies (`allow_unlisted_participants: true`) a missing `pid` is replaced with a randomly generated, fresh ID automatically.
-
-
-Examples:
-
-```text
-# Select study and participant
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d
-
-# Also force the language shown in the frontend
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&lang=sv
-
-# Use another participant as a template for first-time initialization
-https://your.domain.example.com/report/index.html?study_name=study1&pid=c303282d&template_user=a5sf35gh
-
-# Return to an external system after completion
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123
-
-# Add a custom page title to remind the participant which child they are reporting for
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&custom_page_title=for%20Child%20A
-```
-
-#### External Tasks (external integrations)
-
-Studies may include `external_tasks` entries in `backend/studies_config.json` to describe external systems participants should visit (for example, external surveys or payment forms). The current configuration format used in this repository is:
-
-- `task_key`: short identifier used by the app
-- `task_level`: positive integer used to define task hierarchy: If a task has task_level N it means it can only be started once all taks with level less than N have been completed by the user. Set all to 1 if you need to hierarchy.
-- `name`, `description`: localized objects (e.g. `{ "en": "..." }`)
-- `confirmation_type`:  must be "callback" (callback means the study expects a confirmation on return)
-- `outbound_tokens`: array of token definitions; each has a `name` and a `by_participant` map of participant id → token string
-- `outbound_url`: URL template containing placeholders which will be substituted per-participant. Common placeholders: `{participant_id}`, `{study_name}`, `{task_key}`, and token placeholders matching the `outbound_tokens` `name` (for example `{pay_token}`)
-- `hmac_secret_reference`: (optional) name of a shared secret in `TUD_EXTERNAL_TASK_HMAC_SECRETS` for HMAC-signed callbacks
-
-Example (excerpt from `backend/studies_config.json` used in the pilot studies):
-
-```json
-{
-    "task_key": "payment_info",
-    "task_level": 2,
-    "name": { "de": "Bankdaten eingeben" },
-    "description": { "de": "Geben Sie Ihre Bankdaten ein..." },
-    "confirmation_type": "callback",
-    "outbound_tokens": [
-        {
-            "name": "pay_token",
-            "by_participant": {
-                "bernd": "pay-bernd-123434214",
-                "sophia": "pay-sophia-987654321"
-            }
-        }
-    ],
-    "outbound_url": "https://survey.example.org/f/153222?pid={participant_id}&study_name={study_name}&task={task_key}&token={pay_token}"
-}
-```
-
-How it works at runtime
-- When rendering task links the backend substitutes the placeholders and returns `external_tasks` entries (with `continuation_url` / `outbound_url` already expanded per participant) in the study-config API response.
-- The frontend `pages/tasks.html` is now responsible for handling return/confirmation flows from external providers. When an external provider redirects participants back, it should send the following query parameters to the tasks page:
-    - `callback_task_key`: the `task_key` of the task being confirmed
-    - `callback_token`: the token that was assigned to this participant for that task
-
-    Example return URL a provider should redirect to after completion:
-
-    ```text
-    https://your.domain.example.com/report/pages/tasks.html?study_name=default&pid=bernd&callback_task_key=payment_info&callback_token=pay-bernd-123434214
-    ```
-
-- On page load `pages/tasks.html` reads `callback_task_key` and `callback_token` and POSTs a confirmation JSON payload to the backend endpoint:
-
-    `POST /api/studies/{study_name}/participants/{participant_id}/external-tasks/confirm`
-
-    with body `{ "task_key": "<task_key>", "assigned_token": "<token>" }`.
-
-- `pages/tasks.html` also supports an optional `return_url` parameter. If present it is persisted in `localStorage` and appended to outbound continuation links so the external provider (or the user when they come back) can be forwarded to an external finish URL after the internal task flow completes.
-
-Notes
-- The confirmation responsibility moved from `thank-you.html` to `pages/tasks.html` — receivers and integrators should redirect back to `pages/tasks.html` (see example above).
-- Token names in `outbound_tokens` must match the placeholders used in `outbound_url` so the backend can substitute the correct per-participant token.
-
-#### HMAC-Signed Callbacks (Optional Per-Task)
-
-To prevent participants from forging callback confirmations, individual
-external tasks can opt into **HMAC-signed return URLs**.  This requires
-a shared secret between TRAC and the remote system's backend.
-
-**Configuration**
-
-1. Add the shared secret to `.env`:
-
-   ```
-   TUD_EXTERNAL_TASK_HMAC_SECRETS='{"survey_hub_v1":"a1b2c3d4e5f6..."}'
-   ```
-
-   Generate a secret with `python3 -c "import secrets; print(secrets.token_hex(32))"`.
-
-2. Reference it in the task definition in `studies_config.json`:
-
-   ```json
-   {
-     "task_key": "depression_survey",
-     ...
-     "hmac_secret_reference": "survey_hub_v1"
-   }
-   ```
-
-**Remote system contract**
-
-After the participant completes the task, the remote system must compute:
-
-```
-message    = "study_name|participant_id|task_key|assigned_token"
-signature  = HMAC-SHA256(shared_secret, message) → hex string
-```
-
-And append `&hmac={signature}` to the redirect URL.  TRAC verifies
-the signature before accepting the callback.
-
-**Security properties**
-
-- Without HMAC a participant who knows their own token can self-confirm.
-- With HMAC the return URL must be signed by someone who knows the
-  secret — i.e. the remote system's backend, not the browser.
-- Different `hmac_secret_reference` values for different remote systems
-  ensure a compromise of one system cannot affect tasks on another.
-- If `hmac_secret_reference` is absent, the original token-only flow
-  is used (backward compatible).
+Each study uses `name_short` as its technical identifier, used in the frontend
+configuration and in participant invitation links via the `study_name` URL
+parameter.
 
 
 
