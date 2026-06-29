@@ -1,7 +1,8 @@
 TRAC MPIAE Changes
 ===================
 
-Version 1.16.1 -- Improvements for external task tokens and more
+
+Version 1.17.0 -- Improvements for external task tokens and more
 -----------------------------------------------------------------
 - NEW: Support shared secret and HMAC signed tokens (optional) for talking to remote system of external task
 - NEW: add endpoint and admin UI to gnerate tokens for external tasks in our app
@@ -9,6 +10,14 @@ Version 1.16.1 -- Improvements for external task tokens and more
 - NEW: split the admin study overview page into a real short overview table and a new details page for ONE study
 - NEW: add validation for i18n study description, show in admin interface
 - NEW: add study participation button in admin interface also for open studies
+- NEW: add client-side timeout feature
+- DEV: limit e2e tests to 1 worker to prevent crosstalk/same test running at once in 2 browsers
+- DOC: separate info on creating study into a new documentation file
+- NEW: Allow configuration of page footer extra URLs per study in the backend via studies_config, implements #105
+- NEW: allow sending custom_page_title as URL param for invitation links, implements #103
+- CHG: stop the Next button on instructions page being always in view. Moved to bottom of page for consistency.
+- FIX: remove on-hover custom pointers from button on instructions page to prevent user confusion
+- NEW: show study name_short on consent page
 
 
 Version 0.16.0 -- DBMS Diversity and admin interface for tasks
