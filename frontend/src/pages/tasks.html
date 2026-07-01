@@ -432,20 +432,18 @@
                 const titleRow = document.createElement('div');
                 titleRow.className = 'task-title-row';
 
-                const title = document.createElement(task?.is_confirmed === true ? 'span' : 'a');
-                title.className = task?.is_confirmed === true ? 'task-title' : 'task-title task-link';
+                const hasContinuationUrl = typeof task?.continuation_url === 'string' && task.continuation_url.trim() !== '';
+                const isLink = task?.is_confirmed !== true && hasContinuationUrl;
+
+                const title = document.createElement(isLink ? 'a' : 'span');
+                title.className = isLink ? 'task-title task-link' : 'task-title';
                 title.textContent =
                     typeof task?.name === 'string' && task.name.trim() !== ''
                         ? task.name.trim()
                         : getLocalizedText('thankYou.continueLink', 'Click here to continue.');
 
-                if (task?.is_confirmed !== true) {
-                    if (typeof task?.continuation_url === 'string' && task.continuation_url.trim() !== '') {
-                        title.href = appendReturnUrlToTargetUrl(task.continuation_url);
-                    } else {
-                        title.href = '#';
-                        title.classList.remove('task-link');
-                    }
+                if (isLink) {
+                    title.href = appendReturnUrlToTargetUrl(task.continuation_url);
                 }
 
                 const status = document.createElement('span');
