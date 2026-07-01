@@ -1,16 +1,16 @@
 TRAC MPIAE Changes
 ===================
 
-Version 1.17.1  -- Small improvements and fixes in frontend
+Version 0.17.1  -- Small improvements and fixes in frontend
 ------------------------------------------------------------
 - NEW: save custom activity text for re-use in frontend, implements #107
 - FIX: move footer to very bottom of page on mobile layout
 - NEW: indicate with custom moise pointer when user has selected an activity to be placed on timeline
 - NEW: rename undo button to Remove Last, as all it does it delete most recently placed activity
 - FIX: fix asset links in frontend (e.g., to fonts) to not use absolute URLs, which would not work if frontend is placed in subdir on server.
--
 
-Version 1.17.0 -- Improvements for external task tokens and more
+
+Version 0.17.0 -- Improvements for external task tokens and more
 -----------------------------------------------------------------
 - NEW: Support shared secret and HMAC signed tokens (optional) for talking to remote system of external task
 - NEW: add endpoint and admin UI to gnerate tokens for external tasks in our app
