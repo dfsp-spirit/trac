@@ -35,7 +35,7 @@
       "submitHelp": "Haz clic para enviar tu diario completado"
     },
     "helpfulTools": "Herramientas útiles",
-    "undoHelp": "¿Cometiste un error? Revierte tu última acción",
+    "removeLastHelp": "Elimina la última actividad colocada",
     "cleanRowHelp": "¿Quieres empezar de nuevo? Limpia la fila",
     "customActivityHelp": "¿Actividad no listada? Añade una actividad personalizada",
     "customActivityName": "Otra no listada (ingresar)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Enviar",
     "start": "Comenzar",
-    "undo": "Deshacer",
+    "removeLast": "Eliminar última",
     "cleanRow": "Limpiar Fila",
     "next": "Siguiente",
     "skipReporting": "Omitir reporte de tiempo",

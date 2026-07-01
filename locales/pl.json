@@ -35,7 +35,7 @@
       "submitHelp": "Kliknij, aby wysłać wypełniony dziennik"
     },
     "helpfulTools": "Pomocne narzędzia",
-    "undoHelp": "Cofnij ostatnią akcję",
+    "removeLastHelp": "Usuń ostatnio umieszczoną aktywność",
     "cleanRowHelp": "Chcesz zacząć od nowa? Wyczyść rząd",
     "customActivityHelp": "Brak aktywności na liście? Dodaj własną aktywność",
     "customActivityName": "Inne (wpisz)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Wyślij dzień",
     "start": "Rozpocznij",
-    "undo": "Cofnij",
+    "removeLast": "Usuń ostatnią",
     "cleanRow": "Wyczyść rząd",
     "next": "Następna oś czasu",
     "skipReporting": "Pomiń raportowanie czasu",

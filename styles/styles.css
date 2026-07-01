@@ -1082,11 +1082,11 @@ body {
   background-color: #b91c1c;
 }
 
-.undo-btn {
+.remove-last-btn {
   background-color: var(--secondary-color);
 }
 
-.undo-btn:hover:not(:disabled) {
+.remove-last-btn:hover:not(:disabled) {
   background-color: #334155;
 }
 

@@ -35,7 +35,7 @@
       "submitHelp": "Klikkaa lähettääksesi täytetyn päiväkirjan"
     },
     "helpfulTools": "Hyödylliset työkalut",
-    "undoHelp": "Kumoa viimeisin toiminto",
+    "removeLastHelp": "Poista viimeksi sijoitettu toiminto",
     "cleanRowHelp": "Haluatko aloittaa alusta? Tyhjennä rivi",
     "customActivityHelp": "Eikö toimintoa ole listalla? Lisää oma toiminto",
     "customActivityName": "Muu (kirjoita)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Lähetä päivä",
     "start": "Aloita",
-    "undo": "Kumoa",
+    "removeLast": "Poista viimeisin",
     "cleanRow": "Tyhjennä rivi",
     "next": "Seuraava aikajana",
     "skipReporting": "Ohita ajankäytön raportointi",

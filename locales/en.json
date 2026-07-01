@@ -35,7 +35,7 @@
       "submitHelp": "Click to submit your completed diary"
     },
     "helpfulTools": "Helpful tools",
-    "undoHelp": "Reverse your last action",
+    "removeLastHelp": "Remove the last placed activity",
     "cleanRowHelp": "Want to start over? Clean the row",
     "customActivityHelp": "Activity not listed? Add a custom activity",
     "customActivityName": "Other not listed (enter)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Submit Day",
     "start": "Start",
-    "undo": "Undo",
+    "removeLast": "Remove Last",
     "cleanRow": "Clean Row",
     "next": "Next Timeline",
     "skipReporting": "Skip time reporting",

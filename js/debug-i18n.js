@@ -13,7 +13,7 @@ if (window.i18n) {
   console.log('Test translations:');
   console.log('  instructions.title:', window.i18n.t('instructions.title'));
   console.log('  buttons.submit:', window.i18n.t('buttons.submit'));
-  console.log('  buttons.undo:', window.i18n.t('buttons.undo'));
+  console.log('  buttons.removeLast:', window.i18n.t('buttons.removeLast'));
 
   // Check what elements have data-i18n attributes
   const i18nElements = document.querySelectorAll('[data-i18n]');

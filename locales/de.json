@@ -35,7 +35,7 @@
       "submitHelp": "Klicken Sie, um Ihr ausgefülltes Tagebuch abzusenden"
     },
     "helpfulTools": "Hilfreiche Werkzeuge",
-    "undoHelp": "Letzte Aktion rückgängig machen",
+    "removeLastHelp": "Die zuletzt platzierte Aktivität entfernen",
     "cleanRowHelp": "Neu beginnen? Zeile leeren",
     "customActivityHelp": "Aktivität nicht aufgeführt? Eigene Aktivität hinzufügen",
     "customActivityName": "Sonstiges (eingeben)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Tag absenden",
     "start": "Start",
-    "undo": "Rückgängig",
+    "removeLast": "Letzte entfernen",
     "cleanRow": "Zeile leeren",
     "next": "Nächste Zeitleiste",
     "skipReporting": "Zeiterfassung überspringen",
