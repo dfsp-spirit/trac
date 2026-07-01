@@ -78,15 +78,17 @@ The return contract remains fixed and documented (not per-task configurable).
 Remote site should return to TRAC tasks page with query parameters:
 - `pid`
 - `study_name`
-- `callback_task_key`
-- `callback_token`
+- `callback_task_key` (or `task_key`)
+- `callback_token` (or `token`)
 - `hmac` *(required when the task defines `hmac_secret_reference`; see §5a)*
+
+The prefixed names (`callback_task_key`, `callback_token`) take priority when both forms are present.
 
 Frontend behavior:
 - Read query params from tasks page URL.
 - POST confirmation payload:
-  - `task_key = callback_task_key`
-  - `assigned_token = callback_token`
+  - `task_key` = value of `callback_task_key` or `task_key`
+  - `assigned_token` = value of `callback_token` or `token`
   - `hmac = hmac` (forwarded when present in the URL)
 
 Backend confirmation rule:
