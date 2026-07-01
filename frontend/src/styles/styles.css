@@ -1501,6 +1501,41 @@ body {
   line-height: 1.4;
 }
 
+/* Custom activity input with clear button */
+.custom-activity-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-activity-input-wrapper #customActivityInput {
+  flex: 1;
+}
+
+.custom-activity-clear-btn {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  background: #f5f5f5;
+  color: #999;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.custom-activity-clear-btn:hover {
+  background: #e74c3c;
+  color: #fff;
+  border-color: #e74c3c;
+}
+
 .modal .button-container {
   display: flex;
   justify-content: center;

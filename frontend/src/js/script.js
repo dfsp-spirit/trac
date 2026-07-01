@@ -110,6 +110,61 @@ function getFrequencyOptionsForActivity(activity, childItem = null) {
   return normalizeFrequencyOptions(childItem || activity);
 }
 
+// ---- Saved custom activity texts (per activity code, persisted in localStorage) ----
+const CUSTOM_TEXT_STORAGE_KEY = 'tud_custom_activity_texts';
+
+function _loadCustomTexts() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TEXT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function _saveCustomTexts(texts) {
+  try {
+    localStorage.setItem(CUSTOM_TEXT_STORAGE_KEY, JSON.stringify(texts));
+  } catch {
+    // storage full or unavailable — ignore silently
+  }
+}
+
+function getSavedCustomText(activityCode) {
+  if (!activityCode) return '';
+  return _loadCustomTexts()[activityCode] || '';
+}
+
+function saveCustomText(activityCode, text) {
+  if (!activityCode) return;
+  const texts = _loadCustomTexts();
+  const trimmed = (text || '').trim();
+  if (trimmed) {
+    texts[activityCode] = trimmed;
+  } else {
+    delete texts[activityCode];
+  }
+  _saveCustomTexts(texts);
+}
+
+function clearSavedCustomText(activityCode) {
+  if (!activityCode) return;
+  const texts = _loadCustomTexts();
+  delete texts[activityCode];
+  _saveCustomTexts(texts);
+}
+
+// Expose for the clear button in the modal to access
+window.tudClearCustomActivityText = function (activityCode) {
+  clearSavedCustomText(activityCode);
+  const input = document.getElementById('customActivityInput');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+};
+// ---- End saved custom texts ----
+
 function getActivityDetailsModalElements() {
   const modal = document.getElementById('customActivityModal');
   if (!modal) {
@@ -172,6 +227,7 @@ function openActivityDetailsModal({
   inputPlaceholder = '',
   frequencyOptions = [],
   selectedFrequencyKey = '',
+  activityCode = null,
   onConfirm,
 }) {
   const elements = getActivityDetailsModalElements();
@@ -194,12 +250,22 @@ function openActivityDetailsModal({
     titleElement.textContent = title;
   }
 
+  // Determine the initial value: explicit inputValue takes precedence over saved text
+  const savedText = (!inputValue && activityCode) ? getSavedCustomText(activityCode) : '';
+  const initialValue = inputValue || savedText;
+
   if (inputContainer && input) {
     inputContainer.style.display = showInput ? 'block' : 'none';
-    input.value = showInput ? inputValue : '';
+    input.value = showInput ? initialValue : '';
     if (inputPlaceholder) {
       input.placeholder = inputPlaceholder;
     }
+  }
+
+  // Update clear-button visibility based on whether we have an activityCode
+  const clearBtn = document.getElementById('customActivityClearBtn');
+  if (clearBtn) {
+    clearBtn.style.display = (activityCode && savedText) ? 'inline-block' : 'none';
   }
 
   const normalizedFrequencyOptions = Array.isArray(frequencyOptions)
@@ -226,6 +292,17 @@ function openActivityDetailsModal({
   if (showInput && input) {
     const newInput = input.cloneNode(true);
     input.parentNode.replaceChild(newInput, input);
+
+    // Re-wire the clear button since the input container was cloned
+    const clonedClearBtn = document.getElementById('customActivityClearBtn');
+    if (clonedClearBtn) {
+      const reWiredClearBtn = clonedClearBtn.cloneNode(true);
+      clonedClearBtn.parentNode.replaceChild(reWiredClearBtn, clonedClearBtn);
+      reWiredClearBtn.addEventListener('click', () => {
+        window.tudClearCustomActivityText(activityCode);
+      });
+      reWiredClearBtn.style.display = (activityCode && getSavedCustomText(activityCode)) ? 'inline-block' : 'none';
+    }
   }
 
   const refreshedInput = document.getElementById('customActivityInput');
@@ -251,6 +328,11 @@ function openActivityDetailsModal({
     if (showInput && !customText) {
       refreshedInput?.focus();
       return;
+    }
+
+    // Persist the custom text for this activity code so it is pre-filled next time
+    if (activityCode && showInput && customText) {
+      saveCustomText(activityCode, customText);
     }
 
     onConfirm?.({ customText, frequencyKey });
@@ -2537,7 +2619,13 @@ function renderChildItems(activity, categoryName) {
             frequencyOptions
           );
 
-          customActivityInput.value = ''; // Clear previous input
+          customActivityInput.value = getSavedCustomText(childItem.code); // Use saved text if available
+          // Update clear-button visibility
+          const clearBtn = document.getElementById('customActivityClearBtn');
+          if (clearBtn) {
+            clearBtn.style.display = getSavedCustomText(childItem.code) ? 'inline-block' : 'none';
+            clearBtn.setAttribute('data-activity-code', childItem.code || '');
+          }
           customActivityModal.style.display = 'block';
           customActivityInput.focus();
 
@@ -2553,12 +2641,28 @@ function renderChildItems(activity, categoryName) {
             const newInputField = inputField.cloneNode(true);
             inputField.parentNode.replaceChild(newInputField, inputField);
 
+            // Re-wire the clear button since the input was cloned
+            const newClearBtn = document.getElementById('customActivityClearBtn');
+            if (newClearBtn) {
+              const clonedClearBtn = newClearBtn.cloneNode(true);
+              newClearBtn.parentNode.replaceChild(clonedClearBtn, newClearBtn);
+              clonedClearBtn.addEventListener('click', () => {
+                clearSavedCustomText(childItem.code || '');
+                newInputField.value = '';
+                newInputField.focus();
+                clonedClearBtn.style.display = 'none';
+              });
+            }
+
             // Handle custom activity submission for child items
             const handleChildItemCustomActivity = () => {
               const customText = newInputField.value.trim();
               const selectedFrequencyKey =
                 customActivityFrequencySelect?.value || null;
               if (customText) {
+                // Persist the custom text for this activity code
+                saveCustomText(childItem.code, customText);
+
                 // Create child item structure with custom text
                 window.selectedActivity = {
                   name: customText,
@@ -2801,6 +2905,7 @@ function renderActivities(
               title: `Enter custom value for: ${activity.name}`,
               showInput: true,
               frequencyOptions,
+              activityCode: activity.code,
               onConfirm: ({ customText, frequencyKey }) => {
                 clearSelectedActivityButtons();
                 window.selectedActivity = {
@@ -3107,6 +3212,7 @@ function renderActivities(
               title: `Enter custom value for: ${activity.name}`,
               showInput: true,
               frequencyOptions,
+              activityCode: activity.code,
               onConfirm: ({ customText, frequencyKey }) => {
                 clearSelectedActivityButtons();
                 window.selectedActivity = {

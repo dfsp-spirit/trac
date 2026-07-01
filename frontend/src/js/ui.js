@@ -203,7 +203,10 @@ function createModal() {
             </div>
             <div class="modal-content">
                 <div id="customActivityInputContainer">
-                    <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
+                    <div class="custom-activity-input-wrapper">
+                        <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
+                        <button id="customActivityClearBtn" class="custom-activity-clear-btn" title="Clear saved text" aria-label="Clear saved text" style="display: none;">✕</button>
+                    </div>
                 </div>
                 <div id="customActivityFrequencyContainer" style="display: none;">
                   <label id="customActivityFrequencyLabel" for="customActivityFrequencySelect" data-i18n="modals.customActivity.frequency">Frequency</label>
