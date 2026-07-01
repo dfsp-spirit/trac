@@ -35,7 +35,7 @@
       "submitHelp": "Klicka för att skicka in din ifyllda dagbok"
     },
     "helpfulTools": "Användbara verktyg",
-    "undoHelp": "Gjorde du ett misstag? Ångra din senaste åtgärd",
+    "removeLastHelp": "Ta bort den senast placerade aktiviteten",
     "cleanRowHelp": "Vill du börja om? Rensa raden",
     "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet",
     "customActivityName": "Annat som inte finns med (ange)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Skicka dagen",
     "start": "Starta",
-    "undo": "Ångra",
+    "removeLast": "Ta bort senaste",
     "cleanRow": "Rensa rad",
     "next": "Nästa tidslinje",
     "skipReporting": "Hoppa över tidsrapportering",

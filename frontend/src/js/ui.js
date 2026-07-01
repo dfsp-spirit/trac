@@ -780,7 +780,7 @@ function updateButtonStates() {
 
   updateCurrentDayDisplay();
 
-  const undoButton = document.getElementById('undoBtn');
+  const removeLastButton = document.getElementById('removeLastBtn');
   const cleanRowButton = document.getElementById('cleanRowBtn');
   const nextButtonInTopBar = document.getElementById('nextBtn');
   const backButton = document.getElementById('backBtn');
@@ -799,7 +799,7 @@ function updateButtonStates() {
 
   //console.log('Has activities DOM:', hasActivities);
 
-  if (undoButton) undoButton.disabled = isEmpty;
+  if (removeLastButton) removeLastButton.disabled = isEmpty;
   if (cleanRowButton) cleanRowButton.disabled = !hasActivities;
 
   // Update Back button state - enable if not on first timeline
@@ -979,9 +979,9 @@ const NEXT_BUTTON_COOLDOWN = 500; // 1 second cooldown
 let backButtonLastClick = 0;
 const BACK_BUTTON_COOLDOWN = 500; // 1 second cooldown (shorter than Next)
 
-// Debounce variables for Undo button
-let undoButtonLastClick = 0;
-const UNDO_BUTTON_COOLDOWN = 300; // 300ms cooldown
+// Debounce variables for Remove Last button
+let removeLastButtonLastClick = 0;
+const REMOVE_LAST_BUTTON_COOLDOWN = 300; // 300ms cooldown
 
 // Shared function to handle Next button logic with debounce
 const handleNextButtonAction = () => {
@@ -1023,21 +1023,21 @@ const handleBackButtonAction = () => {
   }
 };
 
-// Shared function to handle Undo button logic with debounce
-const handleUndoButtonAction = () => {
+// Shared function to handle Remove Last button logic with debounce
+const handleRemoveLastButtonAction = () => {
   const currentTime = Date.now();
-  if (currentTime - undoButtonLastClick < UNDO_BUTTON_COOLDOWN) {
-    console.log('Undo button on cooldown');
+  if (currentTime - removeLastButtonLastClick < REMOVE_LAST_BUTTON_COOLDOWN) {
+    console.log('Remove Last button on cooldown');
     return;
   }
-  undoButtonLastClick = currentTime;
+  removeLastButtonLastClick = currentTime;
 
   const currentKey = getCurrentTimelineKey();
   const currentData = getCurrentTimelineData();
   if (currentData.length > 0) {
     if (DEBUG_MODE) {
       console.log(
-        'Before undo - timelineData:',
+        'Before remove last - timelineData:',
         window.timelineManager.activities
       );
     }
@@ -1196,10 +1196,10 @@ function initButtons() {
     confirmCleanRowOk.addEventListener('click', performCleanRow);
   }
 
-  // Add click handler for Undo button using debounced function
+  // Add click handler for Remove Last button using debounced function
   document
-    .getElementById('undoBtn')
-    .addEventListener('click', handleUndoButtonAction);
+    .getElementById('removeLastBtn')
+    .addEventListener('click', handleRemoveLastButtonAction);
 
   // Add click handler for Next button
   const nextBtn = document.getElementById('nextBtn');

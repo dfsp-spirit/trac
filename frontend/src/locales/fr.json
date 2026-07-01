@@ -35,7 +35,7 @@
       "submitHelp": "Cliquez pour soumettre votre journal terminé"
     },
     "helpfulTools": "Outils utiles",
-    "undoHelp": "Avez-vous fait une erreur ? Annulez votre dernière action",
+    "removeLastHelp": "Supprimer la dernière activité placée",
     "cleanRowHelp": "Vous voulez recommencer ? Nettoyez la ligne",
     "customActivityHelp": "Activité non listée ? Ajoutez une activité personnalisée",
     "customActivityName": "Autre non listé (entrer)"
@@ -62,7 +62,7 @@
   "buttons": {
     "submit": "Soumettre",
     "start": "Commencer",
-    "undo": "Annuler",
+    "removeLast": "Supprimer dernière",
     "cleanRow": "Nettoyer la Ligne",
     "next": "Suivant",
     "skipReporting": "Ignorer le rapport de temps",
