@@ -1179,6 +1179,27 @@ body {
   z-index: 10;
 }
 
+/* --- "Carrying" an activity ---
+   When an activity is selected (clicked) and waiting to be placed on the
+   timeline, the body gets the .carrying-activity class.  The crosshair cursor
+   signals "click anywhere on the timeline to place this activity".          */
+body.carrying-activity {
+  cursor: crosshair;
+}
+
+/* Restore the default pointer on interactive elements while carrying */
+body.carrying-activity .activity-button,
+body.carrying-activity .btn,
+body.carrying-activity button:not(:disabled),
+body.carrying-activity a,
+body.carrying-activity input[type='checkbox'],
+body.carrying-activity input[type='radio'],
+body.carrying-activity select,
+body.carrying-activity .nav-button,
+body.carrying-activity .modal-close {
+  cursor: pointer;
+}
+
 /* Desktop resize handle */
 @media (min-width: 1440px) {
   .activity-block {
