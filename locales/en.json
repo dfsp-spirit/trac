@@ -180,7 +180,7 @@
     "continueLink": "Continue to final page",
     "statusAlreadyCompleted": "Already completed",
     "statusNotCompleted": "Not completed",
-    "statusLocked": "Complete other tasks first"
+    "statusLocked": "Complete the other tasks first"
   },
   "footer": {
     "title": "TRAC",

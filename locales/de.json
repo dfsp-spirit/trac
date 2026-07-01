@@ -180,7 +180,7 @@
     "continueLink": "Weiter zur Abschlussseite",
     "statusAlreadyCompleted": "Bereits erledigt",
     "statusNotCompleted": "Noch nicht erledigt",
-    "statusLocked": "Erledigen Sie zuerst andere Aufgaben"
+    "statusLocked": "Erledigen Sie zuerst die anderen Aufgaben"
   },
   "footer": {
     "title": "TRAC",
