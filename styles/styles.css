@@ -1763,6 +1763,10 @@ body.carrying-activity .modal-close {
     margin-top: 20px;
   }
 
+  #footer {
+    order: 6;
+  }
+
   .button-container {
     width: 100%;
     background: white;
