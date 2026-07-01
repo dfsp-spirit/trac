@@ -177,7 +177,10 @@
     "title": "TRAC Tasks",
     "heading": "Final Tasks",
     "subtitle": "Please complete the following tasks before finishing the study.",
-    "continueLink": "Continue to final page"
+    "continueLink": "Continue to final page",
+    "statusAlreadyCompleted": "Already completed",
+    "statusNotCompleted": "Not completed",
+    "statusLocked": "Complete other tasks first"
   },
   "footer": {
     "title": "TRAC",

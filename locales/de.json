@@ -177,7 +177,10 @@
     "title": "TRAC Aufgaben",
     "heading": "Abschließende Aufgaben",
     "subtitle": "Bitte führen Sie die folgenden Aufgaben aus, bevor Sie die Studie beenden.",
-    "continueLink": "Weiter zur Abschlussseite"
+    "continueLink": "Weiter zur Abschlussseite",
+    "statusAlreadyCompleted": "Bereits erledigt",
+    "statusNotCompleted": "Noch nicht erledigt",
+    "statusLocked": "Erledigen Sie zuerst andere Aufgaben"
   },
   "footer": {
     "title": "TRAC",

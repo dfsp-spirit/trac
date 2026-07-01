@@ -177,7 +177,10 @@
     "title": "TRAC Uppgifter",
     "heading": "Slutliga uppgifter",
     "subtitle": "Vänligen genomför följande uppgifter innan du avslutar studien.",
-    "continueLink": "Fortsätt till slutsidan"
+    "continueLink": "Fortsätt till slutsidan",
+    "statusAlreadyCompleted": "Redan slutförd",
+    "statusNotCompleted": "Inte slutförd",
+    "statusLocked": "Slutför andra uppgifter först"
   },
   "footer": {
     "title": "TRAC",
