@@ -52,7 +52,8 @@
     "studyNameShort": "Skrócona nazwa badania",
     "saving": "Zapisywanie zgody...",
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
-    "loadError": "Nie udało się wczytać informacji o zgodzie."
+    "loadError": "Nie udało się wczytać informacji o zgodzie.",
+    "studyNotFound": "Żądane badanie nie istnieje."
   },
   "common": {
     "language": "Język",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Wybierz badanie, aby kontynuować",
     "noStudiesAvailable": "Brak dostępnych badań na serwerze.",
+    "studyNotFound": "Żądane badanie nie istnieje.",
     "loading": "Ładowanie...",
     "saving": "Zapisuję...",
     "saved": "Zapisano pomyślnie",

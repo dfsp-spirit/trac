@@ -52,7 +52,8 @@
     "studyNameShort": "Studiets kortnamn",
     "saving": "Sparar samtycke...",
     "saveError": "Kunde inte spara samtycket. Försök igen.",
-    "loadError": "Kunde inte läsa in samtyckesinformationen."
+    "loadError": "Kunde inte läsa in samtyckesinformationen.",
+    "studyNotFound": "Den begärda studien finns inte."
   },
   "common": {
     "language": "Språk",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Välj en studie för att fortsätta",
     "noStudiesAvailable": "Inga studier finns på servern.",
+    "studyNotFound": "Den begärda studien finns inte.",
     "loading": "Laddar...",
     "saving": "Sparar...",
     "saved": "Sparat framgångsrikt",

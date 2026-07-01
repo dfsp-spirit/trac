@@ -317,7 +317,9 @@
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to load study-config: ${response.status}`);
+                const error = new Error(`Failed to load study-config: ${response.status}`);
+                error.status = response.status;
+                throw error;
             }
 
             return await response.json();
@@ -600,6 +602,21 @@
                 console.error('Failed to initialize consent page:', error);
                 await i18n.init(language).catch(() => {});
                 i18n.applyTranslations();
+
+                if (error && error.status === 404) {
+                    // Study not found – show a dedicated error page with no consent actions
+                    setStatus(i18n.t('consent.studyNotFound') || 'The requested study does not exist.', true);
+                    const consentTextEl = document.getElementById('study-consent-text');
+                    if (consentTextEl) {
+                        consentTextEl.innerHTML = '<p>' + escapeHtml(i18n.t('consent.studyNotFound') || 'The requested study does not exist.') + '</p>';
+                    }
+                    const checkboxEl = document.querySelector('.consent-checkbox');
+                    if (checkboxEl) checkboxEl.style.display = 'none';
+                    const actionsEl = document.querySelector('.consent-actions');
+                    if (actionsEl) actionsEl.style.display = 'none';
+                    return;
+                }
+
                 setStatus(i18n.t('consent.loadError') || 'Could not load consent information.', true);
                 const consentTextEl = document.getElementById('study-consent-text');
                 if (consentTextEl) {

@@ -52,7 +52,8 @@
     "studyNameShort": "Nombre corto del estudio",
     "saving": "Guardando consentimiento...",
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
-    "loadError": "No se pudo cargar la información de consentimiento."
+    "loadError": "No se pudo cargar la información de consentimiento.",
+    "studyNotFound": "El estudio solicitado no existe."
   },
   "common": {
     "language": "Language",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Seleccione un estudio para continuar",
     "noStudiesAvailable": "No hay estudios disponibles en el servidor.",
+    "studyNotFound": "El estudio solicitado no existe.",
     "loading": "Cargando...",
     "saving": "Guardando...",
     "saved": "Guardado exitosamente",

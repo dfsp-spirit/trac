@@ -728,6 +728,11 @@ async function syncWithBackendConfig() {
       participantIdRequiredError.code = 'STUDY_PARTICIPANT_ID_REQUIRED';
       participantIdRequiredError.status = 400;
       throw participantIdRequiredError;
+    } else if (response.status === 404) {
+      const notFoundError = new Error(`Study '${studyName}' not found on server.`);
+      notFoundError.code = 'STUDY_NOT_FOUND';
+      notFoundError.status = 404;
+      throw notFoundError;
     } else {
       if (!CURRENT_STUDY_CACHE) {
         const noStudiesError = new Error('No studies available.');
@@ -742,7 +747,8 @@ async function syncWithBackendConfig() {
     if (
       error?.code === 'STUDY_NOT_AUTHORIZED' ||
       error?.code === 'STUDY_UNAVAILABLE' ||
-      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED'
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' ||
+      error?.code === 'STUDY_NOT_FOUND'
     ) {
       throw error;
     }
@@ -815,6 +821,7 @@ async function initializeStudyConfig() {
       error?.code === 'STUDY_NOT_AUTHORIZED' ||
       error?.code === 'STUDY_UNAVAILABLE' ||
       error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' ||
+      error?.code === 'STUDY_NOT_FOUND' ||
       error?.code === 'NO_STUDIES_AVAILABLE' ||
       error?.code === 'STUDY_CHOICES_AVAILABLE'
     ) {
