@@ -313,8 +313,16 @@
 
         function getCallbackParams() {
             const urlParams = getUrlParams();
-            const taskKey = (urlParams.get('callback_task_key') || '').trim();
-            const assignedToken = (urlParams.get('callback_token') || '').trim();
+            const taskKey = (
+                urlParams.get('callback_task_key') ||
+                urlParams.get('task_key') ||
+                ''
+            ).trim();
+            const assignedToken = (
+                urlParams.get('callback_token') ||
+                urlParams.get('token') ||
+                ''
+            ).trim();
 
             if (!taskKey || !assignedToken) {
                 return null;
