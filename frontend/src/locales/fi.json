@@ -177,7 +177,10 @@
     "title": "TRAC Tehtävät",
     "heading": "Lopulliset tehtävät",
     "subtitle": "Täytä seuraavat tehtävät ennen kuin lopetat tutkimuksen.",
-    "continueLink": "Jatka lopulliselle sivulle"
+    "continueLink": "Jatka lopulliselle sivulle",
+    "statusAlreadyCompleted": "Jo suoritettu",
+    "statusNotCompleted": "Ei suoritettu",
+    "statusLocked": "Suorita muut tehtävät ensin"
   },
   "footer": {
     "title": "TRAC",

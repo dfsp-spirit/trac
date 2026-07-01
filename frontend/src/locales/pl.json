@@ -177,7 +177,10 @@
     "title": "TRAC Zadania",
     "heading": "Zadania końcowe",
     "subtitle": "Proszę wykonać następujące zadania przed zakończeniem badania.",
-    "continueLink": "Przejdź do strony końcowej"
+    "continueLink": "Przejdź do strony końcowej",
+    "statusAlreadyCompleted": "Już ukończone",
+    "statusNotCompleted": "Nie ukończono",
+    "statusLocked": "Najpierw wykonaj inne zadania"
   },
   "footer": {
     "title": "TRAC",

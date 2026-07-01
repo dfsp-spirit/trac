@@ -177,7 +177,10 @@
     "title": "TRAC Tâches",
     "heading": "Tâches finales",
     "subtitle": "Veuillez effectuer les tâches suivantes avant de terminer l'étude.",
-    "continueLink": "Continuer vers la page finale"
+    "continueLink": "Continuer vers la page finale",
+    "statusAlreadyCompleted": "Déjà terminé",
+    "statusNotCompleted": "Non terminé",
+    "statusLocked": "Terminez d'abord les autres tâches"
   },
   "footer": {
     "title": "TRAC",
