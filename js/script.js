@@ -47,8 +47,26 @@ import {
 import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
 import { checkAndRequestPID } from './utils.js';
 
-// Make window.selectedActivity a global property that persists across DOM changes
-window.selectedActivity = null;
+// Make window.selectedActivity a global property that persists across DOM changes.
+// Using a property setter so the body cursor updates automatically whenever an
+// activity is selected (→ crosshair to indicate "carrying" it) or cleared.
+(function () {
+  let _selectedActivity = null;
+  Object.defineProperty(window, 'selectedActivity', {
+    get() {
+      return _selectedActivity;
+    },
+    set(value) {
+      _selectedActivity = value;
+      if (value) {
+        document.body.classList.add('carrying-activity');
+      } else {
+        document.body.classList.remove('carrying-activity');
+      }
+    },
+    configurable: true,
+  });
+})();
 
 // Single timeline management object
 window.timelineManager = {
