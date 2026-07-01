@@ -4,6 +4,9 @@ TRAC MPIAE Changes
 Current WIP
 ------------
 - NEW: save custom activity text for re-use in frontend, implements #107
+- FIX: move footer to very bottom of page on mobile layout
+- NEW: indicate with custom moise pointer when user has selected an activity to be placed on timeline
+- NEW: rename undo button to Remove Last, as all it does it delete most recently placed activity
 
 
 Version 1.17.0 -- Improvements for external task tokens and more
