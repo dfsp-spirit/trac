@@ -52,7 +52,8 @@
     "studyNameShort": "Nom court de l'étude",
     "saving": "Enregistrement du consentement...",
     "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
-    "loadError": "Impossible de charger les informations de consentement."
+    "loadError": "Impossible de charger les informations de consentement.",
+    "studyNotFound": "L'étude demandée n'existe pas."
   },
   "common": {
     "language": "Language",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Veuillez sélectionner une étude pour continuer",
     "noStudiesAvailable": "Aucune étude disponible sur le serveur.",
+    "studyNotFound": "L'étude demandée n'existe pas.",
     "loading": "Chargement...",
     "saving": "Sauvegarde...",
     "saved": "Sauvegardé avec succès",

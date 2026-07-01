@@ -52,7 +52,8 @@
     "studyNameShort": "Studienkürzel",
     "saving": "Einwilligung wird gespeichert...",
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
-    "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden."
+    "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden.",
+    "studyNotFound": "Die angeforderte Studie existiert nicht."
   },
   "common": {
     "language": "Sprache",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Bitte wählen Sie eine Studie, um fortzufahren",
     "noStudiesAvailable": "Keine Studien auf dem Server verfügbar.",
+    "studyNotFound": "Die angeforderte Studie existiert nicht.",
     "loading": "Lädt...",
     "saving": "Speichert...",
     "saved": "Erfolgreich gespeichert",

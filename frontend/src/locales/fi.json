@@ -52,7 +52,8 @@
     "studyNameShort": "Tutkimuksen lyhytnimi",
     "saving": "Tallennetaan suostumusta...",
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
-    "loadError": "Suostumustietojen lataaminen epäonnistui."
+    "loadError": "Suostumustietojen lataaminen epäonnistui.",
+    "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa."
   },
   "common": {
     "language": "Kieli",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Valitse tutkimus jatkaaksesi",
     "noStudiesAvailable": "Palvelimella ei ole saatavilla tutkimuksia.",
+    "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
     "loading": "Ladataan...",
     "saving": "Tallennetaan...",
     "saved": "Tallennettu onnistuneesti",

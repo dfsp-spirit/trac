@@ -52,7 +52,8 @@
     "studyNameShort": "Study Short Name",
     "saving": "Saving consent...",
     "saveError": "Could not save consent. Please try again.",
-    "loadError": "Could not load the consent information."
+    "loadError": "Could not load the consent information.",
+    "studyNotFound": "The requested study does not exist."
   },
   "common": {
     "language": "Language",
@@ -129,6 +130,7 @@
   "messages": {
     "selectStudy": "Please select a study to continue",
     "noStudiesAvailable": "No studies available on server.",
+    "studyNotFound": "The requested study does not exist.",
     "loading": "Loading...",
     "saving": "Saving...",
     "saved": "Saved successfully",

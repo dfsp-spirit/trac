@@ -5453,6 +5453,47 @@ async function init() {
               : 'No studies available on server.';
           footerStatus.style.color = 'orange';
         }
+        // Hide footer action buttons (Submit, Skip) since no study is active
+        const footerActions = document.getElementById('instructionsFooter');
+        if (footerActions) footerActions.style.display = 'none';
+        return; // stop further initialization
+      } else if (initErr && initErr.code === 'STUDY_NOT_FOUND') {
+        console.warn('Study not found on server: ' + initErr.message);
+        const studyName = new URLSearchParams(window.location.search).get('study_name') || '';
+        const msgText =
+          window.i18n && window.i18n.isReady()
+            ? window.i18n.t('messages.studyNotFound')
+            : 'The requested study does not exist.';
+        // Show message in UI and stop initialization
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const msg = document.createElement('div');
+          msg.className = 'no-studies-message';
+          msg.style.padding = '24px';
+          msg.style.textAlign = 'center';
+          msg.style.color = '#666';
+          msg.style.fontSize = '1.1rem';
+          msg.textContent = msgText;
+          if (studyName) {
+            const detail = document.createElement('div');
+            detail.style.marginTop = '8px';
+            detail.style.fontSize = '0.9rem';
+            detail.style.color = '#999';
+            detail.textContent = 'study_name=' + studyName;
+            msg.appendChild(detail);
+          }
+          timelinesWrapper.appendChild(msg);
+        }
+        // Update footer status
+        const footerStatus = document.getElementById('footer_backend_status');
+        if (footerStatus) {
+          footerStatus.textContent = msgText;
+          footerStatus.style.color = 'orange';
+        }
+        // Hide footer action buttons (Submit, Skip) since no study is active
+        const footerActions = document.getElementById('instructionsFooter');
+        if (footerActions) footerActions.style.display = 'none';
         return; // stop further initialization
       } else if (initErr && initErr.code === 'STUDY_CHOICES_AVAILABLE') {
         console.log('Multiple studies available; showing chooser');
