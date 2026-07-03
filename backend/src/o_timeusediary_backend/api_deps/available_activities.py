@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from ..models import Study, StudyActivityConfigBlob
 from ..parsers.activities_config import (
     ActivitiesConfig,
-    compute_activity_path_from_config,
+    get_activities_cfg_text,
     get_activity_codes_set,
     get_all_activity_codes,
 )
@@ -148,17 +148,6 @@ def get_activities_cfg_text_for_config(
     short: bool = False,
     no_duplicate_parts: bool = False,
 ) -> str:
-    lines: List[str] = []
-    for timeline_key, timeline_cfg in config.timeline.items():
-        for category in timeline_cfg.categories:
-            for activity in category.activities:
-                lines.append(
-                    compute_activity_path_from_config(
-                        timeline_key,
-                        category.name,
-                        activity,
-                        short=short,
-                        no_duplicate_parts=no_duplicate_parts,
-                    )
-                )
-    return "\n".join(lines)
+    return get_activities_cfg_text(
+        config, short=short, no_duplicate_parts=no_duplicate_parts
+    )
