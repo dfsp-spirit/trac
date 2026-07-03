@@ -180,7 +180,11 @@
     "continueLink": "Przejdź do strony końcowej",
     "statusAlreadyCompleted": "Już ukończone",
     "statusNotCompleted": "Nie ukończono",
-    "statusLocked": "Najpierw wykonaj inne zadania"
+    "statusLocked": "Najpierw wykonaj inne zadania",
+    "diaryTaskTitle": "Wypełnij dziennik",
+    "diaryTaskDescription": "Wypełnij swój dziennik wykorzystania czasu dla wszystkich dni badania.",
+    "diaryTaskStatusCompleted": "Ukończono",
+    "diaryTaskStatusNotCompleted": "Nie ukończono"
   },
   "footer": {
     "title": "TRAC",

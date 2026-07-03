@@ -180,7 +180,11 @@
     "continueLink": "Continuer vers la page finale",
     "statusAlreadyCompleted": "Déjà terminé",
     "statusNotCompleted": "Non terminé",
-    "statusLocked": "Terminez d'abord les autres tâches"
+    "statusLocked": "Terminez d'abord les autres tâches",
+    "diaryTaskTitle": "Remplir le journal",
+    "diaryTaskDescription": "Complétez votre journal d'utilisation du temps pour tous les jours de l'étude.",
+    "diaryTaskStatusCompleted": "Terminé",
+    "diaryTaskStatusNotCompleted": "Non terminé"
   },
   "footer": {
     "title": "TRAC",
