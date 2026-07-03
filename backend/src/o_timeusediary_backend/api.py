@@ -2062,7 +2062,6 @@ async def admin_study_detail(
                     ),
                 ),
                 "confirmation_type": external_task.confirmation_type,
-                "token_count": len(external_task.tokens),
                 "assignment_count": len(assignment_rows),
                 "assignments": [
                     {
