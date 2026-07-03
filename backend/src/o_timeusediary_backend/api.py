@@ -79,7 +79,7 @@ from .api_deps.available_activities import (
     get_study_activities_config_model,
 )
 from fastapi.responses import HTMLResponse
-from sqlalchemy import func, update
+from sqlalchemy import func, update, exc as sa_exc
 from io import StringIO, BytesIO
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 import o_timeusediary_backend
@@ -333,11 +333,14 @@ def _build_external_task_launch_url(
     encoded_study = quote(study_name_short, safe="")
     encoded_participant = quote(participant_id, safe="")
     encoded_task = quote(task_key, safe="")
-    query = urlencode({"assigned_token": assigned_token})
-    return (
+    base_url = (
         f"{root_prefix}/api/studies/{encoded_study}/participants/{encoded_participant}"
-        f"/external-tasks/{encoded_task}/launch?{query}"
+        f"/external-tasks/{encoded_task}/launch"
     )
+    if assigned_token:
+        query = urlencode({"assigned_token": assigned_token})
+        return f"{base_url}?{query}"
+    return base_url
 
 
 def _build_external_task_expected_return_url_template(
@@ -421,6 +424,91 @@ def _get_participant_external_tasks(
         study_days_count=study_days_count,
     )
 
+    # For open studies with token pools, also include tasks the participant
+    # has not yet claimed (so the frontend can offer them for claiming).
+    if study.allow_unlisted_participants:
+        all_external_tasks = session.exec(
+            select(StudyExternalTask)
+            .where(StudyExternalTask.study_id == study.id)
+            .order_by(StudyExternalTask.task_level, StudyExternalTask.task_key)
+        ).all()
+
+        # Build unlock map for all tasks (unassigned tasks are locked if any
+        # lower-level task is not confirmed).
+        for task in all_external_tasks:
+            if task.id not in unlock_by_task_id:
+                # Unassigned tasks: locked if any lower-level task is unconfirmed
+                # or not assigned. For simplicity, unlocked if the task is level 1.
+                unlock_by_task_id[task.id] = task.task_level == 1
+
+        # For previously assigned tasks, preserve the existing unlock state.
+        for task_id, unlocked in _build_participant_external_task_unlock_map(
+            assigned_rows
+        ).items():
+            unlock_by_task_id[task_id] = unlocked
+
+        tasks: List[ParticipantExternalTaskResponse] = []
+        for external_task in all_external_tasks:
+            config = (
+                external_task.config if isinstance(external_task.config, dict) else {}
+            )
+            localized_name = _get_localized_external_task_text(
+                config.get("name_i18n"), selected_language, study.default_language
+            )
+            localized_description = _get_localized_external_task_text(
+                config.get("description"), selected_language, study.default_language
+            )
+
+            # Find existing assignment for this task, if any.
+            existing_assignment = None
+            for assignment, et in assigned_rows:
+                if et.id == external_task.id:
+                    existing_assignment = assignment
+                    break
+
+            is_unlocked = unlock_by_task_id.get(external_task.id, True)
+            can_launch = is_unlocked and not locked_by_diary_requirement
+
+            tasks.append(
+                ParticipantExternalTaskResponse(
+                    task_key=external_task.task_key,
+                    name=localized_name or external_task.name,
+                    description=localized_description
+                    if localized_description is not None
+                    else external_task.description,
+                    confirmation_type=external_task.confirmation_type,
+                    assigned_token=(
+                        existing_assignment.assigned_token
+                        if existing_assignment
+                        else None
+                    ),
+                    continuation_url=(
+                        _build_external_task_launch_url(
+                            study.name_short,
+                            participant_id,
+                            external_task.task_key,
+                            existing_assignment.assigned_token
+                            if existing_assignment
+                            else "",
+                        )
+                        if can_launch
+                        else ""
+                    ),
+                    is_confirmed=(
+                        existing_assignment.is_confirmed
+                        if existing_assignment
+                        else False
+                    ),
+                    confirmed_at=(
+                        existing_assignment.confirmed_at
+                        if existing_assignment
+                        else None
+                    ),
+                )
+            )
+        return tasks
+
+    # Closed-study path: only return tasks with pre-existing assignments.
     tasks: List[ParticipantExternalTaskResponse] = []
     for assignment, external_task in assigned_rows:
         config = external_task.config if isinstance(external_task.config, dict) else {}
@@ -2048,6 +2136,16 @@ async def admin_study_detail(
             )
         ).all()
         external_task_assignment_count += len(assignment_rows)
+
+        # Determine if this task uses an open pool (for open studies)
+        task_config = external_task.config or {}
+        outbound_tokens = task_config.get("outbound_tokens", [])
+        has_open_pool = bool(outbound_tokens and outbound_tokens[0].get("open_pool"))
+
+        pool_total = len(external_task.tokens or [])
+        pool_claimed = len(assignment_rows)
+        pool_confirmed = sum(1 for a in assignment_rows if a.is_confirmed)
+
         external_tasks.append(
             {
                 "task_key": external_task.task_key,
@@ -2064,6 +2162,13 @@ async def admin_study_detail(
                 "confirmation_type": external_task.confirmation_type,
                 "task_level": external_task.task_level,
                 "assignment_count": len(assignment_rows),
+                "has_open_pool": has_open_pool,
+                "has_by_participant": not has_open_pool,
+                "pool_total": pool_total,
+                "pool_claimed": pool_claimed,
+                "pool_confirmed": pool_confirmed,
+                "pool_available": pool_total - pool_claimed,
+                "study_is_open": study.allow_unlisted_participants,
                 "assignments": [
                     {
                         "participant_id": assignment.participant_id,
@@ -2775,6 +2880,34 @@ def _build_split_export_activities_relative_path(
     safe_study = _sanitize_export_filename_part(study_name_short)
     safe_language = _sanitize_export_filename_part(language)
     return f"activities/{safe_study}/" f"activities_{safe_study}_{safe_language}.json"
+
+
+def _clean_export_outbound_tokens(
+    outbound_tokens: list,
+) -> list:
+    """Clean outbound_tokens for export so they match the studies_config.json format.
+
+    Ensures mutual exclusivity: if open_pool is present, removes empty by_participant;
+    if by_participant has entries, removes open_pool.
+    """
+    cleaned: list = []
+    for token_group in outbound_tokens:
+        if not isinstance(token_group, dict):
+            cleaned.append(token_group)
+            continue
+        entry: dict = {"name": token_group.get("name", "")}
+        has_open_pool = isinstance(token_group.get("open_pool"), list) and bool(
+            token_group.get("open_pool")
+        )
+        has_by_participant = isinstance(
+            token_group.get("by_participant"), dict
+        ) and bool(token_group.get("by_participant"))
+        if has_open_pool:
+            entry["open_pool"] = list(token_group["open_pool"])
+        elif has_by_participant:
+            entry["by_participant"] = dict(token_group["by_participant"])
+        cleaned.append(entry)
+    return cleaned
 
 
 def _load_json_file_with_studies_config_base(file_path: str) -> dict:
@@ -3910,6 +4043,7 @@ async def export_runtime_studies_config(
                 "require_consent": study.require_consent,
                 "allow_skip_timeuse": study.allow_skip_timeuse,
                 "is_paused": study.is_paused,
+                "require_diary_before_external_tasks": study.require_diary_before_external_tasks,
                 "external_tasks": [
                     {
                         "task_key": external_task.task_key,
@@ -3934,7 +4068,7 @@ async def export_runtime_studies_config(
                         "outbound_url": external_task.url,
                         "confirmation_type": external_task.confirmation_type,
                         "task_level": external_task.task_level,
-                        "outbound_tokens": (
+                        "outbound_tokens": _clean_export_outbound_tokens(
                             external_task.config.get("outbound_tokens")
                             if isinstance(external_task.config, dict)
                             and isinstance(
@@ -3947,26 +4081,16 @@ async def export_runtime_studies_config(
                             if isinstance(external_task.config, dict)
                             else None
                         ),
-                        "participant_assignments": [
+                        **(
                             {
-                                "participant_id": assignment.participant_id,
-                                "assigned_token": assignment.assigned_token,
-                                "assignment_order": assignment.assignment_order,
-                                "is_confirmed": assignment.is_confirmed,
-                                "confirmed_at": assignment.confirmed_at,
+                                "hmac_secret_reference": external_task.config.get(
+                                    "hmac_secret_reference"
+                                )
                             }
-                            for assignment in session.exec(
-                                select(StudyExternalTaskAssignment)
-                                .where(
-                                    StudyExternalTaskAssignment.external_task_id
-                                    == external_task.id
-                                )
-                                .order_by(
-                                    StudyExternalTaskAssignment.assignment_order,
-                                    StudyExternalTaskAssignment.participant_id,
-                                )
-                            ).all()
-                        ],
+                            if isinstance(external_task.config, dict)
+                            and external_task.config.get("hmac_secret_reference")
+                            else {}
+                        ),
                     }
                     for external_task in external_tasks
                 ],
@@ -4596,6 +4720,209 @@ async def generate_external_task_tokens(
             "tokens_skipped_existing": total_skipped,
             "tasks": tasks_summary,
         },
+    }
+
+
+class PoolTokenAddPayload(BaseModel):
+    tokens: List[str] = Field(min_length=1)
+
+
+class PoolTokenGeneratePayload(BaseModel):
+    count: int = Field(ge=1, le=10000)
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/external-tasks/{task_key}/pool/add-tokens",
+    name="Add tokens to open-study token pool",
+)
+async def add_pool_tokens(
+    study_name_short: str,
+    task_key: str,
+    payload: PoolTokenAddPayload,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Add tokens to the open pool for an external task in an open study."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_task = session.exec(
+        select(StudyExternalTask).where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTask.task_key == task_key,
+        )
+    ).first()
+    if not external_task:
+        raise HTTPException(
+            status_code=404,
+            detail=f"External task '{task_key}' not found in study '{study_name_short}'",
+        )
+
+    # Validate tokens: non-empty strings, no duplicates within the new batch
+    new_tokens = [t.strip() for t in payload.tokens if t and t.strip()]
+    if len(new_tokens) != len(payload.tokens):
+        raise HTTPException(
+            status_code=400,
+            detail="All tokens must be non-empty strings",
+        )
+    if len(set(new_tokens)) != len(new_tokens):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate tokens in the provided list",
+        )
+
+    # Check for collisions with existing pool tokens
+    existing_set = set(external_task.tokens or [])
+    collisions = [t for t in new_tokens if t in existing_set]
+    if collisions:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Tokens already exist in pool: {collisions[:5]}{'...' if len(collisions) > 5 else ''}",
+        )
+
+    external_task.tokens = (external_task.tokens or []) + new_tokens
+    external_task.updated_at = utc_now()
+    session.add(external_task)
+    session.commit()
+
+    audit_admin_action(
+        current_admin,
+        f"added {len(new_tokens)} pool tokens to task '{task_key}' in study '{study_name_short}'",
+    )
+
+    return {
+        "ok": True,
+        "summary": {
+            "task_key": task_key,
+            "tokens_added": len(new_tokens),
+            "pool_total": len(external_task.tokens),
+        },
+    }
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/external-tasks/{task_key}/pool/generate",
+    name="Generate random tokens for open-study token pool",
+)
+async def generate_pool_tokens(
+    study_name_short: str,
+    task_key: str,
+    payload: PoolTokenGeneratePayload,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Generate random tokens and add them to the open pool for an external task."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_task = session.exec(
+        select(StudyExternalTask).where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTask.task_key == task_key,
+        )
+    ).first()
+    if not external_task:
+        raise HTTPException(
+            status_code=404,
+            detail=f"External task '{task_key}' not found in study '{study_name_short}'",
+        )
+
+    existing_set = set(external_task.tokens or [])
+    generated: list[str] = []
+    for _ in range(payload.count):
+        for _ in range(100):
+            token = _generate_token()
+            if token not in existing_set:
+                break
+        else:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to generate a unique token after 100 attempts",
+            )
+        existing_set.add(token)
+        generated.append(token)
+
+    external_task.tokens = (external_task.tokens or []) + generated
+    external_task.updated_at = utc_now()
+    session.add(external_task)
+    session.commit()
+
+    audit_admin_action(
+        current_admin,
+        f"generated {len(generated)} pool tokens for task '{task_key}' in study '{study_name_short}'",
+    )
+
+    return {
+        "ok": True,
+        "summary": {
+            "task_key": task_key,
+            "tokens_generated": len(generated),
+            "pool_total": len(external_task.tokens),
+        },
+    }
+
+
+@app.get(
+    "/api/admin/studies/{study_name_short}/external-tasks/{task_key}/pool/status",
+    name="Get token pool status",
+)
+async def get_pool_status(
+    study_name_short: str,
+    task_key: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Get the current status of the token pool for an external task."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_task = session.exec(
+        select(StudyExternalTask).where(
+            StudyExternalTask.study_id == study.id,
+            StudyExternalTask.task_key == task_key,
+        )
+    ).first()
+    if not external_task:
+        raise HTTPException(
+            status_code=404,
+            detail=f"External task '{task_key}' not found in study '{study_name_short}'",
+        )
+
+    total_pool = len(external_task.tokens or [])
+    claimed = session.exec(
+        select(func.count()).where(
+            StudyExternalTaskAssignment.external_task_id == external_task.id
+        )
+    ).one()
+    confirmed = session.exec(
+        select(func.count()).where(
+            StudyExternalTaskAssignment.external_task_id == external_task.id,
+            StudyExternalTaskAssignment.is_confirmed,
+        )
+    ).one()
+
+    return {
+        "ok": True,
+        "task_key": task_key,
+        "pool_total": total_pool,
+        "pool_claimed": claimed,
+        "pool_confirmed": confirmed,
+        "pool_available": total_pool - claimed,
     }
 
 
@@ -7052,7 +7379,7 @@ def launch_external_task(
     study_name_short: str,
     participant_id: str,
     task_key: str,
-    assigned_token: str = Query(...),
+    assigned_token: str = Query(""),
     session: Session = Depends(get_session),
 ):
     event_at = utc_now().isoformat()
@@ -7065,7 +7392,11 @@ def launch_external_task(
     )
     user_agent = request.headers.get("user-agent", "")
     referer = request.headers.get("referer", "")
-    token_hash = hashlib.sha256(assigned_token.encode("utf-8")).hexdigest()
+    token_hash = (
+        hashlib.sha256(assigned_token.encode("utf-8")).hexdigest()
+        if assigned_token
+        else "none"
+    )
 
     def log_launch(success: bool, reason: str) -> None:
         logger.info(
@@ -7119,28 +7450,121 @@ def launch_external_task(
             detail="External tasks are locked until the diary is completed",
         )
 
-    assignment_row = session.exec(
-        select(StudyExternalTaskAssignment, StudyExternalTask)
-        .join(
-            StudyExternalTask,
-            StudyExternalTask.id == StudyExternalTaskAssignment.external_task_id,
-        )
-        .where(
+    # Look up the external task.
+    external_task = session.exec(
+        select(StudyExternalTask).where(
             StudyExternalTask.study_id == study.id,
             StudyExternalTask.task_key == task_key,
+        )
+    ).first()
+    if not external_task:
+        log_launch(False, "task_not_found")
+        raise HTTPException(
+            status_code=404, detail=f"External task '{task_key}' not found"
+        )
+
+    # Try to find an existing assignment for this participant+task.
+    assignment = session.exec(
+        select(StudyExternalTaskAssignment).where(
+            StudyExternalTaskAssignment.external_task_id == external_task.id,
             StudyExternalTaskAssignment.participant_id == participant_id,
-            StudyExternalTaskAssignment.assigned_token == assigned_token,
         )
     ).first()
 
-    if not assignment_row:
+    if assigned_token:
+        # A token was provided — verify it matches the assignment.
+        if not assignment or assignment.assigned_token != assigned_token:
+            log_launch(False, "assignment_not_found")
+            raise HTTPException(
+                status_code=404,
+                detail="No matching external task assignment found",
+            )
+    elif study.allow_unlisted_participants:
+        # Open study: no pre-assigned token — claim one from the pool.
+        if assignment:
+            # Already has an assignment from a previous claim — reuse it.
+            pass
+        else:
+            # Claim a token from the pool atomically.
+            claimed_tokens = set(
+                row[0]
+                for row in session.exec(
+                    select(StudyExternalTaskAssignment.assigned_token).where(
+                        StudyExternalTaskAssignment.external_task_id == external_task.id
+                    )
+                ).all()
+            )
+            available = [
+                t for t in (external_task.tokens or []) if t not in claimed_tokens
+            ]
+            if not available:
+                log_launch(False, "pool_exhausted")
+                raise HTTPException(
+                    status_code=409,
+                    detail="All tokens for this task have been claimed. Please contact the study administrator.",
+                )
+
+            chosen_token = available[0]
+            try:
+                new_assignment = StudyExternalTaskAssignment(
+                    external_task_id=external_task.id,
+                    participant_id=participant_id,
+                    assigned_token=chosen_token,
+                    assignment_order=len(claimed_tokens),
+                )
+                session.add(new_assignment)
+                session.commit()
+                session.refresh(new_assignment)
+                assignment = new_assignment
+            except sa_exc.IntegrityError:
+                session.rollback()
+                # Token was claimed concurrently — retry once with the next
+                # available token.
+                claimed_tokens = set(
+                    row[0]
+                    for row in session.exec(
+                        select(StudyExternalTaskAssignment.assigned_token).where(
+                            StudyExternalTaskAssignment.external_task_id
+                            == external_task.id
+                        )
+                    ).all()
+                )
+                available = [
+                    t for t in (external_task.tokens or []) if t not in claimed_tokens
+                ]
+                if not available:
+                    log_launch(False, "pool_exhausted_retry")
+                    raise HTTPException(
+                        status_code=409,
+                        detail="All tokens for this task have been claimed. Please contact the study administrator.",
+                    )
+                chosen_token = available[0]
+                new_assignment = StudyExternalTaskAssignment(
+                    external_task_id=external_task.id,
+                    participant_id=participant_id,
+                    assigned_token=chosen_token,
+                    assignment_order=len(claimed_tokens),
+                )
+                session.add(new_assignment)
+                session.commit()
+                session.refresh(new_assignment)
+                assignment = new_assignment
+    else:
+        # Closed study with no token provided — should not happen in normal
+        # flow since the frontend always sends the token.
+        log_launch(False, "no_token")
+        raise HTTPException(
+            status_code=400,
+            detail="assigned_token query parameter is required",
+        )
+
+    if not assignment:
         log_launch(False, "assignment_not_found")
         raise HTTPException(
             status_code=404,
             detail="No matching external task assignment found",
         )
 
-    assignment, external_task = assignment_row
     participant_rows = session.exec(
         select(StudyExternalTaskAssignment, StudyExternalTask)
         .join(

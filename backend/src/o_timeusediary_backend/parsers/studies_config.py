@@ -50,6 +50,7 @@ class CfgFileExternalTaskOutboundToken(BaseModel):
 
     name: str
     by_participant: Dict[str, str] = Field(default_factory=dict)
+    open_pool: Optional[List[str]] = None
 
 
 class CfgFileExternalTask(BaseModel):
@@ -128,6 +129,8 @@ def get_external_task_callback_tokens(
         for token_group in external_task.outbound_tokens
         if token_group.name == callback_token_name
     )
+    if callback_token_group.open_pool:
+        return list(callback_token_group.open_pool)
     return [
         callback_token_group.by_participant[participant_id]
         for participant_id in study_participant_ids
@@ -144,6 +147,11 @@ def get_external_task_effective_config(
             {
                 "name": token_group.name,
                 "by_participant": dict(token_group.by_participant),
+                **(
+                    {"open_pool": list(token_group.open_pool)}
+                    if token_group.open_pool
+                    else {}
+                ),
             }
             for token_group in external_task.outbound_tokens
         ],
@@ -191,11 +199,6 @@ def validate_external_tasks_for_study(
 ) -> None:
     if not external_tasks:
         return
-
-    if allow_unlisted_participants:
-        raise ValueError(
-            "external_tasks require allow_unlisted_participants=false so that all participants are explicitly listed"
-        )
 
     participant_ids_set = set(study_participant_ids)
     seen_task_keys: set[str] = set()
@@ -289,25 +292,60 @@ def validate_external_tasks_for_study(
             seen_token_group_names.add(token_group.name)
             outbound_token_names.add(token_group.name)
 
-            participant_keys = set(token_group.by_participant.keys())
-            if participant_keys != participant_ids_set:
+            has_by_participant = bool(token_group.by_participant)
+            has_open_pool = bool(token_group.open_pool)
+
+            if has_by_participant and has_open_pool:
                 raise ValueError(
-                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' must define tokens for exactly the study participants"
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' must use either 'by_participant' or 'open_pool', not both"
                 )
 
-            token_values = list(token_group.by_participant.values())
-            if any(
-                not isinstance(token, str) or not token.strip()
-                for token in token_values
-            ):
+            if not has_by_participant and not has_open_pool:
                 raise ValueError(
-                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains empty token values"
+                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' must define either 'by_participant' or 'open_pool'"
                 )
 
-            if len(set(token_values)) != len(token_values):
-                raise ValueError(
-                    f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains duplicate tokens"
-                )
+            if allow_unlisted_participants:
+                if has_by_participant:
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' uses 'by_participant', but open studies require 'open_pool'"
+                    )
+                # Validate open_pool tokens
+                token_values = list(token_group.open_pool)
+                if any(
+                    not isinstance(token, str) or not token.strip()
+                    for token in token_values
+                ):
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' open_pool contains empty token values"
+                    )
+                if len(set(token_values)) != len(token_values):
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' open_pool contains duplicate tokens"
+                    )
+            else:
+                if has_open_pool:
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' uses 'open_pool', but closed studies require 'by_participant'"
+                    )
+                # Validate by_participant tokens (existing logic)
+                participant_keys = set(token_group.by_participant.keys())
+                if participant_keys != participant_ids_set:
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' must define tokens for exactly the study participants"
+                    )
+                token_values = list(token_group.by_participant.values())
+                if any(
+                    not isinstance(token, str) or not token.strip()
+                    for token in token_values
+                ):
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains empty token values"
+                    )
+                if len(set(token_values)) != len(token_values):
+                    raise ValueError(
+                        f"Study '{study_name_short}': external task '{external_task.task_key}' token group '{token_group.name}' contains duplicate tokens"
+                    )
 
         callback_token_name = get_external_task_callback_token_name(external_task)
         if callback_token_name not in outbound_token_names:

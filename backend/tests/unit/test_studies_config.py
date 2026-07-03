@@ -114,7 +114,9 @@ def test_load_studies_config_accepts_external_tasks(tmp_path):
     assert config.studies[0].external_tasks[0].task_key == "payment"
 
 
-def test_load_studies_config_accepts_require_diary_before_external_tasks_setting(tmp_path):
+def test_load_studies_config_accepts_require_diary_before_external_tasks_setting(
+    tmp_path,
+):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()
     payload["studies"][0]["require_diary_before_external_tasks"] = True
@@ -152,19 +154,155 @@ def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
     assert config.studies[0].allow_skip_timeuse is False
 
 
-def test_load_studies_config_rejects_external_tasks_for_open_study(tmp_path):
+def _external_task_payload_open_pool(
+    task_key: str,
+    *,
+    pool_tokens: list[str] | None = None,
+    confirmation_type: str = "callback",
+) -> dict:
+    """Build an external task payload using open_pool instead of by_participant."""
+    tokens = pool_tokens or ["open-tok-1", "open-tok-2"]
+    return {
+        "task_key": task_key,
+        "name": {"en": "Payment Survey"},
+        "description": {"en": "Complete payment handoff."},
+        "outbound_url": "https://example.org/payment?pid={participant_id}&study={study_name}&task={task_key}&token={survey_token}",
+        "confirmation_type": confirmation_type,
+        "outbound_tokens": [
+            {
+                "name": "survey_token",
+                "open_pool": tokens,
+            }
+        ],
+        "callback_token_name": "survey_token",
+    }
+
+
+def test_load_studies_config_accepts_external_tasks_with_open_pool(tmp_path):
+    """Open studies with open_pool tokens should load successfully."""
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()
     payload["studies"][0]["allow_unlisted_participants"] = True
-    payload["studies"][0]["external_tasks"] = [_external_task_payload("payment")]
+    payload["studies"][0]["study_participant_ids"] = []
+    payload["studies"][0]["external_tasks"] = [
+        _external_task_payload_open_pool("payment")
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert len(config.studies[0].external_tasks) == 1
+    assert config.studies[0].external_tasks[0].task_key == "payment"
+    assert config.studies[0].external_tasks[0].outbound_tokens[0].open_pool == [
+        "open-tok-1",
+        "open-tok-2",
+    ]
+
+
+def test_load_studies_config_rejects_open_pool_for_closed_study(tmp_path):
+    """Closed studies should not accept open_pool tokens."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        _external_task_payload_open_pool("payment")
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="closed studies require 'by_participant'"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_both_by_participant_and_open_pool(tmp_path):
+    """Token groups must not define both by_participant and open_pool."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": {"en": "Payment"},
+            "description": {"en": "Pay."},
+            "outbound_url": "https://example.org/p?token={survey_token}",
+            "confirmation_type": "callback",
+            "outbound_tokens": [
+                {
+                    "name": "survey_token",
+                    "by_participant": {"p1": "tok-1"},
+                    "open_pool": ["tok-2"],
+                }
+            ],
+        }
+    ]
 
     config_file = tmp_path / "studies_config.json"
     config_file.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(
         ValueError,
-        match="external_tasks require allow_unlisted_participants=false",
+        match="must use either 'by_participant' or 'open_pool', not both",
     ):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_neither_by_participant_nor_open_pool(tmp_path):
+    """Token groups must define at least one of by_participant or open_pool."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["external_tasks"] = [
+        {
+            "task_key": "payment",
+            "name": {"en": "Payment"},
+            "description": {"en": "Pay."},
+            "outbound_url": "https://example.org/p?token={survey_token}",
+            "confirmation_type": "callback",
+            "outbound_tokens": [{"name": "survey_token"}],
+        }
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="must define either 'by_participant' or 'open_pool'",
+    ):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_empty_open_pool_tokens(tmp_path):
+    """open_pool tokens must be non-empty strings."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = True
+    payload["studies"][0]["study_participant_ids"] = []
+    payload["studies"][0]["external_tasks"] = [
+        _external_task_payload_open_pool("payment", pool_tokens=["good", "  "])
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="contains empty token values"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_duplicate_open_pool_tokens(tmp_path):
+    """open_pool must not contain duplicate tokens."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = True
+    payload["studies"][0]["study_participant_ids"] = []
+    payload["studies"][0]["external_tasks"] = [
+        _external_task_payload_open_pool("payment", pool_tokens=["dup", "dup"])
+    ]
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="contains duplicate tokens"):
         load_studies_config(str(config_file))
 
 
@@ -177,7 +315,9 @@ def test_load_studies_config_rejects_external_tasks_with_wrong_token_count(tmp_p
     config_file = tmp_path / "studies_config.json"
     config_file.write_text(json.dumps(payload), encoding="utf-8")
 
-    with pytest.raises(ValueError, match="must define tokens for exactly the study participants"):
+    with pytest.raises(
+        ValueError, match="must define tokens for exactly the study participants"
+    ):
         load_studies_config(str(config_file))
 
 

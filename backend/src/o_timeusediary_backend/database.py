@@ -214,6 +214,11 @@ def _ensure_external_tasks_from_config(
 def ensure_external_task_assignments(
     session: Session, study: Study, participant_ids_in_order: list[str]
 ) -> None:
+    # For open studies, tokens are claimed at runtime from the pool —
+    # do not pre-create assignments.
+    if study.allow_unlisted_participants:
+        return
+
     normalized_participant_ids: list[str] = []
     seen_participant_ids: set[str] = set()
     for participant_id in participant_ids_in_order:
@@ -613,7 +618,9 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         existing_study.allow_skip_timeuse
                         != study_config.allow_skip_timeuse
                     ):
-                        existing_study.allow_skip_timeuse = study_config.allow_skip_timeuse
+                        existing_study.allow_skip_timeuse = (
+                            study_config.allow_skip_timeuse
+                        )
                         study_updated = True
                     if (
                         existing_study.inactivity_timeout_minutes
@@ -659,7 +666,9 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
                             existing_participant = session.exec(
-                                select(Participant).where(Participant.id == participant_id)
+                                select(Participant).where(
+                                    Participant.id == participant_id
+                                )
                             ).first()
                             if not existing_participant:
                                 existing_participant = Participant(id=participant_id)
@@ -679,8 +688,12 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                                         participant_id=participant_id,
                                     )
                                 )
-                    _ensure_activity_blobs_from_config(session, existing_study, study_config)
-                    _ensure_external_tasks_from_config(session, existing_study, study_config)
+                    _ensure_activity_blobs_from_config(
+                        session, existing_study, study_config
+                    )
+                    _ensure_external_tasks_from_config(
+                        session, existing_study, study_config
+                    )
                     ensure_external_task_assignments(
                         session,
                         existing_study,
@@ -824,10 +837,9 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                 if isinstance(study_config.description, str):
                     fallback_description = study_config.description
                 elif description_map:
-                    fallback_description = (
-                        description_map.get(study_config.default_language)
-                        or next(iter(description_map.values()), None)
-                    )
+                    fallback_description = description_map.get(
+                        study_config.default_language
+                    ) or next(iter(description_map.values()), None)
 
                 # Store either the i18n map (preferred) or a single-string
                 # fallback into the unified `description` field.

@@ -75,7 +75,9 @@ def _external_task_payload(
     confirmation_type: str = "none",
     token_values: list[str] | None = None,
 ) -> dict:
-    values = token_values or [f"tok-{index + 1}" for index in range(len(participant_ids))]
+    values = token_values or [
+        f"tok-{index + 1}" for index in range(len(participant_ids))
+    ]
     by_participant = {
         participant_id: values[index]
         for index, participant_id in enumerate(participant_ids)
@@ -194,7 +196,7 @@ def test_import_study_payload_accepts_external_tasks():
     assert study_payload.external_tasks[0].task_level == 2
 
 
-def test_validate_import_payload_rejects_external_tasks_for_open_study():
+def test_validate_import_payload_rejects_by_participant_for_open_study():
     payload = _base_payload()
     payload["allow_unlisted_participants"] = True
     payload["study_participant_ids"] = ["p1", "p2"]
@@ -207,7 +209,7 @@ def test_validate_import_payload_rejects_external_tasks_for_open_study():
 
     with pytest.raises(
         ValueError,
-        match="external_tasks require allow_unlisted_participants=false",
+        match="open studies require 'open_pool'",
     ):
         _validate_import_study_payload(study_payload)
 
@@ -223,7 +225,9 @@ def test_validate_import_payload_rejects_external_tasks_with_wrong_token_count()
 
     study_payload = ImportStudiesConfigStudy(**payload)
 
-    with pytest.raises(ValueError, match="must define tokens for exactly the study participants"):
+    with pytest.raises(
+        ValueError, match="must define tokens for exactly the study participants"
+    ):
         _validate_import_study_payload(study_payload)
 
 

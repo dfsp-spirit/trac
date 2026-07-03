@@ -504,7 +504,9 @@ async def test_admin_export_require_consent_roundtrip(created_studies_for_cleanu
         assert study_config_response.status_code == 200
         study_config_data = study_config_response.json()
         assert study_config_data["require_consent"] is True
-        assert study_config_data["study_text_consent"] == "Please consent to participate."
+        assert (
+            study_config_data["study_text_consent"] == "Please consent to participate."
+        )
         assert study_config_data["study_text_end_noconsent"] == "You did not consent."
 
 
@@ -592,22 +594,6 @@ async def test_admin_export_external_tasks_roundtrip(created_studies_for_cleanup
                     }
                 ],
                 "callback_token_name": "survey_token",
-                "participant_assignments": [
-                    {
-                        "participant_id": "p1",
-                        "assigned_token": "tok-1",
-                        "assignment_order": 0,
-                        "is_confirmed": False,
-                        "confirmed_at": None,
-                    },
-                    {
-                        "participant_id": "p2",
-                        "assigned_token": "tok-2",
-                        "assignment_order": 1,
-                        "is_confirmed": False,
-                        "confirmed_at": None,
-                    },
-                ],
             }
         ]
 
@@ -779,9 +765,7 @@ async def test_callback_external_task_confirmation_updates_assignment_state(
                         "outbound_tokens": [
                             {
                                 "name": "callback_token",
-                                "by_participant": {
-                                    "p1": "cb-1"
-                                },
+                                "by_participant": {"p1": "cb-1"},
                             }
                         ],
                     }
@@ -1040,4 +1024,3 @@ async def test_study_config_tracks_instruction_completion_and_study_completion_s
         assert completed_study_config["instructions_completed"] is True
         assert completed_study_config["instructions_completed_at"] is not None
         assert completed_study_config["participant_has_completed_study"] is True
-

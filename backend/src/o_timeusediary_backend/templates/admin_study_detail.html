@@ -367,8 +367,16 @@
                 {% if external_tasks %}
                 <div class="timeline-grid">
                     {% for external_task in external_tasks %}
-                    <div class="timeline-card">
-                        <h3>{{ external_task.name }} <span class="badge badge-timeline">{{ external_task.task_key }}</span></h3>
+                    <div class="timeline-card" id="et-card-{{ study.name_short }}-{{ external_task.task_key }}">
+                        <h3>
+                            {{ external_task.name }}
+                            <span class="badge badge-timeline">{{ external_task.task_key }}</span>
+                            {% if external_task.has_open_pool %}
+                            <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Open Pool</span>
+                            {% else %}
+                            <span class="badge" style="background:#fef3c7;color:#92400e;">By Participant</span>
+                            {% endif %}
+                        </h3>
                         <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
                         <p><strong>Task level:</strong> {{ external_task.task_level }}</p>
                         <p><strong>Assignments:</strong> {{ external_task.assignment_count }}</p>
@@ -377,6 +385,54 @@
                         {% if external_task.description %}
                         <p><strong>Description:</strong> {{ external_task.description }}</p>
                         {% endif %}
+
+                        <!-- Token Pool Management Section -->
+                        <div class="pool-section" style="margin-top:1rem;padding:1rem;background:#f8f9fa;border-radius:8px;border:1px solid #e9ecef;">
+                            <h4 style="margin:0 0 0.5rem 0;font-size:0.95rem;">🔑 Token Pool</h4>
+
+                            <!-- Pool Status -->
+                            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+                                <div style="min-width:60px;"><strong>Total:</strong> <span id="pool-total-{{ study.name_short }}-{{ external_task.task_key }}">{{ external_task.pool_total }}</span></div>
+                                <div style="min-width:60px;"><strong>Claimed:</strong> <span id="pool-claimed-{{ study.name_short }}-{{ external_task.task_key }}">{{ external_task.pool_claimed }}</span></div>
+                                <div style="min-width:70px;"><strong>Confirmed:</strong> <span id="pool-confirmed-{{ study.name_short }}-{{ external_task.task_key }}">{{ external_task.pool_confirmed }}</span></div>
+                                <div style="min-width:65px;"><strong>Available:</strong> <span id="pool-available-{{ study.name_short }}-{{ external_task.task_key }}" style="color:{% if external_task.pool_available <= 0 and external_task.has_open_pool %}#dc3545{% else %}#16a34a{% endif %};font-weight:600;">{{ external_task.pool_available }}</span></div>
+                            </div>
+
+                            {% if not external_task.has_open_pool and not external_task.study_is_open %}
+                            <!-- Closed study: pool not applicable, show informative note -->
+                            <div style="color:#92400e;background:#fef3c7;padding:0.5rem 0.75rem;border-radius:4px;font-size:0.85rem;margin-bottom:0.5rem;">
+                                ⚠️ Token pools are only available for <strong>open studies</strong> (allow_unlisted_participants: true).
+                                This study uses per-participant token assignments. Manage tokens via the
+                                <a href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short }}" style="color:#92400e;text-decoration:underline;">Participant Management</a> page.
+                            </div>
+                            {% elif not external_task.has_open_pool and external_task.study_is_open %}
+                            <!-- Open study but task uses by_participant (edge case) -->
+                            <div style="color:#6c757d;background:#f0f0f0;padding:0.5rem 0.75rem;border-radius:4px;font-size:0.85rem;margin-bottom:0.5rem;">
+                                ℹ️ This task is configured with per-participant tokens. To use a token pool, update the study config with <code>open_pool</code> instead of <code>by_participant</code>.
+                            </div>
+                            {% else %}
+                            <!-- Open study with pool: active pool management -->
+                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;">
+                                <div style="flex:1;min-width:180px;">
+                                    <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.25rem;">Add tokens (one per line)</label>
+                                    <textarea id="pool-add-{{ study.name_short }}-{{ external_task.task_key }}" rows="3" placeholder="token1&#10;token2&#10;token3" style="width:100%;padding:0.35rem;font-size:0.85rem;border:1px solid #ced4da;border-radius:4px;"></textarea>
+                                </div>
+                                <button type="button" class="btn-primary" style="font-size:0.8rem;padding:0.35rem 0.75rem;"
+                                    onclick="addPoolTokens('{{ study.name_short }}', '{{ external_task.task_key }}')">Add</button>
+                            </div>
+                            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:flex-end;margin-top:0.6rem;">
+                                <div style="min-width:120px;">
+                                    <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:0.25rem;">Generate random tokens</label>
+                                    <input type="number" id="pool-gen-count-{{ study.name_short }}-{{ external_task.task_key }}" value="10" min="1" max="10000"
+                                        style="width:100px;padding:0.35rem;font-size:0.85rem;border:1px solid #ced4da;border-radius:4px;" />
+                                </div>
+                                <button type="button" class="btn-secondary" style="font-size:0.8rem;padding:0.35rem 0.75rem;"
+                                    onclick="generatePoolTokens('{{ study.name_short }}', '{{ external_task.task_key }}')">Generate</button>
+                            </div>
+                            <div id="pool-status-{{ study.name_short }}-{{ external_task.task_key }}" style="margin-top:0.5rem;font-size:0.8rem;"></div>
+                            {% endif %}
+                        </div>
+
                         {% if external_task.assignments %}
                         <div class="table-container" style="margin-top: 0.75rem;">
                             <table>
@@ -828,6 +884,128 @@
                 );
             }
         });
+
+        // --- Pool Management Functions ---
+
+        function getApiBase() {
+            return window.location.origin + ADMIN_ROOT_PATH;
+        }
+
+        async function addPoolTokens(studyNameShort, taskKey) {
+            const textarea = document.getElementById('pool-add-' + studyNameShort + '-' + taskKey);
+            const statusDiv = document.getElementById('pool-status-' + studyNameShort + '-' + taskKey);
+            if (!textarea) return;
+
+            const raw = textarea.value.trim();
+            if (!raw) {
+                statusDiv.innerHTML = '<span style="color:#dc3545;">Please enter at least one token.</span>';
+                return;
+            }
+
+            const tokens = raw.split(/[\n,;]+/).map(t => t.trim()).filter(t => t.length > 0);
+            if (tokens.length === 0) {
+                statusDiv.innerHTML = '<span style="color:#dc3545;">No valid tokens found.</span>';
+                return;
+            }
+
+            statusDiv.innerHTML = '<span style="color:#4f46e5;">Adding ' + tokens.length + ' token(s)...</span>';
+
+            try {
+                const resp = await fetch(
+                    getApiBase() + '/api/admin/studies/' + encodeURIComponent(studyNameShort) +
+                    '/external-tasks/' + encodeURIComponent(taskKey) + '/pool/add-tokens',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tokens: tokens }),
+                    }
+                );
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    statusDiv.innerHTML = '<span style="color:#dc3545;">Error: ' + (err.detail || resp.statusText) + '</span>';
+                    return;
+                }
+
+                const result = await resp.json();
+                statusDiv.innerHTML = '<span style="color:#16a34a;">✓ Added ' + result.summary.tokens_added + ' token(s). Pool total: ' + result.summary.pool_total + '</span>';
+                textarea.value = '';
+
+                // Refresh pool counts
+                await refreshPoolCounts(studyNameShort, taskKey);
+            } catch (e) {
+                statusDiv.innerHTML = '<span style="color:#dc3545;">Request failed: ' + e.message + '</span>';
+            }
+        }
+
+        async function generatePoolTokens(studyNameShort, taskKey) {
+            const countInput = document.getElementById('pool-gen-count-' + studyNameShort + '-' + taskKey);
+            const statusDiv = document.getElementById('pool-status-' + studyNameShort + '-' + taskKey);
+            if (!countInput) return;
+
+            const count = parseInt(countInput.value, 10);
+            if (isNaN(count) || count < 1 || count > 10000) {
+                statusDiv.innerHTML = '<span style="color:#dc3545;">Please enter a number between 1 and 10000.</span>';
+                return;
+            }
+
+            statusDiv.innerHTML = '<span style="color:#4f46e5;">Generating ' + count + ' token(s)...</span>';
+
+            try {
+                const resp = await fetch(
+                    getApiBase() + '/api/admin/studies/' + encodeURIComponent(studyNameShort) +
+                    '/external-tasks/' + encodeURIComponent(taskKey) + '/pool/generate',
+                    {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ count: count }),
+                    }
+                );
+
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    statusDiv.innerHTML = '<span style="color:#dc3545;">Error: ' + (err.detail || resp.statusText) + '</span>';
+                    return;
+                }
+
+                const result = await resp.json();
+                statusDiv.innerHTML = '<span style="color:#16a34a;">✓ Generated ' + result.summary.tokens_generated + ' token(s). Pool total: ' + result.summary.pool_total + '</span>';
+
+                // Refresh pool counts
+                await refreshPoolCounts(studyNameShort, taskKey);
+            } catch (e) {
+                statusDiv.innerHTML = '<span style="color:#dc3545;">Request failed: ' + e.message + '</span>';
+            }
+        }
+
+        async function refreshPoolCounts(studyNameShort, taskKey) {
+            try {
+                const resp = await fetch(
+                    getApiBase() + '/api/admin/studies/' + encodeURIComponent(studyNameShort) +
+                    '/external-tasks/' + encodeURIComponent(taskKey) + '/pool/status'
+                );
+
+                if (!resp.ok) return;
+
+                const data = await resp.json();
+                const prefix = studyNameShort + '-' + taskKey;
+                updateSpan('pool-total-' + prefix, data.pool_total);
+                updateSpan('pool-claimed-' + prefix, data.pool_claimed);
+                updateSpan('pool-confirmed-' + prefix, data.pool_confirmed);
+                const availSpan = document.getElementById('pool-available-' + prefix);
+                if (availSpan) {
+                    availSpan.textContent = data.pool_available;
+                    availSpan.style.color = data.pool_available <= 0 ? '#dc3545' : '#16a34a';
+                }
+            } catch (e) {
+                // Silently ignore refresh errors
+            }
+        }
+
+        function updateSpan(id, value) {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        }
     </script>
 </body>
 </html>
