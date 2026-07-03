@@ -265,6 +265,15 @@
             }
         }
 
+        function buildDiaryUrl() {
+            const currentUrl = new URL(window.location.href);
+            const diaryUrl = new URL('../index.html', currentUrl.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                diaryUrl.searchParams.set(key, value);
+            });
+            return diaryUrl.toString();
+        }
+
         function buildThankYouUrl() {
             const currentUrl = new URL(window.location.href);
             const redirectUrl = new URL('thank-you.html', currentUrl.href);
@@ -450,9 +459,12 @@
             const diaryTitleRow = document.createElement('div');
             diaryTitleRow.className = 'task-title-row';
 
-            const diaryTitleEl = document.createElement('span');
-            diaryTitleEl.className = 'task-title';
+            const diaryTitleEl = document.createElement(diaryCompleted ? 'span' : 'a');
+            diaryTitleEl.className = diaryCompleted ? 'task-title' : 'task-title task-link';
             diaryTitleEl.textContent = diaryTitle;
+            if (!diaryCompleted) {
+                diaryTitleEl.href = buildDiaryUrl();
+            }
 
             const diaryStatus = document.createElement('span');
             if (diaryCompleted) {
