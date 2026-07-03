@@ -341,12 +341,12 @@
                 <div class="participant-list">
                     {% for participant in participants %}
                     <div class="participant-card">
-                        <h3>{{ participant.id }} <span class="badge badge-participant">{{ participant.activity_count }} activities</span></h3>
+                        <h3>{{ participant.id }} <span class="badge badge-participant">{{ participant.activity_count }} activities</span>{% if participant.has_completed_study and (external_task_count == 0 or participant.all_external_tasks_completed) %} <span style="color: #16a34a; font-size: 1.2rem;" title="Fully completed">✅</span>{% endif %}</h3>
                         <p><strong>Joined Study:</strong> {{ participant.joined_study_at.strftime('%Y-%m-%d %H:%M') }}</p>
                         <p><strong>Created:</strong> {{ participant.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                        <p><strong>Time-use completed:</strong> {{ "Yes" if participant.has_completed_study else "No" }}</p>
+                        <p><strong>Time-use completed:</strong> {% if participant.has_completed_study %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
                         {% if external_task_count > 0 %}
-                        <p><strong>All external tasks completed:</strong> {{ "Yes" if participant.all_external_tasks_completed else "No" }}</p>
+                        <p><strong>All external tasks completed:</strong> {% if participant.all_external_tasks_completed %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
                         {% endif %}
                         <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a></p>
                     </div>
