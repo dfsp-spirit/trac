@@ -433,10 +433,48 @@
 
             tasksList.innerHTML = '';
 
-            const eligibleTasks = getEligibleTasks(studyConfig);
             const statusCompleted = getLocalizedText('taskPage.statusAlreadyCompleted', 'Already completed');
             const statusPending = getLocalizedText('taskPage.statusNotCompleted', 'Not completed');
             const statusLocked = getLocalizedText('taskPage.statusLocked', 'Complete other tasks first');
+
+            const diaryTitle = getLocalizedText('taskPage.diaryTaskTitle', 'Fill out diary');
+            const diaryDescription = getLocalizedText('taskPage.diaryTaskDescription', 'Complete your time-use diary for all days of the study.');
+            const diaryCompletedLabel = getLocalizedText('taskPage.diaryTaskStatusCompleted', 'Completed');
+            const diaryNotCompletedLabel = getLocalizedText('taskPage.diaryTaskStatusNotCompleted', 'Not completed');
+
+            const diaryCompleted = studyConfig?.participant_has_completed_study === true;
+
+            const diaryLi = document.createElement('li');
+            diaryLi.className = 'task-item';
+
+            const diaryTitleRow = document.createElement('div');
+            diaryTitleRow.className = 'task-title-row';
+
+            const diaryTitleEl = document.createElement('span');
+            diaryTitleEl.className = 'task-title';
+            diaryTitleEl.textContent = diaryTitle;
+
+            const diaryStatus = document.createElement('span');
+            if (diaryCompleted) {
+                diaryStatus.className = 'task-status is-completed';
+                diaryStatus.textContent = diaryCompletedLabel;
+            } else {
+                diaryStatus.className = 'task-status';
+                diaryStatus.textContent = diaryNotCompletedLabel;
+            }
+
+            diaryTitleRow.appendChild(diaryTitleEl);
+            diaryTitleRow.appendChild(diaryStatus);
+            diaryLi.appendChild(diaryTitleRow);
+
+            const diaryDesc = document.createElement('p');
+            diaryDesc.className = 'task-description';
+            diaryDesc.textContent = diaryDescription;
+            diaryLi.appendChild(diaryDesc);
+
+            tasksList.appendChild(diaryLi);
+
+            const eligibleTasks = getEligibleTasks(studyConfig);
 
             eligibleTasks.forEach((task) => {
                 const li = document.createElement('li');

@@ -180,7 +180,11 @@
     "continueLink": "Weiter zur Abschlussseite",
     "statusAlreadyCompleted": "Bereits erledigt",
     "statusNotCompleted": "Noch nicht erledigt",
-    "statusLocked": "Erledigen Sie zuerst die anderen Aufgaben"
+    "statusLocked": "Erledigen Sie zuerst die anderen Aufgaben",
+    "diaryTaskTitle": "Tagebuch ausfüllen",
+    "diaryTaskDescription": "Füllen Sie Ihr Zeitnutzungstagebuch für alle Tage der Studie aus.",
+    "diaryTaskStatusCompleted": "Abgeschlossen",
+    "diaryTaskStatusNotCompleted": "Nicht abgeschlossen"
   },
   "footer": {
     "title": "TRAC",
