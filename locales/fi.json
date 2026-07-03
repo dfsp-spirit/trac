@@ -180,7 +180,11 @@
     "continueLink": "Jatka lopulliselle sivulle",
     "statusAlreadyCompleted": "Jo suoritettu",
     "statusNotCompleted": "Ei suoritettu",
-    "statusLocked": "Suorita muut tehtävät ensin"
+    "statusLocked": "Suorita muut tehtävät ensin",
+    "diaryTaskTitle": "Täytä päiväkirja",
+    "diaryTaskDescription": "Täytä ajankäyttöpäiväkirjasi kaikilta tutkimuksen päiviltä.",
+    "diaryTaskStatusCompleted": "Suoritettu",
+    "diaryTaskStatusNotCompleted": "Ei suoritettu"
   },
   "footer": {
     "title": "TRAC",

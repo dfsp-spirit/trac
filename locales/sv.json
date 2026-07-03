@@ -180,7 +180,11 @@
     "continueLink": "Fortsätt till slutsidan",
     "statusAlreadyCompleted": "Redan slutförd",
     "statusNotCompleted": "Inte slutförd",
-    "statusLocked": "Slutför andra uppgifter först"
+    "statusLocked": "Slutför andra uppgifter först",
+    "diaryTaskTitle": "Fyll i dagboken",
+    "diaryTaskDescription": "Fyll i din tidsanvändningsdagbok för alla dagar i studien.",
+    "diaryTaskStatusCompleted": "Slutförd",
+    "diaryTaskStatusNotCompleted": "Inte slutförd"
   },
   "footer": {
     "title": "TRAC",
