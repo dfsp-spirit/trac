@@ -2062,12 +2062,12 @@ async def admin_study_detail(
                     ),
                 ),
                 "confirmation_type": external_task.confirmation_type,
+                "task_level": external_task.task_level,
                 "assignment_count": len(assignment_rows),
                 "assignments": [
                     {
                         "participant_id": assignment.participant_id,
                         "assigned_token": assignment.assigned_token,
-                        "assignment_order": assignment.assignment_order,
                         "is_confirmed": assignment.is_confirmed,
                         "confirmed_at": assignment.confirmed_at,
                     }

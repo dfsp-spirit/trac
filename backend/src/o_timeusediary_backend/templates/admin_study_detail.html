@@ -370,6 +370,7 @@
                     <div class="timeline-card">
                         <h3>{{ external_task.name }} <span class="badge badge-timeline">{{ external_task.task_key }}</span></h3>
                         <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
+                        <p><strong>Task level:</strong> {{ external_task.task_level }}</p>
                         <p><strong>Assignments:</strong> {{ external_task.assignment_count }}</p>
                         <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
                         <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
@@ -379,11 +380,10 @@
                         {% if external_task.assignments %}
                         <div class="table-container" style="margin-top: 0.75rem;">
                             <table>
-                                <thead><tr><th>Order</th><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
+                                <thead><tr><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
                                 <tbody>
                                     {% for assignment in external_task.assignments %}
                                     <tr>
-                                        <td>{{ assignment.assignment_order }}</td>
                                         <td>{{ assignment.participant_id }}</td>
                                         <td>{{ assignment.assigned_token }}</td>
                                         <td>{% if assignment.is_confirmed %}yes{% if assignment.confirmed_at %} ({{ assignment.confirmed_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% else %}no{% endif %}</td>
