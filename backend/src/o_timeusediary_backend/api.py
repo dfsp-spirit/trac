@@ -6982,7 +6982,7 @@ class ParticipantExternalTaskResponse(BaseModel):
     name: str
     description: Optional[str] = None
     confirmation_type: str
-    assigned_token: str
+    assigned_token: Optional[str] = None
     continuation_url: str
     is_confirmed: bool = False
     confirmed_at: Optional[datetime] = None
