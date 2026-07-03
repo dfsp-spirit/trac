@@ -244,7 +244,7 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
   );
 
   await expect(page).toHaveURL(/pages\/tasks\.html/);
-  await expect(page.locator('#tasks-list .task-item')).toHaveCount(2);
+  await expect(page.locator('#tasks-list .task-item')).toHaveCount(3);
 
   const taskOneLink = page.locator('#tasks-list .task-item a.task-link', {
     hasText: 'Umfrage zu Depressionssymptomen ausfüllen',
@@ -260,7 +260,7 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
     hasText: 'Umfrage zu Depressionssymptomen ausfüllen',
   });
   await expect(taskOneRow.locator('.task-status')).toContainText(
-    'Already completed'
+    'Bereits erledigt'
   );
 
   const taskTwoLink = page.locator('#tasks-list .task-item a.task-link', {
@@ -278,7 +278,7 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
     hasText: 'Bankdaten eingeben',
   });
   await expect(taskTwoRow.locator('.task-status')).toContainText(
-    'Already completed'
+    'Bereits erledigt'
   );
 
   const continueLink = page.locator('#continue-link');
@@ -427,7 +427,7 @@ test('adult_pilot_de full external-task flow preserves return_url to thank-you p
     hasText: 'Umfrage zu Depressionssymptomen ausfüllen',
   });
   await expect(taskOneRow.locator('.task-status')).toContainText(
-    'Already completed'
+    'Bereits erledigt'
   );
 
   const taskTwoLink = page.locator('#tasks-list .task-item a.task-link', {
@@ -446,7 +446,7 @@ test('adult_pilot_de full external-task flow preserves return_url to thank-you p
     hasText: 'Bankdaten eingeben',
   });
   await expect(taskTwoRow.locator('.task-status')).toContainText(
-    'Already completed'
+    'Bereits erledigt'
   );
 
   const continueLink = page.locator('#continue-link');

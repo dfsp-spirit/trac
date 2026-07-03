@@ -239,5 +239,5 @@ test('adult_pilot_de: bernd with pending external tasks lands on tasks page afte
   );
 
   await expect(page).toHaveURL(/pages\/tasks\.html/);
-  await expect(page.locator('#tasks-list .task-item')).toHaveCount(2);
+  await expect(page.locator('#tasks-list .task-item')).toHaveCount(3);
 });
