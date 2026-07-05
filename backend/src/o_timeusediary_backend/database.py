@@ -843,6 +843,13 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
 
                 # Store either the i18n map (preferred) or a single-string
                 # fallback into the unified `description` field.
+                # Serialize footer links to plain dicts for JSON storage
+                config_footer_links = None
+                if study_config.footer_links is not None:
+                    config_footer_links = [
+                        link.model_dump() for link in study_config.footer_links
+                    ]
+
                 study = Study(
                     name=study_config.name,
                     name_short=study_config.name_short,
@@ -864,6 +871,8 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     inactivity_timeout_minutes=study_config.inactivity_timeout_minutes,
                     inactivity_timeout_stress_time_left=study_config.inactivity_timeout_stress_time_left,
                     inactivity_page_custom_text=study_config.inactivity_page_custom_text,
+                    footer_links=config_footer_links,
+                    hide_server_wide_links=study_config.hide_server_wide_links,
                 )
                 session.add(study)
                 # Keep study creation in the same transaction as dependent rows.

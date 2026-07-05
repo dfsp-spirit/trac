@@ -210,7 +210,8 @@ async function loadStudiesConfigFromFile() {
     // Determine studies file to load. If TUD_SETTINGS.DEFAULT_STUDIES_FILE is
     // missing or empty, skip local fallback entirely.
     const studiesFile =
-      TUD_SETTINGS && typeof TUD_SETTINGS.DEFAULT_STUDIES_FILE === 'string' &&
+      TUD_SETTINGS &&
+      typeof TUD_SETTINGS.DEFAULT_STUDIES_FILE === 'string' &&
       TUD_SETTINGS.DEFAULT_STUDIES_FILE.trim()
         ? TUD_SETTINGS.DEFAULT_STUDIES_FILE
         : null;
@@ -224,9 +225,7 @@ async function loadStudiesConfigFromFile() {
 
     const response = await fetch(studiesFile);
     if (!response.ok) {
-      throw new Error(
-        `Failed to load ${studiesFile}: ${response.status}`
-      );
+      throw new Error(`Failed to load ${studiesFile}: ${response.status}`);
     }
     STUDIES_CONFIG_CACHE = await response.json();
 
@@ -236,9 +235,7 @@ async function loadStudiesConfigFromFile() {
       ? STUDIES_CONFIG_CACHE.studies
       : [];
 
-    CURRENT_STUDY_CACHE = studies.find(
-      (s) => s.name_short === studyName
-    );
+    CURRENT_STUDY_CACHE = studies.find((s) => s.name_short === studyName);
 
     if (!CURRENT_STUDY_CACHE) {
       throw new Error(`Study "${studyName}" not found in ${studiesFile}`);
@@ -303,7 +300,9 @@ async function loadStudiesConfigFromFile() {
     return CURRENT_STUDY_CACHE;
   } catch (error) {
     console.error(
-      `Error loading ${TUD_SETTINGS?.DEFAULT_STUDIES_FILE || 'local studies file'}:`,
+      `Error loading ${
+        TUD_SETTINGS?.DEFAULT_STUDIES_FILE || 'local studies file'
+      }:`,
       error.message
     );
     CURRENT_STUDY_CACHE = null;
@@ -331,9 +330,16 @@ async function syncWithBackendConfig() {
       let listResp = null;
       try {
         listResp = await fetchWithBackgroundRetry(openListUrl, 1, 800);
-        console.log('active_open_study_names response status:', listResp && listResp.status);
+        console.log(
+          'active_open_study_names response status:',
+          listResp && listResp.status
+        );
       } catch (err) {
-        console.log('Failed to fetch active open study names:', err.message, err);
+        console.log(
+          'Failed to fetch active open study names:',
+          err.message,
+          err
+        );
         const noStudiesError = new Error(
           'No studies available because backend is unreachable and no local fallback is configured.'
         );
@@ -364,7 +370,6 @@ async function syncWithBackendConfig() {
           throw choiceError;
         }
       }
-
     }
 
     if (!studyName) {
@@ -385,14 +390,28 @@ async function syncWithBackendConfig() {
       apiUrl.searchParams.set('lang', selectedLanguageFromContext);
     }
 
-    console.log(`Attempting to sync study config from backend: ${apiUrl.toString()}`);
-    console.log('TUD_SETTINGS.API_BASE_URL:', TUD_SETTINGS.API_BASE_URL, 'studyName:', studyName, 'participantId:', participantId, 'selectedLanguage:', selectedLanguageFromContext);
+    console.log(
+      `Attempting to sync study config from backend: ${apiUrl.toString()}`
+    );
+    console.log(
+      'TUD_SETTINGS.API_BASE_URL:',
+      TUD_SETTINGS.API_BASE_URL,
+      'studyName:',
+      studyName,
+      'participantId:',
+      participantId,
+      'selectedLanguage:',
+      selectedLanguageFromContext
+    );
 
     // Use simple retry for background sync (silent backoff, no UI notifications)
     let response;
     try {
       response = await fetchWithBackgroundRetry(apiUrl.toString(), 2, 1200);
-      console.log('study-config fetch response status:', response && response.status);
+      console.log(
+        'study-config fetch response status:',
+        response && response.status
+      );
     } catch (error) {
       if (!CURRENT_STUDY_CACHE) {
         const noStudiesError = new Error(
@@ -401,7 +420,11 @@ async function syncWithBackendConfig() {
         noStudiesError.code = 'NO_STUDIES_AVAILABLE';
         throw noStudiesError;
       }
-      console.log('Backend unavailable after retries, using file config:', error && error.message, error);
+      console.log(
+        'Backend unavailable after retries, using file config:',
+        error && error.message,
+        error
+      );
       CURRENT_STUDY_CACHE.source = 'file';
       return CURRENT_STUDY_CACHE;
     }
@@ -567,10 +590,7 @@ async function syncWithBackendConfig() {
         selectedLanguage,
         defaultLanguage
       );
-      if (
-        resolvedNoConsent &&
-        !CURRENT_STUDY_CACHE.study_text_end_noconsent
-      ) {
+      if (resolvedNoConsent && !CURRENT_STUDY_CACHE.study_text_end_noconsent) {
         CURRENT_STUDY_CACHE.study_text_end_noconsent = resolvedNoConsent;
       }
 
@@ -606,10 +626,10 @@ async function syncWithBackendConfig() {
       }
 
       // Study-specific footer links
-      if (backendConfig.footer_links !== undefined) {
+      if (backendConfig.footer_links != null) {
         CURRENT_STUDY_CACHE.footer_links = backendConfig.footer_links;
       }
-      if (backendConfig.hide_server_wide_links !== undefined) {
+      if (backendConfig.hide_server_wide_links != null) {
         CURRENT_STUDY_CACHE.hide_server_wide_links =
           backendConfig.hide_server_wide_links;
       }
@@ -694,8 +714,7 @@ async function syncWithBackendConfig() {
       );
       return CURRENT_STUDY_CACHE;
     } else if (response.status === 403) {
-      let errorMessage =
-        'You are not authorized to participate in this study.';
+      let errorMessage = 'You are not authorized to participate in this study.';
       let errorCode = 'STUDY_NOT_AUTHORIZED';
       try {
         const payload = await response.json();
@@ -729,7 +748,9 @@ async function syncWithBackendConfig() {
       participantIdRequiredError.status = 400;
       throw participantIdRequiredError;
     } else if (response.status === 404) {
-      const notFoundError = new Error(`Study '${studyName}' not found on server.`);
+      const notFoundError = new Error(
+        `Study '${studyName}' not found on server.`
+      );
       notFoundError.code = 'STUDY_NOT_FOUND';
       notFoundError.status = 404;
       throw notFoundError;
@@ -827,7 +848,10 @@ async function initializeStudyConfig() {
     ) {
       throw error;
     }
-    console.log('Background sync failed:', error && error.message ? error.message : error);
+    console.log(
+      'Background sync failed:',
+      error && error.message ? error.message : error
+    );
   }
 
   if (!CURRENT_STUDY_CACHE) {
