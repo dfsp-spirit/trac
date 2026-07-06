@@ -804,11 +804,11 @@
             "outbound_tokens": [
               {
                 "name": "pay_token",
-                "by_participant": {
-                  "bernd": "pay-bernd-123434214",
-                  "sophia": "pay-sophia-987654321",
-                  "claudia": "pay-claudia-567890123"
-                }
+                "open_pool": [
+                  "token-bbb-001",
+                  "token-bbb-002",
+                  "token-bbb-003"
+                ]
               }
             ],
             "outbound_url": "https://survey.academiccloud.de/f/153222?pid={participant_id}&study_name={study_name}&task={task_key}&token={pay_token}"
