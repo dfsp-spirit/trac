@@ -65,7 +65,7 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.19594929
 
-# References to software/libraries used by your tool
+# References to software/libraries used by the tool
 references:
   - type: software
     title: "O-TUD: A web-based tool for collecting daily activities in a timeline format"
