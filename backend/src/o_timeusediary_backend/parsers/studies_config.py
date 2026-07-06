@@ -49,7 +49,7 @@ class CfgFileExternalTaskOutboundToken(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str
-    by_participant: Dict[str, str] = Field(default_factory=dict)
+    by_participant: Optional[Dict[str, str]] = None
     open_pool: Optional[List[str]] = None
 
 
@@ -131,6 +131,8 @@ def get_external_task_callback_tokens(
     )
     if callback_token_group.open_pool:
         return list(callback_token_group.open_pool)
+    if callback_token_group.by_participant is None:
+        return []
     return [
         callback_token_group.by_participant[participant_id]
         for participant_id in study_participant_ids
@@ -146,7 +148,7 @@ def get_external_task_effective_config(
         "outbound_tokens": [
             {
                 "name": token_group.name,
-                "by_participant": dict(token_group.by_participant),
+                "by_participant": dict(token_group.by_participant) if token_group.by_participant is not None else {},
                 **(
                     {"open_pool": list(token_group.open_pool)}
                     if token_group.open_pool
@@ -292,8 +294,8 @@ def validate_external_tasks_for_study(
             seen_token_group_names.add(token_group.name)
             outbound_token_names.add(token_group.name)
 
-            has_by_participant = bool(token_group.by_participant)
-            has_open_pool = bool(token_group.open_pool)
+            has_by_participant = token_group.by_participant is not None
+            has_open_pool = token_group.open_pool is not None
 
             if has_by_participant and has_open_pool:
                 raise ValueError(
