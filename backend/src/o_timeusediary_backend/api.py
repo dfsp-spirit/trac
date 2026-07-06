@@ -4407,6 +4407,8 @@ async def admin_participant_management(
         "selected_study_requires_consent": selected_study_requires_consent,
         "selected_study_external_task_keys": [],
         "selected_study_external_task_count": 0,
+        "selected_study_assigned_token_count": 0,
+        "selected_study_pool_token_count": 0,
         "current_participants": current_participants,
         "current_time": utc_now(),
     }
@@ -4420,6 +4422,23 @@ async def admin_participant_management(
             t.task_key for t in external_tasks
         ]
         context_dict["selected_study_external_task_count"] = len(external_tasks)
+
+        # Count assigned and pool tokens for mass-delete UI
+        ext_task_ids = [t.id for t in external_tasks]
+        if ext_task_ids:
+            assigned_count = (
+                session.exec(
+                    select(func.count(StudyExternalTaskAssignment.id)).where(
+                        StudyExternalTaskAssignment.external_task_id.in_(ext_task_ids)
+                    )
+                ).first()
+                or 0
+            )
+        else:
+            assigned_count = 0
+        pool_count = sum(len(t.tokens or []) for t in external_tasks)
+        context_dict["selected_study_assigned_token_count"] = assigned_count
+        context_dict["selected_study_pool_token_count"] = pool_count
     template = templates.get_template("admin_participant_management.html")
     html_content = template.render(context_dict)
     return HTMLResponse(content=html_content)
@@ -6142,6 +6161,90 @@ async def commit_delete_tokens_by_token(
         "study_name_short": study_name_short,
         "task_key": payload.task_key,
     }
+
+
+@app.post("/api/admin/studies/{study_name_short}/delete-all-tokens/assigned")
+async def delete_all_assigned_tokens(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Delete ALL StudyExternalTaskAssignment rows for this study (all tasks)."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_tasks = session.exec(
+        select(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
+    ).all()
+    ext_task_ids = [t.id for t in external_tasks]
+
+    deleted = 0
+    if ext_task_ids:
+        deleted = (
+            session.exec(
+                delete(StudyExternalTaskAssignment).where(
+                    StudyExternalTaskAssignment.external_task_id.in_(ext_task_ids)
+                )
+            ).rowcount
+            or 0
+        )
+
+    session.commit()
+    logger.info(
+        "Admin '%s' deleted ALL %s assigned tokens for study '%s'",
+        current_admin,
+        deleted,
+        study_name_short,
+    )
+    audit_admin_action(
+        current_admin,
+        f"deleted ALL {deleted} assigned tokens for study '{study_name_short}'",
+    )
+    return {"deleted": deleted, "study_name_short": study_name_short}
+
+
+@app.post("/api/admin/studies/{study_name_short}/delete-all-tokens/pool")
+async def delete_all_pool_tokens(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Clear ALL pool tokens (StudyExternalTask.tokens) for this study (all tasks)."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_tasks = session.exec(
+        select(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
+    ).all()
+
+    deleted = 0
+    for task in external_tasks:
+        deleted += len(task.tokens or [])
+        task.tokens = []
+        session.add(task)
+
+    session.commit()
+    logger.info(
+        "Admin '%s' deleted ALL %s pool tokens for study '%s'",
+        current_admin,
+        deleted,
+        study_name_short,
+    )
+    audit_admin_action(
+        current_admin,
+        f"deleted ALL {deleted} pool tokens for study '{study_name_short}'",
+    )
+    return {"deleted": deleted, "study_name_short": study_name_short}
 
 
 @app.delete("/api/admin/studies/{study_name_short}")

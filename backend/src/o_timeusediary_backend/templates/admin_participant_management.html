@@ -279,6 +279,44 @@
             border: 1px solid var(--border);
             color: var(--text);
         }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-dialog {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 440px;
+            width: 90%;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+        }
+        .modal-dialog h3 {
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+        }
+        .modal-dialog p {
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
     </style>
 </head>
 <body>
@@ -458,8 +496,31 @@
             {% endif %}
         </div>
 
+        {% if selected_study %}
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.5rem;">Delete ALL tokens at once across all tasks for this study. Respective counts are shown on the buttons.</div>
+            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                <button id="massDeleteAssignedBtn" class="btn-danger" type="button"
+                    data-count="{{ selected_study_assigned_token_count }}"
+                    {% if selected_study_assigned_token_count == 0 %}disabled{% endif %}>
+                    Delete {{ selected_study_assigned_token_count }} assigned tokens
+                </button>
+                <button id="massDeletePoolBtn" class="btn-danger" type="button"
+                    data-count="{{ selected_study_pool_token_count }}"
+                    {% if selected_study_pool_token_count == 0 %}disabled{% endif %}>
+                    Delete {{ selected_study_pool_token_count }} pool tokens
+                </button>
+                <div id="massDeleteStatus" class="status"></div>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Export participants and tokens for study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.75rem;">
+            Typically external service providers generate them and you import them into our system. This section is useful when an external service provide asks us to provide the tokens.
+            </div>
             <div class="hint" style="margin-bottom: 0.75rem;">
                 Generate random tokens for participants that are missing external-task assignments,
                 then download them as a CSV file to share with external service operators.
@@ -474,6 +535,18 @@
             </div>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Mass delete confirmation modal -->
+    <div id="massDeleteModal" class="modal-overlay">
+        <div class="modal-dialog">
+            <h3 id="massDeleteModalTitle">Confirm deletion</h3>
+            <p id="massDeleteModalBody"></p>
+            <div class="modal-actions">
+                <button id="massDeleteModalCancel" class="btn-secondary" type="button">Cancel</button>
+                <button id="massDeleteModalConfirm" class="btn-danger" type="button">Delete</button>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -834,6 +907,89 @@
                     window.location.href = url;
                 });
             }
+        })();
+
+        // --- Mass delete all tokens ---
+        (function() {
+            const modal = document.getElementById('massDeleteModal');
+            const modalTitle = document.getElementById('massDeleteModalTitle');
+            const modalBody = document.getElementById('massDeleteModalBody');
+            const modalCancel = document.getElementById('massDeleteModalCancel');
+            const modalConfirm = document.getElementById('massDeleteModalConfirm');
+            const statusEl = document.getElementById('massDeleteStatus');
+
+            let pendingMode = null; // 'assigned' or 'pool'
+            let pendingCount = 0;
+
+            function showModal(mode, count, label) {
+                const select = document.getElementById('studySelect');
+                const studyName = select?.value || '';
+                pendingMode = mode;
+                pendingCount = count;
+                modalTitle.textContent = `Delete all ${label}?`;
+                modalBody.textContent = `This will permanently delete ${count} ${label} for study "${studyName}" across ALL tasks. This action cannot be undone.`;
+                modal.classList.add('active');
+            }
+
+            function hideModal() {
+                modal.classList.remove('active');
+                pendingMode = null;
+            }
+
+            modalCancel?.addEventListener('click', hideModal);
+            modal?.addEventListener('click', (e) => {
+                if (e.target === modal) hideModal();
+            });
+
+            modalConfirm?.addEventListener('click', async () => {
+                if (!pendingMode) return;
+                const select = document.getElementById('studySelect');
+                const studyName = select?.value;
+                if (!studyName) { alert('Select a study first'); hideModal(); return; }
+
+                const endpoint = pendingMode === 'assigned' ? 'delete-all-tokens/assigned' : 'delete-all-tokens/pool';
+                modalConfirm.disabled = true;
+                statusEl.textContent = 'Deleting...';
+                statusEl.style.color = '#4f46e5';
+
+                try {
+                    const resp = await fetch(
+                        `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/${endpoint}`,
+                        { method: 'POST', credentials: 'same-origin' }
+                    );
+                    const json = await resp.json().catch(() => ({}));
+                    if (!resp.ok) throw new Error(json.detail || 'Delete failed');
+
+                    statusEl.textContent = `Deleted ${json.deleted || 0} tokens.`;
+                    statusEl.style.color = '#059669';
+                    hideModal();
+
+                    // Reload to refresh counts
+                    setTimeout(() => {
+                        window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+                    }, 800);
+                } catch (err) {
+                    statusEl.textContent = err.message;
+                    statusEl.style.color = '#dc2626';
+                    hideModal();
+                } finally {
+                    modalConfirm.disabled = false;
+                }
+            });
+
+            document.getElementById('massDeleteAssignedBtn')?.addEventListener('click', () => {
+                const btn = document.getElementById('massDeleteAssignedBtn');
+                const count = parseInt(btn?.dataset.count || '0');
+                if (count === 0) return;
+                showModal('assigned', count, 'assigned tokens');
+            });
+
+            document.getElementById('massDeletePoolBtn')?.addEventListener('click', () => {
+                const btn = document.getElementById('massDeletePoolBtn');
+                const count = parseInt(btn?.dataset.count || '0');
+                if (count === 0) return;
+                showModal('pool', count, 'pool tokens');
+            });
         })();
     </script>
 </body>
