@@ -781,11 +781,11 @@
             "outbound_tokens": [
               {
                 "name": "depression_survey_token",
-                "by_participant": {
-                  "bernd": "dep-bernd-31526357",
-                  "sophia": "dep-sophia-3754687526",
-                  "claudia": "dep-claudia-3576872"
-                }
+                "open_pool": [
+                  "token-aaa-001",
+                  "token-aaa-002",
+                  "token-aaa-003"
+                ]
               }
             ],
             "outbound_url": "https://survey.academiccloud.de/f/153111?pid={participant_id}&study_name={study_name}&task={task_key}&token={depression_survey_token}"
