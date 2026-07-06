@@ -127,6 +127,43 @@ def _get_localized_study_text(
     )
 
 
+def _resolve_description(study: Study) -> Optional[str]:
+    """Resolve a study's description to a plain string for display.
+
+    Handles three forms stored in the ``description`` JSON column:
+    1. A dict (i18n map)        → resolve via default_language
+    2. A plain string           → return as-is
+    3. A JSON-looking string    → try to parse it (defence against
+       incomplete migration from VARCHAR→JSON on legacy databases)
+    """
+    desc = study.description
+    if desc is None:
+        return None
+    if isinstance(desc, dict):
+        return (
+            desc.get(study.default_language)
+            or desc.get("en")
+            or next(iter(desc.values()), "")
+        )
+    if isinstance(desc, str):
+        stripped = desc.strip()
+        if stripped.startswith("{") and stripped.endswith("}"):
+            import json
+
+            try:
+                parsed = json.loads(stripped)
+                if isinstance(parsed, dict):
+                    return (
+                        parsed.get(study.default_language)
+                        or parsed.get("en")
+                        or next(iter(parsed.values()), "")
+                    )
+            except (json.JSONDecodeError, TypeError, StopIteration):
+                pass
+        return desc
+    return str(desc)
+
+
 def _build_external_task_continuation_url(
     external_task: StudyExternalTask,
     assigned_token: str,
@@ -1768,11 +1805,7 @@ async def admin_overview(
         except TypeError:
             study_is_collecting = False
 
-        description_text = (
-            study.description.get(study.default_language)
-            if isinstance(study.description, dict)
-            else study.description
-        )
+        description_text = _resolve_description(study)
 
         studies_data.append(
             {
@@ -2228,11 +2261,7 @@ async def admin_study_detail(
         )
 
     # --- Description text ---
-    description_text = (
-        study.description.get(study.default_language)
-        if isinstance(study.description, dict)
-        else study.description
-    )
+    description_text = _resolve_description(study)
 
     # --- Open join URL ---
     frontend_open_join_url = (
@@ -6935,14 +6964,7 @@ async def get_active_open_study_names(session: Session = Depends(get_session)):
         # study's default_language so the frontend always receives a string.
         study_responses = []
         for study in studies:
-            if isinstance(study.description, dict):
-                desc = (
-                    study.description.get(study.default_language)
-                    or study.description.get("en")
-                    or next(iter(study.description.values()), "")
-                )
-            else:
-                desc = study.description
+            desc = _resolve_description(study)
             study_responses.append(
                 ActiveOpenStudyResponse(
                     name_short=study.name_short,
@@ -7212,8 +7234,8 @@ def get_study_config(
     localized_description = _get_localized_study_text(
         study, "description", selected_language
     )
-    if localized_description is None and isinstance(study.description, str):
-        localized_description = study.description
+    if localized_description is None:
+        localized_description = _resolve_description(study)
 
     return StudyConfigResponse(
         study_name=study.name,
