@@ -383,7 +383,11 @@
                         </h3>
                         <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
                         <p><strong>Task level:</strong> {{ external_task.task_level }}</p>
-                        <p><strong>Assignments:</strong> {{ external_task.assignment_count }}</p>
+                        {% if external_task.has_open_pool %}
+                        <p><strong>Pool tokens:</strong> {{ external_task.pool_total }}</p>
+                        {% else %}
+                        <p><strong>Assigned tokens:</strong> {{ external_task.assignment_count }}</p>
+                        {% endif %}
                         <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
                         <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
                         {% if external_task.description %}
