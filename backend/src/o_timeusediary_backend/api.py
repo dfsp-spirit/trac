@@ -4616,6 +4616,111 @@ async def import_external_task_tokens(
     }
 
 
+@app.post(
+    "/api/admin/studies/{study_name_short}/import-pool-tokens",
+    name="Import pool tokens for open study",
+)
+async def import_pool_tokens(
+    study_name_short: str,
+    file: UploadFile = File(...),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Import a CSV with task_key columns into the token pool (no pid column).
+
+    CSV must include header row with one column per external task `task_key`.
+    Each row adds one token per task column to that task's token pool.
+    Empty cells in a row are skipped for that task.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_tasks = session.exec(
+        select(StudyExternalTask)
+        .where(StudyExternalTask.study_id == study.id)
+        .order_by(StudyExternalTask.task_key)
+    ).all()
+    task_keys = [t.task_key for t in external_tasks]
+
+    if not task_keys:
+        raise HTTPException(
+            status_code=400, detail="Study has no external tasks configured"
+        )
+
+    # Read CSV
+    try:
+        raw = await file.read()
+        text = raw.decode("utf-8-sig")
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Failed to read uploaded file: {e}"
+        )
+
+    reader = csv.DictReader(StringIO(text))
+    headers = [h for h in reader.fieldnames or []]
+    missing = [h for h in task_keys if h not in headers]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing required CSV columns: {missing}. Required: {task_keys}",
+        )
+
+    if "pid" in headers:
+        raise HTTPException(
+            status_code=400,
+            detail="CSV must not contain a 'pid' column. For assigned tokens use the closed-study import.",
+        )
+
+    tasks_by_key = {t.task_key: t for t in external_tasks}
+    tokens_added = 0
+    duplicates_skipped = 0
+    errors: List[str] = []
+
+    for lineno, row in enumerate(reader, start=2):
+        for key in task_keys:
+            token = (row.get(key) or "").strip()
+            if token == "":
+                continue  # skip empty cells
+
+            task = tasks_by_key.get(key)
+            if not task:
+                errors.append(f"Line {lineno}: unknown task key '{key}'")
+                continue
+
+            existing_set = set(task.tokens or [])
+            if token in existing_set:
+                duplicates_skipped += 1
+                continue
+
+            task.tokens = (task.tokens or []) + [token]
+            tokens_added += 1
+
+    try:
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Database commit failed: {e}")
+
+    audit_admin_action(
+        current_admin,
+        f"imported pool tokens for study '{study_name_short}' from file {file.filename}: tokens_added={tokens_added}, duplicates_skipped={duplicates_skipped}",
+    )
+
+    return {
+        "ok": True,
+        "summary": {
+            "tokens_added": tokens_added,
+            "duplicates_skipped": duplicates_skipped,
+        },
+        "errors": errors,
+    }
+
+
 TOKEN_ALPHABET = string.ascii_letters + string.digits
 TOKEN_LENGTH = 20
 

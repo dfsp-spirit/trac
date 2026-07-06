@@ -456,6 +456,32 @@
         </div>
         {% endif %}
 
+        {% if selected_study_is_open %}
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Add pool tokens to study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.5rem;">
+                Upload a CSV with header row containing one column per external task labeled with the task_key (no <code>pid</code> column, column order does not matter).
+            </div>
+            {% if selected_study_external_task_keys|length > 0 %}
+            <div style="margin-bottom: 0.5rem;">
+                <strong>Required task columns:</strong>
+                <div style="margin-top: 0.4rem; color: var(--muted);">
+                    {% for key in selected_study_external_task_keys %}<code>{{ key }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+                </div>
+            </div>
+            <input type="file" id="poolTokensCsv" accept="text/csv,text/plain" />
+            <div class="hint" id="poolTokensCsvHint">No file selected.</div>
+            <div style="margin-top: 0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+                <button id="validatePoolTokensBtn" class="btn-secondary" type="button" disabled>Validate CSV</button>
+                <button id="uploadPoolTokensBtn" class="btn-primary" type="button" disabled>Add pool tokens</button>
+                <div id="poolTokensStatus" class="status"></div>
+            </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Pool token import is disabled.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.5rem;">Delete external-task tokens for the selected study and task. Both assigned tokens and unassigned pool tokens are supported.<br /><b>WARNING: Deletions are irreversible, and without a token, you may not be able to link a user to their external task data on the remote system.</b></div>
@@ -779,6 +805,122 @@
 
                         const s = body.summary || {};
                         statusEl.textContent = `Participants created: ${s.participants_created || 0}; Assignments created: ${s.assignments_created || 0}; updated: ${s.assignments_updated || 0}`;
+                        statusEl.style.color = '#059669';
+                        if (body.errors && body.errors.length) {
+                            const errList = body.errors.slice(0,10).join('; ');
+                            statusEl.textContent += `; Errors: ${errList}`;
+                            statusEl.style.color = '#b45309';
+                        }
+
+                        setTimeout(() => {
+                            window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+                        }, 900);
+                    } catch (err) {
+                        statusEl.textContent = `Upload failed: ${err.message}`;
+                        statusEl.style.color = '#dc2626';
+                        uploadBtn.disabled = false;
+                    }
+                });
+            }
+        })();
+
+        // --- CSV import for pool tokens (open studies) ---
+        (function() {
+            const fileInput = document.getElementById('poolTokensCsv');
+            const hint = document.getElementById('poolTokensCsvHint');
+            const validateBtn = document.getElementById('validatePoolTokensBtn');
+            const uploadBtn = document.getElementById('uploadPoolTokensBtn');
+            const statusEl = document.getElementById('poolTokensStatus');
+
+            const REQUIRED_TASK_KEYS = [
+                {% for key in selected_study_external_task_keys %}
+                "{{ key }}"{% if not loop.last %},{% endif %}
+                {% endfor %}
+            ];
+
+            if (fileInput) {
+                fileInput.addEventListener('change', () => {
+                    const f = fileInput.files && fileInput.files[0];
+                    if (!f) {
+                        hint.textContent = 'No file selected.';
+                        validateBtn.disabled = true;
+                        uploadBtn.disabled = true;
+                        return;
+                    }
+                    hint.textContent = `Selected file: ${f.name}`;
+                    validateBtn.disabled = false;
+                    uploadBtn.disabled = true;
+                    statusEl.textContent = '';
+                });
+            }
+
+            if (validateBtn) {
+                validateBtn.addEventListener('click', () => {
+                    const f = fileInput.files && fileInput.files[0];
+                    if (!f) {
+                        alert('Select a CSV file first.');
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        const text = (ev.target.result || '').toString();
+                        const firstLine = text.split(/\r?\n/)[0] || '';
+                        const headers = firstLine.split(',').map(h => h.trim());
+                        const missing = [];
+                        if (headers.includes('pid')) {
+                            statusEl.textContent = 'CSV must not contain a pid column. For assigned tokens use the closed-study import.';
+                            statusEl.style.color = '#dc2626';
+                            uploadBtn.disabled = true;
+                            return;
+                        }
+                        for (const key of REQUIRED_TASK_KEYS) {
+                            if (!headers.includes(key)) missing.push(key);
+                        }
+                        if (missing.length) {
+                            statusEl.textContent = `Missing columns: ${missing.join(', ')}`;
+                            statusEl.style.color = '#dc2626';
+                            uploadBtn.disabled = true;
+                        } else {
+                            statusEl.textContent = 'CSV validated. Ready to upload.';
+                            statusEl.style.color = '#059669';
+                            uploadBtn.disabled = false;
+                        }
+                    };
+                    reader.readAsText(f);
+                });
+            }
+
+            if (uploadBtn) {
+                uploadBtn.addEventListener('click', async () => {
+                    const select = document.getElementById('studySelect');
+                    const studyName = select?.value;
+                    if (!studyName) { alert('Please select a study first.'); return; }
+                    const f = fileInput.files && fileInput.files[0];
+                    if (!f) { alert('Select a CSV file first.'); return; }
+
+                    uploadBtn.disabled = true;
+                    statusEl.textContent = 'Uploading...';
+                    statusEl.style.color = '#4f46e5';
+
+                    try {
+                        const form = new FormData();
+                        form.append('file', f);
+                        const resp = await fetch(`${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/import-pool-tokens`, {
+                            method: 'POST',
+                            credentials: 'same-origin',
+                            body: form,
+                        });
+                        const body = await resp.json().catch(() => ({}));
+                        if (!resp.ok) {
+                            const detail = body.detail || 'Import failed';
+                            statusEl.textContent = detail;
+                            statusEl.style.color = '#dc2626';
+                            uploadBtn.disabled = false;
+                            return;
+                        }
+
+                        const s = body.summary || {};
+                        statusEl.textContent = `Tokens added to pool: ${s.tokens_added || 0}; duplicates skipped: ${s.duplicates_skipped || 0}`;
                         statusEl.style.color = '#059669';
                         if (body.errors && body.errors.length) {
                             const errList = body.errors.slice(0,10).join('; ');
