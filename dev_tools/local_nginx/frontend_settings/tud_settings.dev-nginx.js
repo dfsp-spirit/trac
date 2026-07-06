@@ -9,9 +9,13 @@ const TUD_SETTINGS = {
     PRIVACY_URL: "https://www.aesthetics.mpg.de/en/data-protection-information.html", // e.g. 'https://example.org/privacy', set to null to hide
     OPEN_LEGAL_LINKS_IN_NEW_TAB: true,
     FOOTER_LINK_LABELS: {
+        de: { imprint: 'Impressum', privacy: 'Datenschutz' },
         en: { imprint: 'Imprint', privacy: 'Data Protection Information' },
-        sv: { imprint: 'Impressum', privacy: 'Integritet' },
-        de: { imprint: 'Impressum', privacy: 'Datenschutz' }
+        es: { imprint: 'Aviso legal', privacy: 'Protección de datos' },
+        fi: { imprint: 'Juridinen ilmoitus', privacy: 'Tietosuoja' },
+        fr: { imprint: 'Mentions légales', privacy: 'Protection des données' },
+        pl: { imprint: 'Impressum', privacy: 'Ochrona danych' },
+        sv: { imprint: 'Impressum', privacy: 'Integritet' }
     }
 };
 
