@@ -679,6 +679,141 @@
             "outbound_url": "https://survey.academiccloud.de/f/153222?pid={participant_id}&study_name={study_name}&task={task_key}&token={pay_token}"
           }
       ]
+    },
+    {
+      "name": "Pilotstudie Erwachsene Deutsch MPIAE Offen",
+      "name_short": "adult_pilot_de3",
+      "description": {
+        "de": "Pilotstudie TimeUse für Erwachsene am MPIAE, offen."
+      },
+      "allow_skip_timeuse": false,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_intro": {
+        "de": "Bitte füllen Sie diese Studie für Erwachsene aus. Sie werden gebeten, die Zeitnutzung für eine ganze Woche zu berichten."
+      },
+      "study_text_end_completed": {
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
+      },
+      "study_text_end_skipped": {
+        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
+      },
+      "require_consent": true,
+      "is_paused": false,
+      "study_text_consent": {
+        "de": "# Einwilligungsseite für die Studie\n\nWenn Sie fortfahren, stimmen Sie zu, dass:\n- Ihre Antworten für wissenschaftliche Forschung zur Zeitnutzung erhoben werden\n- die Daten in zusammengefasster Form ausgewertet werden können\n- Sie jederzeit vor dem Absenden abbrechen können"
+      },
+      "study_text_end_noconsent": {
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
+      },
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_files": {
+        "de": "activities_mpiae_pilotadults_de.json"
+      },
+      "data_collection_start": "2026-06-01T00:00:00Z",
+      "data_collection_end": "2026-08-01T23:59:59Z",
+      "require_diary_before_external_tasks": true,
+      "external_tasks": [
+          {
+            "task_key": "depression_survey",
+            "task_level": 1,
+            "name": {
+              "de": "Umfrage zu Depressionssymptomen ausfüllen"
+            },
+            "description": {
+              "de": "Füllen Sie die verlinkte Umfrage zu Depressionssymptomen aus."
+            },
+            "confirmation_type": "callback",
+            "outbound_tokens": [
+              {
+                "name": "depression_survey_token",
+                "by_participant": {
+                  "bernd": "dep-bernd-31526357",
+                  "sophia": "dep-sophia-3754687526",
+                  "claudia": "dep-claudia-3576872"
+                }
+              }
+            ],
+            "outbound_url": "https://survey.academiccloud.de/f/153111?pid={participant_id}&study_name={study_name}&task={task_key}&token={depression_survey_token}"
+          },
+          {
+            "task_key": "payment_info",
+            "task_level": 2,
+            "name": {
+              "de": "Bankdaten eingeben"
+            },
+            "description": {
+              "de": "Geben Sie Ihre Bankdaten ein, um nach Abschluss der Studie eine Aufwandsentschädigung zu erhalten."
+            },
+            "confirmation_type": "callback",
+            "hmac_secret_reference": "test_hmac_key",
+            "outbound_tokens": [
+              {
+                "name": "pay_token",
+                "by_participant": {
+                  "bernd": "pay-bernd-123434214",
+                  "sophia": "pay-sophia-987654321",
+                  "claudia": "pay-claudia-567890123"
+                }
+              }
+            ],
+            "outbound_url": "https://survey.academiccloud.de/f/153222?pid={participant_id}&study_name={study_name}&task={task_key}&token={pay_token}"
+          }
+      ]
     }
   ]
 }
