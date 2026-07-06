@@ -1,6 +1,25 @@
 TRAC MPIAE Changes
 ===================
 
+
+Version 0.18.0 -- External tasks in open studies and Lots of bug squashing
+----------------------------------------------------------------------------
+- NEW: support external tasks in OPEN studies, requires token_pool in studies_config.json.
+- FIX: fix display of activities in study details admin page: use properly indented version
+- CHG: improve display of participants tab in admin interface: color indication for completion status
+- FIX: fix external tasks table in admin interface, assignment count was always 0
+- FIX: correct superfluous variable token_count in admin interface that held 0 value
+- NEW: make diary task text on tasks page a link
+- NEW: Show the diary itself on external tasks page
+- NEW: also accept url param name token as alternative to callback_token and task_key as alternative to callback_task_key on tasks.html page when user returns from external system
+- NEW: gray out inaccessible tasks in frontend on tasks.html page
+- CHG: remove confusing message on tasks.html that may suggest they are done already with everything and that was displayed even when tasks were not done yet (it was about the diary, and was a historical leftover that is better displayed on thank you page)
+- FIX: do not show link to tasks which are not available yet (level 2), it is very confusing to user to get link to current page then. gray these out.
+- FIX: show proper error when trying to access non-existent study via url
+- FIX: in template tud_settings file in frontend, add missing i18n for some langs for footer links
+
+
+
 Version 0.17.1  -- Small improvements and fixes in frontend
 ------------------------------------------------------------
 - NEW: save custom activity text for re-use in frontend, implements #107
