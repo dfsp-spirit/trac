@@ -35,6 +35,7 @@ deployment instructions.
     - [Inactivity Timeout](#inactivity-timeout-1)
     - [External Tasks (External Integrations)](#external-tasks-external-integrations)
       - [External Task Fields](#external-task-fields)
+      - [Token Modes — Closed vs. Open Studies](#token-modes--closed-vs-open-studies)
       - [How External Tasks Work at Runtime](#how-external-tasks-work-at-runtime)
     - [HMAC-Signed Callbacks (Optional Per-Task)](#hmac-signed-callbacks-optional-per-task)
     - [Participant Invitation Links](#participant-invitation-links)
@@ -253,7 +254,7 @@ multiple languages, every supported language must have an entry.
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `external_tasks` | `[object]` | No | Array of external task definitions. Requires `allow_unlisted_participants: false`. See [External Tasks](#external-tasks-external-integrations) below. |
+| `external_tasks` | `[object]` | No | Array of external task definitions. Works for both open and closed studies. See [External Tasks](#external-tasks-external-integrations) below. |
 | `require_diary_before_external_tasks` | boolean | No | If `true`, the participant must complete the diary before accessing external tasks. Default: `false`. |
 
 #### Footer Links
@@ -317,9 +318,18 @@ participants should visit (for example, external surveys or payment forms).
 | `name` | `{lang: text}` | **Yes** | Localized display name for the task. |
 | `description` | `{lang: text}` | No | Localized longer description shown next to the task name. |
 | `confirmation_type` | string | No | Either `"none"` (manual, participant self-confirms) or `"callback"` (backend expects a return confirmation). Default: `"none"`. |
-| `outbound_tokens` | `[object]` | **Yes** | Array of token group definitions. Each group has a `name` (string) and a `by_participant` map (`{participant_id: token_string}`). |
+| `outbound_tokens` | `[object]` | **Yes** | Array of token group definitions. Each group has a `name` (string) and a token source — either `by_participant` (closed studies) or `open_pool` (open studies). See [Token Modes](#token-modes--closed-vs-open-studies) below. |
 | `outbound_url` | string | **Yes** | URL template with placeholders. Supported placeholders: `{participant_id}`, `{study_name}`, `{task_key}`, plus all token group names (e.g., `{pay_token}`). |
 | `hmac_secret_reference` | string | No | Optional name of a shared secret (configured in `.env` via `TUD_EXTERNAL_TASK_HMAC_SECRETS`) for HMAC-signed callbacks. |
+
+#### Token Modes — Closed vs. Open Studies
+
+External tasks support two token modes depending on the study type:
+
+**1. `by_participant` — Closed Studies (`allow_unlisted_participants: false`)**
+
+Tokens are pre-assigned per participant. Each participant gets a fixed, known token.
+Use this when participants are known in advance and each needs a specific token.
 
 Example:
 
@@ -343,7 +353,54 @@ Example:
 }
 ```
 
+Import participant tokens via the admin panel (CSV with `pid` column and task-key columns)
+or via `tud studies import --config studies_config.json`.
+
+**2. `open_pool` — Open Studies (`allow_unlisted_participants: true`)**
+
+Tokens are stored in a shared pool. Participants claim a token from the pool
+when they first access the external task. Use this when participants are
+unknown in advance and you just need a fixed number of tokens.
+
+Example:
+
+```json
+{
+    "task_key": "depression_survey",
+    "task_level": 1,
+    "name": { "en": "Depression Survey" },
+    "confirmation_type": "callback",
+    "outbound_tokens": [
+        {
+            "name": "survey_token",
+            "open_pool": [
+                "token-aaa-001",
+                "token-aaa-002",
+                "token-aaa-003"
+            ]
+        }
+    ],
+    "outbound_url": "https://survey.example.org/?pid={participant_id}&study={study_name}&task={task_key}&token={survey_token}"
+}
+```
+
+Manage pool tokens via the admin panel:
+- **Generate**: Create N random tokens per task (Admin → Participant Management → "Export pool tokens").
+- **Import**: Add tokens to the pool via CSV upload (participant-less import).
+- **Delete**: Remove individual pool tokens or mass-delete all pool tokens.
+
 #### How External Tasks Work at Runtime
+
+**For closed studies (`by_participant`):** The participant already has a pre-assigned
+token. The backend substitutes placeholders in `outbound_url` and returns the
+expanded URL.
+
+**For open studies (`open_pool`):** When a participant first accesses the external
+task, the backend atomically claims a token from the pool and assigns it to that
+participant. Subsequent accesses use the same assigned token. If the pool is
+exhausted, the participant sees an error message.
+
+In both cases:
 
 1. The backend substitutes placeholders in `outbound_url` per participant and
    returns the expanded URLs in the study-config API response.
