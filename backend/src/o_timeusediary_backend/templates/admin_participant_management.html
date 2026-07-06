@@ -395,7 +395,7 @@
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Add participants and task tokens to study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.5rem;">
-                Upload a CSV with header row: first column must be <code>pid</code>, then one column per external task labeled with the task_key.
+                Upload a CSV with header row containing a <code>pid</code> column and one column per external task labeled with the task_key (column order does not matter).
             </div>
             {% if selected_study_external_task_keys|length > 0 %}
             <div style="margin-bottom: 0.5rem;">
