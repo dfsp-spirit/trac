@@ -270,3 +270,279 @@ async def test_admin_export_tokens_csv_unauthorized():
             f"{BASE_URL}/api/admin/studies/default/export-tokens-csv",
         )
         assert resp.status_code == 401
+
+
+# ── Pool token tests (open study: adult_pilot_de3) ──
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_import_csv_adds_tokens():
+    """Import pool tokens via CSV for an open study and verify they are added."""
+    study_name_short = "adult_pilot_de3"
+    unique_tag = uuid.uuid4().hex[:8]
+    new_token_dep = f"it-pool-dep-{unique_tag}"
+    new_token_pay = f"it-pool-pay-{unique_tag}"
+
+    # Build CSV in-memory: one row with both task columns (no pid)
+    csv_content = "depression_survey,payment_info\r\n" + f"{new_token_dep},{new_token_pay}\r\n"
+
+    async with httpx.AsyncClient() as client:
+        # Import pool tokens
+        import_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/import-pool-tokens",
+            files={"file": ("tokens.csv", csv_content.encode("utf-8"), "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert import_resp.status_code == 200
+        data = import_resp.json()
+        assert data["ok"] is True
+        assert data["summary"]["tokens_added"] == 2
+        assert data["summary"]["duplicates_skipped"] == 0
+
+        # Verify tokens are now in the pool by exporting and checking content
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert export_resp.status_code == 200
+        csv_text = export_resp.text
+        assert new_token_dep in csv_text
+        assert new_token_pay in csv_text
+
+        # Clean up: delete the tokens we just added via delete-by-token
+        for task_key, token in [
+            ("depression_survey", new_token_dep),
+            ("payment_info", new_token_pay),
+        ]:
+            del_resp = await client.post(
+                f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-tokens/by-token/commit",
+                json={"task_key": task_key, "tokens": [token]},
+                auth=ADMIN_AUTH,
+            )
+            assert del_resp.status_code == 200
+            assert del_resp.json()["deleted"] >= 1
+
+        # Verify tokens are gone
+        export_resp2 = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert export_resp2.status_code == 200
+        assert new_token_dep not in export_resp2.text
+        assert new_token_pay not in export_resp2.text
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_import_rejects_pid_column():
+    """Importing a CSV with a pid column should be rejected."""
+    study_name_short = "adult_pilot_de3"
+    csv_content = "pid,depression_survey,payment_info\r\n" + "someone,tok1,tok2\r\n"
+
+    async with httpx.AsyncClient() as client:
+        import_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/import-pool-tokens",
+            files={"file": ("tokens.csv", csv_content.encode("utf-8"), "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert import_resp.status_code == 400
+        detail = import_resp.json()["detail"]
+        assert "pid" in detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_import_skips_duplicates():
+    """Duplicates already in the pool should be skipped, not added twice."""
+    study_name_short = "adult_pilot_de3"
+    unique_tag = uuid.uuid4().hex[:8]
+    token_a = f"it-pool-dup-a-{unique_tag}"
+    token_b = f"it-pool-dup-b-{unique_tag}"
+
+    csv_content = f"depression_survey,payment_info\r\n{token_a},{token_b}\r\n"
+
+    async with httpx.AsyncClient() as client:
+        # First import: both tokens should be added
+        resp1 = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/import-pool-tokens",
+            files={"file": ("tokens.csv", csv_content.encode("utf-8"), "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert resp1.status_code == 200
+        data1 = resp1.json()
+        assert data1["ok"] is True
+        assert data1["summary"]["tokens_added"] == 2
+        assert data1["summary"]["duplicates_skipped"] == 0
+
+        # Second import of the same CSV: both should be skipped as duplicates
+        resp2 = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/import-pool-tokens",
+            files={"file": ("tokens.csv", csv_content.encode("utf-8"), "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert resp2.status_code == 200
+        data2 = resp2.json()
+        assert data2["ok"] is True
+        assert data2["summary"]["tokens_added"] == 0
+        assert data2["summary"]["duplicates_skipped"] == 2
+
+        # Clean up: delete both tokens
+        for task_key, token in [
+            ("depression_survey", token_a),
+            ("payment_info", token_b),
+        ]:
+            del_resp = await client.post(
+                f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-tokens/by-token/commit",
+                json={"task_key": task_key, "tokens": [token]},
+                auth=ADMIN_AUTH,
+            )
+            assert del_resp.status_code == 200
+            assert del_resp.json()["deleted"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_generate_and_export():
+    """Generate pool tokens via the API and verify they appear in the export."""
+    study_name_short = "adult_pilot_de3"
+
+    async with httpx.AsyncClient() as client:
+        # Capture pool tokens BEFORE generating, so we only clean up new ones
+        pre_export = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert pre_export.status_code == 200
+        pre_tokens: set[tuple[str, str]] = set()
+        for line in pre_export.text.strip().split("\n")[1:]:
+            cols = line.split(",")
+            if len(cols) >= 2:
+                d = cols[0].strip()
+                p = cols[1].strip()
+                if d or p:
+                    pre_tokens.add((d, p))
+
+        # Generate 2 tokens per task
+        gen_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/generate-pool-tokens",
+            json={"count": 2},
+            auth=ADMIN_AUTH,
+        )
+        assert gen_resp.status_code == 200
+        gen_data = gen_resp.json()
+        assert gen_data["ok"] is True
+        assert gen_data["summary"]["total_generated"] >= 4  # 2 per task × 2 tasks
+
+        # Export pool tokens CSV
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert export_resp.status_code == 200
+        assert export_resp.headers["content-type"].startswith("text/csv")
+        csv_text = export_resp.text
+
+        # Header should have task keys only (no pid)
+        header = csv_text.strip().split("\n")[0]
+        assert "pid" not in header.lower()
+        assert "depression_survey" in header
+        assert "payment_info" in header
+
+        # Clean up: only delete tokens that were NOT in the pre-export
+        for line in csv_text.strip().split("\n")[1:]:
+            cols = line.split(",")
+            if len(cols) < 2:
+                continue
+            dep_token = cols[0].strip()
+            pay_token = cols[1].strip()
+            if (dep_token, pay_token) in pre_tokens:
+                continue
+            for task_key, token in [
+                ("depression_survey", dep_token),
+                ("payment_info", pay_token),
+            ]:
+                if token:
+                    del_resp = await client.post(
+                        f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-tokens/by-token/commit",
+                        json={"task_key": task_key, "tokens": [token]},
+                        auth=ADMIN_AUTH,
+                    )
+                    assert del_resp.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_export_csv_no_pid():
+    """Pool token CSV export must not contain a pid column."""
+    study_name_short = "adult_pilot_de3"
+
+    async with httpx.AsyncClient() as client:
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert export_resp.status_code == 200
+        csv_text = export_resp.text
+        lines = csv_text.strip().split("\n")
+        header = lines[0].strip().split(",")
+        assert "pid" not in [h.strip().lower() for h in header]
+        # Should have depression_survey and payment_info
+        assert "depression_survey" in [h.strip() for h in header]
+        assert "payment_info" in [h.strip() for h in header]
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_page_shows_correct_sections():
+    """Open study page should show pool sections, closed should not."""
+    open_study = "adult_pilot_de3"
+    closed_study = "adult_pilot_de2"
+
+    async with httpx.AsyncClient() as client:
+        # Open study: pool sections visible
+        open_page = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": open_study},
+            auth=ADMIN_AUTH,
+        )
+        assert open_page.status_code == 200
+        assert "Add pool tokens to study" in open_page.text
+        assert "Export pool tokens" in open_page.text
+        # Closed-study import should NOT be visible
+        assert "Add participants and task tokens" not in open_page.text
+
+        # Closed study: assigned sections visible
+        closed_page = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": closed_study},
+            auth=ADMIN_AUTH,
+        )
+        assert closed_page.status_code == 200
+        assert "Add participants and task tokens" in closed_page.text
+        assert "Export participants and assigned tokens" in closed_page.text
+        # Pool sections should NOT be visible
+        assert "Add pool tokens to study" not in closed_page.text
+        assert "Export pool tokens" not in closed_page.text
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_import_study_not_found():
+    """Import pool tokens for a non-existent study returns 404."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/nonexistent/import-pool-tokens",
+            files={"file": ("tokens.csv", b"depression_survey\ntoken1\n", "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_pool_tokens_import_missing_column():
+    """Import pool tokens CSV missing a required column returns 400."""
+    study_name_short = "adult_pilot_de3"
+    csv_content = "depression_survey\r\ntoken1\r\n"  # missing payment_info
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/import-pool-tokens",
+            files={"file": ("tokens.csv", csv_content.encode("utf-8"), "text/csv")},
+            auth=ADMIN_AUTH,
+        )
+        assert resp.status_code == 400
+        assert "missing" in resp.json()["detail"].lower()
