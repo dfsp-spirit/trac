@@ -216,6 +216,10 @@
             <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
             <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
         </nav>
+        <nav class="admin-nav" style="margin-top: 0.25rem;">
+            <span class="admin-nav-link" style="font-weight: 600; border: none; background: transparent;">{{ study.name_short }}</span>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short }}">👥 Participant Management</a>
+        </nav>
 
         <div class="header">
             <h1>{{ study.name }} <span class="badge badge-study">{{ study.name_short }}</span>{% if study.is_paused %} <span class="badge-paused">PAUSED</span>{% endif %}</h1>

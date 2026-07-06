@@ -327,6 +327,12 @@
             <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
             <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
         </nav>
+        {% if selected_study %}
+        <nav class="admin-nav" style="margin-top: 0.25rem;">
+            <span class="admin-nav-link" style="font-weight: 600; border: none; background: transparent;">{{ selected_study.name_short }}</span>
+            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/study/{{ selected_study.name_short }}">📋 Study Details</a>
+        </nav>
+        {% endif %}
 
         <div class="header">
             <h1>Participant Management</h1>
