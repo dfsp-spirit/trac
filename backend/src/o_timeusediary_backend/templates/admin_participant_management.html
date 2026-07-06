@@ -430,6 +430,7 @@
             </div>
         </div>
 
+        {% if not selected_study_is_open %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Add participants and task tokens to study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.5rem;">
@@ -453,6 +454,7 @@
             <div class="empty">This study has no external tasks configured. The CSV upload is disabled.</div>
             {% endif %}
         </div>
+        {% endif %}
 
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
@@ -468,12 +470,14 @@
             </div>
 
             <div style="margin-top:0.6rem; display:flex; gap:1rem; align-items:center;">
+                {% if not selected_study_is_open %}
                 <label><input type="radio" name="deleteMode" value="by_pid" checked /> By user (pid)</label>
-                <label><input type="radio" name="deleteMode" value="by_token" /> By token</label>
+                {% endif %}
+                <label><input type="radio" name="deleteMode" value="by_token" {% if selected_study_is_open %}checked{% endif %} /> By token</label>
             </div>
 
             <div style="margin-top:0.6rem;">
-                <textarea id="deleteInput" rows="6" placeholder="Enter comma- or newline-separated pids or tokens"></textarea>
+                <textarea id="deleteInput" rows="6" placeholder="{% if selected_study_is_open %}Enter comma- or newline-separated tokens{% else %}Enter comma- or newline-separated pids or tokens{% endif %}"></textarea>
                 <div class="hint">Accepts comma or newline separated values. Preview before commit.</div>
             </div>
 
@@ -501,16 +505,20 @@
             <h2 style="margin-bottom: 0.75rem;">Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.5rem;">Delete ALL tokens at once across all tasks for this study. Respective counts are shown on the buttons.</div>
             <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                {% if not selected_study_is_open %}
                 <button id="massDeleteAssignedBtn" class="btn-danger" type="button"
                     data-count="{{ selected_study_assigned_token_count }}"
                     {% if selected_study_assigned_token_count == 0 %}disabled{% endif %}>
                     Delete {{ selected_study_assigned_token_count }} assigned tokens
                 </button>
+                {% endif %}
+                {% if selected_study_is_open %}
                 <button id="massDeletePoolBtn" class="btn-danger" type="button"
                     data-count="{{ selected_study_pool_token_count }}"
                     {% if selected_study_pool_token_count == 0 %}disabled{% endif %}>
                     Delete {{ selected_study_pool_token_count }} pool tokens
                 </button>
+                {% endif %}
                 <div id="massDeleteStatus" class="status"></div>
             </div>
         </div>
