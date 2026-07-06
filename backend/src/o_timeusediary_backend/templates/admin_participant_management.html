@@ -330,7 +330,7 @@
 
         <div class="header">
             <h1>Participant Management</h1>
-            <p>Add or remove participants for a study</p>
+            <p>Add or remove participants for a study, and assign task tokens.</p>
             <div class="header-info">
                 <div>
                     <strong>Admin:</strong> {{ current_admin }}
@@ -415,7 +415,11 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="empty">No participants assigned yet.</div>
+                {% if selected_study_is_open %}
+                <div class="empty">No participants assigned yet. This study is open, so no need to assign participants.</div>
+                {% else %}
+                <div class="empty">No participants assigned yet.</div>
+                {% endif %}
             {% endif %}
         </div>
 
