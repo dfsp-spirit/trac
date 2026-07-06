@@ -5936,7 +5936,11 @@ async def preview_delete_tokens_by_token(
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Preview which StudyExternalTaskAssignment rows would be deleted for the given study+task when supplying tokens."""
+    """Preview which tokens would be deleted for the given study+task when supplying tokens.
+
+    Searches both StudyExternalTaskAssignment rows (assigned tokens) and the
+    task's open token pool (unassigned tokens in StudyExternalTask.tokens).
+    """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -5958,6 +5962,7 @@ async def preview_delete_tokens_by_token(
         )
 
     normalized = [t.strip() for t in payload.tokens if (t or "").strip()]
+    pool_token_set = set(task.tokens or [])
     items: List[DeletePreviewItem] = []
     matched = 0
     for tok in normalized:
@@ -5974,6 +5979,17 @@ async def preview_delete_tokens_by_token(
                     found=True,
                     participant_id=assignment.participant_id,
                     assigned_token=assignment.assigned_token,
+                )
+            )
+            matched += 1
+        elif tok in pool_token_set:
+            # Token exists in the open pool (unassigned)
+            items.append(
+                DeletePreviewItem(
+                    input_value=tok,
+                    found=True,
+                    participant_id=None,
+                    assigned_token=tok,
                 )
             )
             matched += 1
@@ -6058,7 +6074,11 @@ async def commit_delete_tokens_by_token(
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Delete StudyExternalTaskAssignment rows scoped to the study+task for the provided tokens."""
+    """Delete StudyExternalTaskAssignment rows and pool tokens scoped to the study+task for the provided tokens.
+
+    Removes matching tokens from both the StudyExternalTaskAssignment table
+    (assigned tokens) and the task's open token pool (StudyExternalTask.tokens).
+    """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -6081,6 +6101,8 @@ async def commit_delete_tokens_by_token(
 
     normalized = [t.strip() for t in payload.tokens if (t or "").strip()]
     deleted = 0
+
+    # 1. Delete from StudyExternalTaskAssignment (assigned tokens)
     for tok in normalized:
         count = (
             session.exec(
@@ -6092,6 +6114,15 @@ async def commit_delete_tokens_by_token(
             or 0
         )
         deleted += int(count)
+
+    # 2. Remove from token pool (unassigned tokens)
+    if task.tokens:
+        token_set = set(normalized)
+        new_pool = [t for t in task.tokens if t not in token_set]
+        pool_deleted = len(task.tokens) - len(new_pool)
+        deleted += pool_deleted
+        task.tokens = new_pool
+        session.add(task)
 
     session.commit()
     logger.info(

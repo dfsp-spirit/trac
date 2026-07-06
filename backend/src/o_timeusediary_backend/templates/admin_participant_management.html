@@ -418,7 +418,7 @@
 
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">Delete external-task tokens for the selected study and task.<br /><b>WARNING: Deletions are irreversible, and without a token, you may not be able to link a user to their external task data on the remote system.</b></div>
+            <div class="hint" style="margin-bottom: 0.5rem;">Delete external-task tokens for the selected study and task. Both assigned tokens and unassigned pool tokens are supported.<br /><b>WARNING: Deletions are irreversible, and without a token, you may not be able to link a user to their external task data on the remote system.</b></div>
             {% if selected_study_external_task_keys|length > 0 %}
             <div style="margin-bottom:0.5rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
                 <label style="min-width:80px;">Task</label>
@@ -737,7 +737,12 @@
                         const tr = document.createElement('tr');
                         const tdInput = document.createElement('td'); tdInput.textContent = it.input_value || '';
                         const tdFound = document.createElement('td'); tdFound.textContent = it.found? 'yes':'no';
-                        const tdPid = document.createElement('td'); tdPid.textContent = it.participant_id || '-';
+                        const tdPid = document.createElement('td');
+                        if (it.found && it.assigned_token && !it.participant_id) {
+                            tdPid.textContent = 'pool';
+                        } else {
+                            tdPid.textContent = it.participant_id || '-';
+                        }
                         const tdTok = document.createElement('td'); tdTok.textContent = it.assigned_token || '-';
                         tr.appendChild(tdInput); tr.appendChild(tdFound); tr.appendChild(tdPid); tr.appendChild(tdTok);
                         previewTbody.appendChild(tr);
