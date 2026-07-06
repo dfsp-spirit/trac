@@ -516,24 +516,48 @@
         </div>
         {% endif %}
 
+        {% if selected_study and not selected_study_is_open %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Export participants and tokens for study {{ selected_study.name_short }}</h2>
+            <h2 style="margin-bottom: 0.75rem;">Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.75rem;">
-            Typically external service providers generate them and you import them into our system. This section is useful when an external service provide asks us to provide the tokens.
+            Typically external service providers generate tokens and you import them into our system. This section is useful when an external service provider asks us to provide the tokens.
             </div>
             <div class="hint" style="margin-bottom: 0.75rem;">
                 Generate random tokens for participants that are missing external-task assignments,
-                then download them as a CSV file to share with external service operators.
+                then download them as a CSV file (with <code>pid</code> column) to share with external service operators.
                 Generated tokens are 20-character alphanumeric strings.
             </div>
             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                 {% if selected_study_external_task_keys|length > 0 %}
-                <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing tokens</button>
+                <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
                 {% endif %}
-                <button id="exportCsvBtn" class="btn-secondary" type="button">Export CSV</button>
+                <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
                 <div id="exportStatus" class="status"></div>
             </div>
         </div>
+        {% endif %}
+
+        {% if selected_study and selected_study_is_open %}
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Export pool tokens for study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.75rem;">
+                Generate tokens into the pool for all external tasks of this open study.
+                Then download them as a CSV file (no <code>pid</code> column — pool tokens are unassigned)
+                to share with external service operators.
+            </div>
+            <div style="margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <label for="poolTokenCount" style="white-space: nowrap;">Tokens per task:</label>
+                <input type="number" id="poolTokenCount" min="1" max="10000" value="100" style="width: 100px;" />
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                {% if selected_study_external_task_keys|length > 0 %}
+                <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
+                {% endif %}
+                <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
+                <div id="poolExportStatus" class="status"></div>
+            </div>
+        </div>
+        {% endif %}
         {% endif %}
     </div>
 
@@ -854,7 +878,7 @@
             });
         })();
 
-        // --- Generate missing tokens ---
+        // --- Generate missing assigned tokens (closed studies) ---
         (function() {
             const generateBtn = document.getElementById('generateTokensBtn');
             const exportBtn = document.getElementById('exportCsvBtn');
@@ -867,7 +891,7 @@
                     if (!studyName) { alert('Please select a study first.'); return; }
 
                     generateBtn.disabled = true;
-                    statusEl.textContent = 'Generating tokens...';
+                    statusEl.textContent = 'Generating assigned tokens...';
                     statusEl.style.color = '#4f46e5';
 
                     try {
@@ -881,7 +905,7 @@
                         }
 
                         const s = body.summary || {};
-                        statusEl.textContent = `Generated ${s.tokens_generated} tokens (${s.tokens_skipped_existing} participants already had tokens)`;
+                        statusEl.textContent = `Generated ${s.tokens_generated} assigned tokens (${s.tokens_skipped_existing} participants already had tokens)`;
                         statusEl.style.color = '#059669';
 
                         // Reload the page to show tokens in the participant table
@@ -904,6 +928,72 @@
 
                     // Direct download: navigate to the CSV endpoint
                     const url = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-tokens-csv`;
+                    window.location.href = url;
+                });
+            }
+        })();
+
+        // --- Generate & export pool tokens (open studies) ---
+        (function() {
+            const generateBtn = document.getElementById('generatePoolTokensBtn');
+            const exportBtn = document.getElementById('exportPoolCsvBtn');
+            const countInput = document.getElementById('poolTokenCount');
+            const statusEl = document.getElementById('poolExportStatus');
+
+            if (generateBtn) {
+                generateBtn.addEventListener('click', async () => {
+                    const select = document.getElementById('studySelect');
+                    const studyName = select?.value;
+                    if (!studyName) { alert('Please select a study first.'); return; }
+
+                    const count = parseInt(countInput?.value || '0');
+                    if (!count || count < 1 || count > 10000) {
+                        alert('Enter a valid count between 1 and 10000.');
+                        return;
+                    }
+
+                    generateBtn.disabled = true;
+                    statusEl.textContent = `Generating ${count} pool tokens per task...`;
+                    statusEl.style.color = '#4f46e5';
+
+                    try {
+                        const resp = await fetch(
+                            `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/generate-pool-tokens`,
+                            {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ count }),
+                            }
+                        );
+                        const body = await resp.json().catch(() => ({}));
+                        if (!resp.ok) {
+                            throw new Error(body.detail || 'Generation failed');
+                        }
+
+                        const s = body.summary || {};
+                        statusEl.textContent = `Generated ${s.total_generated} pool tokens across ${(s.tasks||[]).length} tasks.`;
+                        statusEl.style.color = '#059669';
+
+                        // Reload to refresh token counts
+                        setTimeout(() => {
+                            window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+                        }, 900);
+                    } catch (err) {
+                        statusEl.textContent = err.message;
+                        statusEl.style.color = '#dc2626';
+                        generateBtn.disabled = false;
+                    }
+                });
+            }
+
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => {
+                    const select = document.getElementById('studySelect');
+                    const studyName = select?.value;
+                    if (!studyName) { alert('Please select a study first.'); return; }
+
+                    const url = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-pool-tokens-csv`;
                     window.location.href = url;
                 });
             }

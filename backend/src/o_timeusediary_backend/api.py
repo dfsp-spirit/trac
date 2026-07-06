@@ -1816,6 +1816,7 @@ async def admin_overview(
                 "external_task_count": external_task_count,
                 "external_task_assignment_count": external_task_assignment_count,
                 "is_actively_collecting": study_is_collecting,
+                "is_open": bool(study.allow_unlisted_participants),
             }
         )
 
@@ -4409,6 +4410,7 @@ async def admin_participant_management(
         "selected_study_external_task_count": 0,
         "selected_study_assigned_token_count": 0,
         "selected_study_pool_token_count": 0,
+        "selected_study_is_open": False,
         "current_participants": current_participants,
         "current_time": utc_now(),
     }
@@ -4439,6 +4441,9 @@ async def admin_participant_management(
         pool_count = sum(len(t.tokens or []) for t in external_tasks)
         context_dict["selected_study_assigned_token_count"] = assigned_count
         context_dict["selected_study_pool_token_count"] = pool_count
+        context_dict["selected_study_is_open"] = bool(
+            selected_study.allow_unlisted_participants
+        )
     template = templates.get_template("admin_participant_management.html")
     html_content = template.render(context_dict)
     return HTMLResponse(content=html_content)
@@ -5046,6 +5051,144 @@ async def export_tokens_csv(
         current_admin,
         f"exported participant tokens CSV for study '{study_name_short}' "
         f"({len(participants)} participants, {len(task_keys)} task columns)",
+    )
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+class GeneratePoolTokensRequest(BaseModel):
+    count: int = Field(gt=0, le=10000)
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/generate-pool-tokens",
+    name="Generate pool tokens for open study",
+)
+async def generate_pool_tokens(
+    study_name_short: str,
+    payload: GeneratePoolTokensRequest,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Generate N tokens for each external task's pool in an open study."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_tasks = session.exec(
+        select(StudyExternalTask)
+        .where(StudyExternalTask.study_id == study.id)
+        .order_by(StudyExternalTask.task_key)
+    ).all()
+    if not external_tasks:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Study '{study_name_short}' has no external tasks configured",
+        )
+
+    total_generated = 0
+    tasks_summary = []
+    for task in external_tasks:
+        existing_set = set(task.tokens or [])
+        generated = 0
+        for _ in range(payload.count):
+            for _ in range(100):
+                token = _generate_token()
+                if token not in existing_set:
+                    break
+            else:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to generate a unique token after 100 attempts",
+                )
+            existing_set.add(token)
+            task.tokens = (task.tokens or []) + [token]
+            generated += 1
+        total_generated += generated
+        tasks_summary.append(
+            {"task_key": task.task_key, "tokens_generated": generated}
+        )
+
+    session.commit()
+    logger.info(
+        "Admin '%s' generated %s pool tokens across %s tasks for study '%s'",
+        current_admin,
+        total_generated,
+        len(external_tasks),
+        study_name_short,
+    )
+    audit_admin_action(
+        current_admin,
+        f"generated {total_generated} pool tokens for study '{study_name_short}'",
+    )
+    return {
+        "ok": True,
+        "summary": {
+            "total_generated": total_generated,
+            "tasks": tasks_summary,
+        },
+    }
+
+
+@app.get(
+    "/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+    name="Export pool tokens as CSV",
+)
+async def export_pool_tokens_csv(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Export pool tokens as CSV (no pid column — pool tokens are unassigned).
+
+    Returns CSV with one column per external task (labeled by task_key). Each row
+    contains one token per task column, aligned by index. Shorter pools are padded
+    with empty cells.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    external_tasks = session.exec(
+        select(StudyExternalTask)
+        .where(StudyExternalTask.study_id == study.id)
+        .order_by(StudyExternalTask.task_key)
+    ).all()
+
+    task_keys = [t.task_key for t in external_tasks]
+    task_pools = [t.tokens or [] for t in external_tasks]
+
+    output = StringIO()
+    writer = csv.writer(output)
+
+    # Header row: task_key columns only (no pid)
+    writer.writerow(task_keys)
+
+    # Determine the longest pool
+    max_rows = max((len(pool) for pool in task_pools), default=0)
+    for i in range(max_rows):
+        row = [task_pools[j][i] if i < len(task_pools[j]) else "" for j in range(len(task_pools))]
+        writer.writerow(row)
+
+    csv_content = output.getvalue()
+    filename = f"{study_name_short}_pool_tokens.csv"
+
+    audit_admin_action(
+        current_admin,
+        f"exported pool tokens CSV for study '{study_name_short}' "
+        f"({len(task_keys)} task columns, up to {max_rows} rows)",
     )
 
     return StreamingResponse(

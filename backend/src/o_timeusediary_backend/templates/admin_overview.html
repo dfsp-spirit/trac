@@ -743,6 +743,7 @@
                                 <th>Participants</th>
                                 <th>Activities</th>
                                 <th>Ext. Tasks</th>
+                                <th>Type</th>
                                 <th>Period</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -759,6 +760,13 @@
                                 <td>{{ sd.participant_count }}</td>
                                 <td>{{ sd.activity_count }}</td>
                                 <td>{{ sd.external_task_count }}</td>
+                                <td>
+                                    {% if sd.is_open %}
+                                    <span style="color: #198754; font-weight: 600;">Open</span>
+                                    {% else %}
+                                    <span style="color: var(--muted);">Closed</span>
+                                    {% endif %}
+                                </td>
                                 <td style="font-size: 0.85rem;">
                                     {{ sd.study.data_collection_start.strftime('%Y-%m-%d') }}<br>
                                     <span style="color: var(--muted);">→</span> {{ sd.study.data_collection_end.strftime('%Y-%m-%d') }}
