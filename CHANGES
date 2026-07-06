@@ -1,6 +1,12 @@
 TRAC MPIAE Changes
 ===================
 
+Version 0.18.1 -- Bugfix release
+---------------------------------
+- FIX: fix critical bug that denied creating a study with empty token list
+- CHG: update citation info
+- DEV: also add i18n for footer links in dev versions of tud_settings file usd on CI etc
+-
 
 Version 0.18.0 -- External tasks in open studies and Lots of bug squashing
 ----------------------------------------------------------------------------
