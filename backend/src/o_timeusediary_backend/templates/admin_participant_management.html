@@ -539,6 +539,7 @@
         {% if selected_study %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
+            {% if selected_study_external_task_keys|length > 0 %}
             <div class="hint" style="margin-bottom: 0.5rem;">Delete ALL tokens at once across all tasks for this study. Respective counts are shown on the buttons.</div>
             <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
                 {% if not selected_study_is_open %}
@@ -557,12 +558,16 @@
                 {% endif %}
                 <div id="massDeleteStatus" class="status"></div>
             </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Mass delete is disabled.</div>
+            {% endif %}
         </div>
         {% endif %}
 
         {% if selected_study and not selected_study_is_open %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
+            {% if selected_study_external_task_keys|length > 0 %}
             <div class="hint" style="margin-bottom: 0.75rem;">
             Typically external service providers generate tokens and you import them into our system. This section is useful when an external service provider asks us to provide the tokens.
             </div>
@@ -572,18 +577,20 @@
                 Generated tokens are 20-character alphanumeric strings.
             </div>
             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                {% if selected_study_external_task_keys|length > 0 %}
                 <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
-                {% endif %}
                 <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
                 <div id="exportStatus" class="status"></div>
             </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Export is disabled.</div>
+            {% endif %}
         </div>
         {% endif %}
 
         {% if selected_study and selected_study_is_open %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Export pool tokens for study {{ selected_study.name_short }}</h2>
+            {% if selected_study_external_task_keys|length > 0 %}
             <div class="hint" style="margin-bottom: 0.75rem;">
                 Generate tokens into the pool for all external tasks of this open study.
                 Then download them as a CSV file (no <code>pid</code> column — pool tokens are unassigned)
@@ -594,12 +601,13 @@
                 <input type="number" id="poolTokenCount" min="1" max="10000" value="100" style="width: 100px;" />
             </div>
             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                {% if selected_study_external_task_keys|length > 0 %}
                 <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
-                {% endif %}
                 <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
                 <div id="poolExportStatus" class="status"></div>
             </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Pool token export is disabled.</div>
+            {% endif %}
         </div>
         {% endif %}
         {% endif %}
