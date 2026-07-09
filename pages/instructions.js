@@ -234,81 +234,60 @@ function applyStudyIntroText(studyConfig) {
 
 const DEFAULT_STUDY_TEXT_INSTRUCTIONS = {
   en:
-    '**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.\n\n' +
     '#### How to fill out the diary\n\n' +
     'You will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.\n\n' +
-    'You will enter information in two steps for each day:\n\n' +
-    '- **Main Activity (Level 1):** Click an activity from the list below to select it, then click on the timeline to show your main activity.\n' +
-    '- **Secondary Activity (Level 2):** Use this second timeline only if you were doing two things at once. This is for activities that were happening in the background or simultaneously with your Main Activity, e.g.:\n' +
-    '  - Media Multitasking: If you were using a second form of media (e.g., listening to a Podcast while Gaming, or checking Social Media while watching TV).\n' +
-    '  - Other Multitasking: If you were doing a non-digital activity simultaneously (e.g., Reading while Commuting, or Knitting while watching TV).\n' +
-    '  - Note: If you were focused on only one thing, leave this level blank for that time block.',
+    '- **Adjust duration:** Drag the left or right edge of a placed activity to set how long it lasted.\n' +
+    '- **Delete an activity:** Right-click an activity on desktop, or long-press it on mobile, and choose "Delete".\n\n' +
+    'Depending on the study, there may be more than one timeline for each day. These capture different aspects of your day or allow you to record activities you were doing in parallel.\n\n' +
+    '**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.',
 
   de:
-    '**Zeitsparfunktion:** Sie müssen nicht jeden Tag von vorne beginnen. Nachdem Sie den ersten Tag ausgefüllt haben, wird Ihr Zeitplan automatisch als Vorlage für den nächsten Tag übernommen. Bitte passen Sie diese Vorlage an, um Änderungen in Ihren Aktivitäten für diesen Tag widerzuspiegeln.\n\n' +
     '#### So füllen Sie das Tagebuch aus\n\n' +
     'Am unteren Bildschirmrand sehen Sie eine Liste von Aktivitäten. Klicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um anzugeben, was Sie im Laufe des Tages gemacht haben.\n\n' +
-    'Für jeden Tag geben Sie die Informationen in zwei Schritten ein:\n\n' +
-    '- **Hauptaktivität (Level 1):** Klicken Sie eine Aktivität aus der Liste an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um Ihre Hauptaktivität darzustellen.\n' +
-    '- **Nebenaktivität (Level 2):** Verwenden Sie diese zweite Zeitleiste nur, wenn Sie zwei Dinge gleichzeitig getan haben. Dies gilt für Aktivitäten, die im Hintergrund oder gleichzeitig mit Ihrer Hauptaktivität stattfanden, z. B.:\n' +
-    '  - Medien-Multitasking: Wenn Sie ein zweites Medium genutzt haben (z. B. einen Podcast hören beim Spielen oder soziale Medien checken beim Fernsehen).\n' +
-    '  - Sonstiges Multitasking: Wenn Sie gleichzeitig eine nicht-digitale Aktivität ausgeführt haben (z. B. Lesen während des Pendelns oder Stricken beim Fernsehen).\n' +
-    '  - Hinweis: Wenn Sie sich nur auf eine Sache konzentriert haben, lassen Sie dieses Level für diesen Zeitraum leer.',
+    '- **Dauer anpassen:** Ziehen Sie den linken oder rechten Rand einer platzierten Aktivität, um die Dauer festzulegen.\n' +
+    '- **Aktivität löschen:** Klicken Sie auf dem Desktop mit der rechten Maustaste auf eine Aktivität oder drücken Sie auf dem Mobilgerät lange darauf und wählen Sie „Löschen".\n\n' +
+    'Je nach Studie kann es mehr als eine Zeitleiste pro Tag geben. Diese erfassen verschiedene Aspekte Ihres Tages oder ermöglichen es Ihnen, parallel ausgeführte Aktivitäten aufzuzeichnen.\n\n' +
+    '**Zeitsparfunktion:** Sie müssen nicht jeden Tag von vorne beginnen. Nachdem Sie den ersten Tag ausgefüllt haben, wird Ihr Zeitplan automatisch als Vorlage für den nächsten Tag übernommen. Bitte passen Sie diese Vorlage an, um Änderungen in Ihren Aktivitäten für diesen Tag widerzuspiegeln.',
 
   sv:
-    '**Tidsbesparande funktion:** Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.\n\n' +
     '#### Så fyller du i dagboken\n\n' +
     'Du ser en lista med aktiviteter längst ner på skärmen. Klicka på en aktivitet för att välja den, och klicka sedan på tidslinjen för att visa vad du gjorde under dagen.\n\n' +
-    'Du fyller i information i två steg för varje dag:\n\n' +
-    '- **Huvudaktivitet (Nivå 1):** Klicka på en aktivitet från listan för att välja den, och klicka sedan på tidslinjen för att visa din huvudaktivitet.\n' +
-    '- **Sekundär aktivitet (Nivå 2):** Använd denna andra tidslinje endast om du gjorde två saker samtidigt. Den är till för aktiviteter som pågick i bakgrunden eller samtidigt med din huvudaktivitet, t.ex.:\n' +
-    '  - Mediemultitasking: Om du använde en andra medieform (t.ex. lyssnade på en podd medan du spelade, eller kollade sociala medier medan du tittade på TV).\n' +
-    '  - Annan multitasking: Om du gjorde en icke-digital aktivitet samtidigt (t.ex. läste medan du pendlade, eller stickade medan du tittade på TV).\n' +
-    '  - Obs: Om du fokuserade på endast en sak, lämna den här nivån tom för det tidsblocket.',
+    '- **Justera varaktighet:** Dra i vänster eller höger kant av en placerad aktivitet för att ställa in hur länge den varade.\n' +
+    '- **Ta bort en aktivitet:** Högerklicka på en aktivitet på datorn, eller tryck länge på den på mobilen, och välj "Ta bort".\n\n' +
+    'Beroende på studien kan det finnas mer än en tidslinje för varje dag. Dessa fångar olika aspekter av din dag eller låter dig registrera aktiviteter du gjorde parallellt.\n\n' +
+    '**Tidsbesparande funktion:** Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.',
 
   fi:
-    '**Aikaa säästävä ominaisuus:** Sinun ei tarvitse aloittaa alusta joka päivä. Kun olet täyttänyt ensimmäisen päivän, aikataulusi kopioidaan automaattisesti seuraavalle päivälle malliksi. Muokkaa tätä mallia vastaamaan kyseisen päivän muutoksia.\n\n' +
     '#### Kuinka täyttää päiväkirja\n\n' +
     'Näet näytön alareunassa listan toiminnoista. Klikkaa toimintoa valitaksesi sen ja klikkaa sitten aikajanaa osoittaaksesi, mitä teit päivän aikana.\n\n' +
-    'Syötät tiedot kahdessa vaiheessa jokaiselle päivälle:\n\n' +
-    '- **Päätoiminto (Taso 1):** Klikkaa toimintoa listasta valitaksesi sen ja klikkaa sitten aikajanaa näyttääksesi päätoimintosi.\n' +
-    '- **Sivutoiminto (Taso 2):** Käytä tätä toista aikajanaa vain, jos teit kahta asiaa samanaikaisesti. Tämä koskee toimintoja, jotka tapahtuivat taustalla tai yhtä aikaa päätoimintosi kanssa, esim.:\n' +
-    '  - Median moniajo: Jos käytit toista mediaa samanaikaisesti (esim. kuuntelit podcastia pelatessa tai selasit sosiaalista mediaa katsoessasi televisiota).\n' +
-    '  - Muu moniajo: Jos teit samanaikaisesti ei-digitaalista toimintaa (esim. luit matkustaessasi tai neuloit katsoessasi televisiota).\n' +
-    '  - Huom: Jos keskityit vain yhteen asiaan, jätä tämä taso tyhjäksi kyseiseltä ajanjaksolta.',
+    '- **Säädä kestoa:** Vedä sijoitetun toiminnon vasenta tai oikeaa reunaa asettaaksesi sen keston.\n' +
+    '- **Poista toiminto:** Napsauta toimintoa hiiren oikealla painikkeella tietokoneella tai paina sitä pitkään mobiililaitteella ja valitse "Poista".\n\n' +
+    'Tutkimuksesta riippuen jokaiselle päivälle voi olla useampi kuin yksi aikajana. Ne kuvaavat päiväsi eri puolia tai mahdollistavat rinnakkaisten toimintojen kirjaamisen.\n\n' +
+    '**Aikaa säästävä ominaisuus:** Sinun ei tarvitse aloittaa alusta joka päivä. Kun olet täyttänyt ensimmäisen päivän, aikataulusi kopioidaan automaattisesti seuraavalle päivälle malliksi. Muokkaa tätä mallia vastaamaan kyseisen päivän muutoksia.',
 
   pl:
-    '**Funkcja oszczędzania czasu:** Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.\n\n' +
     '#### Jak wypełnić dziennik\n\n' +
     'Na dole ekranu zobaczysz listę aktywności. Kliknij aktywność, aby ją wybrać, a następnie kliknij na osi czasu, aby wskazać, co robiłeś przez cały dzień.\n\n' +
-    'Wprowadzisz informacje w dwóch krokach dla każdego dnia:\n\n' +
-    '- **Główna aktywność (Poziom 1):** Kliknij aktywność z listy, aby ją wybrać, a następnie kliknij na osi czasu, aby pokazać swoją główną aktywność.\n' +
-    '- **Aktywność poboczna (Poziom 2):** Użyj tej drugiej osi czasu tylko wtedy, gdy robiłeś dwie rzeczy jednocześnie. Jest to dla aktywności, które działy się w tle lub równolegle z Twoją główną aktywnością, np.:\n' +
-    '  - Multitasking medialny: Jeśli używałeś drugiego medium (np. słuchanie podcastu podczas grania, lub sprawdzanie mediów społecznościowych podczas oglądania telewizji).\n' +
-    '  - Inny multitasking: Jeśli wykonywałeś jednocześnie aktywność niedigitalną (np. czytanie podczas podróży, lub robienie na drutach podczas oglądania telewizji).\n' +
-    '  - Uwaga: Jeśli skupiłeś się tylko na jednej rzeczy, pozostaw ten poziom pusty dla tego okresu czasu.',
+    '- **Dostosuj czas trwania:** Przeciągnij lewą lub prawą krawędź umieszczonej aktywności, aby ustawić jej czas trwania.\n' +
+    '- **Usuń aktywność:** Kliknij prawym przyciskiem myszy na aktywność na komputerze lub przytrzymaj ją dłużej na urządzeniu mobilnym i wybierz „Usuń".\n\n' +
+    'W zależności od badania, na każdy dzień może przypadać więcej niż jedna oś czasu. Umożliwiają one rejestrowanie różnych aspektów dnia lub aktywności wykonywanych równolegle.\n\n' +
+    '**Funkcja oszczędzania czasu:** Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.',
 
   fr:
-    "**Fonction gain de temps :** Vous n'avez pas besoin de recommencer à zéro chaque jour. Après avoir rempli le premier jour, votre emploi du temps sera automatiquement copié au jour suivant comme modèle. Veuillez adapter ce modèle pour refléter les changements dans vos activités pour cette journée.\n\n" +
     '#### Comment remplir le journal\n\n' +
     "Vous verrez une liste d'activités en bas de l'écran. Cliquez sur une activité pour la sélectionner, puis cliquez sur la chronologie pour indiquer ce que vous faisiez pendant la journée.\n\n" +
-    'Vous saisirez les informations en deux étapes pour chaque jour :\n\n' +
-    '- **Activité principale (Niveau 1) :** Cliquez sur une activité de la liste pour la sélectionner, puis cliquez sur la chronologie pour indiquer votre activité principale.\n' +
-    '- **Activité secondaire (Niveau 2) :** Utilisez cette deuxième chronologie uniquement si vous faisiez deux choses à la fois. Cela concerne les activités qui se déroulaient en arrière-plan ou simultanément avec votre activité principale, par ex. :\n' +
-    '  - Multitâche médiatique : Si vous utilisiez un deuxième média (par ex., écouter un podcast en jouant, ou consulter les réseaux sociaux en regardant la télévision).\n' +
-    '  - Autre multitâche : Si vous faisiez une activité non numérique simultanément (par ex., lire en vous déplaçant, ou tricoter en regardant la télévision).\n' +
-    '  - Remarque : Si vous vous concentriez sur une seule chose, laissez ce niveau vide pour cette période.',
+    "- **Ajuster la durée :** Faites glisser le bord gauche ou droit d'une activité placée pour définir sa durée.\n" +
+    '- **Supprimer une activité :** Faites un clic droit sur une activité sur ordinateur, ou appuyez longuement dessus sur mobile, et choisissez « Supprimer ».\n\n' +
+    "Selon l'étude, il peut y avoir plus d'une chronologie par jour. Celles-ci capturent différents aspects de votre journée ou vous permettent d'enregistrer des activités réalisées en parallèle.\n\n" +
+    "**Fonction gain de temps :** Vous n'avez pas besoin de recommencer à zéro chaque jour. Après avoir rempli le premier jour, votre emploi du temps sera automatiquement copié au jour suivant comme modèle. Veuillez adapter ce modèle pour refléter les changements dans vos activités pour cette journée.",
 
   es:
-    '**Función de ahorro de tiempo:** No necesita empezar desde cero cada día. Después de completar el primer día, su horario se copiará automáticamente al día siguiente como plantilla. Adapte esta plantilla para reflejar los cambios en sus actividades de ese día.\n\n' +
     '#### Cómo completar el diario\n\n' +
     'Verá una lista de actividades en la parte inferior de la pantalla. Haga clic en una actividad para seleccionarla, luego haga clic en la línea de tiempo para indicar lo que estuvo haciendo durante el día.\n\n' +
-    'Introducirá la información en dos pasos para cada día:\n\n' +
-    '- **Actividad Principal (Nivel 1):** Haga clic en una actividad de la lista para seleccionarla, luego haga clic en la línea de tiempo para mostrar su actividad principal.\n' +
-    '- **Actividad Secundaria (Nivel 2):** Utilice esta segunda línea de tiempo solo si estaba haciendo dos cosas a la vez. Es para actividades que ocurrían en segundo plano o simultáneamente con su Actividad Principal, p. ej.:\n' +
-    '  - Multitarea de medios: Si estaba utilizando un segundo medio (p. ej., escuchar un Podcast mientras juega, o revisar las Redes Sociales mientras ve la televisión).\n' +
-    '  - Otra multitarea: Si estaba haciendo una actividad no digital simultáneamente (p. ej., Leer mientras se desplaza, o Tejer mientras ve la televisión).\n' +
-    '  - Nota: Si se centró en una sola cosa, deje este nivel en blanco para ese bloque de tiempo.',
+    '- **Ajustar duración:** Arrastre el borde izquierdo o derecho de una actividad colocada para establecer su duración.\n' +
+    '- **Eliminar una actividad:** Haga clic derecho en una actividad en el escritorio, o manténgala presionada en el móvil, y elija "Eliminar".\n\n' +
+    'Dependiendo del estudio, puede haber más de una línea de tiempo para cada día. Estas capturan diferentes aspectos de su día o le permiten registrar actividades que realizó en paralelo.\n\n' +
+    '**Función de ahorro de tiempo:** No necesita empezar desde cero cada día. Después de completar el primer día, su horario se copiará automáticamente al día siguiente como plantilla. Adapte esta plantilla para reflejar los cambios en sus actividades de ese día.',
 };
 
 function applyStudyInstructionsText(studyConfig) {
