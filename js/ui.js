@@ -316,7 +316,9 @@ function createModal() {
   const _t = (key, params) =>
     i18n && i18n.isReady() ? i18n.t(key, params) : key;
 
-  const studyEndInfo = isLastStudyDay ? _t('modals.confirmSubmit.studyEnd') : '';
+  const studyEndInfo = isLastStudyDay
+    ? _t('modals.confirmSubmit.studyEnd')
+    : '';
   const infoOnTemplateDate = isLastStudyDay
     ? studyEndInfo
     : _t('modals.confirmSubmit.infoOnTemplate');
@@ -331,7 +333,9 @@ function createModal() {
 
   // Show the original "cannot change previous days" message only when
   // previous-day switching buttons are disabled in settings.
-  const showPreviousDaysButtons = Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS);
+  const showPreviousDaysButtons = Boolean(
+    TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS
+  );
   const showCannotChangeMessage = !showPreviousDaysButtons;
 
   const messageText = showCannotChangeMessage
@@ -344,7 +348,11 @@ function createModal() {
         <div class="modal">
             <div class="modal-content">
                 <h3 id="confirmationTitle">${titleText}</h3>
-                ${showCannotChangeMessage ? `<p id="confirmationMessage">${messageText}</p>` : ''}
+                ${
+                  showCannotChangeMessage
+                    ? `<p id="confirmationMessage">${messageText}</p>`
+                    : ''
+                }
                 <p id="confirmationInfo" data-i18n-html="${
                   isLastStudyDay
                     ? 'modals.confirmSubmit.studyEnd'
@@ -802,10 +810,13 @@ function updateButtonStates() {
   if (removeLastButton) removeLastButton.disabled = isEmpty;
   if (cleanRowButton) cleanRowButton.disabled = !hasActivities;
 
-  // Update Back button state - enable if not on first timeline
+  // Update Back button state - only show when there are multiple timelines
   if (backButton) {
-    backButton.disabled = window.timelineManager.currentIndex <= 0;
-    //console.log('Back button disabled:', backButton.disabled);
+    const hasMultipleTimelines = window.timelineManager.keys.length > 1;
+    backButton.style.display = hasMultipleTimelines ? '' : 'none';
+    if (hasMultipleTimelines) {
+      backButton.disabled = window.timelineManager.currentIndex <= 0;
+    }
   }
 
   // Get current timeline coverage
@@ -1225,14 +1236,9 @@ function initButtons() {
   });
 
   // Add click handler for Back button using shared debounced function
-  document
-    .getElementById('backBtn')
-    .addEventListener('click', handleBackButtonAction);
-
-  // Disable back button initially
   const backButton = document.getElementById('backBtn');
   if (backButton) {
-    backButton.disabled = true;
+    backButton.addEventListener('click', handleBackButtonAction);
   }
 }
 
