@@ -86,6 +86,7 @@ _STUDY_TEXT_FIELDS = (
     "study_text_end_skipped",
     "study_text_end_noconsent",
     "study_text_consent",
+    "study_text_instructions",
 )
 
 

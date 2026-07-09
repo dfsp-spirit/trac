@@ -229,6 +229,11 @@
         "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
         "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
       },
+      "study_text_instructions": {
+        "en": "**CUSTOM 15-YEAR-OLD INSTRUCTIONS**\n\n#### How to fill out your diary\n\nYou will see a list of activities at the bottom. Click an activity to select it, then click on the timeline to place it.\n\n- **Main Activity (Level 1):** Click an activity from the list, then click on the timeline.\n- **Secondary Activity (Level 2):** Use this if you were doing two things at once.",
+        "sv": "**ANPASSADE INSTRUKTIONER FÖR 15-ÅRINGAR**\n\n#### Så fyller du i din dagbok\n\nDu ser en lista med aktiviteter längst ner. Klicka på en aktivitet för att välja den och klicka sedan på tidslinjen.\n\n- **Huvudaktivitet (Nivå 1):** Klicka på en aktivitet från listan, klicka sedan på tidslinjen.\n- **Sekundär aktivitet (Nivå 2):** Använd denna om du gjorde två saker samtidigt.",
+        "de": "**ANGEPASSTE ANLEITUNG FÜR 15-JÄHRIGE**\n\n#### So füllen Sie Ihr Tagebuch aus\n\nUnten sehen Sie eine Liste mit Aktivitäten. Klicken Sie eine Aktivität an und dann auf die Zeitleiste.\n\n- **Hauptaktivität (Level 1):** Aktivität aus der Liste anklicken, dann auf die Zeitleiste klicken.\n- **Nebenaktivität (Level 2):** Nur verwenden, wenn Sie zwei Dinge gleichzeitig getan haben."
+      },
       "require_consent": true,
       "is_paused": false,
       "study_text_consent": {
