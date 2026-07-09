@@ -7,9 +7,9 @@
     "studyIntroDefault": "Tämä on ajankäyttötutkimuksemme.<br><br>Pyydämme sinua <b>rekonstruoimaan tyypillisen viikon</b> päivittäisistä toiminnoistasi ajankäyttötyökalumme avulla.<br><br>Minkä viikon minun tulisi valita? Ajattele viime viikkoa (viimeiset 7 päivää).<br>Poikkeus: Jos olit viime viikolla sairas tai lomalla, valitse jokin muu viimeaikainen viikko, joka kuvaa paremmin normaalia arkeasi.",
     "timeSavingFeature": "Aikaa säästävä ominaisuus: Sinun ei tarvitse aloittaa alusta joka päivä. Kun olet täyttänyt ensimmäisen päivän, aikataulusi kopioidaan automaattisesti seuraavalle päivälle malliksi. Muokkaa tätä mallia vastaamaan kyseisen päivän muutoksia.",
     "howToFillTitle": "Kuinka täyttää päiväkirja",
-    "howToFillDescription": "Näet näytön alareunassa listan toiminnoista. Voit vetää ja pudottaa nämä toiminnot aikajanalle osoittaaksesi, mitä teit päivän aikana.",
+    "howToFillDescription": "Näet näytön alareunassa listan toiminnoista. Klikkaa toimintoa valitaksesi sen ja klikkaa sitten aikajanaa osoittaaksesi, mitä teit päivän aikana.",
     "howToFillTwoSteps": "Syötät tiedot kahdessa vaiheessa jokaiselle päivälle:",
-    "mainActivityHelp": "<b>Päätoiminto (Taso 1)</b> Vedä ja pudota toimintoja listasta aikajanalle näyttääksesi päätoimintosi.",
+    "mainActivityHelp": "<b>Päätoiminto (Taso 1)</b> Klikkaa toimintoa listasta valitaksesi sen ja klikkaa sitten aikajanaa näyttääksesi päätoimintosi.",
     "secondaryActivityHelp": "<b>Sivutoiminto (Taso 2)</b> Käytä tätä toista aikajanaa vain, jos teit kahta asiaa samanaikaisesti. Tämä koskee toimintoja, jotka tapahtuivat taustalla tai yhtä aikaa päätoimintosi kanssa, esim.:",
     "secondaryExamples": {
       "media": "Median moniajo: Jos käytit toista mediaa samanaikaisesti (esim. kuuntelit podcastia pelatessa tai selasit sosiaalista mediaa katsoessasi televisiota).",
