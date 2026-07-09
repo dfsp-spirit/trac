@@ -56,7 +56,7 @@
     "cleanRow": "Rensa rad",
     "next": "Nästa tidslinje",
     "skipReporting": "Hoppa över tidsrapportering",
-    "back": "Tillbaka",
+    "previousTimeline": "Föregående tidslinje",
     "backToInstructions": "Tillbaka till instruktioner",
     "giveConsent": "Jag samtycker och fortsätter",
     "declineConsent": "Jag samtycker inte",
