@@ -5,17 +5,6 @@
     "welcomeTitle": "Witaj w Twoim cotygodniowym dzienniku czasu. Dziękujemy za udział!",
     "generalInfoTitle": "Ogólne informacje o badaniu",
     "studyIntroDefault": "To jest nasze badanie dotyczące wykorzystania czasu.<br><br>Prosimy, abyś <b>odtworzył typowy tydzień</b> swoich codziennych aktywności przy użyciu naszego narzędzia do rejestrowania czasu.<br><br>Który tydzień powinienem wybrać? Proszę pomyśleć o minionym tygodniu (ostatnie 7 dni).<br>Wyjątek: Jeśli byłeś chory lub na urlopie w zeszłym tygodniu, wybierz inny, niedawny tydzień, który lepiej odzwierciedla Twój normalny plan dnia.",
-    "timeSavingFeature": "Funkcja oszczędzania czasu: Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.",
-    "howToFillTitle": "Jak wypełnić dziennik",
-    "howToFillDescription": "Na dole ekranu zobaczysz listę aktywności. Kliknij aktywność, aby ją wybrać, a następnie kliknij na osi czasu, aby wskazać, co robiłeś przez cały dzień.",
-    "howToFillTwoSteps": "Wprowadzisz informacje w dwóch krokach dla każdego dnia:",
-    "mainActivityHelp": "<b>Główna aktywność (Poziom 1)</b> Kliknij aktywność z listy, aby ją wybrać, a następnie kliknij na osi czasu, aby pokazać swoją główną aktywność.",
-    "secondaryActivityHelp": "<b>Aktywność poboczna (Poziom 2)</b> Użyj tej drugiej osi czasu tylko wtedy, gdy robiłeś dwie rzeczy jednocześnie. Jest to dla aktywności, które działy się w tle lub równolegle z Twoją główną aktywnością, np.:",
-    "secondaryExamples": {
-      "media": "Multitasking medialny: Jeśli używałeś drugiego medium (np. słuchanie podcastu podczas grania, lub sprawdzanie mediów społecznościowych podczas oglądania telewizji).",
-      "other": "Inny multitasking: Jeśli wykonywałeś jednocześnie aktywność niedigitalną (np. czytanie podczas podróży, lub robienie na drutach podczas oglądania telewizji).",
-      "note": "Uwaga: Jeśli skupiłeś się tylko na jednej rzeczy, pozostaw ten poziom pusty dla tego okresu czasu."
-    },
     "visualGuideTitle": "Wizualne instrukcje korzystania z interfejsu",
     "startPrompt": "Kliknij niebieski przycisk 'Rozpocznij', aby rozpocząć wypełnianie dziennika.",
     "mainInstruction": "Pomyśl o aktywnościach, które wykonywałeś <span class=\"emphasis\">wczoraj</span>. Następnie wypełnij całą oś czasu swoimi aktywnościami.",
