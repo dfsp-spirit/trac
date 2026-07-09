@@ -7,9 +7,9 @@
     "studyIntroDefault": "Dies ist unsere Zeitnutzungsstudie.<br><br>Wir bitten Sie, <b>eine typische Woche</b> Ihrer täglichen Aktivitäten mit unserem Zeitnutzungstool zu rekonstruieren.<br><br>Welche Woche soll ich wählen? Bitte denken Sie an die vergangene Woche (die letzten 7 Tage).<br>Ausnahme: Wenn Sie letzte Woche krank waren oder im Urlaub, wählen Sie bitte eine andere kürzliche Woche, die Ihren normalen Alltag besser widerspiegelt.",
     "timeSavingFeature": "Zeitsparfunktion: Sie müssen nicht jeden Tag von vorne beginnen. Nachdem Sie den ersten Tag ausgefüllt haben, wird Ihr Zeitplan automatisch als Vorlage für den nächsten Tag übernommen. Bitte passen Sie diese Vorlage an, um Änderungen in Ihren Aktivitäten für diesen Tag widerzuspiegeln.",
     "howToFillTitle": "So füllen Sie das Tagebuch aus",
-    "howToFillDescription": "Am unteren Bildschirmrand sehen Sie eine Liste von Aktivitäten. Sie können diese per Drag-and-Drop auf die Zeitleiste ziehen, um anzugeben, was Sie im Laufe des Tages gemacht haben.",
+    "howToFillDescription": "Am unteren Bildschirmrand sehen Sie eine Liste von Aktivitäten. Klicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um anzugeben, was Sie im Laufe des Tages gemacht haben.",
     "howToFillTwoSteps": "Für jeden Tag geben Sie die Informationen in zwei Schritten ein:",
-    "mainActivityHelp": "<b>Hauptaktivität (Level 1)</b> Ziehen Sie Aktivitäten aus der Liste auf die Zeitleiste, um Ihre Hauptaktivität darzustellen.",
+    "mainActivityHelp": "<b>Hauptaktivität (Level 1)</b> Klicken Sie eine Aktivität aus der Liste an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um Ihre Hauptaktivität darzustellen.",
     "secondaryActivityHelp": "<b>Nebenaktivität (Level 2)</b> Verwenden Sie diese zweite Zeitleiste nur, wenn Sie zwei Dinge gleichzeitig getan haben. Dies gilt für Aktivitäten, die im Hintergrund oder gleichzeitig mit Ihrer Hauptaktivität stattfanden, z. B.:",
     "secondaryExamples": {
       "media": "Medien-Multitasking: Wenn Sie ein zweites Medium genutzt haben (z. B. einen Podcast hören beim Spielen oder soziale Medien checken beim Fernsehen).",

@@ -7,9 +7,9 @@
     "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
     "timeSavingFeature": "Time-Saving Feature: You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.",
     "howToFillTitle": "How to fill out the diary",
-    "howToFillDescription": "You will see a list of activities at the bottom of the screen. You can drag and drop these activities onto the timeline to indicate what you were doing throughout the day.",
+    "howToFillDescription": "You will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.",
     "howToFillTwoSteps": "You will enter information in two steps for each day:",
-    "mainActivityHelp": "<b>Main Activity (Level 1)</b> Drag and drop activities from the activities list onto the time line to show your main activity.",
+    "mainActivityHelp": "<b>Main Activity (Level 1)</b> Click an activity from the list below to select it, then click on the timeline to show your main activity.",
     "secondaryActivityHelp": "<b>Secondary Activity (Level 2)</b> Use this second timeline only if you were doing two things at once. This is for activities that were happening in the background or simultaneously with your Main Activity, e.g.:",
     "secondaryExamples": {
       "media": "Media Multitasking: If you were using a second form of media (e.g., listening to a Podcast while Gaming, or checking Social Media while watching TV).",

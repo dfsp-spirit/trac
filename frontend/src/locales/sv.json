@@ -7,9 +7,9 @@
     "studyIntroDefault": "Detta är vår tidsanvändningsstudie.<br><br>Vi ber dig att <b>återskapa en typisk vecka</b> av dina dagliga aktiviteter med hjälp av vårt tidsanvändningsverktyg.<br><br>Vilken vecka ska jag välja? Tänk på din senaste vecka (de senaste 7 dagarna).<br>Undantag: Om du var sjuk eller på semester förra veckan, välj en annan nylig vecka som bättre representerar din vanliga rutin.",
     "timeSavingFeature": "Tidsbesparande funktion: Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.",
     "howToFillTitle": "Så fyller du i dagboken",
-    "howToFillDescription": "Du ser en lista med aktiviteter längst ner på skärmen. Du kan dra och släppa dessa aktiviteter på tidslinjen för att visa vad du gjorde under dagen.",
+    "howToFillDescription": "Du ser en lista med aktiviteter längst ner på skärmen. Klicka på en aktivitet för att välja den, och klicka sedan på tidslinjen för att visa vad du gjorde under dagen.",
     "howToFillTwoSteps": "Du fyller i information i två steg för varje dag:",
-    "mainActivityHelp": "<b>Huvudaktivitet (Nivå 1)</b> Dra och släpp aktiviteter från aktivitetslistan till tidslinjen för att visa din huvudaktivitet.",
+    "mainActivityHelp": "<b>Huvudaktivitet (Nivå 1)</b> Klicka på en aktivitet från listan för att välja den, och klicka sedan på tidslinjen för att visa din huvudaktivitet.",
     "secondaryActivityHelp": "<b>Sekundär aktivitet (Nivå 2)</b> Använd denna andra tidslinje endast om du gjorde två saker samtidigt. Den är till för aktiviteter som pågick i bakgrunden eller samtidigt med din huvudaktivitet, t.ex.:",
     "secondaryExamples": {
       "media": "Mediemultitasking: Om du använde en andra medieform (t.ex. lyssnade på en podd medan du spelade, eller kollade sociala medier medan du tittade på TV).",
