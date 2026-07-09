@@ -207,9 +207,10 @@ function createFrequencyIndicator() {
   const indicator = document.createElement('span');
   indicator.className = 'activity-frequency-indicator';
   indicator.textContent = '⟳';
-  indicator.title = window.i18n && window.i18n.isReady()
-    ? window.i18n.t('modals.customActivity.frequency')
-    : 'Frequency';
+  indicator.title =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('modals.customActivity.frequency')
+      : 'Frequency';
   indicator.setAttribute('aria-hidden', 'true');
   return indicator;
 }
@@ -223,9 +224,10 @@ function populateFrequencySelect(selectElement, options, selectedKey = '') {
 
   const placeholderOption = document.createElement('option');
   placeholderOption.value = '';
-  placeholderOption.textContent = window.i18n && window.i18n.isReady()
-    ? window.i18n.t('modals.customActivity.frequencyNone')
-    : 'No special frequency';
+  placeholderOption.textContent =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('modals.customActivity.frequencyNone')
+      : 'No special frequency';
   selectElement.appendChild(placeholderOption);
 
   options.forEach((option) => {
@@ -269,7 +271,8 @@ function openActivityDetailsModal({
   }
 
   // Determine the initial value: explicit inputValue takes precedence over saved text
-  const savedText = (!inputValue && activityCode) ? getSavedCustomText(activityCode) : '';
+  const savedText =
+    !inputValue && activityCode ? getSavedCustomText(activityCode) : '';
   const initialValue = inputValue || savedText;
 
   if (inputContainer && input) {
@@ -283,7 +286,8 @@ function openActivityDetailsModal({
   // Update clear-button visibility based on whether we have an activityCode
   const clearBtn = document.getElementById('customActivityClearBtn');
   if (clearBtn) {
-    clearBtn.style.display = (activityCode && savedText) ? 'inline-block' : 'none';
+    clearBtn.style.display =
+      activityCode && savedText ? 'inline-block' : 'none';
   }
 
   const normalizedFrequencyOptions = Array.isArray(frequencyOptions)
@@ -293,9 +297,10 @@ function openActivityDetailsModal({
     const shouldShowFrequency = normalizedFrequencyOptions.length > 0;
     frequencyContainer.style.display = shouldShowFrequency ? 'block' : 'none';
     if (frequencyLabel && shouldShowFrequency) {
-      frequencyLabel.textContent = window.i18n && window.i18n.isReady()
-        ? window.i18n.t('modals.customActivity.frequency')
-        : 'Frequency';
+      frequencyLabel.textContent =
+        window.i18n && window.i18n.isReady()
+          ? window.i18n.t('modals.customActivity.frequency')
+          : 'Frequency';
     }
     populateFrequencySelect(
       frequencySelect,
@@ -319,7 +324,10 @@ function openActivityDetailsModal({
       reWiredClearBtn.addEventListener('click', () => {
         window.tudClearCustomActivityText(activityCode);
       });
-      reWiredClearBtn.style.display = (activityCode && getSavedCustomText(activityCode)) ? 'inline-block' : 'none';
+      reWiredClearBtn.style.display =
+        activityCode && getSavedCustomText(activityCode)
+          ? 'inline-block'
+          : 'none';
     }
   }
 
@@ -507,7 +515,9 @@ function getInstructionBannerStorageKey() {
   const studyName =
     window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
     urlParams.get('study_name') ||
-    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME ? TUD_SETTINGS.DEFAULT_STUDY_NAME : '');
+    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+      ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+      : '');
   return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 
@@ -2641,7 +2651,9 @@ function renderChildItems(activity, categoryName) {
           // Update clear-button visibility
           const clearBtn = document.getElementById('customActivityClearBtn');
           if (clearBtn) {
-            clearBtn.style.display = getSavedCustomText(childItem.code) ? 'inline-block' : 'none';
+            clearBtn.style.display = getSavedCustomText(childItem.code)
+              ? 'inline-block'
+              : 'none';
             clearBtn.setAttribute('data-activity-code', childItem.code || '');
           }
           customActivityModal.style.display = 'block';
@@ -2660,7 +2672,9 @@ function renderChildItems(activity, categoryName) {
             inputField.parentNode.replaceChild(newInputField, inputField);
 
             // Re-wire the clear button since the input was cloned
-            const newClearBtn = document.getElementById('customActivityClearBtn');
+            const newClearBtn = document.getElementById(
+              'customActivityClearBtn'
+            );
             if (newClearBtn) {
               const clonedClearBtn = newClearBtn.cloneNode(true);
               newClearBtn.parentNode.replaceChild(clonedClearBtn, newClearBtn);
@@ -4260,6 +4274,168 @@ function initTimelineInteraction(timeline) {
     },
   });
 
+  // Initialize interact.js draggable (desktop only)
+  if (!getIsMobile()) {
+    interact('.activity-block').draggable({
+      modifiers: [
+        // Snap to 10-minute grid horizontally
+        interact.modifiers.snap({
+          targets: [
+            interact.snappers.grid({
+              x: (timelineRect) => (10 / (24 * 60)) * timelineRect.width,
+              y: Infinity, // Don't snap vertically
+            }),
+          ],
+          range: Infinity,
+          relativePoints: [{ x: 0, y: 0 }],
+        }),
+        // Restrict to timeline bounds
+        interact.modifiers.restrict({
+          restriction: '.timeline',
+          endOnly: false,
+        }),
+      ],
+      inertia: false,
+      listeners: {
+        start(event) {
+          const target = event.target;
+          const rect = target.getBoundingClientRect();
+          const clickX = event.clientX;
+
+          // Check if click is within edge handle zones (10px from edges)
+          const EDGE_HANDLE_WIDTH = 10;
+          const isLeftEdge = clickX <= rect.left + EDGE_HANDLE_WIDTH;
+          const isRightEdge = clickX >= rect.right - EDGE_HANDLE_WIDTH;
+
+          if (isLeftEdge || isRightEdge) {
+            // Let resize handle this
+            event.stop();
+            return;
+          }
+
+          // Store original values
+          target.dataset.dragOriginalStartMinutes = target.dataset.startMinutes;
+          target.dataset.dragOriginalEndMinutes = target.dataset.endMinutes;
+          target.dataset.dragOriginalLeft = target.style.left;
+
+          target.classList.add('dragging');
+        },
+        move(event) {
+          const target = event.target;
+          const timeline = target.closest('.timeline');
+          if (!timeline) return;
+
+          const timelineRect = timeline.getBoundingClientRect();
+
+          // Calculate new left position using snapped coordinates
+          const newLeftPx = event.rect.left - timelineRect.left;
+          const newLeftPercent = (newLeftPx / timelineRect.width) * 100;
+
+          // Convert to minutes
+          const newStartMinutes = positionToMinutes(newLeftPercent);
+          const duration =
+            parseInt(target.dataset.dragOriginalEndMinutes) -
+            parseInt(target.dataset.dragOriginalStartMinutes);
+          const newEndMinutes = newStartMinutes + duration;
+
+          // Validate bounds
+          const TIMELINE_START = 240;
+          const TIMELINE_END = 1680;
+          if (
+            newStartMinutes < TIMELINE_START ||
+            newEndMinutes > TIMELINE_END
+          ) {
+            return;
+          }
+
+          // Validate no overlaps
+          if (
+            !canPlaceActivity(newStartMinutes, newEndMinutes, target.dataset.id)
+          ) {
+            target.classList.add('invalid');
+            setTimeout(() => target.classList.remove('invalid'), 400);
+            return;
+          }
+
+          // Update position
+          target.style.left = `${minutesToPercentage(newStartMinutes)}%`;
+
+          // Update data attributes
+          target.dataset.startMinutes = newStartMinutes;
+          target.dataset.endMinutes = newEndMinutes;
+          target.dataset.start = formatTimelineStart(newStartMinutes);
+          target.dataset.end = formatTimelineEnd(newEndMinutes);
+          target.dataset.length = duration;
+
+          // Update time label
+          const timeLabel = target.querySelector('.time-label');
+          if (timeLabel) {
+            updateTimeLabel(timeLabel);
+          }
+
+          // Update text class based on length
+          const textDiv = target.querySelector(
+            'div[class^="activity-block-text"]'
+          );
+          if (textDiv) {
+            textDiv.className =
+              duration >= 60
+                ? 'activity-block-text-narrow wide resized'
+                : 'activity-block-text-vertical';
+          }
+        },
+        end(event) {
+          const target = event.target;
+          target.classList.remove('dragging');
+
+          // Update activity data in timelineManager
+          const activityId = target.dataset.id;
+          const currentData = getCurrentTimelineData();
+          const activityIndex = currentData.findIndex((activity) =>
+            activityIdsEqual(activity.id, activityId)
+          );
+
+          if (activityIndex !== -1) {
+            const newStartMinutes = parseInt(target.dataset.startMinutes);
+            const newEndMinutes = parseInt(target.dataset.endMinutes);
+
+            currentData[activityIndex].startTime = target.dataset.start;
+            currentData[activityIndex].endTime = target.dataset.end;
+            currentData[activityIndex].startMinutes = newStartMinutes;
+            currentData[activityIndex].endMinutes = newEndMinutes;
+            currentData[activityIndex].blockLength = parseInt(
+              target.dataset.length
+            );
+
+            // Validate timeline
+            try {
+              const timelineKey = target.dataset.timelineKey;
+              if (timelineKey) {
+                window.timelineManager.metadata[timelineKey].validate();
+              }
+            } catch (error) {
+              console.error('Timeline validation failed:', error);
+              // Revert changes
+              target.dataset.startMinutes =
+                target.dataset.dragOriginalStartMinutes;
+              target.dataset.endMinutes = target.dataset.dragOriginalEndMinutes;
+              target.style.left = target.dataset.dragOriginalLeft;
+              return;
+            }
+          }
+
+          // Clean up temporary data attributes
+          delete target.dataset.dragOriginalStartMinutes;
+          delete target.dataset.dragOriginalEndMinutes;
+          delete target.dataset.dragOriginalLeft;
+
+          persistPendingTimelineStateSoon();
+          updateButtonStates();
+        },
+      },
+    });
+  }
+
   // Add click and touch handling with debounce
   let lastClickTime = 0;
   const CLICK_DELAY = 300; // milliseconds
@@ -5459,7 +5635,8 @@ async function init() {
         return; // stop further initialization
       } else if (initErr && initErr.code === 'STUDY_NOT_FOUND') {
         console.warn('Study not found on server: ' + initErr.message);
-        const studyName = new URLSearchParams(window.location.search).get('study_name') || '';
+        const studyName =
+          new URLSearchParams(window.location.search).get('study_name') || '';
         const msgText =
           window.i18n && window.i18n.isReady()
             ? window.i18n.t('messages.studyNotFound')
@@ -5507,9 +5684,9 @@ async function init() {
 
           const title = document.createElement('h2');
           title.textContent =
-            (window.i18n && window.i18n.isReady()
+            window.i18n && window.i18n.isReady()
               ? window.i18n.t('messages.selectStudy')
-              : 'Please select a study to continue');
+              : 'Please select a study to continue';
           container.appendChild(title);
 
           const list = document.createElement('div');
@@ -5520,14 +5697,20 @@ async function init() {
 
           // Resolve a possibly-localized description (string or {lang:text} map)
           // to a plain string using the URL lang param or falling back to 'en'.
-          const urlLang = new URLSearchParams(window.location.search).get('lang') || 'en';
-          function resolveChooserDescription(desc) {
+          const urlLang =
+            new URLSearchParams(window.location.search).get('lang') || 'en';
+          const resolveChooserDescription = function (desc) {
             if (typeof desc === 'string') return desc;
             if (desc && typeof desc === 'object') {
-              return desc[urlLang] || desc['en'] || Object.values(desc).find(v => typeof v === 'string') || '';
+              return (
+                desc[urlLang] ||
+                desc['en'] ||
+                Object.values(desc).find((v) => typeof v === 'string') ||
+                ''
+              );
             }
             return '';
-          }
+          };
 
           const studies = window.availableOpenStudies || [];
           studies.forEach((s) => {
@@ -5537,7 +5720,11 @@ async function init() {
             btn.style.padding = '12px';
             btn.style.textAlign = 'left';
             const desc = resolveChooserDescription(s.description);
-            btn.innerHTML = `<strong>${s.name || s.name_short}</strong><div style="font-size:small;color:#666">${desc}</div><div style="font-size:x-small;color:#999;margin-top:2px">${s.name_short || ''}</div>`;
+            btn.innerHTML = `<strong>${
+              s.name || s.name_short
+            }</strong><div style="font-size:small;color:#666">${desc}</div><div style="font-size:x-small;color:#999;margin-top:2px">${
+              s.name_short || ''
+            }</div>`;
             btn.addEventListener('click', () => {
               const url = new URL(window.location.href);
               url.searchParams.set('study_name', s.name_short);
@@ -5602,8 +5789,10 @@ async function init() {
     // Start inactivity timeout timer if configured for this study
     startIdleTimer({
       inactivity_timeout_minutes: currentStudy.inactivity_timeout_minutes ?? 0,
-      inactivity_timeout_stress_time_left: currentStudy.inactivity_timeout_stress_time_left ?? 5,
-      inactivity_page_custom_text: currentStudy.inactivity_page_custom_text ?? null,
+      inactivity_timeout_stress_time_left:
+        currentStudy.inactivity_timeout_stress_time_left ?? 5,
+      inactivity_page_custom_text:
+        currentStudy.inactivity_page_custom_text ?? null,
     });
 
     // Now sync URL parameters so they are stored in timelineManager.study
@@ -6246,28 +6435,28 @@ async function init() {
     const errorTitle = isStudyUnavailableError
       ? 'Studie nicht verfügbar:'
       : isStudyAuthorizationError
-      ? 'Access denied:'
-      : isMissingParticipantIdError
-      ? 'Participant link required:'
-      : window.i18n?.isReady()
-      ? i18n.t('errors.loadingActivitiesConfigurationTitle')
-      : 'Error loading activities configuration:';
+        ? 'Access denied:'
+        : isMissingParticipantIdError
+          ? 'Participant link required:'
+          : window.i18n?.isReady()
+            ? i18n.t('errors.loadingActivitiesConfigurationTitle')
+            : 'Error loading activities configuration:';
 
     const errorHelp = isStudyUnavailableError
       ? 'Diese Studie ist momentan nicht verfügbar.'
       : isStudyAuthorizationError
-      ? 'You are not authorized to participate in this study.'
-      : isMissingParticipantIdError
-      ? 'Please use your personal invitation link that includes your participant ID.'
-      : window.i18n?.isReady()
-      ? i18n.t('errors.loadingActivitiesConfigurationHelp')
-      : 'The application requires a valid backend connection to load the appropriate activities for your study.';
+        ? 'You are not authorized to participate in this study.'
+        : isMissingParticipantIdError
+          ? 'Please use your personal invitation link that includes your participant ID.'
+          : window.i18n?.isReady()
+            ? i18n.t('errors.loadingActivitiesConfigurationHelp')
+            : 'The application requires a valid backend connection to load the appropriate activities for your study.';
 
     const errorMessage = isStudyUnavailableError
       ? 'Diese Studie ist momentan nicht verfügbar.'
       : isStudyAuthorizationError
-      ? 'You are not authorized to participate in this study.'
-      : error.message;
+        ? 'You are not authorized to participate in this study.'
+        : error.message;
 
     renderFatalInitializationError({
       title: errorTitle,
@@ -6296,7 +6485,9 @@ function renderFatalInitializationError({
   if (activitiesContainer) {
     activitiesContainer.innerHTML =
       '<p style="color: red; padding: 20px; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 8px; margin: 20px;">' +
-      `<strong>${title}</strong><br>${message}${help ? `<br><br>${help}` : ''}</p>`;
+      `<strong>${title}</strong><br>${message}${
+        help ? `<br><br>${help}` : ''
+      }</p>`;
   }
 
   if (hideInteractiveUi) {
@@ -6340,10 +6531,10 @@ init().catch((error) => {
   const message = isStudyUnavailableError
     ? 'Diese Studie ist momentan nicht verfügbar.'
     : isStudyAuthorizationError
-    ? 'You are not authorized to participate in this study.'
-    : isMissingParticipantIdError
-    ? 'A participant link is required for this study.'
-    : `${shortError} ${error.message}`;
+      ? 'You are not authorized to participate in this study.'
+      : isMissingParticipantIdError
+        ? 'A participant link is required for this study.'
+        : `${shortError} ${error.message}`;
   renderFatalInitializationError({
     title: 'Error:',
     message,
