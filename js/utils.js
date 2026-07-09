@@ -454,7 +454,8 @@ export function hasOverlap(startMinutes, endMinutes, excludeBlock = null) {
   const normalizedEnd = normalizeMinutes(endMinutes);
 
   return currentData.some((activity) => {
-    if (excludeBlock && activity.id === excludeBlock) return false;
+    if (excludeBlock && String(activity.id) === String(excludeBlock))
+      return false;
 
     const range = getActivityTimeRangeMinutes(activity);
     if (!range) return false;
@@ -521,7 +522,7 @@ export function canPlaceActivity(newStart, newEnd, excludeId = null) {
 
   // Check for overlaps in current timeline only
   const hasOverlap = activities.some((activity) => {
-    if (excludeId && activity.id === excludeId) return false;
+    if (excludeId && String(activity.id) === String(excludeId)) return false;
 
     const range = getActivityTimeRangeMinutes(activity);
     if (!range) return false;
@@ -1055,7 +1056,10 @@ export function getPostDiaryRedirectPath(completionStatus = 'completed') {
     return 'pages/tasks.html';
   }
 
-  return window.timelineManager?.general?.primary_redirect_url || 'pages/thank-you.html';
+  return (
+    window.timelineManager?.general?.primary_redirect_url ||
+    'pages/thank-you.html'
+  );
 }
 
 // New function to handle day navigation
