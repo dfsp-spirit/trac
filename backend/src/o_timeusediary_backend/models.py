@@ -59,6 +59,9 @@ class Study(SQLModel, table=True):
     study_text_consent: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    study_text_instructions: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
     activities_json_url: str = Field(sa_type=String(2048))
     data_collection_start: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)
@@ -358,9 +361,13 @@ class Timeline(SQLModel, table=True):
     name: str = Field(
         index=True, sa_type=String(255)
     )  # "primary", "digitalmediause", "device"
-    display_name: str = Field(sa_type=String(255))  # "Main Activity", "Digital Media Use", "Device"
+    display_name: str = Field(
+        sa_type=String(255)
+    )  # "Main Activity", "Digital Media Use", "Device"
     description: Optional[str] = None
-    mode: str = Field(index=True, sa_type=String(64))  # "single-choice", "multiple-choice"
+    mode: str = Field(
+        index=True, sa_type=String(64)
+    )  # "single-choice", "multiple-choice"
     min_coverage: Optional[int] = None
 
     # Relationships

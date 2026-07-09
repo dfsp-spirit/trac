@@ -232,6 +232,118 @@ function applyStudyIntroText(studyConfig) {
   }
 }
 
+const DEFAULT_STUDY_TEXT_INSTRUCTIONS = {
+  en:
+    '**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.\n\n' +
+    '#### How to fill out the diary\n\n' +
+    'You will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.\n\n' +
+    'You will enter information in two steps for each day:\n\n' +
+    '- **Main Activity (Level 1):** Click an activity from the list below to select it, then click on the timeline to show your main activity.\n' +
+    '- **Secondary Activity (Level 2):** Use this second timeline only if you were doing two things at once. This is for activities that were happening in the background or simultaneously with your Main Activity, e.g.:\n' +
+    '  - Media Multitasking: If you were using a second form of media (e.g., listening to a Podcast while Gaming, or checking Social Media while watching TV).\n' +
+    '  - Other Multitasking: If you were doing a non-digital activity simultaneously (e.g., Reading while Commuting, or Knitting while watching TV).\n' +
+    '  - Note: If you were focused on only one thing, leave this level blank for that time block.',
+
+  de:
+    '**Zeitsparfunktion:** Sie müssen nicht jeden Tag von vorne beginnen. Nachdem Sie den ersten Tag ausgefüllt haben, wird Ihr Zeitplan automatisch als Vorlage für den nächsten Tag übernommen. Bitte passen Sie diese Vorlage an, um Änderungen in Ihren Aktivitäten für diesen Tag widerzuspiegeln.\n\n' +
+    '#### So füllen Sie das Tagebuch aus\n\n' +
+    'Am unteren Bildschirmrand sehen Sie eine Liste von Aktivitäten. Klicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um anzugeben, was Sie im Laufe des Tages gemacht haben.\n\n' +
+    'Für jeden Tag geben Sie die Informationen in zwei Schritten ein:\n\n' +
+    '- **Hauptaktivität (Level 1):** Klicken Sie eine Aktivität aus der Liste an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um Ihre Hauptaktivität darzustellen.\n' +
+    '- **Nebenaktivität (Level 2):** Verwenden Sie diese zweite Zeitleiste nur, wenn Sie zwei Dinge gleichzeitig getan haben. Dies gilt für Aktivitäten, die im Hintergrund oder gleichzeitig mit Ihrer Hauptaktivität stattfanden, z. B.:\n' +
+    '  - Medien-Multitasking: Wenn Sie ein zweites Medium genutzt haben (z. B. einen Podcast hören beim Spielen oder soziale Medien checken beim Fernsehen).\n' +
+    '  - Sonstiges Multitasking: Wenn Sie gleichzeitig eine nicht-digitale Aktivität ausgeführt haben (z. B. Lesen während des Pendelns oder Stricken beim Fernsehen).\n' +
+    '  - Hinweis: Wenn Sie sich nur auf eine Sache konzentriert haben, lassen Sie dieses Level für diesen Zeitraum leer.',
+
+  sv:
+    '**Tidsbesparande funktion:** Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.\n\n' +
+    '#### Så fyller du i dagboken\n\n' +
+    'Du ser en lista med aktiviteter längst ner på skärmen. Klicka på en aktivitet för att välja den, och klicka sedan på tidslinjen för att visa vad du gjorde under dagen.\n\n' +
+    'Du fyller i information i två steg för varje dag:\n\n' +
+    '- **Huvudaktivitet (Nivå 1):** Klicka på en aktivitet från listan för att välja den, och klicka sedan på tidslinjen för att visa din huvudaktivitet.\n' +
+    '- **Sekundär aktivitet (Nivå 2):** Använd denna andra tidslinje endast om du gjorde två saker samtidigt. Den är till för aktiviteter som pågick i bakgrunden eller samtidigt med din huvudaktivitet, t.ex.:\n' +
+    '  - Mediemultitasking: Om du använde en andra medieform (t.ex. lyssnade på en podd medan du spelade, eller kollade sociala medier medan du tittade på TV).\n' +
+    '  - Annan multitasking: Om du gjorde en icke-digital aktivitet samtidigt (t.ex. läste medan du pendlade, eller stickade medan du tittade på TV).\n' +
+    '  - Obs: Om du fokuserade på endast en sak, lämna den här nivån tom för det tidsblocket.',
+
+  fi:
+    '**Aikaa säästävä ominaisuus:** Sinun ei tarvitse aloittaa alusta joka päivä. Kun olet täyttänyt ensimmäisen päivän, aikataulusi kopioidaan automaattisesti seuraavalle päivälle malliksi. Muokkaa tätä mallia vastaamaan kyseisen päivän muutoksia.\n\n' +
+    '#### Kuinka täyttää päiväkirja\n\n' +
+    'Näet näytön alareunassa listan toiminnoista. Klikkaa toimintoa valitaksesi sen ja klikkaa sitten aikajanaa osoittaaksesi, mitä teit päivän aikana.\n\n' +
+    'Syötät tiedot kahdessa vaiheessa jokaiselle päivälle:\n\n' +
+    '- **Päätoiminto (Taso 1):** Klikkaa toimintoa listasta valitaksesi sen ja klikkaa sitten aikajanaa näyttääksesi päätoimintosi.\n' +
+    '- **Sivutoiminto (Taso 2):** Käytä tätä toista aikajanaa vain, jos teit kahta asiaa samanaikaisesti. Tämä koskee toimintoja, jotka tapahtuivat taustalla tai yhtä aikaa päätoimintosi kanssa, esim.:\n' +
+    '  - Median moniajo: Jos käytit toista mediaa samanaikaisesti (esim. kuuntelit podcastia pelatessa tai selasit sosiaalista mediaa katsoessasi televisiota).\n' +
+    '  - Muu moniajo: Jos teit samanaikaisesti ei-digitaalista toimintaa (esim. luit matkustaessasi tai neuloit katsoessasi televisiota).\n' +
+    '  - Huom: Jos keskityit vain yhteen asiaan, jätä tämä taso tyhjäksi kyseiseltä ajanjaksolta.',
+
+  pl:
+    '**Funkcja oszczędzania czasu:** Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.\n\n' +
+    '#### Jak wypełnić dziennik\n\n' +
+    'Na dole ekranu zobaczysz listę aktywności. Kliknij aktywność, aby ją wybrać, a następnie kliknij na osi czasu, aby wskazać, co robiłeś przez cały dzień.\n\n' +
+    'Wprowadzisz informacje w dwóch krokach dla każdego dnia:\n\n' +
+    '- **Główna aktywność (Poziom 1):** Kliknij aktywność z listy, aby ją wybrać, a następnie kliknij na osi czasu, aby pokazać swoją główną aktywność.\n' +
+    '- **Aktywność poboczna (Poziom 2):** Użyj tej drugiej osi czasu tylko wtedy, gdy robiłeś dwie rzeczy jednocześnie. Jest to dla aktywności, które działy się w tle lub równolegle z Twoją główną aktywnością, np.:\n' +
+    '  - Multitasking medialny: Jeśli używałeś drugiego medium (np. słuchanie podcastu podczas grania, lub sprawdzanie mediów społecznościowych podczas oglądania telewizji).\n' +
+    '  - Inny multitasking: Jeśli wykonywałeś jednocześnie aktywność niedigitalną (np. czytanie podczas podróży, lub robienie na drutach podczas oglądania telewizji).\n' +
+    '  - Uwaga: Jeśli skupiłeś się tylko na jednej rzeczy, pozostaw ten poziom pusty dla tego okresu czasu.',
+
+  fr:
+    "**Fonction gain de temps :** Vous n'avez pas besoin de recommencer à zéro chaque jour. Après avoir rempli le premier jour, votre emploi du temps sera automatiquement copié au jour suivant comme modèle. Veuillez adapter ce modèle pour refléter les changements dans vos activités pour cette journée.\n\n" +
+    '#### Comment remplir le journal\n\n' +
+    "Vous verrez une liste d'activités en bas de l'écran. Cliquez sur une activité pour la sélectionner, puis cliquez sur la chronologie pour indiquer ce que vous faisiez pendant la journée.\n\n" +
+    'Vous saisirez les informations en deux étapes pour chaque jour :\n\n' +
+    '- **Activité principale (Niveau 1) :** Cliquez sur une activité de la liste pour la sélectionner, puis cliquez sur la chronologie pour indiquer votre activité principale.\n' +
+    '- **Activité secondaire (Niveau 2) :** Utilisez cette deuxième chronologie uniquement si vous faisiez deux choses à la fois. Cela concerne les activités qui se déroulaient en arrière-plan ou simultanément avec votre activité principale, par ex. :\n' +
+    '  - Multitâche médiatique : Si vous utilisiez un deuxième média (par ex., écouter un podcast en jouant, ou consulter les réseaux sociaux en regardant la télévision).\n' +
+    '  - Autre multitâche : Si vous faisiez une activité non numérique simultanément (par ex., lire en vous déplaçant, ou tricoter en regardant la télévision).\n' +
+    '  - Remarque : Si vous vous concentriez sur une seule chose, laissez ce niveau vide pour cette période.',
+
+  es:
+    '**Función de ahorro de tiempo:** No necesita empezar desde cero cada día. Después de completar el primer día, su horario se copiará automáticamente al día siguiente como plantilla. Adapte esta plantilla para reflejar los cambios en sus actividades de ese día.\n\n' +
+    '#### Cómo completar el diario\n\n' +
+    'Verá una lista de actividades en la parte inferior de la pantalla. Haga clic en una actividad para seleccionarla, luego haga clic en la línea de tiempo para indicar lo que estuvo haciendo durante el día.\n\n' +
+    'Introducirá la información en dos pasos para cada día:\n\n' +
+    '- **Actividad Principal (Nivel 1):** Haga clic en una actividad de la lista para seleccionarla, luego haga clic en la línea de tiempo para mostrar su actividad principal.\n' +
+    '- **Actividad Secundaria (Nivel 2):** Utilice esta segunda línea de tiempo solo si estaba haciendo dos cosas a la vez. Es para actividades que ocurrían en segundo plano o simultáneamente con su Actividad Principal, p. ej.:\n' +
+    '  - Multitarea de medios: Si estaba utilizando un segundo medio (p. ej., escuchar un Podcast mientras juega, o revisar las Redes Sociales mientras ve la televisión).\n' +
+    '  - Otra multitarea: Si estaba haciendo una actividad no digital simultáneamente (p. ej., Leer mientras se desplaza, o Tejer mientras ve la televisión).\n' +
+    '  - Nota: Si se centró en una sola cosa, deje este nivel en blanco para ese bloque de tiempo.',
+};
+
+function applyStudyInstructionsText(studyConfig) {
+  const selectedLanguage =
+    studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
+  const defaultLanguage = studyConfig?.default_language || 'en';
+  const instructionsElement = document.getElementById(
+    'study-custom-message-instructions'
+  );
+  if (!instructionsElement) {
+    return;
+  }
+
+  const resolvedText = resolveLocalizedStudyText(
+    studyConfig?.study_text_instructions,
+    selectedLanguage,
+    defaultLanguage
+  );
+
+  if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
+    instructionsElement.innerHTML = renderMarkdown(resolvedText);
+    return;
+  }
+
+  // Fallback: use the built-in default text for studies that don't provide study_text_instructions
+  const fallbackText = resolveLocalizedStudyText(
+    DEFAULT_STUDY_TEXT_INSTRUCTIONS,
+    selectedLanguage,
+    defaultLanguage
+  );
+  if (fallbackText) {
+    instructionsElement.innerHTML = renderMarkdown(fallbackText);
+  }
+}
+
 function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {
   const currentUrl = new URL(window.location.href);
   const hasPendingTasks = hasPendingExternalTasks(studyConfig);
@@ -341,7 +453,8 @@ function updateLayout() {
 
     if (studyConfig) {
       if (studyConfig.participant_has_completed_study === true) {
-        window.location.href = buildPostDiaryLandingUrlWithCurrentParams(studyConfig);
+        window.location.href =
+          buildPostDiaryLandingUrlWithCurrentParams(studyConfig);
         return;
       }
       renderLanguageSelector(studyConfig, selectedLanguage);
@@ -361,6 +474,7 @@ function updateLayout() {
     i18n.applyTranslations();
     if (studyConfig) {
       applyStudyIntroText(studyConfig);
+      applyStudyInstructionsText(studyConfig);
     }
     console.log('i18n initialized successfully');
   } catch (error) {

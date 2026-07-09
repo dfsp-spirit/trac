@@ -2474,6 +2474,7 @@ class ImportStudiesConfigStudy(BaseModel):
     study_text_end_skipped: Optional[Dict[str, str]] = None
     study_text_end_noconsent: Optional[Dict[str, str]] = None
     study_text_consent: Optional[Dict[str, str]] = None
+    study_text_instructions: Optional[Dict[str, str]] = None
     data_collection_start: datetime
     data_collection_end: datetime
     inactivity_timeout_minutes: int = 0
@@ -3401,6 +3402,7 @@ def _create_study_from_import_payload(
         study_text_end_skipped=study_payload.study_text_end_skipped,
         study_text_end_noconsent=study_payload.study_text_end_noconsent,
         study_text_consent=study_payload.study_text_consent,
+        study_text_instructions=study_payload.study_text_instructions,
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
@@ -4132,6 +4134,7 @@ async def export_runtime_studies_config(
                 "study_text_end_skipped": study.study_text_end_skipped,
                 "study_text_end_noconsent": study.study_text_end_noconsent,
                 "study_text_consent": study.study_text_consent,
+                "study_text_instructions": study.study_text_instructions,
                 "data_collection_start": study.data_collection_start,
                 "data_collection_end": study.data_collection_end,
             }
@@ -4967,7 +4970,7 @@ async def add_pool_tokens(
     "/api/admin/studies/{study_name_short}/external-tasks/{task_key}/pool/generate",
     name="Generate random tokens for open-study token pool",
 )
-async def generate_pool_tokens(
+async def generate_pool_tokens_for_task(
     study_name_short: str,
     task_key: str,
     payload: PoolTokenGeneratePayload,
@@ -5173,7 +5176,7 @@ class GeneratePoolTokensRequest(BaseModel):
     "/api/admin/studies/{study_name_short}/generate-pool-tokens",
     name="Generate pool tokens for open study",
 )
-async def generate_pool_tokens(
+async def generate_pool_tokens_for_study(
     study_name_short: str,
     payload: GeneratePoolTokensRequest,
     current_admin: str = Depends(verify_admin),
@@ -5218,9 +5221,7 @@ async def generate_pool_tokens(
             task.tokens = (task.tokens or []) + [token]
             generated += 1
         total_generated += generated
-        tasks_summary.append(
-            {"task_key": task.task_key, "tokens_generated": generated}
-        )
+        tasks_summary.append({"task_key": task.task_key, "tokens_generated": generated})
 
     session.commit()
     logger.info(
@@ -5284,7 +5285,10 @@ async def export_pool_tokens_csv(
     # Determine the longest pool
     max_rows = max((len(pool) for pool in task_pools), default=0)
     for i in range(max_rows):
-        row = [task_pools[j][i] if i < len(task_pools[j]) else "" for j in range(len(task_pools))]
+        row = [
+            task_pools[j][i] if i < len(task_pools[j]) else ""
+            for j in range(len(task_pools))
+        ]
         writer.writerow(row)
 
     csv_content = output.getvalue()
@@ -7411,6 +7415,7 @@ class StudyConfigResponse(BaseModel):
     study_text_end_skipped: Optional[str] = None
     study_text_end_noconsent: Optional[str] = None
     study_text_consent: Optional[str] = None
+    study_text_instructions: Optional[str] = None
     consent_given: Optional[bool] = None
     consent_decided_at: Optional[datetime] = None
     instructions_completed: bool = False
@@ -7583,6 +7588,9 @@ def get_study_config(
     study_text_consent = _get_localized_study_text(
         study, "study_text_consent", selected_language
     )
+    study_text_instructions = _get_localized_study_text(
+        study, "study_text_instructions", selected_language
+    )
     require_consent = bool(study.require_consent)
 
     consent_given = None
@@ -7638,6 +7646,7 @@ def get_study_config(
         study_text_end_skipped=study_text_end_skipped,
         study_text_end_noconsent=study_text_end_noconsent,
         study_text_consent=study_text_consent,
+        study_text_instructions=study_text_instructions,
         consent_given=consent_given,
         consent_decided_at=consent_decided_at,
         instructions_completed=instructions_completed,

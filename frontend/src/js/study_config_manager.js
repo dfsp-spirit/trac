@@ -286,6 +286,11 @@ async function loadStudiesConfigFromFile() {
       selectedLanguage,
       CURRENT_STUDY_CACHE.default_language || 'en'
     );
+    CURRENT_STUDY_CACHE.study_text_instructions = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_instructions,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
 
     // Resolve study description to a single-language string for frontend consumption.
     CURRENT_STUDY_CACHE.description = resolveLocalizedStudyText(
@@ -601,6 +606,18 @@ async function syncWithBackendConfig() {
       );
       if (resolvedConsent && !CURRENT_STUDY_CACHE.study_text_consent) {
         CURRENT_STUDY_CACHE.study_text_consent = resolvedConsent;
+      }
+
+      const resolvedInstructions = resolveLocalizedStudyText(
+        backendConfig.study_text_instructions,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (
+        resolvedInstructions &&
+        !CURRENT_STUDY_CACHE.study_text_instructions
+      ) {
+        CURRENT_STUDY_CACHE.study_text_instructions = resolvedInstructions;
       }
 
       if (backendConfig.require_consent !== undefined) {

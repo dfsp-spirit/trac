@@ -148,7 +148,9 @@ def get_external_task_effective_config(
         "outbound_tokens": [
             {
                 "name": token_group.name,
-                "by_participant": dict(token_group.by_participant) if token_group.by_participant is not None else {},
+                "by_participant": dict(token_group.by_participant)
+                if token_group.by_participant is not None
+                else {},
                 **(
                     {"open_pool": list(token_group.open_pool)}
                     if token_group.open_pool
@@ -413,6 +415,7 @@ class CfgFileStudy(BaseModel):
     study_text_end_skipped: Optional[Dict[str, str]] = None
     study_text_end_noconsent: Optional[Dict[str, str]] = None
     study_text_consent: Optional[Dict[str, str]] = None
+    study_text_instructions: Optional[Dict[str, str]] = None
     data_collection_start: datetime  # UTC-aware datetime, parsed from ISO 8601 string
     data_collection_end: datetime  # UTC-aware datetime, parsed from ISO 8601 string
     activities_logged_by_userid: Dict[str, Dict[str, List[CfgFileLoggedActivity]]] = (
@@ -782,6 +785,7 @@ class CfgFileStudy(BaseModel):
             "study_text_end_skipped",
             "study_text_end_noconsent",
             "study_text_consent",
+            "study_text_instructions",
         ]:
             text_map = getattr(self, text_field_name, None)
             if text_map is None:
