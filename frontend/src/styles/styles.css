@@ -28,7 +28,8 @@ html {
   font-style: italic;
   font-display: swap;
   font-weight: 100 900;
-  src: url('../fonts/Inter-Italic-VariableFont_opsz,wght.ttf') format('truetype');
+  src: url('../fonts/Inter-Italic-VariableFont_opsz,wght.ttf')
+    format('truetype');
 }
 
 body {
@@ -1203,7 +1204,12 @@ body.carrying-activity .modal-close {
 /* Desktop resize handle */
 @media (min-width: 1440px) {
   .activity-block {
-    cursor: default; /* Reset default cursor */
+    cursor: grab; /* Allow dragging from body */
+  }
+
+  .activity-block.dragging {
+    cursor: grabbing;
+    opacity: 0.9;
   }
 
   /* Left edge resize handle */
@@ -1548,7 +1554,10 @@ body.carrying-activity .modal-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
 }
 
 .custom-activity-clear-btn:hover {
@@ -2971,7 +2980,9 @@ body.carrying-activity .modal-close {
   background-color: rgba(241, 245, 249, 0.95);
   border: 1px solid #e2e8f0;
   border-top: none;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
 }
 
 /* Calm phase */
@@ -2995,8 +3006,13 @@ body.carrying-activity .modal-close {
 }
 
 @keyframes idlePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* Mobile: smaller indicator */
