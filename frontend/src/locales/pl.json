@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Limit czasu bezczynności. Kliknij, aby potwierdzić, że wciąż tu jesteś i zresetować licznik czasu."
+  },
+  "openStudies": {
+    "pageTitle": "Otwarte badania | TRAC",
+    "heading": "TRAC -- Otwarte badania",
+    "noStudies": "Brak dostępnych otwartych badań.",
+    "accessLink": "Przejdź do badania"
   }
 }

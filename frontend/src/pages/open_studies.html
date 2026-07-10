@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="openStudies.pageTitle">Open Studies | TRAC</title>
+    <link href="../assets/fonts/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #475569;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+        }
+
+        html {
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--background-color) 0%, #e2e8f0 100%);
+            color: var(--text-color);
+            display: grid;
+            grid-template-columns: 1fr minmax(0, 1100px) 1fr;
+            grid-auto-rows: 1fr;
+        }
+
+        .open-studies-container {
+            grid-column: 2;
+            width: 100%;
+            margin: 0;
+            padding: 36px 28px;
+            background: white;
+            border-left: 1px solid rgba(226, 232, 240, 0.95);
+            border-right: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 0;
+            box-shadow: none;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-color);
+            margin: 0 0 32px;
+            line-height: 1.2;
+        }
+
+        .studies-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+        }
+
+        .studies-list li {
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 16px;
+            background: var(--background-color);
+            transition: box-shadow 0.2s ease;
+        }
+
+        .studies-list li:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .study-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-color);
+            margin: 0 0 8px;
+        }
+
+        .study-description {
+            font-size: 15px;
+            color: var(--secondary-color);
+            margin: 0 0 12px;
+            line-height: 1.5;
+        }
+
+        .study-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--primary-color);
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 15px;
+        }
+
+        .study-link:hover,
+        .study-link:focus {
+            text-decoration: underline;
+        }
+
+        .no-studies-message {
+            font-size: 18px;
+            color: var(--secondary-color);
+            margin: 60px 0;
+            line-height: 1.5;
+        }
+
+        .error-message {
+            font-size: 16px;
+            color: #dc2626;
+            margin: 40px 0;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                grid-template-columns: 12px 1fr 12px;
+            }
+
+            .open-studies-container {
+                grid-column: 2;
+                padding: 28px 20px;
+            }
+
+            h1 {
+                font-size: 28px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="open-studies-container">
+        <h1 data-i18n="openStudies.heading">TRAC -- Open Studies</h1>
+
+        <ul id="studiesList" class="studies-list"></ul>
+
+        <p id="noStudiesMessage" class="no-studies-message" data-i18n="openStudies.noStudies" style="display: none;">
+            No open studies available.
+        </p>
+
+        <p id="errorMessage" class="error-message" style="display: none;"></p>
+    </div>
+
+    <script src="../settings/tud_settings.js"></script>
+    <script src="../js/footer.js"></script>
+    <script type="module">
+        import i18n from '../js/i18n.js';
+
+        const studiesListEl = document.getElementById('studiesList');
+        const noStudiesEl = document.getElementById('noStudiesMessage');
+        const errorEl = document.getElementById('errorMessage');
+
+        function getApiBaseUrl() {
+            return (window.TUD_SETTINGS && window.TUD_SETTINGS.API_BASE_URL) || '/api';
+        }
+
+        async function fetchOpenStudies() {
+            const apiBaseUrl = getApiBaseUrl();
+            const url = `${apiBaseUrl}/active_open_study_names`;
+
+            const response = await fetch(url, {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        function selectPreferredLanguage() {
+            // Use the same language resolution as the rest of the app
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlLang = urlParams.get('lang');
+            if (urlLang) {
+                return urlLang;
+            }
+
+            const browserLanguages = navigator.languages || [navigator.language || 'en'];
+            const supported = ['de', 'en', 'es', 'fi', 'fr', 'pl', 'sv'];
+            for (const bl of browserLanguages) {
+                const code = bl.split('-')[0];
+                if (supported.includes(code)) {
+                    return code;
+                }
+            }
+            return 'en';
+        }
+
+        function renderStudyList(studies) {
+            studiesListEl.innerHTML = '';
+
+            if (!studies || studies.length === 0) {
+                studiesListEl.style.display = 'none';
+                noStudiesEl.style.display = 'block';
+                return;
+            }
+
+            noStudiesEl.style.display = 'none';
+            studiesListEl.style.display = '';
+
+            studies.forEach(study => {
+                const li = document.createElement('li');
+
+                const nameEl = document.createElement('p');
+                nameEl.className = 'study-name';
+                nameEl.textContent = study.name || study.name_short;
+
+                const descEl = document.createElement('p');
+                descEl.className = 'study-description';
+                descEl.textContent = study.description || '';
+
+                const linkEl = document.createElement('a');
+                linkEl.className = 'study-link';
+                linkEl.href = `../index.html?study_name=${encodeURIComponent(study.name_short)}`;
+                linkEl.innerHTML = '<i class="fas fa-external-link-alt"></i> ';
+                const linkText = document.createElement('span');
+                linkText.textContent = `Access study '${study.name_short}'`;
+                linkEl.appendChild(linkText);
+
+                li.appendChild(nameEl);
+                if (study.description) {
+                    li.appendChild(descEl);
+                }
+                li.appendChild(linkEl);
+                studiesListEl.appendChild(li);
+            });
+        }
+
+        async function init() {
+            try {
+                const language = selectPreferredLanguage();
+                await i18n.init(language);
+                document.documentElement.lang = language;
+
+                const studies = await fetchOpenStudies();
+                renderStudyList(studies);
+            } catch (err) {
+                console.error('Failed to load open studies:', err);
+                studiesListEl.style.display = 'none';
+                noStudiesEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.textContent = `Could not load open studies: ${err.message}`;
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

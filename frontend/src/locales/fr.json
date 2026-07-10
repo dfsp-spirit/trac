@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Délai d'inactivité. Cliquez pour confirmer votre présence et réinitialiser le minuteur."
+  },
+  "openStudies": {
+    "pageTitle": "Études ouvertes | TRAC",
+    "heading": "TRAC -- Études ouvertes",
+    "noStudies": "Aucune étude ouverte disponible.",
+    "accessLink": "Accéder à l'étude"
   }
 }

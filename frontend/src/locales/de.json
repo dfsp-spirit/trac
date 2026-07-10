@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Inaktivitäts-Zeitüberschreitung. Klicken Sie hier, um zu bestätigen, dass Sie noch da sind, und der Timer wird zurückgesetzt."
+  },
+  "openStudies": {
+    "pageTitle": "Offene Studien | TRAC",
+    "heading": "TRAC -- Offene Studien",
+    "noStudies": "Keine offenen Studien verfügbar.",
+    "accessLink": "Zur Studie"
   }
 }
