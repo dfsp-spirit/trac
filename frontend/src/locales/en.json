@@ -104,6 +104,7 @@
       "message": "Please wait while we save your responses."
     },
     "activityContext": {
+      "copy": "Copy",
       "showInfo": "Show info",
       "delete": "Delete",
       "infoTitle": "Activity details",
