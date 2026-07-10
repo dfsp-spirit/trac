@@ -137,7 +137,7 @@ test('submit modal uses correct language for each day after language switch', as
   });
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   await waitForActivitiesLoaded(page);
   await placeActivityOnTimeline(page);

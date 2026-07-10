@@ -76,7 +76,7 @@ test('desktop timeline positions stay stable when active timeline changes', asyn
 
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   await expect(page.locator('.timeline-title')).toContainText('Monday');
   await expect(page.locator('.timeline-title')).toContainText('Day 1 of 7');

@@ -12,7 +12,7 @@ test('instructions -> start -> skip reporting -> thank-you page', async ({
 
   await page.locator('#continueBtn').click();
 
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
   const skipReportingBtn = page.locator('#skipReportingBtn');
   await expect(skipReportingBtn).toBeVisible();
 

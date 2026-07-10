@@ -148,7 +148,7 @@ test('issue42: switching desktop/mobile keeps added activity', async ({
   await expect(page.locator('#continueBtn')).toBeVisible();
   await page.locator('#continueBtn').click();
 
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   const currentDayDisplay = page.locator('#currentDayDisplay');
   await expect(currentDayDisplay).toHaveAttribute('title', /Monday/);

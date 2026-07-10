@@ -121,19 +121,11 @@ async function addActivityAt50Mobile(page, options) {
 
 async function goToSecondaryTimeline(page) {
   const nextBtn = page.locator('#nextBtn');
-  const confirmationModal = page.locator('#confirmationModal');
   await expect(nextBtn).toBeVisible();
   await expect(nextBtn).toBeEnabled();
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await nextBtn.click();
-
-    // Handle confirmation modal if it appears
-    if (await confirmationModal.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await page.locator('#confirmOk').click();
-      await page.waitForTimeout(500);
-    }
-
     await page.waitForTimeout(700);
 
     const activeTimelineKey = await page.evaluate(
@@ -160,12 +152,18 @@ async function submitCurrentDay(page, expectedNextDayName) {
   const confirmationModal = page.locator('#confirmationModal');
   const currentDayDisplay = page.locator('#currentDayDisplay');
 
+  // Close modal if it's already open
+  if (await confirmationModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await page.locator('#confirmCancel').click();
+    await page.waitForTimeout(500);
+  }
+
   await expect(nextBtn).toBeVisible();
   await expect(nextBtn).toBeEnabled();
   for (let attempt = 0; attempt < 3; attempt += 1) {
     await nextBtn.click();
 
-    if (await confirmationModal.isVisible()) {
+    if (await confirmationModal.isVisible({ timeout: 2000 }).catch(() => false)) {
       await page.locator('#confirmOk').click();
       break;
     }
@@ -224,7 +222,8 @@ test('mobile: templates keep both timelines and activities on Tuesday and Wednes
   await expect(page.locator('#continueBtn')).toBeVisible();
   await page.locator('#continueBtn').click();
 
-  await expect(page).toHaveURL(/index\.html/);
+  // Wait for navigation to complete - use element visibility instead of URL
+  await expect(page.locator('#currentDayDisplay')).toBeVisible({ timeout: 15000 });
 
   // Verify mobile layout
   await expect

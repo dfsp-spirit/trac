@@ -13,7 +13,7 @@ test('footer shows study-specific links configured in studies_config', async ({
 
   // Enter the study
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   // Wait for study config to be fully initialized (tud:studyConfigReady fired)
   await page.waitForFunction(

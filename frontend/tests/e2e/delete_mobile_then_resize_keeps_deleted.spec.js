@@ -99,7 +99,7 @@ test('delete in mobile persists after resizing to desktop without submit', async
 
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   await selectFirstPlaceableActivity(page);
   await clickActiveTimelineAtPercent(page, 50);

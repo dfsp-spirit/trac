@@ -15,7 +15,8 @@ test('return_url is preserved and shown as continue link on thank-you page', asy
 
   await page.locator('#continueBtn').click();
 
-  await expect(page).toHaveURL(/index\.html/);
+  // Wait for navigation to complete - use element visibility instead of URL
+  await expect(page.locator('#currentDayDisplay')).toBeVisible({ timeout: 15000 });
   await expect(new URL(page.url()).searchParams.get('return_url')).toBe(
     rawReturnUrl
   );

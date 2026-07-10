@@ -23,7 +23,7 @@ async function enterDiaryIfNeeded(page) {
 
   if (hasInstructionsStart) {
     await continueBtn.click();
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForURL(/index\.html/, { timeout: 15000 });
   }
 }
 

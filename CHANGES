@@ -1,9 +1,9 @@
 TRAC MPIAE Changes
 ===================
 
-Version 0.18.2 -- WIP
------------------------
-- NEW: allow copying placed activities on desktop via right-click menu in frontend  
+Version 0.18.2 -- Mobile overhaul, External tasks for open studies, and UX improvements
+---------------------------------------------------------------------------------------
+- NEW: allow copying placed activities on desktop via right-click menu in frontend
 - NEW: allow moving activity on timeline left and right via drag in frontend
 - NEW: Rename Back button in frontend to Previous Timeline
 - CHG: make default study instructions text more general
@@ -19,6 +19,7 @@ Version 0.18.2 -- WIP
 - NEW: support deleting pool tokens on API level and in admin interface
 - FIX: adapt task token upload text in admin interface, we do not enfore column order
 - NEW: add schema migration to fix old study description field on servers where the study was created before alembic was used
+- CHG: overhaul mobile view: The mobile experience now shows one timeline at a time, full-width, with swipe navigation - much more natural for touch devices.
 
 
 Version 0.18.1 -- Bugfix release

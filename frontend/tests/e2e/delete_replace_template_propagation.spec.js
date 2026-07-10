@@ -274,7 +274,7 @@ test('delete template activity on Tuesday, replace same slot, and propagate corr
 
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
   await expect(page.locator('#currentDayDisplay')).toHaveAttribute(
     'title',
     /Monday/

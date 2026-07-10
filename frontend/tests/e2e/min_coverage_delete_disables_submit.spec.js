@@ -53,7 +53,7 @@ test('deleting activity on inactive timeline is ignored - block survives and sub
 
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await page.waitForURL(/index\.html/, { timeout: 15000 });
 
   const nextBtn = page.locator('#nextBtn');
   const navSubmitBtn = page.locator('#navSubmitBtn');

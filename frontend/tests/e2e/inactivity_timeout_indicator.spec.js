@@ -67,8 +67,7 @@ test.describe('Inactivity timeout indicator', () => {
     });
 
     await page.locator('#continueBtn').click();
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page).toHaveURL(/index\.html/, { timeout: 15000 });
+    await page.waitForURL(/index\.html/, { timeout: 15000 });
 
     const timerContainer = page.locator('#idleTimeoutIndicator');
     await expect(timerContainer).toBeVisible({ timeout: 10000 });
