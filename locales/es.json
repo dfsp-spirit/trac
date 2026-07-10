@@ -104,6 +104,7 @@
       "message": "Por favor espera mientras guardamos tus respuestas."
     },
     "activityContext": {
+      "copy": "Copiar",
       "showInfo": "Mostrar información",
       "delete": "Eliminar",
       "infoTitle": "Detalles de la actividad",

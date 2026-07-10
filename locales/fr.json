@@ -104,6 +104,7 @@
       "message": "Veuillez patienter pendant que nous sauvegardons vos réponses."
     },
     "activityContext": {
+      "copy": "Copier",
       "showInfo": "Afficher les infos",
       "delete": "Supprimer",
       "infoTitle": "Détails de l'activité",

@@ -104,6 +104,7 @@
       "message": "Proszę czekać, podczas gdy zapisujemy Twoje odpowiedzi."
     },
     "activityContext": {
+      "copy": "Kopiuj",
       "showInfo": "Pokaż informacje",
       "delete": "Usuń",
       "infoTitle": "Szczegóły aktywności",

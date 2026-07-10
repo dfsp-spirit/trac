@@ -1013,6 +1013,44 @@ function showActivityInfoModal(activityBlock) {
   modalOverlay.style.display = 'block';
 }
 
+function handleCopyActivity(activityBlock) {
+  if (!activityBlock || !activityBlock.isConnected) {
+    return;
+  }
+
+  const activityId = activityBlock.dataset.id;
+  const timelineKey = activityBlock.dataset.timelineKey;
+  const timelineActivities =
+    window.timelineManager.activities[timelineKey] || [];
+  const storedActivity = timelineActivities.find((activity) =>
+    activityIdsEqual(activity.id, activityId)
+  );
+
+  if (!storedActivity) {
+    console.error('Cannot copy: activity not found in timeline data');
+    return;
+  }
+
+  clearSelectedActivityButtons();
+
+  window.selectedActivity = {
+    name: storedActivity.activity,
+    category: storedActivity.category,
+    code: storedActivity.code,
+    codes: storedActivity.codes,
+    color: storedActivity.color,
+    parentName: storedActivity.parentName,
+    parentCode: storedActivity.parentCode,
+    selected: storedActivity.selected,
+    isCustomInput: storedActivity.isCustomInput,
+    originalSelection: storedActivity.originalSelection,
+    frequencyKey: storedActivity.frequencyKey || null,
+    selections: storedActivity.selections || undefined,
+    availableOptions: storedActivity.availableOptions || undefined,
+    blockLength: storedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH,
+  };
+}
+
 function initDesktopActivityContextMenu() {
   const MENU_ID = 'activityContextMenu';
   let targetBlock = null;
@@ -1027,6 +1065,10 @@ function initDesktopActivityContextMenu() {
     menu.id = MENU_ID;
     menu.className = 'activity-context-menu';
     menu.innerHTML = `
+            <button type="button" class="activity-context-menu-item" data-action="copy">${translateOrFallback(
+              'modals.activityContext.copy',
+              'Copy'
+            )}</button>
             <button type="button" class="activity-context-menu-item" data-action="show-info">${translateOrFallback(
               'modals.activityContext.showInfo',
               'Show info'
@@ -1051,7 +1093,9 @@ function initDesktopActivityContextMenu() {
         return;
       }
 
-      if (action === 'show-info') {
+      if (action === 'copy') {
+        handleCopyActivity(blockForAction);
+      } else if (action === 'show-info') {
         showActivityInfoModal(blockForAction);
       } else if (action === 'delete') {
         deleteActivityBlock(blockForAction);
@@ -4526,9 +4570,10 @@ function initTimelineInteraction(timeline) {
     }
 
     // In vertical mode, we only need the start time from the click position
-    // End time should always be start time + 10 minutes
+    // End time should always be start time + block length (default 10 minutes)
     const startMinutes = Math.round(clickMinutes / 10) * 10;
-    const endMinutes = startMinutes + 10;
+    const blockLength = window.selectedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH;
+    const endMinutes = startMinutes + blockLength;
 
     if (isNaN(startMinutes) || isNaN(endMinutes)) {
       console.error('Invalid minutes calculation:', {
@@ -4557,7 +4602,7 @@ function initTimelineInteraction(timeline) {
 
       // Calculate position percentages
       const startPositionPercent = minutesToPercentage(startMinutes);
-      const blockSize = (10 / 1440) * 100; // 10 minutes as percentage of day
+      const blockSize = (blockLength / 1440) * 100;
 
       if (isMobile) {
         block.style.height = `${blockSize}%`;

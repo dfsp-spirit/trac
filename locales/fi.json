@@ -104,6 +104,7 @@
       "message": "Odota, kun tallennamme vastauksesi."
     },
     "activityContext": {
+      "copy": "Kopioi",
       "showInfo": "Näytä tiedot",
       "delete": "Poista",
       "infoTitle": "Toiminnon tiedot",

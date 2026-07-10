@@ -104,6 +104,7 @@
       "message": "Var god vänta medan vi sparar dina svar."
     },
     "activityContext": {
+      "copy": "Kopiera",
       "showInfo": "Visa info",
       "delete": "Ta bort",
       "infoTitle": "Aktivitetsdetaljer",
