@@ -866,6 +866,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     study_text_end_skipped=study_config.study_text_end_skipped,
                     study_text_end_noconsent=study_config.study_text_end_noconsent,
                     study_text_consent=study_config.study_text_consent,
+                    study_text_instructions=study_config.study_text_instructions,
                     activities_json_url=default_activities_url,
                     data_collection_start=study_config.data_collection_start,
                     data_collection_end=study_config.data_collection_end,
