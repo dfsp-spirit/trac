@@ -3,7 +3,22 @@ TRAC MPIAE Changes
 
 Version 0.18.2 -- WIP
 -----------------------
+- NEW: allow moving activity on timeline left and right via drag in frontend
+- NEW: Rename Back button in frontend to Previous Timeline
+- CHG: make default study instructions text more general
+- NEW: allow custom per-study instruction text (instructions.html)
+- FIX: fix frontend bug preventing user from editing activities after going back to previous days, add test for it
+- FIX: fix token count display on external task tab of study details admin page
+- CHG: disable controls for tokean management on admin page for studies without external tasks
+- NEW: allow fast switching between details page and particpiant mangement page of a study in admin interface
+- NEW: add option to add pool tokens to study in admin panel
+- CHG: hide useless elements for open studies on admin particpiant mangement page (elements for per-participant tokens)
+- DEV: add to test data an open study with external tasks
+- NEW: extend admin section to manage external tasks for pool token handling
+- NEW: support deleting pool tokens on API level and in admin interface
+- FIX: adapt task token upload text in admin interface, we do not enfore column order
 - NEW: add schema migration to fix old study description field on servers where the study was created before alembic was used
+
 
 Version 0.18.1 -- Bugfix release
 ---------------------------------
