@@ -121,11 +121,19 @@ async function addActivityAt50Mobile(page, options) {
 
 async function goToSecondaryTimeline(page) {
   const nextBtn = page.locator('#nextBtn');
+  const confirmationModal = page.locator('#confirmationModal');
   await expect(nextBtn).toBeVisible();
   await expect(nextBtn).toBeEnabled();
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await nextBtn.click();
+
+    // Handle confirmation modal if it appears
+    if (await confirmationModal.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await page.locator('#confirmOk').click();
+      await page.waitForTimeout(500);
+    }
+
     await page.waitForTimeout(700);
 
     const activeTimelineKey = await page.evaluate(
@@ -188,9 +196,15 @@ async function expectTwoTimelinesAndTemplateActivities(page) {
     })
     .toBe(2);
 
+  // With the new mobile design, only the active timeline is visible.
+  // Check that the primary timeline (active by default) has "Sleeping".
   await expect(
     page.locator('.activity-block').filter({ hasText: 'Sleeping' }).first()
   ).toBeVisible({ timeout: 30000 });
+
+  // Navigate to the secondary timeline and check it has "Listening to Audio".
+  await goToSecondaryTimeline(page);
+
   await expect(
     page
       .locator('.activity-block')

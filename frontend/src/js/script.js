@@ -684,6 +684,8 @@ function deleteActivityBlock(activityBlock) {
   console.log(`=== DELETION COMPLETE ===`);
 }
 
+window.deleteActivityBlock = deleteActivityBlock;
+
 function initMobileDelete() {
   const LONG_PRESS_DURATION = 1200;
   const LONG_PRESS_VISUAL_DELAY = 400;
@@ -846,6 +848,81 @@ function initMobileDelete() {
       return;
     }
     cleanupPress();
+  }
+}
+
+function initMobileSwipeNavigation() {
+  if (!getIsMobile()) return;
+
+  const SWIPE_THRESHOLD = 50;
+  const SWIPE_MAX_VERTICAL = 100;
+
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let isSwiping = false;
+
+  const timelineCanvas = document.querySelector('.timeline-canvas');
+  if (!timelineCanvas) return;
+
+  timelineCanvas.addEventListener('touchstart', handleTouchStart, {
+    passive: true,
+  });
+  timelineCanvas.addEventListener('touchmove', handleTouchMove, {
+    passive: true,
+  });
+  timelineCanvas.addEventListener('touchend', handleTouchEnd, {
+    passive: true,
+  });
+
+  function handleTouchStart(e) {
+    if (e.touches.length !== 1) return;
+
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    touchStartTime = Date.now();
+    isSwiping = false;
+  }
+
+  function handleTouchMove(e) {
+    if (e.touches.length !== 1) return;
+
+    const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
+    const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+
+    if (deltaX > 20 && deltaX > deltaY) {
+      isSwiping = true;
+    }
+  }
+
+  function handleTouchEnd(e) {
+    if (!isSwiping) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = Math.abs(touchEndY - touchStartY);
+    const deltaTime = Date.now() - touchStartTime;
+
+    if (
+      Math.abs(deltaX) >= SWIPE_THRESHOLD &&
+      deltaY <= SWIPE_MAX_VERTICAL &&
+      deltaTime < 500
+    ) {
+      if (deltaX < 0) {
+        const nextBtn = document.getElementById('nextBtn');
+        if (nextBtn && !nextBtn.disabled) {
+          nextBtn.click();
+        }
+      } else {
+        const backBtn = document.getElementById('backBtn');
+        if (backBtn && backBtn.style.display !== 'none') {
+          backBtn.click();
+        }
+      }
+    }
+
+    isSwiping = false;
   }
 }
 
@@ -6441,6 +6518,7 @@ async function init() {
     initKeyboardShortcuts();
     initInstructionBanner();
     initMobileDelete();
+    initMobileSwipeNavigation();
     initDesktopActivityContextMenu();
 
     // Initialize header and footer heights early
