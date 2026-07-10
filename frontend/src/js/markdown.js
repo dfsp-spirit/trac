@@ -53,7 +53,7 @@ export function renderMarkdown(markdown) {
       continue;
     }
 
-    const headingMatch = line.match(/^(#{1,3})\s+(.*)$/);
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headingMatch) {
       flushParagraph();
       flushList();
