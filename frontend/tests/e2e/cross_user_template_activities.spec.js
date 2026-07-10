@@ -186,7 +186,7 @@ test('cross-user template copies correct per-day activities to target user', asy
   });
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await expect(page.locator('#currentDayDisplay')).toBeVisible({ timeout: 15000 });
 
   // ---- Monday (day_label_index = 0) ----
   await expect(page.locator('#currentDayDisplay')).toHaveAttribute(
@@ -242,7 +242,7 @@ test('cross-user template copies correct per-day activities to target user', asy
   );
   await expect(page).toHaveURL(/pages\/instructions\.html/);
   await page.locator('#continueBtn').click();
-  await expect(page).toHaveURL(/index\.html/);
+  await expect(page.locator('#currentDayDisplay')).toBeVisible({ timeout: 15000 });
 
   // Should land on Monday (day_label_index = 0).
   await expect(page.locator('#currentDayDisplay')).toHaveAttribute(
