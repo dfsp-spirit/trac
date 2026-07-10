@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Passiivisuuden aikakatkaisu. Napsauta vahvistaaksesi, että olet vielä paikalla, ja nollaa ajastin."
+  },
+  "openStudies": {
+    "pageTitle": "Avoimet tutkimukset | TRAC",
+    "heading": "TRAC -- Avoimet tutkimukset",
+    "noStudies": "Ei avoimia tutkimuksia saatavilla.",
+    "accessLink": "Siirry tutkimukseen"
   }
 }

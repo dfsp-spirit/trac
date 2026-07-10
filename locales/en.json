@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
+  },
+  "openStudies": {
+    "pageTitle": "Open Studies | TRAC",
+    "heading": "TRAC -- Open Studies",
+    "noStudies": "No open studies available.",
+    "accessLink": "Access study"
   }
 }

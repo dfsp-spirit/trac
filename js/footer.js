@@ -78,10 +78,11 @@
             let footerEl = document.getElementById('footer');
             if (footerEl) return footerEl.parentElement || document.body;
 
-            // Common main containers (consent, thank-you, tasks, instructions)
+            // Common main containers (consent, thank-you, tasks, instructions, open-studies)
             const candidates = [
                 document.querySelector('.consent-shell'),
                 document.querySelector('.thank-you-container'),
+                document.querySelector('.open-studies-container'),
                 document.querySelector('.tasks-container'),
                 document.querySelector('.instructions-footer'),
                 document.querySelector('.timeline-header'),

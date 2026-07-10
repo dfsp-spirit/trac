@@ -184,5 +184,11 @@
   },
   "idleTimeout": {
     "tooltip": "Tiempo de inactividad agotado. Haga clic para confirmar que sigue aquí y reiniciar el temporizador."
+  },
+  "openStudies": {
+    "pageTitle": "Estudios abiertos | TRAC",
+    "heading": "TRAC -- Estudios abiertos",
+    "noStudies": "No hay estudios abiertos disponibles.",
+    "accessLink": "Acceder al estudio"
   }
 }
