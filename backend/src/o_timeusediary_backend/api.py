@@ -629,11 +629,13 @@ def _is_external_tasks_locked_by_diary_requirement(
 def _build_participant_completion_map(
     session: Session,
     study: Study,
-) -> Dict[str, Dict[str, Optional[datetime]]]:
+) -> Dict[str, Dict[str, Any]]:
     """Compute per-participant diary and everything-completion timestamps.
 
     Returns a dict mapping participant_id to:
-      {"diary_completed_at": datetime|None, "everything_completed_at": datetime|None}
+      {"diary_completed_at": datetime|None,
+       "everything_completed_at": datetime|None,
+       "task_confirmed_at": {task_key: datetime|None, ...}}
 
     diary_completed_at
         The UTC timestamp when the participant first submitted activities for the
@@ -648,6 +650,12 @@ def _build_participant_completion_map(
           for this participant is confirmed: max(diary_completed_at,
           max(confirmed_at times)).
         * Otherwise: None.
+
+    task_confirmed_at
+        Dict keyed by external-task task_key.  Value is the confirmed_at timestamp
+        from the participant's StudyExternalTaskAssignment for that task, or None
+        when no confirmed assignment exists.  Present only when the study has
+        external tasks configured, otherwise an empty dict.
 
     This function is self-contained (loads its own data) so it can be reused
     from the admin export, study overview, or anywhere participant completion
@@ -689,7 +697,10 @@ def _build_participant_completion_map(
             pid_day_earliest[pid][dlid] = cat
 
     assignments_by_pid: Dict[str, List[StudyExternalTaskAssignment]] = {}
+    task_key_by_id: Dict[int, str] = {}
+    task_confirmed_by_pid: Dict[str, Dict[str, Optional[datetime]]] = {}
     if has_external_tasks:
+        task_key_by_id = {t.id: t.task_key for t in external_tasks}
         ext_task_ids = [t.id for t in external_tasks]
         all_assignments = session.exec(
             select(StudyExternalTaskAssignment).where(
@@ -698,8 +709,13 @@ def _build_participant_completion_map(
         ).all()
         for a in all_assignments:
             assignments_by_pid.setdefault(a.participant_id, []).append(a)
+            tk = task_key_by_id.get(a.external_task_id)
+            if tk:
+                task_confirmed_by_pid.setdefault(a.participant_id, {})[tk] = (
+                    a.confirmed_at if a.is_confirmed else None
+                )
 
-    result: Dict[str, Dict[str, Optional[datetime]]] = {}
+    result: Dict[str, Dict[str, Any]] = {}
     all_pids = set(pid_days.keys()) | set(assignments_by_pid.keys())
 
     for pid in all_pids:
@@ -730,9 +746,17 @@ def _build_participant_completion_map(
                         max(confirmed_dates),
                     )
 
+        pid_task_times: Dict[str, Optional[datetime]] = {}
+        if has_external_tasks:
+            pid_task_times = dict(task_confirmed_by_pid.get(pid, {}))
+            for tk in task_key_by_id.values():
+                if tk not in pid_task_times:
+                    pid_task_times[tk] = None
+
         result[pid] = {
             "diary_completed_at": diary_completed_at,
             "everything_completed_at": everything_completed_at,
+            "task_confirmed_at": pid_task_times,
         }
 
     return result
@@ -6920,6 +6944,11 @@ async def export_study_activities(
                 ),
             }
         )
+
+        task_times = comp.get("task_confirmed_at", {})
+        for task_key, confirmed_at in task_times.items():
+            col = f"participant_task_{task_key}_completed_at"
+            record[col] = confirmed_at.isoformat() if confirmed_at else None
 
         # Add parent activity info if available
         if activity.parent_activity_code:

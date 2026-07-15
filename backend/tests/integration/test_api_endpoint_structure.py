@@ -3,6 +3,7 @@ import json
 import os
 import uuid
 from io import StringIO, BytesIO
+from typing import Optional
 import zipfile
 
 import httpx
@@ -17,10 +18,11 @@ BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")
 
 
 async def _get_first_activity_selection(
-    client: httpx.AsyncClient, study_name_short: str
+    client: httpx.AsyncClient, study_name_short: str, participant_id: Optional[str] = None
 ) -> dict:
     activities_response = await client.get(
-        f"{BASE_URL}/api/studies/{study_name_short}/activities-config"
+        f"{BASE_URL}/api/studies/{study_name_short}/activities-config",
+        params={"participant_id": participant_id} if participant_id else None,
     )
     assert activities_response.status_code == 200
     activities_data = activities_response.json()
@@ -87,6 +89,53 @@ async def prepared_submission_context():
         "participant_id": participant_id,
         "day_label_name": day_label_name,
     }
+
+
+@pytest_asyncio.fixture
+async def adult_pilot_de2_with_activity():
+    """Submit one activity for a participant in adult_pilot_de2 so the
+    activities export returns data (required for per-task column checks)."""
+    study_name_short = "adult_pilot_de2"
+    async with httpx.AsyncClient() as client:
+        participant_id = f"it_task_export_{uuid.uuid4().hex[:8]}"
+
+        assign_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": [participant_id]},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert assign_resp.status_code == 200
+
+        study_cfg_resp = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": participant_id},
+        )
+        assert study_cfg_resp.status_code == 200
+        study_cfg = study_cfg_resp.json()
+        day_label_name = study_cfg["day_labels"][0]["name"]
+
+        selection = await _get_first_activity_selection(client, study_name_short, participant_id)
+
+        activity_item = {
+            "timeline_key": selection["timeline_key"],
+            "activity": selection["activity_name"],
+            "category": selection["category_name"],
+            "start_minutes": 0,
+            "end_minutes": 1440,
+            "mode": selection["timeline_mode"],
+        }
+        if selection["timeline_mode"] == "single-choice":
+            activity_item["code"] = selection["activity_code"]
+        else:
+            activity_item["codes"] = [selection["activity_code"]]
+
+        submit_resp = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
+            json={"activities": [activity_item]},
+        )
+        assert submit_resp.status_code == 200
+
+    return study_name_short
 
 
 @pytest.mark.asyncio
@@ -352,8 +401,9 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
 @pytest.mark.asyncio
 async def test_export_activities_includes_completion_timestamps():
     """Export must include participant_diary_completed_at and
-    participant_everything_completed_at in every row, and values must be
-    consistent (idempotent across two calls to the same endpoint)."""
+    participant_everything_completed_at in every row.  Values must be
+    consistent per-participant and idempotent across repeated calls.
+    Uses a study without external tasks so no per-task columns appear."""
     study_name_short = "default"
 
     async with httpx.AsyncClient() as client:
@@ -411,3 +461,38 @@ async def test_export_activities_includes_completion_timestamps():
         rows2 = list(csv.DictReader(StringIO(resp2.text)))
         assert [r.keys() for r in rows1[:1]] == [r.keys() for r in rows2[:1]]
         assert len(rows1) == len(rows2)
+
+
+@pytest.mark.asyncio
+async def test_export_includes_per_task_completion_timestamps(
+    adult_pilot_de2_with_activity,
+):
+    """For a study with external tasks, the export must include dynamic
+    per-task columns like participant_task_depression_survey_completed_at."""
+    study_name_short = adult_pilot_de2_with_activity
+
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "csv"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert resp.status_code == 200
+
+        rows = list(csv.DictReader(StringIO(resp.text)))
+        assert rows
+
+        # "adult_pilot_de2" has depression_survey and payment_info
+        expected_task_cols = [
+            "participant_task_depression_survey_completed_at",
+            "participant_task_payment_info_completed_at",
+        ]
+        for col in expected_task_cols:
+            assert col in rows[0], f"missing dynamic column {col}"
+
+        for row in rows:
+            for col in expected_task_cols:
+                val = row[col]
+                assert val is None or val == "" or "T" in val, (
+                    f"unexpected value for {col}: {val!r}"
+                )
