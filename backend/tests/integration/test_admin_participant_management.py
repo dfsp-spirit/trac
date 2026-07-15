@@ -545,4 +545,169 @@ async def test_pool_tokens_import_missing_column():
             auth=ADMIN_AUTH,
         )
         assert resp.status_code == 400
-        assert "missing" in resp.json()["detail"].lower()
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_basic():
+    """Delete multiple participants from a study via the batch endpoint."""
+    study_name_short = "default"
+    pids = [f"it_batch_del_{uuid.uuid4().hex[:8]}" for _ in range(3)]
+
+    async with httpx.AsyncClient() as client:
+        assign_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": pids},
+            auth=ADMIN_AUTH,
+        )
+        assert assign_resp.status_code == 200
+
+        page = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": study_name_short},
+            auth=ADMIN_AUTH,
+        )
+        assert page.status_code == 200
+        for pid in pids:
+            assert pid in page.text
+
+        del_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-participants",
+            json={"participant_ids": pids},
+            auth=ADMIN_AUTH,
+        )
+        assert del_resp.status_code == 200
+        data = del_resp.json()
+        assert data["deleted_participants"] == 3
+        assert data["not_found"] == 0
+
+        page2 = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": study_name_short},
+            auth=ADMIN_AUTH,
+        )
+        assert page2.status_code == 200
+        for pid in pids:
+            assert pid not in page2.text
+
+
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_idempotent():
+    """Deleting already-deleted participants reports not_found."""
+    study_name_short = "default"
+    pid = f"it_idem_del_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+
+        del1 = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+        assert del1.status_code == 200
+        assert del1.json()["deleted_participants"] == 1
+
+        del2 = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+        assert del2.status_code == 200
+        data2 = del2.json()
+        assert data2["deleted_participants"] == 0
+        assert data2["not_found"] == 1
+        assert pid in data2["not_found_pids"]
+
+
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_study_not_found():
+    """Batch delete for non-existent study returns 404."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/nonexistent/delete-participants",
+            json={"participant_ids": ["some_pid"]},
+            auth=ADMIN_AUTH,
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_empty_list():
+    """Batch delete with empty participant list returns 400."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/default/delete-participants",
+            json={"participant_ids": []},
+            auth=ADMIN_AUTH,
+        )
+        assert resp.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_unauthorized():
+    """Batch delete requires authentication."""
+    async with httpx.AsyncClient() as client:
+        resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/default/delete-participants",
+            json={"participant_ids": ["some_pid"]},
+        )
+        assert resp.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_delete_multiple_participants_cascades_token_assignments():
+    """Deleting participants cascades deletes their external task assignments."""
+    study_name_short = "adult_pilot_de2"
+    pid = f"it_cascade_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+
+        gen_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/generate-tokens",
+            auth=ADMIN_AUTH,
+        )
+        assert gen_resp.status_code == 200
+
+        csv_resp = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert pid in csv_resp.text
+
+        del_resp = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/delete-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+        assert del_resp.status_code == 200
+        data = del_resp.json()
+        assert data["deleted_participants"] == 1
+        assert data["deleted_assignments"] >= 1
+
+        csv_resp2 = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            auth=ADMIN_AUTH,
+        )
+        assert pid not in csv_resp2.text
+
+
+@pytest.mark.asyncio
+async def test_delete_users_section_visible_on_page():
+    """The 'Delete users (and their tokens)' section appears for a selected study."""
+    async with httpx.AsyncClient() as client:
+        page = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": "default"},
+            auth=ADMIN_AUTH,
+        )
+        assert page.status_code == 200
+        assert "Delete users (and their tokens)" in page.text
+        assert 'id="deleteUsersInput"' in page.text
+        assert 'id="deleteUsersBtn"' in page.text

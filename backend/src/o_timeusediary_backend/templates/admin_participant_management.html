@@ -536,6 +536,19 @@
             {% endif %}
         </div>
 
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Delete users (and their tokens) for study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.5rem;">Remove participants from this study and delete ALL their assigned external-task tokens at once.<br /><b>WARNING: Deletions are irreversible. The participant record itself is preserved (they may belong to other studies).</b></div>
+            <div style="margin-top:0.6rem;">
+                <textarea id="deleteUsersInput" rows="6" placeholder="Participant IDs separated by comma, newline, semicolon, or spaces"></textarea>
+                <div class="hint">Accepts comma, semicolon, newline, or space separated values.</div>
+            </div>
+            <div style="margin-top:0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+                <button id="deleteUsersBtn" class="btn-danger" type="button" disabled>Delete selected users</button>
+                <div id="deleteUsersStatus" class="status"></div>
+            </div>
+        </div>
+
         {% if selected_study %}
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
@@ -1248,6 +1261,67 @@
                 if (count === 0) return;
                 showModal('pool', count, 'pool tokens');
             });
+        })();
+
+        // --- Delete users (and their tokens) ---
+        (function() {
+            const inputEl = document.getElementById('deleteUsersInput');
+            const deleteBtn = document.getElementById('deleteUsersBtn');
+            const statusEl = document.getElementById('deleteUsersStatus');
+
+            if (inputEl) {
+                inputEl.addEventListener('input', () => {
+                    const ids = parseParticipantIds(inputEl.value);
+                    deleteBtn.disabled = ids.length === 0;
+                });
+            }
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', async () => {
+                    const select = document.getElementById('studySelect');
+                    const studyName = select?.value;
+                    if (!studyName) { alert('Please select a study first.'); return; }
+
+                    const participantIds = parseParticipantIds(inputEl.value);
+                    if (!participantIds.length) { alert('Enter at least one participant ID.'); return; }
+
+                    if (!confirm(`Delete ${participantIds.length} participant(s) and their tokens from study "${studyName}"?\n\nThis action cannot be undone.`)) {
+                        return;
+                    }
+
+                    deleteBtn.disabled = true;
+                    statusEl.textContent = 'Deleting...';
+                    statusEl.style.color = '#4f46e5';
+
+                    try {
+                        const resp = await fetch(
+                            `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/delete-participants`,
+                            {
+                                method: 'POST',
+                                credentials: 'same-origin',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ participant_ids: participantIds })
+                            }
+                        );
+                        const json = await resp.json().catch(() => ({}));
+                        if (!resp.ok) throw new Error(json.detail || 'Delete failed');
+
+                        statusEl.textContent = `Deleted ${json.deleted_participants} participant(s) (${json.deleted_assignments} token assignment(s)).`;
+                        statusEl.style.color = '#059669';
+                        if (json.not_found > 0) {
+                            statusEl.textContent += ` Not found: ${json.not_found_pids.join(', ')}.`;
+                        }
+
+                        setTimeout(() => {
+                            window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+                        }, 900);
+                    } catch (err) {
+                        statusEl.textContent = err.message;
+                        statusEl.style.color = '#dc2626';
+                        deleteBtn.disabled = false;
+                    }
+                });
+            }
         })();
     </script>
 </body>

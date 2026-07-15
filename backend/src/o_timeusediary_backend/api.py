@@ -2438,6 +2438,10 @@ class DeletePreviewItem(BaseModel):
     assigned_token: Optional[str] = None
 
 
+class DeleteParticipantsRequest(BaseModel):
+    participant_ids: List[str]
+
+
 class DeletePreviewResponse(BaseModel):
     total_input: int
     matched: int
@@ -5970,6 +5974,90 @@ async def remove_participant_from_study(
         "study_name_short": study_name_short,
         "participant_id": participant_id,
         "deleted_assignments": int(deleted_assignments),
+    }
+
+
+@app.post("/api/admin/studies/{study_name_short}/delete-participants")
+async def delete_multiple_participants_from_study(
+    study_name_short: str,
+    payload: DeleteParticipantsRequest,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Remove multiple participants from a study and delete their token assignments.
+
+    @param study_name_short Study short name.
+    @param payload Request body with list of participant IDs.
+    @param current_admin Authenticated admin username.
+    @param session Database session.
+    @returns Summary with deleted association and assignment counts.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    pids = list(set(payload.participant_ids))
+    if not pids:
+        raise HTTPException(
+            status_code=400, detail="No participant IDs provided"
+        )
+
+    associations = session.exec(
+        select(StudyParticipant).where(
+            StudyParticipant.study_id == study.id,
+            StudyParticipant.participant_id.in_(pids),
+        )
+    ).all()
+
+    found_pids = [a.participant_id for a in associations]
+    not_found_pids = [pid for pid in pids if pid not in found_pids]
+
+    deleted_assignments = 0
+    if found_pids:
+        external_task_ids = session.exec(
+            select(StudyExternalTask.id).where(StudyExternalTask.study_id == study.id)
+        ).all()
+
+        if external_task_ids:
+            deleted_assignments = (
+                session.exec(
+                    delete(StudyExternalTaskAssignment).where(
+                        StudyExternalTaskAssignment.participant_id.in_(found_pids),
+                        StudyExternalTaskAssignment.external_task_id.in_(external_task_ids),
+                    )
+                ).rowcount
+                or 0
+            )
+
+        for a in associations:
+            session.delete(a)
+
+    session.commit()
+
+    logger.info(
+        "Admin '%s' deleted %d participants (assignments=%d) from study '%s'",
+        current_admin,
+        len(found_pids),
+        deleted_assignments,
+        study_name_short,
+    )
+    audit_admin_action(
+        current_admin,
+        f"deleted {len(found_pids)} participants from study '{study_name_short}' "
+        f"(deleted_assignments={deleted_assignments}, not_found={len(not_found_pids)})",
+    )
+
+    return {
+        "message": "Participants removed from study",
+        "study_name_short": study_name_short,
+        "deleted_participants": len(found_pids),
+        "deleted_assignments": int(deleted_assignments),
+        "not_found": len(not_found_pids),
+        "not_found_pids": not_found_pids,
     }
 
 
