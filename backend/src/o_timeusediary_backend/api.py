@@ -626,6 +626,118 @@ def _is_external_tasks_locked_by_diary_requirement(
     )
 
 
+def _build_participant_completion_map(
+    session: Session,
+    study: Study,
+) -> Dict[str, Dict[str, Optional[datetime]]]:
+    """Compute per-participant diary and everything-completion timestamps.
+
+    Returns a dict mapping participant_id to:
+      {"diary_completed_at": datetime|None, "everything_completed_at": datetime|None}
+
+    diary_completed_at
+        The UTC timestamp when the participant first submitted activities for the
+        last remaining required day-label, i.e. the moment all distinct day-labels
+        were covered.  Uses MIN(created_at) per day-label; the diary-completion
+        instant is MAX of those per-day earliest submissions.  None when the diary
+        is not yet complete.
+
+    everything_completed_at
+        * No external tasks configured: identical to diary_completed_at.
+        * External tasks exist, diary complete, AND every external-task assignment
+          for this participant is confirmed: max(diary_completed_at,
+          max(confirmed_at times)).
+        * Otherwise: None.
+
+    This function is self-contained (loads its own data) so it can be reused
+    from the admin export, study overview, or anywhere participant completion
+    timestamps are needed.
+    """
+    day_labels = session.exec(
+        select(DayLabel).where(DayLabel.study_id == study.id)
+    ).all()
+    study_days_count = len(day_labels)
+
+    if study_days_count == 0:
+        return {}
+
+    activities = session.exec(
+        select(Activity).where(Activity.study_id == study.id)
+    ).all()
+
+    external_tasks = session.exec(
+        select(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
+    ).all()
+    has_external_tasks = len(external_tasks) > 0
+
+    pid_days: Dict[str, set] = {}
+    pid_day_earliest: Dict[str, Dict[int, datetime]] = {}
+
+    for a in activities:
+        pid = a.participant_id
+        dlid = a.day_label_id
+        cat = a.created_at
+
+        if pid not in pid_days:
+            pid_days[pid] = set()
+            pid_day_earliest[pid] = {}
+
+        pid_days[pid].add(dlid)
+
+        prev = pid_day_earliest[pid].get(dlid)
+        if prev is None or cat < prev:
+            pid_day_earliest[pid][dlid] = cat
+
+    assignments_by_pid: Dict[str, List[StudyExternalTaskAssignment]] = {}
+    if has_external_tasks:
+        ext_task_ids = [t.id for t in external_tasks]
+        all_assignments = session.exec(
+            select(StudyExternalTaskAssignment).where(
+                StudyExternalTaskAssignment.external_task_id.in_(ext_task_ids)
+            )
+        ).all()
+        for a in all_assignments:
+            assignments_by_pid.setdefault(a.participant_id, []).append(a)
+
+    result: Dict[str, Dict[str, Optional[datetime]]] = {}
+    all_pids = set(pid_days.keys()) | set(assignments_by_pid.keys())
+
+    for pid in all_pids:
+        distinct_days = len(pid_days.get(pid, set()))
+        diary_complete = distinct_days >= study_days_count
+
+        diary_completed_at: Optional[datetime] = None
+        if diary_complete:
+            earliest_by_day = pid_day_earliest[pid]
+            diary_completed_at = max(earliest_by_day.values())
+
+        everything_completed_at: Optional[datetime] = None
+
+        if not has_external_tasks:
+            everything_completed_at = diary_completed_at
+        elif diary_complete:
+            pid_assignments = assignments_by_pid.get(pid, [])
+            all_confirmed = bool(pid_assignments) and all(
+                a.is_confirmed for a in pid_assignments
+            )
+            if all_confirmed:
+                confirmed_dates = [
+                    a.confirmed_at for a in pid_assignments if a.confirmed_at
+                ]
+                if confirmed_dates:
+                    everything_completed_at = max(
+                        diary_completed_at,  # is not None when diary_complete
+                        max(confirmed_dates),
+                    )
+
+        result[pid] = {
+            "diary_completed_at": diary_completed_at,
+            "everything_completed_at": everything_completed_at,
+        }
+
+    return result
+
+
 # Initialize templates with absolute path
 current_dir = Path(__file__).parent
 templates = Jinja2Templates(directory=str(current_dir / "templates"))
@@ -6740,6 +6852,8 @@ async def export_study_activities(
             for study_participant in study_participants
         }
 
+    completion_map = _build_participant_completion_map(session, study)
+
     # Prepare the data with dereferenced fields
     export_data = []
     for activity, participant, day_label, timeline in activities:
@@ -6792,6 +6906,20 @@ async def export_study_activities(
                     "participant_consent_decided_at": consent_decided_at,
                 }
             )
+
+        comp = completion_map.get(participant.id, {})
+        diary_at = comp.get("diary_completed_at")
+        everything_at = comp.get("everything_completed_at")
+        record.update(
+            {
+                "participant_diary_completed_at": (
+                    diary_at.isoformat() if diary_at else None
+                ),
+                "participant_everything_completed_at": (
+                    everything_at.isoformat() if everything_at else None
+                ),
+            }
+        )
 
         # Add parent activity info if available
         if activity.parent_activity_code:

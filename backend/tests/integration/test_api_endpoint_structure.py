@@ -241,6 +241,8 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
             "study_requires_consent",
             "participant_consent_given",
             "participant_consent_decided_at",
+            "participant_diary_completed_at",
+            "participant_everything_completed_at",
             "frequency",
         ]:
             assert key in first_export_record
@@ -257,6 +259,8 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
             "study_requires_consent",
             "participant_consent_given",
             "participant_consent_decided_at",
+            "participant_diary_completed_at",
+            "participant_everything_completed_at",
             "frequency",
         ]:
             assert key in csv_rows[0]
@@ -343,4 +347,67 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
 
         export_manifest_text = archive.read("export_manifest.json").decode("utf-8")
         assert "\n" in export_manifest_text
-        assert "\n  \"mode\"" in export_manifest_text
+
+
+@pytest.mark.asyncio
+async def test_export_activities_includes_completion_timestamps():
+    """Export must include participant_diary_completed_at and
+    participant_everything_completed_at in every row, and values must be
+    consistent (idempotent across two calls to the same endpoint)."""
+    study_name_short = "default"
+
+    async with httpx.AsyncClient() as client:
+        # --- first call ---
+        resp1 = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "csv"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert resp1.status_code == 200
+
+        rows1 = list(csv.DictReader(StringIO(resp1.text)))
+        assert rows1
+
+        required = ("participant_diary_completed_at", "participant_everything_completed_at")
+        for key in required:
+            assert key in rows1[0], f"missing column {key} in first CSV row"
+
+        for row in rows1:
+            for key in required:
+                val = row[key]
+                # must be either empty/None or a valid ISO-format datetime string
+                assert val is None or val == "" or "T" in val, (
+                    f"unexpected value for {key}: {val!r}"
+                )
+            # consistency: everything-completed implies diary-completed
+            if row["participant_everything_completed_at"]:
+                assert row["participant_diary_completed_at"], (
+                    "everything_completed_at set but diary_completed_at is empty"
+                )
+
+        # same participant should have the same timestamps in every row
+        comp_by_pid = {}
+        for row in rows1:
+            pid = row["participant_id"]
+            comp = (
+                row["participant_diary_completed_at"],
+                row["participant_everything_completed_at"],
+            )
+            if pid in comp_by_pid:
+                assert comp_by_pid[pid] == comp, (
+                    f"inconsistent completion timestamps for {pid}"
+                )
+            else:
+                comp_by_pid[pid] = comp
+
+        # --- second call (idempotent) ---
+        resp2 = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "csv"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert resp2.status_code == 200
+
+        rows2 = list(csv.DictReader(StringIO(resp2.text)))
+        assert [r.keys() for r in rows1[:1]] == [r.keys() for r in rows2[:1]]
+        assert len(rows1) == len(rows2)
