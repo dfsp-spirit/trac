@@ -6872,6 +6872,61 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
     return;
   }
 
+  // Copying uses the SAVED state of the source day, so persist the current
+  // frontend state to the backend first.  This is the same save path used by
+  // day switching (see saveAndSwitchToDay): frontend+backend validation
+  // applies, and if the current day doesn't meet min_coverage the save fails
+  // and we abort the copy before touching the DB.  We stay on the current
+  // day — copying never advances day_label_index.
+  const currentDayIndex = getCurrentDayIndex();
+  if (sourceDayIndex === currentDayIndex) {
+    try {
+      const saveResult = await sendData({
+        shouldRedirect: false,
+        isLastDay: false,
+        currentDayIndex,
+      });
+
+      if (!saveResult?.success) {
+        const submitErrorMessage = window.i18n
+          ? window.i18n.t('messages.submitError')
+          : 'Error submitting diary';
+        const errorDetails = saveResult?.error ? `: ${saveResult.error}` : '';
+        showCopyToast(
+          t('messages.copyError', {
+            message: submitErrorMessage + errorDetails,
+          }),
+          true
+        );
+        return;
+      }
+
+      // The save persisted the current frontend state to the DB for the
+      // current day label, so mark it clean and record it as a day with data.
+      if (window.timelineManager) {
+        window.timelineManager._unsavedChanges = false;
+        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
+          if (
+            !window.timelineManager.dayIndicesWithData.includes(sourceDayIndex)
+          ) {
+            window.timelineManager.dayIndicesWithData.push(sourceDayIndex);
+            window.timelineManager.dayIndicesWithData.sort(function (a, b) {
+              return a - b;
+            });
+          }
+        }
+      }
+    } catch (saveError) {
+      showCopyToast(
+        t('messages.copyError', {
+          message: saveError.message || 'save failed',
+        }),
+        true
+      );
+      return;
+    }
+  }
+
   try {
     const url =
       TUD_SETTINGS.API_BASE_URL +
