@@ -143,7 +143,13 @@
     "reportingForDay": "Bericht für Tag:",
     "studyDayOf": "Tag {{current}} von {{total}}",
     "currentDayTooltip": "{{dayName}} (Tag {{current}} von {{total}})",
-    "goBackToEditPreviousDays": "Zu Tag wechseln:"
+    "goBackToEditPreviousDays": "Zu Tag wechseln:",
+    "copyDayLink": "Tag kopieren",
+    "copyDayDisabled": "Tag kopieren — erst einreichen",
+    "copyToDay": "Auf anderen Tag kopieren",
+    "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
+    "copyError": "Fehler beim Kopieren: {{message}}",
+    "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",

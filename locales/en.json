@@ -143,7 +143,13 @@
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Day {{current}} of {{total}}",
     "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
-    "goBackToEditPreviousDays": "Switch to day:"
+    "goBackToEditPreviousDays": "Switch to day:",
+    "copyDayLink": "Copy this day",
+    "copyDayDisabled": "Copy day — submit first",
+    "copyToDay": "Copy to another day",
+    "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
+    "copyError": "Failed to copy: {{message}}",
+    "copyEmptySource": "Source day has no activities to copy."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",

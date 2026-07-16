@@ -4649,7 +4649,8 @@ function initTimelineInteraction(timeline) {
     // In vertical mode, we only need the start time from the click position
     // End time should always be start time + block length (default 10 minutes)
     const startMinutes = Math.round(clickMinutes / 10) * 10;
-    const blockLength = window.selectedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH;
+    const blockLength =
+      window.selectedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH;
     const endMinutes = startMinutes + blockLength;
 
     if (isNaN(startMinutes) || isNaN(endMinutes)) {
@@ -5400,6 +5401,9 @@ function persistPendingTimelineStateSoon() {
     if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
       window.__TRAC_CAPTURE_PENDING_STATE();
     }
+    if (window.timelineManager && hasAnyLocalActivities()) {
+      window.timelineManager._unsavedChanges = true;
+    }
   }, 100);
 }
 
@@ -5706,6 +5710,15 @@ function renderPreviousDaysSwitchRow() {
       button.addEventListener('click', async () => {
         await saveAndSwitchToDay(dayIndex);
       });
+
+      const hasData =
+        window.timelineManager?.dayIndicesWithData?.includes(dayIndex);
+      if (hasData && !window.globals?.isMobile) {
+        button.addEventListener('contextmenu', (event) => {
+          event.preventDefault();
+          showCopyTargetPicker(dayIndex, event);
+        });
+      }
     }
 
     existingRow.appendChild(button);
@@ -6388,6 +6401,13 @@ async function init() {
             : [];
           renderPreviousDaysSwitchRow();
 
+          if (typeof window.addCopyDayLink === 'function') {
+            const timelineTitle = document.querySelector('.timeline-title');
+            if (timelineTitle) {
+              window.addCopyDayLink(timelineTitle, dayIndex);
+            }
+          }
+
           const transformedData =
             transformBackendActivitiesResponse(backendData);
           console.log('Transformed backend activities data:', transformedData);
@@ -6423,6 +6443,13 @@ async function init() {
 
           if (await loadActivitiesIntoTimelineManager(activitiesToLoad)) {
             loadedActivitiesFromBackend = true;
+            if (window.timelineManager) {
+              window.timelineManager._unsavedChanges = !(
+                transformedData &&
+                transformedData.activities &&
+                transformedData.activities.length > 0
+              );
+            }
           }
         } else if (response.status === 404) {
           console.log(
@@ -6670,6 +6697,226 @@ init().catch((error) => {
 });
 
 window.addEventListener('beforeunload', () => {
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+    window.__TRAC_CAPTURE_PENDING_STATE();
+  }
+});
+
+function getEmptyTargetDayIndices() {
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount() ||
+    0;
+
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+
+  const emptyIndices = [];
+  for (let i = 0; i < studyDaysCount; i++) {
+    if (!dayIndicesWithData.includes(i)) {
+      emptyIndices.push(i);
+    }
+  }
+  return emptyIndices;
+}
+
+function removeCopyDayContextMenu() {
+  const existingMenu = document.querySelector('.copy-day-context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+}
+
+function showCopyTargetPicker(sourceDayIndex, event) {
+  removeCopyDayContextMenu();
+
+  const emptyIndices = getEmptyTargetDayIndices();
+  if (!emptyIndices.length) {
+    return;
+  }
+
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) {
+          return key;
+        };
+
+  const sourceDayName =
+    window.studyConfigManager?.getDayDisplayLabel(sourceDayIndex) ||
+    t('common.day') + ' ' + (sourceDayIndex + 1);
+
+  const menu = document.createElement('div');
+  menu.className = 'copy-day-context-menu';
+
+  const header = document.createElement('div');
+  header.className = 'copy-day-context-menu-header';
+  header.textContent = t('messages.copyToDay') + ': ' + sourceDayName;
+  menu.appendChild(header);
+
+  for (const targetIndex of emptyIndices) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'copy-day-context-menu-item';
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(targetIndex) ||
+      t('common.day') + ' ' + (targetIndex + 1);
+    item.textContent = targetDayName + ' (empty)';
+    item.addEventListener('click', async () => {
+      removeCopyDayContextMenu();
+      await copyDayTo(sourceDayIndex, targetIndex);
+    });
+    menu.appendChild(item);
+  }
+
+  const isMobile = false;
+
+  if (
+    window.globals &&
+    typeof window.globals.getIsMobile === 'function' &&
+    window.globals.getIsMobile()
+  ) {
+    document.body.appendChild(menu);
+    return;
+  }
+
+  const menuX = Math.min(event.clientX, window.innerWidth - 210);
+  const menuY = Math.min(event.clientY, window.innerHeight - 200);
+  menu.style.position = 'fixed';
+  menu.style.left = menuX + 'px';
+  menu.style.top = menuY + 'px';
+
+  document.body.appendChild(menu);
+
+  const closeHandler = function (e) {
+    if (!menu.contains(e.target)) {
+      removeCopyDayContextMenu();
+      document.removeEventListener('click', closeHandler, true);
+    }
+  };
+  setTimeout(function () {
+    document.addEventListener('click', closeHandler, true);
+  }, 0);
+}
+
+async function copyDayTo(sourceDayIndex, targetDayIndex) {
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) {
+          return key;
+        };
+
+  const studyName =
+    window.timelineManager?.study?.study_name_short ||
+    new URLSearchParams(window.location.search).get('study_name');
+  const participantId =
+    window.timelineManager?.study?.pid ||
+    new URLSearchParams(window.location.search).get('pid');
+
+  if (!studyName || !participantId) {
+    showCopyToast(
+      t('messages.copyError', { message: 'missing study or participant info' }),
+      true
+    );
+    return;
+  }
+
+  const targetDayLabel = window.studyConfigManager?.getDayLabel(targetDayIndex);
+  const sourceDayLabel = window.studyConfigManager?.getDayLabel(sourceDayIndex);
+
+  if (!targetDayLabel || !sourceDayLabel) {
+    showCopyToast(
+      t('messages.copyError', { message: 'could not resolve day labels' }),
+      true
+    );
+    return;
+  }
+
+  try {
+    const url =
+      TUD_SETTINGS.API_BASE_URL +
+      '/studies/' +
+      encodeURIComponent(studyName) +
+      '/participants/' +
+      encodeURIComponent(participantId) +
+      '/day_labels/' +
+      encodeURIComponent(targetDayLabel) +
+      '/copy-from/' +
+      encodeURIComponent(sourceDayLabel);
+
+    const response = await fetch(url, { method: 'POST' });
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(function () {
+        return { detail: 'Unknown error' };
+      });
+      showCopyToast(
+        t('messages.copyError', {
+          message: errorPayload.detail || 'Failed to copy',
+        }),
+        true
+      );
+      return;
+    }
+
+    const data = await response.json();
+
+    const sourceDayName =
+      window.studyConfigManager?.getDayDisplayLabel(sourceDayIndex) ||
+      sourceDayLabel;
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
+      targetDayLabel;
+    showCopyToast(
+      t('messages.copySuccess', {
+        sourceDay: sourceDayName,
+        targetDay: targetDayName,
+      })
+    );
+
+    if (
+      window.timelineManager &&
+      Array.isArray(window.timelineManager.dayIndicesWithData)
+    ) {
+      if (!window.timelineManager.dayIndicesWithData.includes(targetDayIndex)) {
+        window.timelineManager.dayIndicesWithData.push(targetDayIndex);
+        window.timelineManager.dayIndicesWithData.sort(function (a, b) {
+          return a - b;
+        });
+      }
+    }
+
+    if (typeof renderPreviousDaysSwitchRow === 'function') {
+      renderPreviousDaysSwitchRow();
+    }
+
+    if (typeof window.addCopyDayLink === 'function') {
+      const timelineTitle = document.querySelector('.timeline-title');
+      const currentDayIndex = getCurrentDayIndex();
+      if (timelineTitle && typeof currentDayIndex === 'number') {
+        window.addCopyDayLink(timelineTitle, currentDayIndex);
+      }
+    }
+  } catch (error) {
+    showCopyToast(t('messages.copyError', { message: error.message }), true);
+  }
+}
+
+function showCopyToast(message, isError) {
+  if (window.showToast) {
+    window.showToast(message, isError ? 'error' : 'success', 4000);
+  } else {
+    console.log(message);
+  }
+}
+
+window.showCopyTargetPicker = showCopyTargetPicker;
+
+window.addEventListener('beforeunload', function () {
   if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
     window.__TRAC_CAPTURE_PENDING_STATE();
   }

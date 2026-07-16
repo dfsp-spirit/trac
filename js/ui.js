@@ -677,6 +677,82 @@ function updateTimelineCoverageIndicators() {
   });
 }
 
+function addCopyDayLink(timelineTitle, dayIndex) {
+  const existingLink = timelineTitle.querySelector('.copy-day-link');
+  if (existingLink) {
+    existingLink.remove();
+  }
+
+  const hasData =
+    window.timelineManager &&
+    Array.isArray(window.timelineManager.dayIndicesWithData) &&
+    window.timelineManager.dayIndicesWithData.includes(dayIndex) &&
+    getEmptyTargetDayCount() > 0;
+
+  if (!hasData) {
+    return;
+  }
+
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) {
+          return key;
+        };
+
+  const hasUnsavedChanges =
+    window.timelineManager && window.timelineManager._unsavedChanges === true;
+
+  const link = document.createElement('button');
+  link.type = 'button';
+  link.className = 'copy-day-link';
+  link.title = '';
+
+  if (hasUnsavedChanges) {
+    link.className += ' disabled';
+    link.textContent = t('messages.copyDayDisabled');
+    link.title = t('messages.copyDayDisabled');
+    link.disabled = true;
+  } else {
+    link.textContent = t('messages.copyDayLink');
+    link.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const pickerEvent = {
+        clientX: event.clientX,
+        clientY: event.clientY + 8,
+      };
+      if (typeof window.showCopyTargetPicker === 'function') {
+        window.showCopyTargetPicker(dayIndex, pickerEvent);
+      }
+    });
+  }
+  timelineTitle.appendChild(link);
+}
+
+window.addCopyDayLink = addCopyDayLink;
+
+function getEmptyTargetDayCount() {
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount?.() ||
+    0;
+
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+
+  let count = 0;
+  for (let i = 0; i < studyDaysCount; i++) {
+    if (!dayIndicesWithData.includes(i)) {
+      count++;
+    }
+  }
+  return count;
+}
+
 // Add this function to update the day display
 export function updateCurrentDayDisplay() {
   console.log('Updating current day display...');
@@ -765,6 +841,8 @@ export function updateCurrentDayDisplay() {
   dayDisplay.textContent = `(${studyDayText})`;
   dayDisplay.title = dayTooltipText;
   timelineTitle.appendChild(dayDisplay);
+
+  addCopyDayLink(timelineTitle, dayIndex);
 
   // Custom page title from URL param (frontend-only, not sent to backend)
   const customTitle = urlParams.get('custom_page_title');
