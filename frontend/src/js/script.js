@@ -6474,6 +6474,15 @@ async function init() {
               );
             }
           }
+
+          // Re-render the previous-days switch row now that activities (saved or
+          // templated from the previous day) have been loaded into
+          // timelineManager. The earlier render at the top of this branch ran
+          // before any activities were loaded, so its coverage-based disabled
+          // state is stale. Templated activities are guaranteed to satisfy
+          // min_coverage (they were previously saved on the source day), so the
+          // day-switch buttons must become enabled here.
+          renderPreviousDaysSwitchRow();
         } else if (response.status === 404) {
           console.log(
             `No existing data found for participant ${participantId}, study ${studyName}, day index ${dayIndex}. Starting fresh.`

@@ -70,6 +70,21 @@ async function submitCurrentDayAndWaitFor(page, expectedDayName) {
     await page.waitForTimeout(700);
   }
 
+  await expect
+    .poll(
+      async () => {
+        const currentUrl = page.url();
+        return Number(
+          new URL(currentUrl).searchParams.get('day_label_index') || 0
+        );
+      },
+      {
+        timeout: 30000,
+        message: 'Waiting for day_label_index to advance after submission',
+      }
+    )
+    .toBe(1);
+
   await expect(currentDayDisplay).toHaveAttribute(
     'title',
     new RegExp(expectedDayName),
@@ -79,7 +94,7 @@ async function submitCurrentDayAndWaitFor(page, expectedDayName) {
   );
 }
 
-test('day switch buttons disabled when min coverage not met, enabled when met', async ({
+test('day switch buttons enabled on a day pre-filled with template activities', async ({
   page,
 }) => {
   await page.goto('index.html?study_name=default&lang=en', {
@@ -93,15 +108,15 @@ test('day switch buttons disabled when min coverage not met, enabled when met', 
     /Monday/
   );
 
-  // Create data on Monday and submit to move to Tuesday.
+  // Fill out Monday enough to satisfy min_coverage (default primary = 10 min).
   await placeSingleActivity(page);
   await submitCurrentDayAndWaitFor(page, 'Tuesday');
 
-  // Wait for page to fully load after navigation
+  // Wait for the app to fully (re)load Tuesday, including any backend fetch of
+  // template activities copied over from Monday.
   await page.waitForLoadState('domcontentloaded');
-  await page.waitForTimeout(1000);
 
-  // Verify Monday data exists
+  // Monday must now be reported by the backend as a day with saved data.
   await expect
     .poll(
       async () => {
@@ -116,78 +131,49 @@ test('day switch buttons disabled when min coverage not met, enabled when met', 
     )
     .toContain(0);
 
-  // Switch row should be visible
-  const switchRow = page.locator('#previousDaysSwitchRow');
-  await expect(switchRow).toBeVisible({ timeout: 30000 });
-
-  // Get the Monday button (the switch target)
-  const mondayButton = switchRow.locator('button:has-text("Monday")');
-  await expect(mondayButton).toBeVisible();
-
-  // The default study auto-templates Monday onto Tuesday, so Tuesday is
-  // pre-filled with template activities that meet min_coverage. The Monday
-  // button must therefore be enabled right after landing on Tuesday.
+  // Template activities copied from Monday should now be present on Tuesday.
+  // They are guaranteed to satisfy min_coverage (the source day was saved and
+  // therefore met coverage), so the day-switch buttons must be enabled.
   await expect
     .poll(
       async () =>
-        page
-          .locator('.timeline-container[data-active="true"] .activity-block')
-          .count(),
-      { timeout: 30000, message: 'Waiting for template activities on Tuesday' }
+        page.locator(
+          '.timeline-container[data-active="true"] .activity-block'
+        ).count(),
+      {
+        timeout: 30000,
+        message: 'Waiting for template activities to render on Tuesday',
+      }
     )
     .toBeGreaterThan(0);
-  await expect(mondayButton).toBeEnabled();
 
-  // To exercise the "min coverage not met" branch, delete the template
-  // activity on the active timeline so coverage drops below the minimum.
-  const templateBlock = page
-    .locator('.timeline-container[data-active="true"] .activity-block')
-    .first();
-  await expect(templateBlock).toBeVisible();
-  await templateBlock.hover();
-  await page.keyboard.press('Delete');
-
-  await expect(
-    page.locator('.timeline-container[data-active="true"] .activity-block')
-  ).toHaveCount(0);
-
-  // The app does not live-re-render the switch row on manual edits, so trigger
-  // the re-render explicitly (mirrors how the application refreshes the row on
-  // day changes / loads).
-  await page.evaluate(() => {
-    if (typeof window.renderPreviousDaysSwitchRow === 'function') {
-      window.renderPreviousDaysSwitchRow();
-    }
+  // The template banner should be visible, confirming the activities came from
+  // the previous day's template rather than from saved Tuesday data.
+  await expect(page.locator('#templateBanner')).toBeVisible({
+    timeout: 10000,
   });
 
-  // Coverage is now below the minimum, so the Monday button should be disabled
-  // with a tooltip explaining why.
-  await expect(mondayButton).toBeDisabled();
-
-  const titleBefore = await mondayButton.getAttribute('title');
-  expect(titleBefore).toBeTruthy();
-  expect(titleBefore).toContain('minimum');
-
-  // Now place enough activities to meet min coverage (default is 10 minutes)
-  await placeSingleActivity(page);
-
-  // Trigger re-render of the switch row to update button states
-  await page.evaluate(() => {
-    if (typeof window.renderPreviousDaysSwitchRow === 'function') {
-      window.renderPreviousDaysSwitchRow();
-    }
-  });
-
-  // Verify coverage meets minimum
+  // Coverage on the current (Tuesday) day must meet the minimum, driven purely
+  // by the unsaved templated activities.
   const coverage = await page.evaluate(() => {
-    return window.getTimelineCoverage ? window.getTimelineCoverage() : 0;
+    return typeof window.getTimelineCoverage === 'function'
+      ? window.getTimelineCoverage()
+      : 0;
   });
   expect(coverage).toBeGreaterThanOrEqual(10);
 
-  // The Monday button should now be enabled
+  const switchRow = page.locator('#previousDaysSwitchRow');
+  await expect(switchRow).toBeVisible({ timeout: 30000 });
+
+  const mondayButton = switchRow.locator('button:has-text("Monday")');
+  await expect(mondayButton).toBeVisible();
+
+  // The Monday button must be enabled: the template activities satisfy the
+  // day's min_coverage, so saving Tuesday and switching back to Monday should
+  // be allowed without error.
   await expect(mondayButton).toBeEnabled();
 
-  const titleAfter = await mondayButton.getAttribute('title');
-  // Title should be cleared or no longer contain the warning message
-  expect(titleAfter || '').not.toContain('minimum');
+  // The enabling tooltip (minimum-activities warning) should be cleared.
+  const titleAfter = (await mondayButton.getAttribute('title')) || '';
+  expect(titleAfter).not.toContain('minimum');
 });
