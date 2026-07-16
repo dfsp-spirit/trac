@@ -152,6 +152,7 @@
     "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
     "copyError": "Failed to copy: {{message}}",
     "copyEmptySource": "Source day has no activities to copy.",
+    "completeMinimumActivitiesBeforeSwitching": "Complete minimum activities before switching days.",
     "completeOtherDaysFirst": "Complete {{days}} first to finish the study.",
     "daySavedStayOnPage": "Day saved. Complete remaining days to finish the study."
   },

@@ -149,7 +149,8 @@
     "copyToDay": "Auf anderen Tag kopieren",
     "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
     "copyError": "Fehler beim Kopieren: {{message}}",
-    "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren."
+    "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren.",
+    "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",

@@ -772,14 +772,21 @@ function getEmptyTargetDayCount() {
     ? window.timelineManager.dayIndicesWithData
     : [];
 
+  const currentDayIndex =
+    parseInt(
+      new URLSearchParams(window.location.search).get('day_label_index')
+    ) || 0;
+
   let count = 0;
   for (let i = 0; i < studyDaysCount; i++) {
-    if (!dayIndicesWithData.includes(i)) {
+    if (!dayIndicesWithData.includes(i) && i !== currentDayIndex) {
       count++;
     }
   }
   return count;
 }
+
+window.getEmptyTargetDayCount = getEmptyTargetDayCount;
 
 // Add this function to update the day display
 export function updateCurrentDayDisplay() {
