@@ -2590,6 +2590,11 @@ class UpdateStudyCollectionWindowRequest(BaseModel):
     data_collection_end: Optional[datetime] = None
 
 
+class RenameStudyRequest(BaseModel):
+    name: Optional[str] = None
+    name_short: Optional[str] = None
+
+
 class ImportStudiesConfigStudy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -4073,6 +4078,95 @@ async def unpause_study(
     logger.info("Admin '%s' unpaused study '%s'", current_admin, study_name_short)
     audit_admin_action(current_admin, f"unpaused study '{study_name_short}'")
     return {"study_name_short": study_name_short, "is_paused": False}
+
+
+@app.patch("/api/admin/studies/{study_name_short}/rename")
+async def rename_study(
+    study_name_short: str,
+    payload: RenameStudyRequest,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Rename a study's display name and/or short name.
+
+    This is intended for archiving/versioning workflows — e.g. renaming an
+    old study so a new version can be created with the original names.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    new_name = payload.name
+    new_name_short = payload.name_short
+
+    if new_name is None and new_name_short is None:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one of name or name_short must be provided",
+        )
+
+    if new_name == study.name and new_name_short == study.name_short:
+        raise HTTPException(status_code=400, detail="No changes detected")
+
+    if new_name is not None and new_name != study.name:
+        existing = session.exec(
+            select(Study).where(Study.name == new_name, Study.id != study.id)
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Study '{existing.name_short}' already uses the name '{new_name}'",
+            )
+
+    if new_name_short is not None and new_name_short != study.name_short:
+        existing = session.exec(
+            select(Study).where(
+                Study.name_short == new_name_short, Study.id != study.id
+            )
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Study already exists with short name '{new_name_short}'",
+            )
+
+    previous_name = study.name
+    previous_name_short = study.name_short
+
+    if new_name is not None:
+        study.name = new_name
+    if new_name_short is not None:
+        study.name_short = new_name_short
+
+    session.add(study)
+    session.commit()
+
+    logger.info(
+        "Admin '%s' renamed study '%s' (%s -> %s, %s -> %s)",
+        current_admin,
+        previous_name_short,
+        previous_name,
+        study.name,
+        previous_name_short,
+        study.name_short,
+    )
+    audit_admin_action(
+        current_admin,
+        (
+            f"renamed study '{previous_name_short}': "
+            f"name '{previous_name}' -> '{study.name}', "
+            f"name_short '{previous_name_short}' -> '{study.name_short}'"
+        ),
+    )
+
+    return {
+        "name": study.name,
+        "name_short": study.name_short,
+    }
 
 
 @app.get("/api/admin/export/studies-runtime-config")
@@ -6138,9 +6232,7 @@ async def delete_multiple_participants_from_study(
 
     pids = list(set(payload.participant_ids))
     if not pids:
-        raise HTTPException(
-            status_code=400, detail="No participant IDs provided"
-        )
+        raise HTTPException(status_code=400, detail="No participant IDs provided")
 
     associations = session.exec(
         select(StudyParticipant).where(
@@ -6163,7 +6255,9 @@ async def delete_multiple_participants_from_study(
                 session.exec(
                     delete(StudyExternalTaskAssignment).where(
                         StudyExternalTaskAssignment.participant_id.in_(found_pids),
-                        StudyExternalTaskAssignment.external_task_id.in_(external_task_ids),
+                        StudyExternalTaskAssignment.external_task_id.in_(
+                            external_task_ids
+                        ),
                     )
                 ).rowcount
                 or 0

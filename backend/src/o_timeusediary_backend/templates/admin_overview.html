@@ -243,6 +243,117 @@
             opacity: 0.6;
         }
 
+        .edit-btn {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            text-decoration: none;
+            font-size: 0.85rem;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            color: var(--text);
+            background: transparent;
+            cursor: pointer;
+            font-weight: 400;
+        }
+
+        .edit-btn:hover {
+            box-shadow: var(--focus-shadow);
+        }
+
+        .edit-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.55);
+            z-index: 1200;
+            padding: 1rem;
+        }
+
+        .edit-modal.open {
+            display: flex;
+        }
+
+        .edit-modal-card {
+            width: 100%;
+            max-width: 480px;
+            background: var(--surface);
+            border-radius: 10px;
+            border: 1px solid var(--border-strong);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+            padding: 1.5rem;
+        }
+
+        .edit-modal-title {
+            margin-bottom: 0.75rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .edit-modal-field {
+            margin-bottom: 1rem;
+        }
+
+        .edit-modal-field label {
+            display: block;
+            margin-bottom: 0.3rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .edit-modal-field input {
+            width: 100%;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            padding: 0.65rem;
+            font-size: 0.92rem;
+            background: #fff;
+            color: var(--text);
+        }
+
+        .edit-modal-actions {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .edit-modal-status {
+            min-height: 1.25rem;
+            margin-top: 0.6rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .edit-modal-status.error {
+            color: #b42318;
+        }
+
+        .edit-modal-status.ok {
+            color: #0f5132;
+        }
+
+        .save-btn {
+            border: 1px solid var(--text);
+            border-radius: 6px;
+            padding: 0.5rem 0.85rem;
+            color: var(--dark-btn-text);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            background: var(--text);
+            box-shadow: var(--inset-shadow);
+        }
+
+        .save-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
         .danger-modal {
             position: fixed;
             inset: 0;
@@ -782,6 +893,12 @@
                                     <a href="{{ request.scope.root_path }}/admin/study/{{ sd.study.name_short }}" class="page-btn" style="display: inline-block; padding: 0.35rem 0.75rem; text-decoration: none; font-size: 0.85rem;">
                                         Details
                                     </a>
+                                    <button type="button" class="edit-btn open-edit-study-btn"
+                                        data-study-id="{{ sd.study.id }}"
+                                        data-study-name-short="{{ sd.study.name_short }}"
+                                        data-study-name="{{ sd.study.name }}">
+                                        Edit
+                                    </button>
                                 </td>
                             </tr>
                             {% endfor %}
@@ -856,6 +973,25 @@
         </div>
     </div>
 
+    <div id="editStudyModal" class="edit-modal" role="dialog" aria-modal="true" aria-labelledby="editStudyModalTitle">
+        <div class="edit-modal-card">
+            <h2 id="editStudyModalTitle" class="edit-modal-title">Edit Study</h2>
+            <div class="edit-modal-field">
+                <label for="editStudyName">Name</label>
+                <input id="editStudyName" class="danger-modal-input" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="edit-modal-field">
+                <label for="editStudyNameShort">Short Name</label>
+                <input id="editStudyNameShort" class="danger-modal-input" type="text" autocomplete="off" spellcheck="false">
+            </div>
+            <div class="edit-modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeEditStudyModal()">Cancel</button>
+                <button type="button" id="editStudySaveBtn" class="save-btn">Save Changes</button>
+            </div>
+            <div id="editStudyModalStatus" class="edit-modal-status"></div>
+        </div>
+    </div>
+
     <div id="deleteStudyModal" class="danger-modal" role="dialog" aria-modal="true" aria-labelledby="deleteStudyModalTitle">
         <div class="danger-modal-card">
             <h2 id="deleteStudyModalTitle" class="danger-modal-title">Danger</h2>
@@ -873,6 +1009,13 @@
 
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
+        const editStudyModal = document.getElementById('editStudyModal');
+        const editStudyName = document.getElementById('editStudyName');
+        const editStudyNameShort = document.getElementById('editStudyNameShort');
+        const editStudySaveBtn = document.getElementById('editStudySaveBtn');
+        const editStudyModalStatus = document.getElementById('editStudyModalStatus');
+        let editStudyContext = null;
+
         const deleteStudyModal = document.getElementById('deleteStudyModal');
         const deleteStudyModalTarget = document.getElementById('deleteStudyModalTarget');
         const deleteStudyConfirmInput = document.getElementById('deleteStudyConfirmInput');
@@ -880,6 +1023,102 @@
         const deleteStudyModalStatus = document.getElementById('deleteStudyModalStatus');
         const deleteStudyModalTitle = document.getElementById('deleteStudyModalTitle');
         let deleteStudyContext = null;
+
+        function setEditModalStatus(message, statusClass = '') {
+            if (!editStudyModalStatus) {
+                return;
+            }
+            editStudyModalStatus.textContent = message || '';
+            editStudyModalStatus.className = `edit-modal-status ${statusClass}`.trim();
+        }
+
+        function openEditStudyModal(studyId, studyNameShort, studyName) {
+            if (!editStudyModal || !editStudyName || !editStudyNameShort || !editStudySaveBtn) {
+                return;
+            }
+
+            editStudyContext = {
+                studyId: String(studyId),
+                studyNameShort: String(studyNameShort),
+                studyName: String(studyName || ''),
+            };
+
+            editStudyName.value = editStudyContext.studyName;
+            editStudyNameShort.value = editStudyContext.studyNameShort;
+            editStudySaveBtn.disabled = false;
+            setEditModalStatus('');
+            editStudyModal.classList.add('open');
+            editStudyName.focus();
+            editStudyName.select();
+        }
+
+        function closeEditStudyModal() {
+            if (!editStudyModal) {
+                return;
+            }
+            editStudyModal.classList.remove('open');
+            editStudyContext = null;
+        }
+
+        async function saveEditStudy() {
+            if (!editStudyContext || !editStudySaveBtn) {
+                return;
+            }
+
+            const newName = editStudyName.value.trim();
+            const newNameShort = editStudyNameShort.value.trim();
+
+            if (!newName && !newNameShort) {
+                setEditModalStatus('At least one field must be provided.', 'error');
+                return;
+            }
+
+            if (newName === editStudyContext.studyName && newNameShort === editStudyContext.studyNameShort) {
+                setEditModalStatus('No changes detected.', 'error');
+                return;
+            }
+
+            editStudySaveBtn.disabled = true;
+            editStudySaveBtn.textContent = 'Saving...';
+            setEditModalStatus('Saving changes...');
+
+            try {
+                const payload = {};
+                if (newName && newName !== editStudyContext.studyName) {
+                    payload.name = newName;
+                }
+                if (newNameShort && newNameShort !== editStudyContext.studyNameShort) {
+                    payload.name_short = newNameShort;
+                }
+
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(editStudyContext.studyNameShort)}/rename`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    const detail = errorPayload.detail || 'Failed to rename study.';
+                    setEditModalStatus(detail, 'error');
+                    editStudySaveBtn.disabled = false;
+                    editStudySaveBtn.textContent = 'Save Changes';
+                    return;
+                }
+
+                setEditModalStatus('Study renamed. Reloading...', 'ok');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 700);
+            } catch (error) {
+                setEditModalStatus(`Request failed: ${error.message}`, 'error');
+                editStudySaveBtn.disabled = false;
+                editStudySaveBtn.textContent = 'Save Changes';
+            }
+        }
 
         function setDeleteModalStatus(message, statusClass = '') {
             if (!deleteStudyModalStatus) {
@@ -1133,6 +1372,16 @@
                 });
             });
 
+            document.querySelectorAll('.open-edit-study-btn').forEach((button) => {
+                button.addEventListener('click', () => {
+                    openEditStudyModal(
+                        button.dataset.studyId,
+                        button.dataset.studyNameShort,
+                        button.dataset.studyName
+                    );
+                });
+            });
+
             if (deleteStudyConfirmInput) {
                 deleteStudyConfirmInput.addEventListener('input', updateDeleteConfirmState);
             }
@@ -1150,10 +1399,27 @@
             }
 
             document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && deleteStudyModal && deleteStudyModal.classList.contains('open')) {
-                    closeDeleteStudyModal();
+                if (event.key === 'Escape') {
+                    if (deleteStudyModal && deleteStudyModal.classList.contains('open')) {
+                        closeDeleteStudyModal();
+                    }
+                    if (editStudyModal && editStudyModal.classList.contains('open')) {
+                        closeEditStudyModal();
+                    }
                 }
             });
+
+            if (editStudyModal) {
+                editStudyModal.addEventListener('click', (event) => {
+                    if (event.target === editStudyModal) {
+                        closeEditStudyModal();
+                    }
+                });
+            }
+
+            if (editStudySaveBtn) {
+                editStudySaveBtn.addEventListener('click', saveEditStudy);
+            }
 
             const url = new URL(window.location.href);
             const requestedStudyId = url.searchParams.get('admin_study_id');

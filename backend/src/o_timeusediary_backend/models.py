@@ -31,7 +31,7 @@ class Study(SQLModel, table=True):
     __tablename__ = "studies"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True, sa_type=String(255))
+    name: str = Field(unique=True, index=True, sa_type=String(255))
     name_short: str = Field(index=True, unique=True, sa_type=String(255))
     # `description` stores either a single-string fallback or a localized
     # language->text map. Persisted as JSON so it can hold either form.
