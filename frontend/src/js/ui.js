@@ -5,6 +5,7 @@ import {
   getPostDiaryRedirectPath,
   formatTimeHHMM,
   positionToMinutes,
+  areAllPreviousDaysCompleted,
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
 import {
@@ -421,16 +422,35 @@ function createModal() {
       const urlParams = new URLSearchParams(window.location.search);
       const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
       const totalDays = window.studyConfigManager?.getStudyDaysCount() || 1;
-      const isLastDay = currentDayIndex >= totalDays - 1;
 
-      // Send data with redirect flag
+      // Check button mode to determine save vs complete behavior
+      const buttonMode =
+        (navSubmitButton && navSubmitButton.getAttribute('data-mode')) ||
+        (nextButton && nextButton.getAttribute('data-mode')) ||
+        'next';
+
+      const isFinishStudy = buttonMode === 'finish-study';
+      const isSaveDay = buttonMode === 'save-day';
+
+      // Send data with appropriate flags based on button mode
       const result = await sendData({
-        shouldRedirect: true,
-        isLastDay: isLastDay,
+        shouldRedirect: isFinishStudy,
+        isLastDay: isFinishStudy,
         currentDayIndex: currentDayIndex,
       });
 
-      if (!result?.success) {
+      if (result?.success) {
+        if (isSaveDay) {
+          const daySavedMsg = window.i18n
+            ? window.i18n.t('messages.daySavedStayOnPage')
+            : 'Day saved. Complete remaining days to finish the study.';
+          showToast(daySavedMsg, 'success', 3000);
+          // Reload to refresh the day data from backend
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
+      } else {
         const submitErrorMessage = window.i18n
           ? window.i18n.t('messages.submitError')
           : 'Error submitting diary';
@@ -858,6 +878,35 @@ export function updateCurrentDayDisplay() {
   return document.getElementById('currentDayDisplay');
 }
 
+function getIncompleteDaysList() {
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount() ||
+    0;
+  const currentDayIndex =
+    (window.timelineManager?.currentIndex !== undefined
+      ? window.timelineManager.currentIndex
+      : parseInt(
+          new URLSearchParams(window.location.search).get('day_label_index')
+        )) || 0;
+
+  const incomplete = [];
+  for (let i = 0; i < currentDayIndex; i++) {
+    if (!dayIndicesWithData.includes(i)) {
+      const dayName =
+        window.studyConfigManager?.getDayDisplayLabel?.(i) ||
+        (window.i18n ? window.i18n.t('common.day') : 'Day') + ' ' + (i + 1);
+      incomplete.push(dayName);
+    }
+  }
+  return incomplete.join(', ');
+}
+
 function updateButtonStates() {
   //console.log('=== updateButtonStates START ===');
   //console.log('Current index:', window.timelineManager.currentIndex);
@@ -939,6 +988,10 @@ function updateButtonStates() {
     ? allTimelinesMeetMinCoverage
     : meetsMinCoverage;
 
+  const allPreviousDaysComplete = isLastTimeline
+    ? areAllPreviousDaysCompleted()
+    : true;
+
   updateTimelineCoverageIndicators();
 
   // Get text values for buttons
@@ -951,6 +1004,12 @@ function updateButtonStates() {
   const submitText = window.i18n
     ? window.i18n.t('buttons.submit')
     : 'Submit Day';
+  const saveDayText = window.i18n
+    ? window.i18n.t('buttons.saveDay')
+    : 'Save Day';
+  const finishStudyText = window.i18n
+    ? window.i18n.t('buttons.finishStudy')
+    : submitText;
 
   //console.log('Button texts - Next:', nextTextTopBarButton, 'Submit:', submitText);
 
@@ -960,13 +1019,26 @@ function updateButtonStates() {
     nextButtonInTopBar.disabled = !canProceed;
 
     if (isLastTimeline) {
-      // On last timeline, show Submit
-      nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${submitText}`;
-      //console.log('Setting Next button to SUBMIT mode');
+      if (allPreviousDaysComplete) {
+        nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${finishStudyText}`;
+        nextButtonInTopBar.setAttribute('data-mode', 'finish-study');
+        nextButtonInTopBar.title = '';
+      } else {
+        nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
+        nextButtonInTopBar.setAttribute('data-mode', 'save-day');
+        const incompleteDays = getIncompleteDaysList();
+        const hint = window.i18n
+          ? window.i18n.t('messages.completeOtherDaysFirst', {
+              days: incompleteDays,
+            })
+          : `Complete ${incompleteDays} first to finish the study.`;
+        nextButtonInTopBar.title = hint;
+      }
     } else {
       // For other timelines, show Next
       nextButtonInTopBar.innerHTML = `${nextTextTopBarButton} <i class="fas fa-arrow-right"></i>`;
-      //console.log('Setting Next button to NEXT mode');
+      nextButtonInTopBar.setAttribute('data-mode', 'next');
+      nextButtonInTopBar.title = '';
     }
 
     //console.log('Next button after update - disabled:', nextButtonInTopBar.disabled, 'innerHTML:', nextButtonInTopBar.innerHTML);
@@ -983,15 +1055,35 @@ function updateButtonStates() {
     const navSubmitSpan = lowerNavSubmitBtn.querySelector('span');
 
     if (isLastTimeline) {
-      // On last timeline, show Submit with green color
-      if (navSubmitSpan) {
-        navSubmitSpan.textContent = submitText;
+      if (allPreviousDaysComplete) {
+        // On last timeline with all previous days complete: Finish Study
+        if (navSubmitSpan) {
+          navSubmitSpan.textContent = finishStudyText;
+        }
+        if (navSubmitIcon) {
+          navSubmitIcon.className = 'fas fa-check';
+        }
+        lowerNavSubmitBtn.classList.add('submit-mode');
+        lowerNavSubmitBtn.setAttribute('data-mode', 'finish-study');
+        lowerNavSubmitBtn.title = '';
+      } else {
+        // On last timeline but previous days incomplete: Save Day
+        if (navSubmitSpan) {
+          navSubmitSpan.textContent = saveDayText;
+        }
+        if (navSubmitIcon) {
+          navSubmitIcon.className = 'fas fa-save';
+        }
+        lowerNavSubmitBtn.classList.add('submit-mode');
+        lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
+        const incompleteDays = getIncompleteDaysList();
+        const hint = window.i18n
+          ? window.i18n.t('messages.completeOtherDaysFirst', {
+              days: incompleteDays,
+            })
+          : `Complete ${incompleteDays} first to finish the study.`;
+        lowerNavSubmitBtn.title = hint;
       }
-      if (navSubmitIcon) {
-        navSubmitIcon.className = 'fas fa-check'; // Check icon for submit
-      }
-      lowerNavSubmitBtn.classList.add('submit-mode');
-      //console.log('Setting lower Nav button to SUBMIT mode');
     } else {
       // For other timelines, show Next with blue color
       if (navSubmitSpan) {
@@ -1001,7 +1093,8 @@ function updateButtonStates() {
         navSubmitIcon.className = 'fas fa-arrow-right'; // Arrow icon for next
       }
       lowerNavSubmitBtn.classList.remove('submit-mode');
-      //console.log('Setting lower Nav button to NEXT mode');
+      lowerNavSubmitBtn.setAttribute('data-mode', 'next');
+      lowerNavSubmitBtn.title = '';
     }
 
     //console.log('Nav button after update - disabled:', lowerNavSubmitBtn.disabled);

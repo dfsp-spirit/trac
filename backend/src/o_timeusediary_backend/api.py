@@ -593,20 +593,40 @@ def _get_study_participant_association(
     ).first()
 
 
+def _get_completed_day_indices(
+    session: Session, study: Study, participant_id: Optional[str]
+) -> set[int]:
+    """Return the set of display_order indices for days where the participant
+    has submitted activities.
+
+    This is the single source of truth for determining which days a participant
+    has completed.  Reused by _is_participant_study_complete and the GET
+    activities endpoint to avoid duplication and inconsistent results.
+    """
+    if not participant_id:
+        return set()
+
+    day_indices_rows = session.exec(
+        select(DayLabel.display_order)
+        .join(Activity, Activity.day_label_id == DayLabel.id)
+        .where(
+            Activity.study_id == study.id,
+            Activity.participant_id == participant_id,
+            DayLabel.study_id == study.id,
+        )
+    ).all()
+
+    return {int(idx) for idx in day_indices_rows}
+
+
 def _is_participant_study_complete(
     session: Session, study: Study, participant_id: Optional[str], study_days_count: int
 ) -> bool:
     if not participant_id or study_days_count <= 0:
         return False
 
-    completed_day_count = session.exec(
-        select(func.count(func.distinct(Activity.day_label_id))).where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-        )
-    ).first()
-
-    return int(completed_day_count or 0) >= study_days_count
+    completed_day_indices = _get_completed_day_indices(session, study, participant_id)
+    return len(completed_day_indices) >= study_days_count
 
 
 def _is_external_tasks_locked_by_diary_requirement(
@@ -7421,17 +7441,14 @@ def get_participant_day_activities(
         .order_by(Activity.start_minutes, Activity.timeline_id)
     ).all()
 
-    day_indices_with_data_rows = session.exec(
-        select(DayLabel.display_order)
-        .join(Activity, Activity.day_label_id == DayLabel.id)
-        .where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-            DayLabel.study_id == study.id,
-        )
-    ).all()
-    day_indices_with_data = sorted(
-        {int(day_index) for day_index in day_indices_with_data_rows}
+    # Use shared helper to determine which days the participant has submitted
+    completed_day_indices = _get_completed_day_indices(session, study, participant_id)
+    day_indices_with_data = sorted(completed_day_indices)
+
+    # Check whether all days before the current day have been completed
+    current_day_index = day_label.display_order
+    all_previous_days_complete = all(
+        i in completed_day_indices for i in range(current_day_index)
     )
 
     # Structure the response in a frontend-friendly format
@@ -7557,6 +7574,7 @@ def get_participant_day_activities(
         "study": study_name_short,
         "study_days_count": study_days_count,
         "day_indices_with_data": day_indices_with_data,
+        "all_previous_days_complete": all_previous_days_complete,
         "participant": participant_id,
         "day_label": day_label.name,
         "day_label_id": day_label.id,
