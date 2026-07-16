@@ -1179,9 +1179,27 @@ export function syncURLParamsToStudy() {
   }
 }
 
-export function areAllPreviousDaysCompleted() {
-  if (window.timelineManager?.allPreviousDaysComplete !== undefined) {
-    return window.timelineManager.allPreviousDaysComplete;
+export function canFinishStudy() {
+  const completedDays = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
+  const totalDays =
+    window.studyConfigManager?.getStudyDaysCount() ||
+    window.timelineManager?.studyDaysCount ||
+    1;
+
+  if (currentDayIndex !== totalDays - 1) {
+    return false;
+  }
+
+  for (let i = 0; i < currentDayIndex; i++) {
+    if (!completedDays.includes(i)) {
+      return false;
+    }
   }
   return true;
 }

@@ -1981,13 +1981,13 @@ async def admin_overview(
     total_participants = session.exec(select(func.count(Participant.id))).first() or 0
     total_activities_all = session.exec(select(func.count(Activity.id))).first() or 0
 
-    # Recent activities (last 20 overall)
+    # Recent activities (last 10 overall)
     if mysql_like_backend:
         recent_activities = []
     else:
         try:
             recent_activities = session.exec(
-                select(Activity).order_by(Activity.created_at.desc()).limit(20)
+                select(Activity).order_by(Activity.created_at.desc()).limit(10)
             ).all()
         except TypeError as exc:
             logger.warning(
@@ -7445,12 +7445,6 @@ def get_participant_day_activities(
     completed_day_indices = _get_completed_day_indices(session, study, participant_id)
     day_indices_with_data = sorted(completed_day_indices)
 
-    # Check whether all days before the current day have been completed
-    current_day_index = day_label.display_order
-    all_previous_days_complete = all(
-        i in completed_day_indices for i in range(current_day_index)
-    )
-
     # Structure the response in a frontend-friendly format
     response_activities = []
     for activity, timeline in activities:
@@ -7574,7 +7568,6 @@ def get_participant_day_activities(
         "study": study_name_short,
         "study_days_count": study_days_count,
         "day_indices_with_data": day_indices_with_data,
-        "all_previous_days_complete": all_previous_days_complete,
         "participant": participant_id,
         "day_label": day_label.name,
         "day_label_id": day_label.id,

@@ -5,7 +5,7 @@ import {
   getPostDiaryRedirectPath,
   formatTimeHHMM,
   positionToMinutes,
-  areAllPreviousDaysCompleted,
+  canFinishStudy,
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
 import {
@@ -430,17 +430,25 @@ function createModal() {
         'next';
 
       const isFinishStudy = buttonMode === 'finish-study';
+      const isSubmitDay = buttonMode === 'submit-day';
       const isSaveDay = buttonMode === 'save-day';
+
+      // Defense-in-depth: re-verify completion eligibility even if
+      // button mode says finish-study.  Prevents stale `data-mode`
+      // from allowing completion when previous days are missing.
+      const actuallyCanFinish = isFinishStudy && canFinishStudy();
+      const effectiveIsLastDay = actuallyCanFinish;
+      const effectiveShouldRedirect = actuallyCanFinish || isSubmitDay;
 
       // Send data with appropriate flags based on button mode
       const result = await sendData({
-        shouldRedirect: isFinishStudy,
-        isLastDay: isFinishStudy,
+        shouldRedirect: effectiveShouldRedirect,
+        isLastDay: effectiveIsLastDay,
         currentDayIndex: currentDayIndex,
       });
 
       if (result?.success) {
-        if (isSaveDay) {
+        if (isSaveDay || (isFinishStudy && !actuallyCanFinish)) {
           const daySavedMsg = window.i18n
             ? window.i18n.t('messages.daySavedStayOnPage')
             : 'Day saved. Complete remaining days to finish the study.';
@@ -988,9 +996,16 @@ function updateButtonStates() {
     ? allTimelinesMeetMinCoverage
     : meetsMinCoverage;
 
-  const allPreviousDaysComplete = isLastTimeline
-    ? areAllPreviousDaysCompleted()
-    : true;
+  const currentDayIndex =
+    parseInt(
+      new URLSearchParams(window.location.search).get('day_label_index')
+    ) || 0;
+  const totalStudyDays = window.studyConfigManager?.getStudyDaysCount() || 1;
+  const isLastStudyDay = currentDayIndex >= totalStudyDays - 1;
+
+  const canFinish = canFinishStudy();
+
+  const needsSaveDay = isLastTimeline && isLastStudyDay && !canFinish;
 
   updateTimelineCoverageIndicators();
 
@@ -1019,11 +1034,13 @@ function updateButtonStates() {
     nextButtonInTopBar.disabled = !canProceed;
 
     if (isLastTimeline) {
-      if (allPreviousDaysComplete) {
+      if (canFinish) {
+        // Last study day + all previous complete: Finish Study
         nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${finishStudyText}`;
         nextButtonInTopBar.setAttribute('data-mode', 'finish-study');
         nextButtonInTopBar.title = '';
-      } else {
+      } else if (needsSaveDay) {
+        // Last study day + previous days incomplete: Save Day
         nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
         nextButtonInTopBar.setAttribute('data-mode', 'save-day');
         const incompleteDays = getIncompleteDaysList();
@@ -1033,6 +1050,11 @@ function updateButtonStates() {
             })
           : `Complete ${incompleteDays} first to finish the study.`;
         nextButtonInTopBar.title = hint;
+      } else {
+        // Non-last study day: normal Submit Day (saves + goes to next day)
+        nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${submitText}`;
+        nextButtonInTopBar.setAttribute('data-mode', 'submit-day');
+        nextButtonInTopBar.title = '';
       }
     } else {
       // For other timelines, show Next
@@ -1055,8 +1077,8 @@ function updateButtonStates() {
     const navSubmitSpan = lowerNavSubmitBtn.querySelector('span');
 
     if (isLastTimeline) {
-      if (allPreviousDaysComplete) {
-        // On last timeline with all previous days complete: Finish Study
+      if (canFinish) {
+        // Last study day + all previous complete: Finish Study
         if (navSubmitSpan) {
           navSubmitSpan.textContent = finishStudyText;
         }
@@ -1066,8 +1088,8 @@ function updateButtonStates() {
         lowerNavSubmitBtn.classList.add('submit-mode');
         lowerNavSubmitBtn.setAttribute('data-mode', 'finish-study');
         lowerNavSubmitBtn.title = '';
-      } else {
-        // On last timeline but previous days incomplete: Save Day
+      } else if (needsSaveDay) {
+        // Last study day + previous days incomplete: Save Day
         if (navSubmitSpan) {
           navSubmitSpan.textContent = saveDayText;
         }
@@ -1083,6 +1105,17 @@ function updateButtonStates() {
             })
           : `Complete ${incompleteDays} first to finish the study.`;
         lowerNavSubmitBtn.title = hint;
+      } else {
+        // Non-last study day: normal Submit Day (saves + goes to next day)
+        if (navSubmitSpan) {
+          navSubmitSpan.textContent = submitText;
+        }
+        if (navSubmitIcon) {
+          navSubmitIcon.className = 'fas fa-check';
+        }
+        lowerNavSubmitBtn.classList.add('submit-mode');
+        lowerNavSubmitBtn.setAttribute('data-mode', 'submit-day');
+        lowerNavSubmitBtn.title = '';
       }
     } else {
       // For other timelines, show Next with blue color
