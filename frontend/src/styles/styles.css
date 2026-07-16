@@ -709,7 +709,9 @@ body {
     overflow-y: auto;
     align-items: center;
     justify-content: flex-start;
-    height: calc(100vh - var(--header-height, 80px) - var(--footer-height, 80px));
+    height: calc(
+      100vh - var(--header-height, 80px) - var(--footer-height, 80px)
+    );
   }
 
   .past-initialized-timelines-wrapper {
@@ -1064,6 +1066,98 @@ body {
   cursor: not-allowed;
   opacity: 1;
   box-shadow: none;
+}
+
+/* Copy day context menu */
+.copy-day-context-menu {
+  position: fixed;
+  background: var(--surface, #fff);
+  border: 1px solid var(--border-strong, #d1d5db);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.16);
+  z-index: 2000;
+  min-width: 200px;
+  padding: 6px 0;
+  font-family: inherit;
+  font-size: 0.88rem;
+}
+
+.copy-day-context-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text, #1c1c1c);
+  font-family: inherit;
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.copy-day-context-menu-item:hover {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.copy-day-context-menu-header {
+  padding: 6px 16px;
+  color: var(--muted, #6b7280);
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  margin-bottom: 4px;
+}
+
+/* Copy day link in timeline title */
+.copy-day-link {
+  margin-left: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--muted, #6b7280);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  white-space: nowrap;
+}
+
+.copy-day-link:hover {
+  color: #0d6efd;
+}
+
+.copy-day-link.disabled {
+  color: var(--muted, #9ca3af);
+  cursor: default;
+  text-decoration: none;
+}
+
+.copy-day-link.disabled:hover {
+  color: var(--muted, #9ca3af);
+}
+
+@media (max-width: 768px) {
+  .copy-day-link {
+    font-size: 0.78rem;
+    margin-left: 6px;
+  }
+
+  .copy-day-context-menu {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    max-height: 50vh;
+    overflow-y: auto;
+    border-radius: 12px 12px 0 0;
+    padding: 8px 0;
+  }
+
+  .copy-day-context-menu-item {
+    padding: 14px 20px;
+    font-size: 1rem;
+  }
 }
 
 .btn {

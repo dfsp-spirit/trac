@@ -7176,6 +7176,123 @@ def timelines_to_json(timelines: List[Timeline]) -> List[dict]:
     ]
 
 
+@app.post(
+    "/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/copy-from/{source_day_label_name}"
+)
+def copy_day_activities(
+    study_name_short: str,
+    participant_id: str,
+    day_label_name: str,
+    source_day_label_name: str,
+    session: Session = Depends(get_session),
+):
+    """Copy all activities from one day to another for a participant within a study.
+
+    The target day must be empty (no existing activities). The source day must
+    have activities. All activities are copied with new database IDs — the copy
+    is a separate, independent set of rows.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    target_label = session.exec(
+        select(DayLabel).where(
+            DayLabel.study_id == study.id, DayLabel.name == day_label_name
+        )
+    ).first()
+    if not target_label:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Target day label '{day_label_name}' not found for study '{study_name_short}'",
+        )
+
+    source_label = session.exec(
+        select(DayLabel).where(
+            DayLabel.study_id == study.id, DayLabel.name == source_day_label_name
+        )
+    ).first()
+    if not source_label:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Source day label '{source_day_label_name}' not found for study '{study_name_short}'",
+        )
+
+    if source_label.id == target_label.id:
+        raise HTTPException(
+            status_code=400,
+            detail="Source and target day must be different",
+        )
+
+    target_existing = session.exec(
+        select(Activity).where(
+            Activity.study_id == study.id,
+            Activity.participant_id == participant_id,
+            Activity.day_label_id == target_label.id,
+        )
+    ).first()
+    if target_existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Target day '{day_label_name}' already has activities — cannot overwrite",
+        )
+
+    source_activities = session.exec(
+        select(Activity).where(
+            Activity.study_id == study.id,
+            Activity.participant_id == participant_id,
+            Activity.day_label_id == source_label.id,
+        )
+    ).all()
+
+    if not source_activities:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Source day '{source_day_label_name}' has no activities to copy",
+        )
+
+    copied_count = 0
+    for src in source_activities:
+        activity = Activity(
+            study_id=study.id,
+            participant_id=participant_id,
+            day_label_id=target_label.id,
+            timeline_id=src.timeline_id,
+            activity_code=src.activity_code,
+            start_minutes=src.start_minutes,
+            end_minutes=src.end_minutes,
+            activity_name=src.activity_name,
+            activity_path_frontend=src.activity_path_frontend,
+            color=src.color,
+            category=src.category,
+            frequency_key=src.frequency_key,
+            parent_activity_code=src.parent_activity_code,
+        )
+        session.add(activity)
+        copied_count += 1
+
+    session.commit()
+
+    logger.info(
+        "Participant '%s' copied %d activities from '%s' to '%s' in study '%s'",
+        participant_id,
+        copied_count,
+        source_day_label_name,
+        day_label_name,
+        study_name_short,
+    )
+
+    return {
+        "copied_count": copied_count,
+        "source_day": source_day_label_name,
+        "target_day": day_label_name,
+    }
+
+
 @app.get("/api/studies/{study_name_short}/participants/{participant_id}/activities")
 def get_participant_day_activities(
     study_name_short: str,

@@ -255,3 +255,106 @@ async def test_admin_rename_duplicate_name_short(created_studies_for_cleanup):
         )
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_copy_day_not_found_study():
+    """Copy endpoint returns 404 for non-existent study."""
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{BASE_URL}/api/studies/nonexistent_xyz/participants/test_pid/day_labels/tuesday/copy-from/monday",
+        )
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_copy_day_not_found_target_day(created_studies_for_cleanup):
+    """Copy endpoint returns 404 for non-existent target day."""
+    study_short = f"it_cp_{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(client, study_short, f"Copy Study {study_short}")
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.post(
+            f"{BASE_URL}/api/studies/{study_short}/participants/test_pid/day_labels/nonexistent_day/copy-from/monday",
+        )
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_copy_day_not_found_source_day(created_studies_for_cleanup):
+    """Copy endpoint returns 404 for non-existent source day."""
+    study_short = f"it_cps_{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(client, study_short, f"Copy Source Study {study_short}")
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.post(
+            f"{BASE_URL}/api/studies/{study_short}/participants/test_pid/day_labels/monday/copy-from/nonexistent",
+        )
+        assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_copy_day_same_day_rejected(created_studies_for_cleanup):
+    """Copy endpoint returns 400 when source and target are the same."""
+    study_short = f"it_cpss_{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(client, study_short, f"Same-Day Copy Study {study_short}")
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.post(
+            f"{BASE_URL}/api/studies/{study_short}/participants/test_pid/day_labels/monday/copy-from/monday",
+        )
+        assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_copy_day_empty_source(created_studies_for_cleanup):
+    """Copy endpoint returns 404 when source day has no activities."""
+    study_short = f"it_cpes_{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        activities_payload = _load_activities_template()
+        payload = {
+            "mode": "create_only",
+            "transaction_mode": "all_or_nothing",
+            "studies": [
+                {
+                    "name": f"Empty Source Study {study_short}",
+                    "name_short": study_short,
+                    "description": "Test",
+                    "day_labels": [
+                        {
+                            "name": "monday",
+                            "display_order": 0,
+                            "display_names": {"en": "Monday"},
+                        },
+                        {
+                            "name": "tuesday",
+                            "display_order": 1,
+                            "display_names": {"en": "Tuesday"},
+                        },
+                    ],
+                    "study_participant_ids": [],
+                    "allow_unlisted_participants": True,
+                    "default_language": "en",
+                    "supported_languages": ["en"],
+                    "activities_json_data": {"en": activities_payload},
+                    "data_collection_start": "2024-01-01T00:00:00Z",
+                    "data_collection_end": "2028-12-31T23:59:59Z",
+                }
+            ],
+        }
+        response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert response.status_code == 200
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.post(
+            f"{BASE_URL}/api/studies/{study_short}/participants/test_pid/day_labels/tuesday/copy-from/monday",
+        )
+        assert response.status_code == 404
+        assert "no activities" in response.json()["detail"].lower()
