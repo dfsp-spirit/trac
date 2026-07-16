@@ -91,7 +91,8 @@
       "infoOnTemplate": "For the next day, you will see the data you entered for today as a template to help you report more easily. Please adapt it as needed.<br /><br /> Remember that you can delete data by long-pressing or hovering over the activity in the timeline with the mouse cursor and pressing 'd' or DEL.",
       "studyEnd": "This submission concludes the study.",
       "submitDay": "Submit Day {{dayLabel}}",
-      "submitDayAndFinish": "Submit Day {{dayLabel}} and Finish Study"
+      "submitDayAndFinish": "Submit Day {{dayLabel}} and Finish Study",
+      "submitDayNoDay": "Submit Day"
     },
     "confirmSkip": {
       "title": "Do you really want to skip all time reporting?",

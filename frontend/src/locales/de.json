@@ -89,7 +89,8 @@
       "infoOnTemplate": "Für den nächsten Tag werden die Daten, die Sie heute eingegeben haben, als Vorlage angezeigt. Bitte passen Sie sie nach Bedarf an.<br /><br /> Denken Sie daran, dass Sie Daten löschen können, indem Sie lange auf die Aktivität in der Zeitleiste drücken oder mit der Maus darüber fahren und 'd' oder ENTF drücken.",
       "studyEnd": "Diese Einreichung schließt die Studie ab.",
       "submitDay": "Tag {{dayLabel}} einreichen",
-      "submitDayAndFinish": "Tag {{dayLabel}} einreichen und Studie beenden"
+      "submitDayAndFinish": "Tag {{dayLabel}} einreichen und Studie beenden",
+      "submitDayNoDay": "Tag einreichen"
     },
     "confirmSkip": {
       "title": "Möchten Sie die Zeiterfassung wirklich überspringen?",
