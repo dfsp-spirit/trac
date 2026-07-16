@@ -311,26 +311,10 @@ function createModal() {
     window.studyConfigManager?.getDayDisplayLabel(currentDayIndex) ||
     window.studyConfigManager?.getDayLabel(currentDayIndex) ||
     `day_${currentDayIndex + 1}`;
-  const isLastStudyDay = currentDayIndex >= numStudyDaysCount - 1;
 
   const i18n = window.i18n;
   const _t = (key, params) =>
     i18n && i18n.isReady() ? i18n.t(key, params) : key;
-
-  const studyEndInfo = isLastStudyDay
-    ? _t('modals.confirmSubmit.studyEnd')
-    : '';
-  const infoOnTemplateDate = isLastStudyDay
-    ? studyEndInfo
-    : _t('modals.confirmSubmit.infoOnTemplate');
-  const buttonSubmitText = isLastStudyDay
-    ? _t('modals.confirmSubmit.submitDayAndFinish', { dayLabel })
-    : _t('modals.confirmSubmit.submitDay', { dayLabel });
-  const titleText = _t('modals.confirmSubmit.title', {
-    dayLabel,
-    currentDay: currentDayIndex + 1,
-    totalDays: numStudyDaysCount,
-  });
 
   // Show the original "cannot change previous days" message only when
   // previous-day switching buttons are disabled in settings.
@@ -338,41 +322,54 @@ function createModal() {
     TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS
   );
   const showCannotChangeMessage = !showPreviousDaysButtons;
-
   const messageText = showCannotChangeMessage
     ? _t('modals.confirmSubmit.message', { dayLabel })
     : '';
 
-  // Use explicit element IDs so i18n language-change updates target the right elements
-  // regardless of whether the message paragraph is present.
+  // Build a skeleton once; the info paragraph and OK-button text are filled
+  // dynamically by updateConfirmationModalContent(buttonMode) right before the
+  // modal is shown, based on the actual current button mode.  The OK click
+  // handler (below) already branches on button mode; only the visible label
+  // and info paragraph were stale when a user manually navigated to the last
+  // study day with previous days incomplete (mode="save-day" but modal said
+  // "Submit Day ... and Finish Study / This submission concludes the study").
   confirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
-                <h3 id="confirmationTitle">${titleText}</h3>
+                <h3 id="confirmationTitle">${_t('modals.confirmSubmit.title', {
+                  dayLabel,
+                  currentDay: currentDayIndex + 1,
+                  totalDays: numStudyDaysCount,
+                })}</h3>
                 ${
                   showCannotChangeMessage
                     ? `<p id="confirmationMessage">${messageText}</p>`
                     : ''
                 }
-                <p id="confirmationInfo" data-i18n-html="${
-                  isLastStudyDay
-                    ? 'modals.confirmSubmit.studyEnd'
-                    : 'modals.confirmSubmit.infoOnTemplate'
-                }">${infoOnTemplateDate}</p>
+                <p id="confirmationInfo" style="display:none;"></p>
                 <div class="button-container">
                     <button id="confirmCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
-                    <button id="confirmOk" class="btn save-btn">${buttonSubmitText}</button>
+                    <button id="confirmOk" class="btn save-btn"></button>
                 </div>
             </div>
         </div>
     `;
 
-  // Update modal text when the user switches language mid-session
-  window.addEventListener('i18n:languageChanged', () => {
-    const h3 = document.getElementById('confirmationTitle');
-    const messageP = document.getElementById('confirmationMessage');
-    const infoP = document.getElementById('confirmationInfo');
+  // Update the modal's visible content for the given button mode.  Modes are
+  // set on #navSubmitBtn / #nextBtn by updateButtonStates():
+  //   - "submit-day"   : non-last study day — save and advance.
+  //   - "finish-study" : last study day AND all previous days complete —
+  //                      save and go to thank-you page.
+  //   - "save-day"      : last study day but previous days incomplete —
+  //                      save and stay on this day.  Do NOT mention
+  //                      concluding the study; the OK button simply says
+  //                      "Submit Day".
+  function updateConfirmationModalContent(buttonMode) {
+    const h3 = confirmationModal.querySelector('#confirmationTitle');
+    const messageP = confirmationModal.querySelector('#confirmationMessage');
+    const infoP = confirmationModal.querySelector('#confirmationInfo');
     const okBtn = confirmationModal.querySelector('#confirmOk');
+
     if (h3) {
       h3.textContent = _t('modals.confirmSubmit.title', {
         dayLabel,
@@ -381,19 +378,63 @@ function createModal() {
       });
     }
     if (messageP) {
-      // Only update if the message paragraph exists (i.e., setting hides it otherwise)
       messageP.textContent = _t('modals.confirmSubmit.message', { dayLabel });
     }
+
+    let infoHtml = '';
+    let infoI18nKey = '';
+    let infoVisible = false;
+    let okText = _t('modals.confirmSubmit.submitDay', { dayLabel });
+
+    if (buttonMode === 'finish-study') {
+      infoI18nKey = 'modals.confirmSubmit.studyEnd';
+      infoHtml = _t('modals.confirmSubmit.studyEnd');
+      infoVisible = true;
+      okText = _t('modals.confirmSubmit.submitDayAndFinish', { dayLabel });
+    } else if (buttonMode === 'save-day') {
+      // Last calendar day but previous days incomplete: stay on this day.
+      // No "concludes the study" message; button just says "Submit Day".
+      infoI18nKey = '';
+      infoHtml = '';
+      infoVisible = false;
+      okText = _t('modals.confirmSubmit.submitDayNoDay');
+    } else {
+      // Default / "submit-day" (non-last study day).
+      infoI18nKey = 'modals.confirmSubmit.infoOnTemplate';
+      infoHtml = _t('modals.confirmSubmit.infoOnTemplate');
+      infoVisible = true;
+      okText = _t('modals.confirmSubmit.submitDay', { dayLabel });
+    }
+
     if (infoP) {
-      infoP.innerHTML = isLastStudyDay
-        ? _t('modals.confirmSubmit.studyEnd')
-        : _t('modals.confirmSubmit.infoOnTemplate');
+      infoP.innerHTML = infoHtml;
+      if (infoI18nKey) {
+        infoP.setAttribute('data-i18n-html', infoI18nKey);
+      } else {
+        infoP.removeAttribute('data-i18n-html');
+      }
+      infoP.style.display = infoVisible ? '' : 'none';
     }
     if (okBtn) {
-      okBtn.textContent = isLastStudyDay
-        ? _t('modals.confirmSubmit.submitDayAndFinish', { dayLabel })
-        : _t('modals.confirmSubmit.submitDay', { dayLabel });
+      okBtn.textContent = okText;
     }
+
+    // Remember the mode so the language-change handler can re-render the
+    // right content for the currently-active context.
+    confirmationModal.dataset.currentMode = buttonMode || 'submit-day';
+  }
+
+  // Initialize with a sensible default; the real content is set right before
+  // the modal is shown (see handleNextButtonAction).
+  updateConfirmationModalContent('submit-day');
+  window.updateConfirmationModalContent = updateConfirmationModalContent;
+
+  // Update modal text when the user switches language mid-session, using the
+  // mode that was active when the modal was last configured.
+  window.addEventListener('i18n:languageChanged', () => {
+    updateConfirmationModalContent(
+      confirmationModal.dataset.currentMode || 'submit-day'
+    );
   });
 
   confirmationModal
@@ -1247,7 +1288,19 @@ const handleNextButtonAction = () => {
     window.timelineManager.keys.length - 1;
 
   if (isLastTimeline) {
-    // On last timeline, show confirmation modal
+    // On last timeline, show confirmation modal.  Refresh its visible
+    // content first so the info paragraph and OK-button label reflect the
+    // CURRENT button mode (submit-day / save-day / finish-study) rather than
+    // whichever mode was active when the modal was last built.
+    const navSubmitBtn = document.getElementById('navSubmitBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const buttonMode =
+      (navSubmitBtn && navSubmitBtn.getAttribute('data-mode')) ||
+      (nextBtn && nextBtn.getAttribute('data-mode')) ||
+      'submit-day';
+    if (typeof window.updateConfirmationModalContent === 'function') {
+      window.updateConfirmationModalContent(buttonMode);
+    }
     document.getElementById('confirmationModal').style.display = 'block';
   } else {
     // For other timelines, proceed to next timeline
