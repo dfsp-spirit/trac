@@ -1139,6 +1139,16 @@ function updateButtonStates() {
 
     //console.log('Nav button after update - disabled:', lowerNavSubmitBtn.disabled);
   }
+
+  // The day-switch buttons in #previousDaysSwitchRow are gated on the same
+  // min_coverage check as the Next/Submit buttons above.  Every activity
+  // mutation (create, delete, move, resize, arrow-key time edit,
+  // remove-last, clean-row, load) routes through this function, so
+  // re-rendering the row here keeps both button groups in sync without
+  // touching each individual call site.
+  if (typeof window.renderPreviousDaysSwitchRow === 'function') {
+    window.renderPreviousDaysSwitchRow();
+  }
 }
 
 function redirectToThankYouPage() {

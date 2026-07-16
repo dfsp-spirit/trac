@@ -677,7 +677,8 @@ function deleteActivityBlock(activityBlock) {
     console.error('timelineActivities not found for key:', timelineKey);
   }
 
-  // Update button states (coverage might have changed)
+  // Update button states (coverage might have changed).  renderPreviousDaysSwitchRow()
+  // is called from within updateButtonStates() so the day-switch buttons refresh too.
   updateButtonStates();
   persistPendingTimelineStateSoon();
 
@@ -1524,6 +1525,11 @@ function createActivityBlock(activityData, isFromTemplate = false) {
       activityEntry.endMinutes = newEnd;
       activityEntry.blockLength = newEnd - newStart;
     }
+
+    // Arrow-key changes to start/end time affect coverage, so refresh the
+    // Next/Submit and day-switch button states the same way drag/resize end
+    // does (updateButtonStates() also re-renders #previousDaysSwitchRow).
+    updateButtonStates();
   });
 
   // Positioning logic
@@ -6475,14 +6481,11 @@ async function init() {
             }
           }
 
-          // Re-render the previous-days switch row now that activities (saved or
-          // templated from the previous day) have been loaded into
-          // timelineManager. The earlier render at the top of this branch ran
-          // before any activities were loaded, so its coverage-based disabled
-          // state is stale. Templated activities are guaranteed to satisfy
-          // min_coverage (they were previously saved on the source day), so the
-          // day-switch buttons must become enabled here.
-          renderPreviousDaysSwitchRow();
+          // loadActivitiesIntoTimelineManager() calls updateButtonStates(),
+          // which now also re-renders #previousDaysSwitchRow, so the stale
+          // coverage-based disabled state from the render at the top of this
+          // branch gets refreshed with the loaded (saved or templated)
+          // activities.
         } else if (response.status === 404) {
           console.log(
             `No existing data found for participant ${participantId}, study ${studyName}, day index ${dayIndex}. Starting fresh.`

@@ -176,4 +176,77 @@ test('day switch buttons enabled on a day pre-filled with template activities', 
   // The enabling tooltip (minimum-activities warning) should be cleared.
   const titleAfter = (await mondayButton.getAttribute('title')) || '';
   expect(titleAfter).not.toContain('minimum');
+
+  // ── Deleting the only template activity must re-disable the switch buttons ──
+  // Without the renderPreviousDaysSwitchRow() call in deleteActivityBlock the
+  // buttons would stay enabled and the next click would 400 with
+  // "submitted activities do not meet timeline minimum".
+  const templateBlock = page
+    .locator('.timeline-container[data-active="true"] .activity-block')
+    .first();
+  await expect(templateBlock).toBeVisible();
+
+  // Open the desktop right-click context menu on the activity block.
+  await templateBlock.click({ button: 'right' });
+  const contextMenu = page.locator('#activityContextMenu');
+  await expect(contextMenu).toBeVisible();
+  await expect(
+    contextMenu.locator('.activity-context-menu-item[data-action="delete"]')
+  ).toHaveText('Delete');
+
+  // Delete the template activity.
+  await contextMenu.locator('.activity-context-menu-item[data-action="delete"]').click();
+
+  // The block must be gone from the DOM and from the timeline manager state.
+  await expect(
+    page.locator('.timeline-container[data-active="true"] .activity-block')
+  ).toHaveCount(0);
+
+  await expect
+    .poll(
+      async () => {
+        return page.evaluate(() => {
+          const key =
+            window.timelineManager.keys[window.timelineManager.currentIndex];
+          return (window.timelineManager.activities[key] || []).length;
+        });
+      },
+      { timeout: 5000, message: 'Waiting for activity to be removed from manager' }
+    )
+    .toBe(0);
+
+  // Coverage on the active timeline must now be below the minimum.
+  const coverageAfterDelete = await page.evaluate(() => {
+    return typeof window.getTimelineCoverage === 'function'
+      ? window.getTimelineCoverage()
+      : 0;
+  });
+  expect(coverageAfterDelete).toBeLessThan(10);
+
+  // The Monday switch button must now be disabled with the "minimum" tooltip,
+  // WITHOUT any manual re-render call — deleting an activity must itself refresh
+  // the switch row so users cannot attempt a save that the backend would 400.
+  await expect(mondayButton).toBeDisabled();
+
+  const titleAfterDelete = (await mondayButton.getAttribute('title')) || '';
+  expect(titleAfterDelete).toContain('minimum');
+
+  // ── Re-adding an activity so coverage is met again must re-enable the buttons ──
+  // This guards the create-activity path: placing a new block calls
+  // updateButtonStates(), which now also re-renders the switch row.
+  await placeSingleActivity(page);
+
+  // Coverage must be back at or above the minimum.
+  const coverageAfterReadd = await page.evaluate(() => {
+    return typeof window.getTimelineCoverage === 'function'
+      ? window.getTimelineCoverage()
+      : 0;
+  });
+  expect(coverageAfterReadd).toBeGreaterThanOrEqual(10);
+
+  // The Monday button must be enabled again, with no "minimum" tooltip.
+  await expect(mondayButton).toBeEnabled();
+
+  const titleAfterReadd = (await mondayButton.getAttribute('title')) || '';
+  expect(titleAfterReadd).not.toContain('minimum');
 });
