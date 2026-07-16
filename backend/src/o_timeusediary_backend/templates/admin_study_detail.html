@@ -150,6 +150,9 @@
         .window-btn-pause { background: #dc3545; }
         .window-btn-unpause { background: #198754; }
         .window-status-msg { margin-top: 0.5rem; font-size: 0.9rem; }
+        .edit-section { margin-top: 2rem; }
+        .edit-section h3 { color: #495057; margin-bottom: 0.3rem; font-size: 1.2rem; }
+        .edit-section-warning { color: #b42318; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500; }
         .danger-zone { margin-top: 1rem; padding: 1rem; border: 1px solid #f3c2c0; border-radius: 6px; background: #fff5f5; }
         .danger-zone h4 { color: #8b1c13; margin-bottom: 0.45rem; }
         .danger-btn { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #b42318; }
@@ -487,39 +490,61 @@
             </div>
         </div>
 
-        <!-- Collection Window Controls -->
-        <div class="window-controls">
-            <h4>Collection Window Controls</h4>
-            <div class="window-controls-row">
-                <div class="window-control-field">
-                    <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
-                    <input id="window-start-{{ study.id }}" type="date" value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}">
-                </div>
-                <div class="window-control-field">
-                    <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
-                    <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}">
-                </div>
-                <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')">Save Window</button>
-                {% if study.is_paused %}
-                <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)">&#9654; Unpause Study</button>
-                {% else %}
-                <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)">&#9646;&#9646; Pause Study</button>
-                {% endif %}
-            </div>
-            <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
-        </div>
+        <!-- Edit Study -->
+        <div class="edit-section">
+            <h3>Edit Study</h3>
+            <p class="edit-section-warning">
+                Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.
+            </p>
 
-        <!-- Danger Zone -->
-        <div class="danger-zone">
-            <h4>Danger Zone</h4>
-            <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
-            <div style="margin-top: 0.65rem;">
-                <button type="button" class="danger-btn open-delete-study-btn"
-                    data-study-id="{{ study.id }}"
-                    data-study-name-short="{{ study.name_short }}"
-                    data-study-name="{{ study.name | e }}">
-                    Delete Study
-                </button>
+            <div class="window-controls">
+                <h4>Study Names</h4>
+                <div class="window-controls-row">
+                    <div class="window-control-field">
+                        <label for="rename-name-{{ study.id }}"><strong>Name</strong></label>
+                        <input id="rename-name-{{ study.id }}" type="text" value="{{ study.name | e }}" style="min-width: 18rem;">
+                    </div>
+                    <div class="window-control-field">
+                        <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
+                        <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;">
+                    </div>
+                    <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')">Save Names</button>
+                </div>
+                <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
+            </div>
+
+            <div class="window-controls">
+                <h4>Collection Window</h4>
+                <div class="window-controls-row">
+                    <div class="window-control-field">
+                        <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
+                        <input id="window-start-{{ study.id }}" type="date" value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <div class="window-control-field">
+                        <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
+                        <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}">
+                    </div>
+                    <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')">Save Window</button>
+                    {% if study.is_paused %}
+                    <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)">&#9654; Unpause Study</button>
+                    {% else %}
+                    <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)">&#9646;&#9646; Pause Study</button>
+                    {% endif %}
+                </div>
+                <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
+            </div>
+
+            <div class="danger-zone">
+                <h4>Danger Zone</h4>
+                <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
+                <div style="margin-top: 0.65rem;">
+                    <button type="button" class="danger-btn open-delete-study-btn"
+                        data-study-id="{{ study.id }}"
+                        data-study-name-short="{{ study.name_short }}"
+                        data-study-name="{{ study.name | e }}">
+                        Delete Study
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -648,6 +673,57 @@
                 showWindowStatus(studyId, 'Collection window updated. Reloading…');
                 setTimeout(() => { window.location.reload(); }, 700);
             } catch (error) { showWindowStatus(studyId, `Request failed: ${error.message}`, true); }
+        }
+
+        function showRenameStatus(studyId, message, isError = false) {
+            const statusEl = document.getElementById(`rename-status-${studyId}`);
+            if (!statusEl) return;
+            statusEl.textContent = message;
+            statusEl.style.color = isError ? '#b42318' : '#0f5132';
+        }
+
+        async function saveStudyName(studyNameShort, studyId) {
+            const nameInput = document.getElementById(`rename-name-${studyId}`);
+            const shortInput = document.getElementById(`rename-short-${studyId}`);
+            if (!nameInput || !shortInput) return;
+
+            const newName = nameInput.value.trim();
+            const newNameShort = shortInput.value.trim();
+
+            if (!newName && !newNameShort) {
+                showRenameStatus(studyId, 'At least one field must be provided.', true);
+                return;
+            }
+
+            showRenameStatus(studyId, 'Saving names…');
+            try {
+                const payload = {};
+                if (newName) payload.name = newName;
+                if (newNameShort) payload.name_short = newNameShort;
+
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/rename`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    }
+                );
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    showRenameStatus(studyId, errorPayload.detail || 'Failed to rename study.', true);
+                    return;
+                }
+
+                showRenameStatus(studyId, 'Study renamed. Reloading…');
+                const result = await response.json();
+                setTimeout(() => {
+                    window.location.href = `${ADMIN_ROOT_PATH}/admin/study/${encodeURIComponent(result.name_short)}`;
+                }, 700);
+            } catch (error) {
+                showRenameStatus(studyId, `Request failed: ${error.message}`, true);
+            }
         }
 
         async function setPauseState(studyNameShort, studyId, pause) {

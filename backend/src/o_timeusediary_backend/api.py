@@ -2050,7 +2050,7 @@ async def admin_study_detail(
     if not study:
         return HTMLResponse(
             content=f"<html><body><h1>Study '{name_short}' not found</h1>"
-            f"<a href='{request.scope.root_path}/admin'>Back to overview</a></body></html>",
+            f"<a href='{request.scope.get("root_path", "")}/admin'>Back to overview</a></body></html>",
             status_code=404,
         )
 
