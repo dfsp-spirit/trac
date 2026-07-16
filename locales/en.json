@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Submit Day",
+    "saveDay": "Save Day",
+    "finishStudy": "Submit Day and Finish Study",
     "start": "Start",
     "removeLast": "Remove Last",
     "cleanRow": "Clean Row",
@@ -149,7 +151,9 @@
     "copyToDay": "Copy to another day",
     "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
     "copyError": "Failed to copy: {{message}}",
-    "copyEmptySource": "Source day has no activities to copy."
+    "copyEmptySource": "Source day has no activities to copy.",
+    "completeOtherDaysFirst": "Complete {{days}} first to finish the study.",
+    "daySavedStayOnPage": "Day saved. Complete remaining days to finish the study."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",

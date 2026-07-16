@@ -6399,6 +6399,10 @@ async function init() {
           )
             ? backendData.day_indices_with_data
             : [];
+          window.timelineManager.allPreviousDaysComplete =
+            backendData.all_previous_days_complete !== undefined
+              ? backendData.all_previous_days_complete
+              : true;
           renderPreviousDaysSwitchRow();
 
           if (typeof window.addCopyDayLink === 'function') {

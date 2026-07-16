@@ -1178,3 +1178,10 @@ export function syncURLParamsToStudy() {
     }
   }
 }
+
+export function areAllPreviousDaysCompleted() {
+  if (window.timelineManager?.allPreviousDaysComplete !== undefined) {
+    return window.timelineManager.allPreviousDaysComplete;
+  }
+  return true;
+}
