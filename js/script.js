@@ -5719,6 +5719,29 @@ function renderPreviousDaysSwitchRow() {
           showCopyTargetPicker(dayIndex, event);
         });
       }
+
+      const canProceed = window.timelineManager.keys.every((timelineKey) => {
+        const timelineMetadata = window.timelineManager.metadata[timelineKey];
+        const timelineMinCoverage =
+          parseInt(timelineMetadata?.minCoverage) || 0;
+        const activities = window.timelineManager.activities[timelineKey] || [];
+        const timelineCoverage = activities.reduce(
+          (total, activity) => total + (parseInt(activity?.blockLength) || 0),
+          0
+        );
+        return timelineCoverage >= timelineMinCoverage;
+      });
+
+      if (!canProceed) {
+        button.disabled = true;
+        const t =
+          window.i18n && window.i18n.isReady()
+            ? window.i18n.t.bind(window.i18n)
+            : function (key) {
+                return key;
+              };
+        button.title = t('messages.completeMinimumActivitiesBeforeSwitching');
+      }
     }
 
     existingRow.appendChild(button);
@@ -6714,9 +6737,10 @@ function getEmptyTargetDayIndices() {
     ? window.timelineManager.dayIndicesWithData
     : [];
 
+  const currentDayIndex = getCurrentDayIndex();
   const emptyIndices = [];
   for (let i = 0; i < studyDaysCount; i++) {
-    if (!dayIndicesWithData.includes(i)) {
+    if (!dayIndicesWithData.includes(i) && i !== currentDayIndex) {
       emptyIndices.push(i);
     }
   }
@@ -6915,6 +6939,8 @@ function showCopyToast(message, isError) {
 }
 
 window.showCopyTargetPicker = showCopyTargetPicker;
+window.renderPreviousDaysSwitchRow = renderPreviousDaysSwitchRow;
+window.getEmptyTargetDayIndices = getEmptyTargetDayIndices;
 
 window.addEventListener('beforeunload', function () {
   if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
