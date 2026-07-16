@@ -151,8 +151,14 @@
         .window-btn-unpause { background: #198754; }
         .window-status-msg { margin-top: 0.5rem; font-size: 0.9rem; }
         .edit-section { margin-top: 2rem; }
-        .edit-section h3 { color: #495057; margin-bottom: 0.3rem; font-size: 1.2rem; }
-        .edit-section-warning { color: #b42318; font-size: 0.85rem; margin-bottom: 1rem; font-weight: 500; }
+        .edit-section-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+        .edit-section-header h3 { color: #495057; font-size: 1.2rem; margin: 0; }
+        .edit-section-warning { color: #b42318; font-size: 0.85rem; margin-top: 0.25rem; font-weight: 500; }
+        .edit-section-toggle { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #0d6efd; white-space: nowrap; flex-shrink: 0; }
+        .edit-section-toggle:hover { background: #0b5ed7; }
+        .edit-section-toggle:active { background: #0a58ca; }
+        .edit-section-body-locked { opacity: 0.55; }
+        .edit-section-body-locked input, .edit-section-body-locked button { pointer-events: none; }
         .danger-zone { margin-top: 1rem; padding: 1rem; border: 1px solid #f3c2c0; border-radius: 6px; background: #fff5f5; }
         .danger-zone h4 { color: #8b1c13; margin-bottom: 0.45rem; }
         .danger-btn { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #b42318; }
@@ -492,58 +498,65 @@
 
         <!-- Edit Study -->
         <div class="edit-section">
-            <h3>Edit Study</h3>
-            <p class="edit-section-warning">
-                Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.
-            </p>
-
-            <div class="window-controls">
-                <h4>Study Names</h4>
-                <div class="window-controls-row">
-                    <div class="window-control-field">
-                        <label for="rename-name-{{ study.id }}"><strong>Name</strong></label>
-                        <input id="rename-name-{{ study.id }}" type="text" value="{{ study.name | e }}" style="min-width: 18rem;">
-                    </div>
-                    <div class="window-control-field">
-                        <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
-                        <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;">
-                    </div>
-                    <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')">Save Names</button>
+            <div class="edit-section-header">
+                <div>
+                    <h3>Edit Study</h3>
+                    <p class="edit-section-warning" id="edit-section-warning">
+                        Editing is locked. Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.
+                    </p>
                 </div>
-                <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
+                <button type="button" class="edit-section-toggle" id="edit-section-toggle-btn" onclick="toggleEditSection()">Enable Editing</button>
             </div>
 
-            <div class="window-controls">
-                <h4>Collection Window</h4>
-                <div class="window-controls-row">
-                    <div class="window-control-field">
-                        <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
-                        <input id="window-start-{{ study.id }}" type="date" value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}">
+            <div id="edit-section-body" class="edit-section-body-locked">
+                <div class="window-controls">
+                    <h4>Study Names</h4>
+                    <div class="window-controls-row">
+                        <div class="window-control-field">
+                            <label for="rename-name-{{ study.id }}"><strong>Name</strong></label>
+                            <input id="rename-name-{{ study.id }}" type="text" value="{{ study.name | e }}" style="min-width: 18rem;" disabled>
+                        </div>
+                        <div class="window-control-field">
+                            <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
+                            <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;" disabled>
+                        </div>
+                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Names</button>
                     </div>
-                    <div class="window-control-field">
-                        <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
-                        <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}">
-                    </div>
-                    <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')">Save Window</button>
-                    {% if study.is_paused %}
-                    <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)">&#9654; Unpause Study</button>
-                    {% else %}
-                    <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)">&#9646;&#9646; Pause Study</button>
-                    {% endif %}
+                    <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
                 </div>
-                <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
-            </div>
 
-            <div class="danger-zone">
-                <h4>Danger Zone</h4>
-                <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
-                <div style="margin-top: 0.65rem;">
-                    <button type="button" class="danger-btn open-delete-study-btn"
-                        data-study-id="{{ study.id }}"
-                        data-study-name-short="{{ study.name_short }}"
-                        data-study-name="{{ study.name | e }}">
-                        Delete Study
-                    </button>
+                <div class="window-controls">
+                    <h4>Collection Window</h4>
+                    <div class="window-controls-row">
+                        <div class="window-control-field">
+                            <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
+                            <input id="window-start-{{ study.id }}" type="date" value="{{ study.data_collection_start.strftime('%Y-%m-%d') }}" disabled>
+                        </div>
+                        <div class="window-control-field">
+                            <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
+                            <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}" disabled>
+                        </div>
+                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Window</button>
+                        {% if study.is_paused %}
+                        <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)" disabled>&#9654; Unpause Study</button>
+                        {% else %}
+                        <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)" disabled>&#9646;&#9646; Pause Study</button>
+                        {% endif %}
+                    </div>
+                    <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
+                </div>
+
+                <div class="danger-zone">
+                    <h4>Danger Zone</h4>
+                    <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
+                    <div style="margin-top: 0.65rem;">
+                        <button type="button" class="danger-btn open-delete-study-btn"
+                            data-study-id="{{ study.id }}"
+                            data-study-name-short="{{ study.name_short }}"
+                            data-study-name="{{ study.name | e }}" disabled>
+                            Delete Study
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -926,6 +939,28 @@
                 );
             }
         });
+
+        function toggleEditSection() {
+            const body = document.getElementById('edit-section-body');
+            const toggleBtn = document.getElementById('edit-section-toggle-btn');
+            const warning = document.getElementById('edit-section-warning');
+            if (!body || !toggleBtn || !warning) return;
+
+            const inputs = body.querySelectorAll('input, button, select');
+            if (toggleBtn.textContent.trim() === 'Enable Editing') {
+                inputs.forEach(function(el) { el.disabled = false; });
+                toggleBtn.textContent = 'Disable Editing';
+                warning.textContent = 'Editing is enabled \u2014 proceed with care.';
+                warning.style.color = '#0d6efd';
+                body.classList.remove('edit-section-body-locked');
+            } else {
+                inputs.forEach(function(el) { el.disabled = true; });
+                toggleBtn.textContent = 'Enable Editing';
+                warning.textContent = 'Editing is locked. Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.';
+                warning.style.color = '#b42318';
+                body.classList.add('edit-section-body-locked');
+            }
+        }
 
     </script>
 </body>
