@@ -1109,36 +1109,42 @@ body {
   margin-bottom: 4px;
 }
 
-/* Copy day link in timeline title */
-.copy-day-link {
+/* "Copy this day" button in the timeline title.
+   Styled to match the secondary-slate previous-day switch buttons so the
+   enabled/disabled affordance is visually consistent across day actions. */
+.btn.copy-day-link {
+  display: inline-flex;
+  align-items: center;
   margin-left: 10px;
-  font-size: 0.82rem;
+  min-width: auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 0.78rem;
   font-weight: 500;
-  color: var(--muted, #6b7280);
-  cursor: pointer;
-  border: none;
-  background: transparent;
-  text-decoration: underline;
-  text-underline-offset: 2px;
+  line-height: 1.15;
+  border-radius: 6px;
+  background-color: var(--secondary-color);
+  color: #ffffff;
   white-space: nowrap;
 }
 
-.copy-day-link:hover {
-  color: #0d6efd;
+.btn.copy-day-link:hover:not(:disabled) {
+  background-color: #334155;
+  /* Override the default .btn hover lift so this inline button stays calm. */
+  transform: none;
 }
 
-.copy-day-link.disabled {
-  color: var(--muted, #9ca3af);
-  cursor: default;
-  text-decoration: none;
-}
-
-.copy-day-link.disabled:hover {
-  color: var(--muted, #9ca3af);
+.btn.copy-day-link:disabled {
+  background-color: #e2e8f0;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  cursor: not-allowed;
+  opacity: 1;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
-  .copy-day-link {
+  .btn.copy-day-link {
     font-size: 0.78rem;
     margin-left: 6px;
   }

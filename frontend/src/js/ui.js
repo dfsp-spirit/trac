@@ -706,20 +706,31 @@ function updateTimelineCoverageIndicators() {
 }
 
 function addCopyDayLink(timelineTitle, dayIndex) {
+  if (!timelineTitle) {
+    return;
+  }
+
   const existingLink = timelineTitle.querySelector('.copy-day-link');
   if (existingLink) {
     existingLink.remove();
   }
 
-  const hasData =
-    window.timelineManager &&
-    Array.isArray(window.timelineManager.dayIndicesWithData) &&
-    window.timelineManager.dayIndicesWithData.includes(dayIndex) &&
-    getEmptyTargetDayCount() > 0;
-
-  if (!hasData) {
+  // The "Copy this day" button copies the *saved* state of the current day to
+  // other empty days.  Copying requires the current day to be saveable first
+  // (we save THEN copy, so unsaved-but-valid edits get persisted), and there
+  // must be at least one empty day to copy *to*.  Render the button whenever
+  // there is a copy target; gate its enabled/disabled state on the same
+  // min_coverage check the rest of the app uses for "can this day be saved".
+  const hasCopyTarget = getEmptyTargetDayCount() > 0;
+  if (!hasCopyTarget) {
     return;
   }
+
+  const meetsMinCoverage = window.timelineManager.keys.every((timelineKey) => {
+    const timelineMetadata = window.timelineManager.metadata[timelineKey];
+    const timelineMinCoverage = parseInt(timelineMetadata?.minCoverage) || 0;
+    return getCoverageForTimelineKey(timelineKey) >= timelineMinCoverage;
+  });
 
   const t =
     window.i18n && window.i18n.isReady()
@@ -728,18 +739,15 @@ function addCopyDayLink(timelineTitle, dayIndex) {
           return key;
         };
 
-  const hasUnsavedChanges =
-    window.timelineManager && window.timelineManager._unsavedChanges === true;
-
   const link = document.createElement('button');
   link.type = 'button';
-  link.className = 'copy-day-link';
-  link.title = '';
+  link.className = 'btn copy-day-link';
 
-  if (hasUnsavedChanges) {
-    link.className += ' disabled';
-    link.textContent = t('messages.copyDayDisabled');
-    link.title = t('messages.copyDayDisabled');
+  if (!meetsMinCoverage) {
+    // Same "complete the minimum to save" message used by the day-switch
+    // buttons so all day-action affordances speak the same language.
+    link.textContent = t('messages.copyDayLink');
+    link.title = t('messages.completeMinimumActivitiesBeforeSwitching');
     link.disabled = true;
   } else {
     link.textContent = t('messages.copyDayLink');
@@ -1148,6 +1156,16 @@ function updateButtonStates() {
   // touching each individual call site.
   if (typeof window.renderPreviousDaysSwitchRow === 'function') {
     window.renderPreviousDaysSwitchRow();
+  }
+
+  // The "Copy this day" button in the timeline title is gated on the same
+  // min_coverage check (the copy operation saves the current day first, so
+  // the state must be saveable).  Refresh it from the same single chokepoint.
+  if (typeof window.addCopyDayLink === 'function') {
+    const timelineTitle = document.querySelector('.timeline-title');
+    if (timelineTitle) {
+      window.addCopyDayLink(timelineTitle, currentDayIndex);
+    }
   }
 }
 
