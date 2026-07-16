@@ -501,8 +501,11 @@
             <div class="edit-section-header">
                 <div>
                     <h3>Edit Study</h3>
+                    <p class="edit-section-warning" id="edit-section-warning-always">
+                        WARNING: Editing study properties can negatively impact a running study.
+                    </p>
                     <p class="edit-section-warning" id="edit-section-warning">
-                        Editing is locked. Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.
+                        Editing is locked. Click "Enable Editing" to unlock the fields and make changes.
                     </p>
                 </div>
                 <button type="button" class="edit-section-toggle" id="edit-section-toggle-btn" onclick="toggleEditSection()">Enable Editing</button>
@@ -511,6 +514,7 @@
             <div id="edit-section-body" class="edit-section-body-locked">
                 <div class="window-controls">
                     <h4>Study Names</h4>
+                    <p class="edit-section-warning" id="edit-section-warning-study-names">Changing the short name will break existing invitation links for participants, and external task return URLs.</p>
                     <div class="window-controls-row">
                         <div class="window-control-field">
                             <label for="rename-name-{{ study.id }}"><strong>Name</strong></label>
@@ -527,6 +531,7 @@
 
                 <div class="window-controls">
                     <h4>Collection Window</h4>
+                    <p class="edit-section-warning" id="edit-section-warning-collection-window">Pausing a study will prevent users who are currently filling out their diary from submitting their data. The same holds for changing the collection window dates if the old dates include the current date and the new ones do not.</p>
                     <div class="window-controls-row">
                         <div class="window-control-field">
                             <label for="window-start-{{ study.id }}"><strong>Start date</strong></label>
@@ -549,6 +554,8 @@
                 <div class="danger-zone">
                     <h4>Danger Zone</h4>
                     <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
+                    <br />
+                    <p>We recommend to <b>always</b> backup your data before deleting a study, even if you think you will not need it anymore. It's very easy and done in seconds, use the <i>Export Study Data</i> section above.</p>
                     <div style="margin-top: 0.65rem;">
                         <button type="button" class="danger-btn open-delete-study-btn"
                             data-study-id="{{ study.id }}"
@@ -956,7 +963,7 @@
             } else {
                 inputs.forEach(function(el) { el.disabled = true; });
                 toggleBtn.textContent = 'Enable Editing';
-                warning.textContent = 'Editing is locked. Changing these settings can affect a running study. Renaming the short name will break existing invitation links for participants.';
+                warning.textContent = 'Editing is locked. Click "Enable Editing" to unlock the fields and make changes.';
                 warning.style.color = '#b42318';
                 body.classList.add('edit-section-body-locked');
             }
