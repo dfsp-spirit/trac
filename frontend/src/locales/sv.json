@@ -144,7 +144,8 @@
     "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
-    "goBackToEditPreviousDays": "Byt till dag:"
+    "goBackToEditPreviousDays": "Byt till dag:",
+    "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",

@@ -785,10 +785,10 @@ function addCopyDayLink(timelineTitle, dayIndex) {
   link.className = 'btn copy-day-link';
 
   if (!meetsMinCoverage) {
-    // Same "complete the minimum to save" message used by the day-switch
-    // buttons so all day-action affordances speak the same language.
+    // Inactive copy-day button: use its own tooltip distinct from the
+    // day-switching message.
     link.textContent = t('messages.copyDayLink');
-    link.title = t('messages.completeMinimumActivitiesBeforeSwitching');
+    link.title = t('messages.completeMinimumActivitiesBeforeCopying');
     link.disabled = true;
   } else {
     link.textContent = t('messages.copyDayLink');

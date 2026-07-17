@@ -144,7 +144,8 @@
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
-    "goBackToEditPreviousDays": "Aller au jour :"
+    "goBackToEditPreviousDays": "Aller au jour :",
+    "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
