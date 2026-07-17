@@ -1,6 +1,15 @@
 TRAC MPIAE Changes
 ===================
 
+
+Current WIP
+------------
+- NEW: Allow copying days in frontend
+- FIX: Fig bug #115, users could end study by navigating to last day and submitting even with previous days missing
+- NEW: extend admin pages: add new edit zone, by default protected from accidental changes, user needs to unlock it by button press
+- NEW: allow renaming study in admin edit zone (both name short and name)
+
+
 Version 0.18.2 -- Mobile overhaul, External tasks for open studies, and UX improvements
 ---------------------------------------------------------------------------------------
 - NEW: allow copying placed activities on desktop via right-click menu in frontend
