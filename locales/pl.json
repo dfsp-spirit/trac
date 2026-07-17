@@ -144,7 +144,8 @@
     "reportingForDay": "Raportowanie dla dnia:",
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
-    "goBackToEditPreviousDays": "Przełącz na dzień:"
+    "goBackToEditPreviousDays": "Przełącz na dzień:",
+    "completeMinimumActivitiesBeforeCopying": "Uzupełnij minimalne aktywności przed skopiowaniem bieżącego dnia."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",

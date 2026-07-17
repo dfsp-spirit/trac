@@ -144,7 +144,8 @@
     "reportingForDay": "Raportointi päivälle:",
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
-    "goBackToEditPreviousDays": "Vaihda päivään:"
+    "goBackToEditPreviousDays": "Vaihda päivään:",
+    "completeMinimumActivitiesBeforeCopying": "Täytä vähimmäisaktiviteetit ennen nykyisen päivän kopioimista."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",

@@ -150,7 +150,8 @@
     "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
     "copyError": "Fehler beim Kopieren: {{message}}",
     "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren.",
-    "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln."
+    "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln.",
+    "completeMinimumActivitiesBeforeCopying": "Mindestaktivitäten vervollständigen, bevor Sie den aktuellen Tag kopieren."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",
