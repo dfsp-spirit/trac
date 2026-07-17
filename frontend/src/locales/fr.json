@@ -89,7 +89,8 @@
       "infoOnTemplate": "Pour le jour suivant, vous verrez les données saisies aujourd'hui comme modèle pour faciliter votre rapport. Adaptez-les selon vos besoins.<br /><br /> N'oubliez pas que vous pouvez supprimer des données en appuyant longuement ou en survolant l'activité dans la chronologie avec la souris et en appuyant sur 'd' ou SUPPR.",
       "studyEnd": "Cette soumission conclut l'étude.",
       "submitDay": "Envoyer le jour {{dayLabel}}",
-      "submitDayAndFinish": "Envoyer le jour {{dayLabel}} et terminer l'étude"
+      "submitDayAndFinish": "Envoyer le jour {{dayLabel}} et terminer l'étude",
+      "submitDayNoDay": "Envoyer le jour"
     },
     "confirmSkip": {
       "title": "Voulez-vous vraiment ignorer tout le rapport de temps ?",

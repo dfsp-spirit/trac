@@ -89,7 +89,8 @@
       "infoOnTemplate": "Następnego dnia zobaczysz dane wprowadzone dzisiaj jako szablon ułatwiający raportowanie. Dostosuj je według potrzeb.<br /><br /> Pamiętaj, że możesz usunąć dane, przytrzymując lub najeżdżając na aktywność na osi czasu myszką i naciskając 'd' lub DEL.",
       "studyEnd": "To przesłanie kończy badanie.",
       "submitDay": "Wyślij dzień {{dayLabel}}",
-      "submitDayAndFinish": "Wyślij dzień {{dayLabel}} i zakończ badanie"
+      "submitDayAndFinish": "Wyślij dzień {{dayLabel}} i zakończ badanie",
+      "submitDayNoDay": "Wyślij dzień"
     },
     "confirmSkip": {
       "title": "Czy na pewno chcesz pominąć raportowanie czasu?",
