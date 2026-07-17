@@ -6291,6 +6291,34 @@ async function init() {
       );
     }
 
+    // When pending state was restored (e.g. after a save-day reload where
+    // beforeunload re-captured just-saved activities), the backend-fetch
+    // block below is skipped — but we still need day_indices_with_data so
+    // the day-switch buttons render correctly.  Do a lightweight fetch
+    // purely for the switch-row metadata.
+    if (restoredPendingState && participantId && studyName) {
+      try {
+        const metaUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/participants/${participantId}/activities?day_label_index=${dayIndex}`;
+        const metaResp = await fetch(metaUrl, {
+          headers: { Accept: 'application/json' },
+        });
+        if (metaResp.ok) {
+          const metaData = await metaResp.json();
+          window.timelineManager.dayIndicesWithData = Array.isArray(
+            metaData.day_indices_with_data
+          )
+            ? metaData.day_indices_with_data
+            : [];
+          renderPreviousDaysSwitchRow();
+        }
+      } catch (e) {
+        console.warn(
+          'Could not fetch day_indices_with_data after pending-state restore:',
+          e.message
+        );
+      }
+    }
+
     let loadedActivitiesFromBackend = restoredPendingState;
 
     // Helper to load a list of activities (already transformed to frontend format)
