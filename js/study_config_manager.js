@@ -1,3 +1,4 @@
+// @ts-check
 // settings/study_config_manager.js - IMPROVED
 console.log('=== Study Config Manager Loading ===');
 
@@ -138,6 +139,13 @@ function getPreferredLanguage(
   );
 }
 
+/**
+ * Normalize day labels, resolving per-language display names for the target
+ * language. Mirrors what getDayDisplayLabel() does for a single label.
+ * @param {{ default_language?: string, day_labels?: Array<import('./api_types.js').ApiDayLabel | string> }} study
+ * @param {string|null} [language]
+ * @returns {Array<import('./api_types.js').ApiDayLabel | string>}
+ */
 function normalizeDayLabels(study, language = null) {
   const targetLanguage =
     normalizeLanguageCode(language) ||
@@ -152,6 +160,7 @@ function normalizeDayLabels(study, language = null) {
       return label;
     }
 
+    /** @type {string | Record<string,string> | undefined} */
     let displayName = label.display_name;
     if (
       !displayName &&
@@ -161,18 +170,24 @@ function normalizeDayLabels(study, language = null) {
       displayName = label.display_names;
     }
 
-    if (displayName && typeof displayName === 'object') {
+    if (typeof displayName === 'string') {
+      // Already a plain string; keep it (empty string falls back to name below).
+    } else if (displayName) {
+      // display_name is a {lang: string} map (legacy) or came from display_names.
+      const names = /** @type {Record<string,string>} */ (displayName);
       displayName =
-        displayName[targetLanguage] ||
-        displayName[defaultLanguage] ||
-        displayName.en ||
-        Object.values(displayName).find((value) => typeof value === 'string') ||
+        names[targetLanguage] ||
+        names[defaultLanguage] ||
+        names.en ||
+        Object.values(names).find((value) => typeof value === 'string') ||
         label.name;
     }
 
     return {
       ...label,
-      display_name: displayName || label.name,
+      // displayName is guaranteed to be a plain string here: any map was
+      // resolved by the branch above (a truthy object always entered it).
+      display_name: /** @type {string} */ (displayName || label.name),
       // Preserve the full translations map so syncWithBackendConfig() and
       // getDayDisplayLabel() can re-resolve for any language later.
       ...(label.display_names && typeof label.display_names === 'object'
@@ -182,6 +197,13 @@ function normalizeDayLabels(study, language = null) {
   });
 }
 
+/**
+ * Resolve a study text that may be a plain string or a language->text map.
+ * @param {string|Record<string,string>|null|undefined} textValue
+ * @param {string} selectedLanguage
+ * @param {string} [defaultLanguage]
+ * @returns {string|null}
+ */
 function resolveLocalizedStudyText(
   textValue,
   selectedLanguage,
@@ -435,6 +457,7 @@ async function syncWithBackendConfig() {
     }
 
     if (response.ok) {
+      /** @type {import('./api_types.js').StudyConfigResponse} */
       const backendConfig = await response.json();
       console.log('Backend study config received');
       console.log(
