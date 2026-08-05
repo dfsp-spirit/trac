@@ -5,7 +5,8 @@
   "description": "Playwright e2e tests for TRAC frontend",
   "scripts": {
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:unit": "node --test --import ./tests/unit/setup.js tests/unit/*.test.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0"
