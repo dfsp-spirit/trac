@@ -943,11 +943,16 @@ export function updateCurrentDayDisplay() {
 }
 
 function getIncompleteDaysList() {
-  const dayIndicesWithData = Array.isArray(
-    window.timelineManager?.dayIndicesWithData
+  // "Complete" here means meeting the min_coverage requirement (same notion as
+  // the submit gate).  Fall back to the old "has any data" set for backends
+  // that do not send day_indices_meet_min_coverage yet.
+  const completedDays = Array.isArray(
+    window.timelineManager?.dayIndicesMeetMinCoverage
   )
-    ? window.timelineManager.dayIndicesWithData
-    : [];
+    ? window.timelineManager.dayIndicesMeetMinCoverage
+    : Array.isArray(window.timelineManager?.dayIndicesWithData)
+      ? window.timelineManager.dayIndicesWithData
+      : [];
   const studyDaysCount =
     window.timelineManager?.studyDaysCount ||
     window.studyConfigManager?.getStudyDaysCount() ||
@@ -961,7 +966,7 @@ function getIncompleteDaysList() {
 
   const incomplete = [];
   for (let i = 0; i < currentDayIndex; i++) {
-    if (!dayIndicesWithData.includes(i)) {
+    if (!completedDays.includes(i)) {
       const dayName =
         window.studyConfigManager?.getDayDisplayLabel?.(i) ||
         (window.i18n ? window.i18n.t('common.day') : 'Day') + ' ' + (i + 1);

@@ -133,6 +133,7 @@
     "sending_retry": "Yritetään tallentaa päiväkirjaa uudelleen (yritys {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Vähimmäiskattavuus täyttyi",
+    "dayCompleteAria": "Päivä valmis (vähimmäiskattavuus täytetty)",
     "timelineCoverageMissing": "{{covered}} / {{required}} vaaditusta minuutista katettu",
     "timelineMissing": "Aikajanalta puuttuu tietoja. Haluatko lisätä jotain?",
     "timelineHoverInactive": "Napsauta siirtyäksesi tähän aikajanaan",

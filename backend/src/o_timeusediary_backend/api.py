@@ -619,6 +619,76 @@ def _get_completed_day_indices(
     return {int(idx) for idx in day_indices_rows}
 
 
+def _get_days_meeting_min_coverage(
+    session: Session, study: Study, participant_id: Optional[str]
+) -> set[int]:
+    """Return display_order indices for days that are complete *according to
+    min coverage*.
+
+    A day is considered complete when, for every timeline of the study that
+    has a ``min_coverage > 0``, the sum of submitted activity minutes on that
+    day reaches or exceeds the timeline's min_coverage.  Timelines without a
+    min_coverage (None or <= 0) impose no requirement.
+
+    This mirrors the backend submit validation (_validate_timeline_min_coverage)
+    so the frontend "Finish Study" gate can rely on the exact same notion of
+    completion as a successful submission.  It intentionally differs from
+    _get_completed_day_indices(), which only checks that a day has *any* data
+    and is still needed to protect against overwriting non-empty days when
+    copying.
+    """
+    if not participant_id:
+        return set()
+
+    timelines = session.exec(
+        select(Timeline).where(Timeline.study_id == study.id)
+    ).all()
+    required_by_timeline_id = {
+        timeline.id: int(timeline.min_coverage or 0)
+        for timeline in timelines
+        if (timeline.min_coverage or 0) > 0
+    }
+
+    if not required_by_timeline_id:
+        # No timeline imposes a min-coverage requirement: every day with any
+        # data is trivially complete, consistent with the historical behavior.
+        return _get_completed_day_indices(session, study, participant_id)
+
+    day_labels = session.exec(
+        select(DayLabel).where(DayLabel.study_id == study.id)
+    ).all()
+    display_order_by_id = {day_label.id: day_label.display_order for day_label in day_labels}
+
+    activities = session.exec(
+        select(Activity).where(
+            Activity.study_id == study.id,
+            Activity.participant_id == participant_id,
+        )
+    ).all()
+
+    # covered_minutes[day_label_id][timeline_id] = sum of activity minutes
+    covered_minutes: Dict[int, Dict[int, int]] = {}
+    for activity in activities:
+        day_coverage = covered_minutes.setdefault(activity.day_label_id, {})
+        duration = activity.end_minutes - activity.start_minutes
+        day_coverage[activity.timeline_id] = (
+            day_coverage.get(activity.timeline_id, 0) + duration
+        )
+
+    meeting_days: set[int] = set()
+    for day_label_id, day_coverage in covered_minutes.items():
+        meets_all = all(
+            day_coverage.get(timeline_id, 0) >= required
+            for timeline_id, required in required_by_timeline_id.items()
+        )
+        if meets_all:
+            display_order = display_order_by_id.get(day_label_id)
+            if display_order is not None:
+                meeting_days.add(display_order)
+
+    return meeting_days
+
+
 def _is_participant_study_complete(
     session: Session, study: Study, participant_id: Optional[str], study_days_count: int
 ) -> bool:
@@ -7463,6 +7533,13 @@ def get_participant_day_activities(
     completed_day_indices = _get_completed_day_indices(session, study, participant_id)
     day_indices_with_data = sorted(completed_day_indices)
 
+    # Days that are complete *according to min coverage* (every timeline with a
+    # min_coverage requirement is covered).  This is what the frontend uses to
+    # gate the "Finish Study" submit button and to mark complete days.
+    day_indices_meet_min_coverage = sorted(
+        _get_days_meeting_min_coverage(session, study, participant_id)
+    )
+
     # Structure the response in a frontend-friendly format
     response_activities = []
     for activity, timeline in activities:
@@ -7586,6 +7663,7 @@ def get_participant_day_activities(
         "study": study_name_short,
         "study_days_count": study_days_count,
         "day_indices_with_data": day_indices_with_data,
+        "day_indices_meet_min_coverage": day_indices_meet_min_coverage,
         "participant": participant_id,
         "day_label": day_label.name,
         "day_label_id": day_label.id,

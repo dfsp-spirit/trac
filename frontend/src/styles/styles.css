@@ -1068,6 +1068,25 @@ body {
   box-shadow: none;
 }
 
+/* Days complete according to min coverage: green chip + checkmark.  Rules are
+   placed after the base/disabled rules so the green state wins on equal
+   specificity, keeping the completion status readable even for the disabled
+   current-day button. */
+.btn.previous-day-btn.day-complete {
+  background-color: #e8f5e9;
+  border: 1px solid #a5d6a7;
+  color: #2e7d32;
+}
+
+.btn.previous-day-btn.day-complete:hover:not(:disabled) {
+  background-color: #d7edda;
+}
+
+.btn.previous-day-btn.day-complete .day-complete-check {
+  font-weight: 700;
+}
+
+
 /* Copy day context menu */
 .copy-day-context-menu {
   position: fixed;

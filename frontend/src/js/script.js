@@ -5651,27 +5651,33 @@ function renderPreviousDaysSwitchRow() {
   }
 
   const currentDayIndex = getCurrentDayIndex();
-  const availableDayIndices = Array.isArray(
+
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount() ||
+    0;
+
+  // Days that contain ANY data (protects against overwriting when copying).
+  const dayIndicesWithData = Array.isArray(
     window.timelineManager?.dayIndicesWithData
   )
     ? window.timelineManager.dayIndicesWithData
     : [];
 
-  const switchTargetDayIndices = [...new Set(availableDayIndices)]
-    .map((value) => Number(value))
-    .filter(
-      (value) =>
-        Number.isInteger(value) && value >= 0 && value !== currentDayIndex
-    )
-    .sort((left, right) => left - right);
+  // Days that are complete *according to min coverage* (the submit-gate
+  // notion).  Falls back to the "has any data" set for backends that do not
+  // send day_indices_meet_min_coverage yet.
+  const dayIndicesMeetMinCoverage = Array.isArray(
+    window.timelineManager?.dayIndicesMeetMinCoverage
+  )
+    ? window.timelineManager.dayIndicesMeetMinCoverage
+    : dayIndicesWithData;
 
-  const rowDayIndices = [
-    ...new Set([...switchTargetDayIndices, currentDayIndex]),
-  ].sort((left, right) => left - right);
-
+  // Render the full day selector whenever the study spans more than one day,
+  // not just days that already have data.  This way the completion status of
+  // every day — including empty and incomplete ones — stays visible.
   const shouldShow =
-    Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS) &&
-    switchTargetDayIndices.length > 0;
+    Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS) && studyDaysCount > 1;
 
   let existingRow = document.getElementById('previousDaysSwitchRow');
   if (!shouldShow) {
@@ -5699,11 +5705,29 @@ function renderPreviousDaysSwitchRow() {
       : 'Switch to day:';
   existingRow.appendChild(label);
 
-  for (const dayIndex of rowDayIndices) {
+  for (let dayIndex = 0; dayIndex < studyDaysCount; dayIndex++) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'btn previous-day-btn';
-    button.textContent = getDayButtonDisplayLabel(dayIndex);
+
+    const dayLabel = getDayButtonDisplayLabel(dayIndex);
+    button.appendChild(document.createTextNode(dayLabel));
+
+    // Green checkmark for days that meet the min_coverage requirement.
+    const meetsMinCoverage = dayIndicesMeetMinCoverage.includes(dayIndex);
+    if (meetsMinCoverage) {
+      button.classList.add('day-complete');
+      const check = document.createElement('span');
+      check.className = 'day-complete-check';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = ' ✓';
+      button.appendChild(check);
+      const completeTitle =
+        window.i18n && window.i18n.isReady()
+          ? window.i18n.t('messages.dayCompleteAria')
+          : 'Day complete (meets minimum coverage)';
+      button.setAttribute('aria-label', `${dayLabel}, ${completeTitle}`);
+    }
 
     const isCurrentDay = dayIndex === currentDayIndex;
     if (isCurrentDay) {
@@ -5717,8 +5741,7 @@ function renderPreviousDaysSwitchRow() {
         await saveAndSwitchToDay(dayIndex);
       });
 
-      const hasData =
-        window.timelineManager?.dayIndicesWithData?.includes(dayIndex);
+      const hasData = dayIndicesWithData.includes(dayIndex);
       if (hasData && !window.globals?.isMobile) {
         button.addEventListener('contextmenu', (event) => {
           event.preventDefault();
@@ -6309,6 +6332,13 @@ async function init() {
           )
             ? metaData.day_indices_with_data
             : [];
+          // Days complete according to min coverage (submit-gate notion).
+          // Falls back to the "has any data" set when not provided.
+          window.timelineManager.dayIndicesMeetMinCoverage = Array.isArray(
+            metaData.day_indices_meet_min_coverage
+          )
+            ? metaData.day_indices_meet_min_coverage
+            : window.timelineManager.dayIndicesWithData;
           renderPreviousDaysSwitchRow();
         }
       } catch (e) {
@@ -6456,6 +6486,13 @@ async function init() {
           )
             ? backendData.day_indices_with_data
             : [];
+          // Days complete according to min coverage (submit-gate notion).
+          // Falls back to the "has any data" set when not provided.
+          window.timelineManager.dayIndicesMeetMinCoverage = Array.isArray(
+            backendData.day_indices_meet_min_coverage
+          )
+            ? backendData.day_indices_meet_min_coverage
+            : window.timelineManager.dayIndicesWithData;
           renderPreviousDaysSwitchRow();
 
           if (typeof window.addCopyDayLink === 'function') {

@@ -130,9 +130,17 @@ test('shows previous-day switch buttons when days with saved data exist', async 
   const switchRow = page.locator('#previousDaysSwitchRow');
   await expect(switchRow).toBeVisible({ timeout: 30000 });
 
+  // All study days (Monday..Sunday) are rendered now, not just days with data.
   const dayButtons = switchRow.locator('.previous-day-btn');
-  await expect(dayButtons).toHaveCount(2);
+  await expect(dayButtons).toHaveCount(7);
   await expect(dayButtons.first()).toContainText('Monday');
+
+  // Monday was saved and meets min_coverage, so it gets the green checkmark.
+  const mondayButton = dayButtons.filter({ hasText: 'Monday' });
+  await expect(mondayButton).toHaveClass(/day-complete/);
+  await expect(
+    mondayButton.locator('.day-complete-check')
+  ).toContainText('✓');
 
   const currentDayButton = dayButtons.filter({ hasText: 'Tuesday' });
   await expect(currentDayButton).toBeDisabled();

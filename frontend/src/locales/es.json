@@ -133,6 +133,7 @@
     "sending_retry": "Reintentando guardar tu diario (intento {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Cobertura mínima cumplida",
+    "dayCompleteAria": "Día completado (cobertura mínima alcanzada)",
     "timelineCoverageMissing": "{{covered}} de {{required}} minutos requeridos cubiertos",
     "timelineMissing": "Falta información en esta línea de tiempo. ¿Te gustaría añadir algo?",
     "timelineHoverInactive": "Haz clic para cambiar a esta línea de tiempo",

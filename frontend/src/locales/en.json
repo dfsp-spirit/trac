@@ -135,6 +135,7 @@
     "sending_retry": "Retrying to save your diary (attempt {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Minimum coverage met",
+    "dayCompleteAria": "Day complete (meets minimum coverage)",
     "timelineCoverageMissing": "{{covered}} of {{required}} required minutes covered",
     "timelineMissing": "There is information missing from this timeline. Would you like to add anything?",
     "timelineHoverInactive": "Click to switch to this timeline",

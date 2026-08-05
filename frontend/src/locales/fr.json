@@ -133,6 +133,7 @@
     "sending_retry": "Nouvelle tentative d'enregistrement du journal (essai {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Couverture minimale atteinte",
+    "dayCompleteAria": "Journée complète (couverture minimale atteinte)",
     "timelineCoverageMissing": "{{covered}} sur {{required}} minutes requises couvertes",
     "timelineMissing": "Il manque des informations dans cette chronologie. Souhaitez-vous ajouter quelque chose ?",
     "timelineHoverInactive": "Cliquez pour passer à cette chronologie",

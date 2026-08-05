@@ -78,8 +78,10 @@ test('copy this day: button gates on min coverage, saves before copying, stays o
   const copyButton = page.locator('.copy-day-link');
   const switchRow = page.locator('#previousDaysSwitchRow');
 
-  // Switch row should not be visible yet (no saved day to switch to).
-  await expect(switchRow).toHaveCount(0);
+  // The switch row is now always visible once the study spans multiple days:
+  // it shows ALL days (Monday..Sunday), not just days with saved data.
+  await expect(switchRow).toBeVisible({ timeout: 10000 });
+  await expect(switchRow.locator('.previous-day-btn')).toHaveCount(7);
 
   // Initially the current day has no activities → copy button should be
   // visible (the default study has 7 days, so there are empty targets) but
