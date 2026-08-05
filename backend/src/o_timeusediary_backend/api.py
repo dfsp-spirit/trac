@@ -2019,7 +2019,7 @@ async def admin_overview(
                     "timeline": timeline.name if timeline else "Unknown",
                     "activity_name": activity.activity_name,
                     "activity_code": activity.activity_code,
-                    "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
+                    "time_range": f"{(activity.start_minutes % (24 * 60)) // 60:02d}:{activity.start_minutes % 60:02d} - {(activity.end_minutes % (24 * 60)) // 60:02d}:{activity.end_minutes % 60:02d}",
                     "created_at": activity.created_at,
                 }
             )
@@ -2252,7 +2252,7 @@ async def admin_study_detail(
                     "category": activity.category,
                     "start_minutes": activity.start_minutes,
                     "end_minutes": activity.end_minutes,
-                    "time_range": f"{activity.start_minutes // 60:02d}:{activity.start_minutes % 60:02d} - {activity.end_minutes // 60:02d}:{activity.end_minutes % 60:02d}",
+                    "time_range": f"{(activity.start_minutes % (24 * 60)) // 60:02d}:{activity.start_minutes % 60:02d} - {(activity.end_minutes % (24 * 60)) // 60:02d}:{activity.end_minutes % 60:02d}",
                     "duration": activity.end_minutes - activity.start_minutes,
                     "parent_activity_code": activity.parent_activity_code,
                     "created_at": activity.created_at,
@@ -6995,13 +6995,18 @@ async def export_study_activities(
     # Prepare the data with dereferenced fields
     export_data = []
     for activity, participant, day_label, timeline in activities:
-        # Format time range
-        start_hour = activity.start_minutes // 60
-        start_minute = activity.start_minutes % 60
-        end_hour = activity.end_minutes // 60
-        end_minute = activity.end_minutes % 60
-
+        # Duration is the authoritative quantity; the wall-clock start/end
+        # times are derived from start + duration and wrapped to a 24 h day.
+        # The timeline runs 04:00 -> 04:00 (+1 day), so end_minutes can reach
+        # 1680 (= 04:00 next day). Without wrapping, naive `minutes // 60`
+        # formatting would emit invalid times like "28:00".
         duration_minutes = activity.end_minutes - activity.start_minutes
+
+        start_clock = activity.start_minutes % (24 * 60)
+        end_clock = (activity.start_minutes + duration_minutes) % (24 * 60)
+
+        start_time = f"{start_clock // 60:02d}:{start_clock % 60:02d}"
+        end_time = f"{end_clock // 60:02d}:{end_clock % 60:02d}"
 
         # Base data that everyone wants
         record = {
@@ -7010,8 +7015,8 @@ async def export_study_activities(
             "activity_code": activity.activity_code,
             "activity_name": activity.activity_name,
             "frequency": activity.frequency_key or "",
-            "start_time": f"{start_hour:02d}:{start_minute:02d}",
-            "end_time": f"{end_hour:02d}:{end_minute:02d}",
+            "start_time": start_time,
+            "end_time": end_time,
             "start_minutes": activity.start_minutes,
             "end_minutes": activity.end_minutes,
             "duration_minutes": duration_minutes,

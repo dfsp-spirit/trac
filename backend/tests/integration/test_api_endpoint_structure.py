@@ -327,7 +327,8 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert "studies_config" in runtime_config_export_data
         assert "activities" in runtime_config_export_data
         assert "studies" in runtime_config_export_data["studies_config"]
-        assert len(runtime_config_export_data["studies_config"]["studies"]) == 1
+        assert len(
+            runtime_config_export_data["studies_config"]["studies"]) == 1
 
         exported_study = runtime_config_export_data["studies_config"]["studies"][0]
         for key in [
@@ -375,7 +376,8 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert "studies_config.json" in archive_names
         assert "export_manifest.json" in archive_names
 
-        studies_config_zip_text = archive.read("studies_config.json").decode("utf-8")
+        studies_config_zip_text = archive.read(
+            "studies_config.json").decode("utf-8")
         assert "\n" in studies_config_zip_text
         assert "\n  \"studies\"" in studies_config_zip_text
         studies_config_in_zip = json.loads(studies_config_zip_text)
@@ -394,7 +396,8 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         activity_file_payload = json.loads(activity_file_text)
         assert "timeline" in activity_file_payload
 
-        export_manifest_text = archive.read("export_manifest.json").decode("utf-8")
+        export_manifest_text = archive.read(
+            "export_manifest.json").decode("utf-8")
         assert "\n" in export_manifest_text
 
 
@@ -418,7 +421,8 @@ async def test_export_activities_includes_completion_timestamps():
         rows1 = list(csv.DictReader(StringIO(resp1.text)))
         assert rows1
 
-        required = ("participant_diary_completed_at", "participant_everything_completed_at")
+        required = ("participant_diary_completed_at",
+                    "participant_everything_completed_at")
         for key in required:
             assert key in rows1[0], f"missing column {key} in first CSV row"
 
@@ -496,3 +500,89 @@ async def test_export_includes_per_task_completion_timestamps(
                 assert val is None or val == "" or "T" in val, (
                     f"unexpected value for {col}: {val!r}"
                 )
+
+
+@pytest.mark.asyncio
+async def test_admin_activities_export_end_times_are_wrapped_to_24h():
+    """Activities on the 04:00 -> 04:00 (+1) timeline store end_minutes up to
+    1680 (= 04:00 next day). The export must wrap these to a 24 h clock so that
+    invalid times like "28:00" (or "24:00" for end_minutes=1440) never appear."""
+    # "default" is an open study (data collection window includes "now"),
+    # so participants do not need to be pre-assigned.
+    study_name_short = "default"
+
+    async with httpx.AsyncClient() as client:
+        participant_id = f"it_task_timewrap_{uuid.uuid4().hex[:8]}"
+
+        study_cfg_resp = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": participant_id},
+        )
+        assert study_cfg_resp.status_code == 200
+        study_cfg = study_cfg_resp.json()
+        day_label_name = study_cfg["day_labels"][0]["name"]
+
+        selection = await _get_first_activity_selection(
+            client, study_name_short, participant_id
+        )
+
+        # Edge cases for the 04:00 -> 04:00(+1) timeline:
+        #  - end at 04:00(+1): end_minutes 1680 -> expected end_time "04:00"
+        #  - end at 00:00(+1): end_minutes 1440 -> expected end_time "00:00"
+        #  - span across midnight: 23:00 -> 01:00 (1380 -> 1500) -> "01:00"
+        cases = [
+            {"start_minutes": 240, "end_minutes": 1680, "expected_end_time": "04:00"},
+            {"start_minutes": 240, "end_minutes": 1440, "expected_end_time": "00:00"},
+            {"start_minutes": 1380, "end_minutes": 1500, "expected_end_time": "01:00"},
+        ]
+
+        # All activities must be submitted in a single request: the backend
+        # replaces all existing activities for a participant-day on submit.
+        activities = []
+        for case in cases:
+            activity_item = {
+                "timeline_key": selection["timeline_key"],
+                "activity": selection["activity_name"],
+                "category": selection["category_name"],
+                "start_minutes": case["start_minutes"],
+                "end_minutes": case["end_minutes"],
+                "mode": selection["timeline_mode"],
+            }
+            if selection["timeline_mode"] == "single-choice":
+                activity_item["code"] = selection["activity_code"]
+            else:
+                activity_item["codes"] = [selection["activity_code"]]
+            activities.append(activity_item)
+
+        submit_resp = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
+            json={"activities": activities},
+        )
+        assert submit_resp.status_code == 200, submit_resp.text
+
+        # Export and verify the wrapped times.
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "json"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert export_resp.status_code == 200
+        export_data = export_resp.json()
+
+        records = [
+            r for r in export_data["data"] if r["participant_id"] == participant_id
+        ]
+        assert len(records) == len(cases)
+
+        for record in records:
+            for field in ("start_time", "end_time"):
+                hour_str = record[field].split(":")[0]
+                assert int(hour_str) < 24, (
+                    f"Invalid {field} '{record[field]}' in exported record: "
+                    f"{record['start_minutes']}-{record['end_minutes']} min"
+                )
+
+        by_end_minutes = {r["end_minutes"]: r for r in records}
+        assert by_end_minutes[1680]["end_time"] == "04:00"
+        assert by_end_minutes[1440]["end_time"] == "00:00"
+        assert by_end_minutes[1500]["end_time"] == "01:00"
