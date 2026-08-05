@@ -1,0 +1,27 @@
+name: Frontend Unit Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # allow manual triggering
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+
+    # The unit tests use only Node built-ins (node:test, node:assert, fs, ...)
+    # and import the pure frontend src modules directly, so no npm install is
+    # needed. The runner script wraps `node --test` with the global shim.
+    - name: Run frontend unit tests
+      run: sh test_frontend_unit.sh
