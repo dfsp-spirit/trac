@@ -5131,7 +5131,7 @@ function transformBackendActivitiesResponse(backendData) {
   return backendData;
 }
 
-function showTemplateBanner(templateSourceDay) {
+function showTemplateBanner(templateSourceDay, messageKey) {
   // Check if banner already exists
   const existingBanner = document.getElementById('templateBanner');
   if (existingBanner) {
@@ -5163,9 +5163,11 @@ function showTemplateBanner(templateSourceDay) {
     `;
 
   const text = document.createElement('span');
-  text.innerHTML = i18n.t('messages.templateLoadedBanner', {
-    day: templateSourceDay,
-  });
+  const effectiveMessageKey = messageKey || 'messages.templateLoadedBanner';
+  text.innerHTML = i18n.t(
+    effectiveMessageKey,
+    templateSourceDay ? { day: templateSourceDay } : {}
+  );
 
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
@@ -6498,7 +6500,10 @@ async function init() {
           const copyPayload = await copyResponse.json();
           console.log('Cross-user template copy result:', copyPayload);
           if (copyPayload.copied_days_count > 0) {
-            showTemplateBanner(templateUser);
+            // Cross-user copy: the copied data is saved as regular activities, so
+            // use a dedicated message instead of the same-user "from <day>" one
+            // (which would otherwise render the source participant id as the day).
+            showTemplateBanner(null, 'messages.templateCopiedBanner');
           }
         } else {
           console.warn(

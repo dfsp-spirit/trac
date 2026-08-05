@@ -144,6 +144,7 @@
     "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
     "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
+    "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan.",
     "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
