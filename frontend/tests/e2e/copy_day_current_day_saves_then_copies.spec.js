@@ -176,6 +176,28 @@ test('copy this day: button gates on min coverage, saves before copying, stays o
   await expect(switchRow.locator('button:has-text("Monday")')).toBeVisible();
   await expect(switchRow.locator('button:has-text("Wednesday")')).toBeVisible();
 
+  // The copied target (Wednesday) must turn green IMMEDIATELY — without a day
+  // switch or reload — since the copied activities meet min_coverage.
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(
+          () => window.timelineManager?.dayIndicesMeetMinCoverage || []
+        ),
+      {
+        timeout: 15000,
+        message: 'Waiting for dayIndicesMeetMinCoverage to include Wednesday',
+      }
+    )
+    .toEqual(expect.arrayContaining([2]));
+  const wednesdayButton = switchRow.locator(
+    'button:has-text("Wednesday")'
+  );
+  await expect(wednesdayButton).toHaveClass(/day-complete/);
+  await expect(
+    wednesdayButton.locator('.day-complete-check')
+  ).toContainText('✓');
+
   // Open the picker again — Wednesday is no longer empty, so it must not be
   // listed as a copy target.
   await expect(copyButton).toBeEnabled();
