@@ -133,6 +133,7 @@
     "sending_retry": "Nytt försök att spara dagboken (försök {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Minsta täckning uppfylld",
+    "dayCompleteAria": "Dagen är klar (uppfyller minsta täckningen)",
     "timelineCoverageMissing": "{{covered}} av {{required}} obligatoriska minuter täckta",
     "timelineMissing": "Det saknas information på den här tidslinjen. Vill du lägga till något?",
     "timelineHoverInactive": "Klicka för att byta till den här tidslinjen",

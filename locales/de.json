@@ -133,6 +133,7 @@
     "sending_retry": "Erneuter Versuch beim Speichern (Versuch {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Mindestabdeckung erreicht",
+    "dayCompleteAria": "Tag abgeschlossen (Mindestabdeckung erfüllt)",
     "timelineCoverageMissing": "{{covered}} von {{required}} erforderlichen Minuten abgedeckt",
     "timelineMissing": "In dieser Zeitleiste fehlen noch Angaben. Möchten Sie etwas hinzufügen?",
     "timelineHoverInactive": "Klicken Sie, um zu dieser Zeitleiste zu wechseln",

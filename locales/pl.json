@@ -133,6 +133,7 @@
     "sending_retry": "Ponawianie próby zapisania dziennika (próba {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
     "timelineCoverageMetAria": "Minimalne pokrycie spełnione",
+    "dayCompleteAria": "Dzień ukończony (spełniono minimalne pokrycie)",
     "timelineCoverageMissing": "Pokryto {{covered}} z {{required}} wymaganych minut",
     "timelineMissing": "Brakuje informacji na tej osi czasu. Chcesz dodać coś?",
     "timelineHoverInactive": "Kliknij, aby przełączyć się na tę oś czasu",
