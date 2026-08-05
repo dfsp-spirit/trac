@@ -1716,12 +1716,7 @@ function recreateActivityBlockFromTemplate(activityData) {
 
   // Create time label
   const timeLabel = createTimeLabel(currentBlock);
-  updateTimeLabel(
-    timeLabel,
-    activityData.startTime,
-    activityData.endTime,
-    currentBlock
-  );
+  updateTimeLabel(timeLabel);
 
   // Ensure the activity data in the manager matches
   console.log(
@@ -4780,12 +4775,7 @@ function initTimelineInteraction(timeline) {
 
     // Create time label for both mobile and desktop modes
     const timeLabel = createTimeLabel(currentBlock);
-    updateTimeLabel(
-      timeLabel,
-      formattedStartTime,
-      formattedEndTime,
-      currentBlock
-    );
+    updateTimeLabel(timeLabel);
     timeLabel.style.display = 'block'; // Ensure the new label is visible
 
     // On desktop, also re-show any labels that were hidden by earlier placements.
@@ -6349,7 +6339,7 @@ async function init() {
       console.warn(
         `Day index ${dayIndex} is out of range. Adjusting to last day (${maxDayIndex})`
       );
-      urlParams.set('day_label_index', maxDayIndex);
+      urlParams.set('day_label_index', String(maxDayIndex));
       window.history.replaceState(
         {},
         '',
