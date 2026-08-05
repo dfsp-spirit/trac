@@ -1,3 +1,4 @@
+// @ts-check
 // Time constants
 export const MINUTES_PER_DAY = 24 * 60;
 export const INCREMENT_MINUTES = 10;

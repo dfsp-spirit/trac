@@ -1,4 +1,9 @@
+// @ts-check
 export class Timeline {
+  /**
+   * @param {string} key
+   * @param {Record<string, any>} [metadata]
+   */
   constructor(key, metadata = {}) {
     this.key = key;
     this.name = metadata?.name || '';
@@ -53,7 +58,7 @@ export class Timeline {
       //     activity2: b.activity,
       //     time2: b.startTime
       // });
-      return aStart - bStart;
+      return aStart.getTime() - bStart.getTime();
     });
 
     // console.log('Sorted activities:', sortedActivities);

@@ -1,3 +1,4 @@
+// @ts-check
 // Debug script to test i18n functionality
 // Run this in the browser console on the instructions page
 

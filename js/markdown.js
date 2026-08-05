@@ -1,3 +1,4 @@
+// @ts-check
 function escapeHtml(text) {
   return String(text)
     .replaceAll('&', '&amp;')

@@ -1,3 +1,4 @@
+// @ts-check
 (function () {
   // Initialize an array to store mutation records
   const mutationLog = [];
