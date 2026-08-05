@@ -1023,4 +1023,8 @@ export {
   getDayLabel,
   getDayDisplayLabel,
   getStudyDaysCount,
+  // Pure helpers, exported for unit testing.
+  normalizeDayLabels,
+  resolveLocalizedStudyText,
+  normalizeLanguageCode,
 };
