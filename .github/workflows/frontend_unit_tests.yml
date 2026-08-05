@@ -23,12 +23,11 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    # Type-check the files marked with `// @ts-check` (currently the API-boundary
-    # consumers + api_types.js). Scoped via jsconfig.json; only @ts-check files
-    # are checked, so the large unannotated modules (script.js, ui.js, ...) are
-    # intentionally not part of this gate yet.
+    # Type-check the files marked with `// @ts-check` (currently 15 of the 17
+    # modules under src/js; the two large DOM-heavy files script.js + ui.js are
+    # intentionally excluded). Scoped via jsconfig.json.
     - name: Type-check the API boundary
-      run: npm run typecheck
+      run: sh test_frontend_typecheck.sh
 
     # The unit tests use only Node built-ins (node:test, node:assert, fs, ...)
     # and import the pure frontend src modules directly. The runner script wraps
