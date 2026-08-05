@@ -7046,6 +7046,26 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       }
     }
 
+    // The copy wrote the source day's activities (which meet min_coverage) to
+    // the target day, so the target day is now complete by min coverage too.
+    // Keep the day status in sync so the green checkmark appears immediately,
+    // without requiring a day switch / page reload.
+    if (
+      window.timelineManager &&
+      Array.isArray(window.timelineManager.dayIndicesMeetMinCoverage)
+    ) {
+      if (
+        !window.timelineManager.dayIndicesMeetMinCoverage.includes(
+          targetDayIndex
+        )
+      ) {
+        window.timelineManager.dayIndicesMeetMinCoverage.push(targetDayIndex);
+        window.timelineManager.dayIndicesMeetMinCoverage.sort(function (a, b) {
+          return a - b;
+        });
+      }
+    }
+
     if (typeof renderPreviousDaysSwitchRow === 'function') {
       renderPreviousDaysSwitchRow();
     }
