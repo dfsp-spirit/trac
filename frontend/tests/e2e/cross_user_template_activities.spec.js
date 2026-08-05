@@ -259,6 +259,13 @@ test('cross-user template copies correct per-day activities to target user', asy
     })
     .toBe(1);
 
+  // The cross-user template banner must use the dedicated cross-user message and
+  // must NOT leak the source participant id into the day slot.
+  const templateBanner = page.locator('#templateBanner');
+  await expect(templateBanner).toBeVisible({ timeout: 15_000 });
+  await expect(templateBanner).toContainText(/template participant/i);
+  await expect(templateBanner).not.toContainText(pid1);
+
   // Day-switch row must show Tuesday as a navigable day (backend returns day_indices_with_data
   // including Tuesday because activities were copied there too).
   const switchRow = page.locator('#previousDaysSwitchRow');

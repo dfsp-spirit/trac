@@ -144,6 +144,7 @@
     "invalidPlacement": "Cannot place activity here due to invalid position.",
     "timelineValidationError": "Timeline validation error: {{message}}",
     "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
+    "templateCopiedBanner": "We pre-filled your diary with activities from a template participant. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below.",
     "reportingForDay": "Reporting for day:",
     "studyDayOf": "Day {{current}} of {{total}}",
     "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
