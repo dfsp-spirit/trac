@@ -586,3 +586,72 @@ async def test_admin_activities_export_end_times_are_wrapped_to_24h():
         assert by_end_minutes[1680]["end_time"] == "04:00"
         assert by_end_minutes[1440]["end_time"] == "00:00"
         assert by_end_minutes[1500]["end_time"] == "01:00"
+
+
+@pytest.mark.asyncio
+async def test_export_includes_instructions_completed_at():
+    """The activities export must include participant_instructions_completed_at
+    (the best available 'start of diary filling' proxy) and it should be set
+    when the participant completed the instructions page."""
+    study_name_short = "default"
+
+    async with httpx.AsyncClient() as client:
+        participant_id = f"it_task_instr_{uuid.uuid4().hex[:8]}"
+
+        # Participant clicks "Continue" on the instructions page.
+        instr_resp = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/instructions/complete",
+            json={"completed": True},
+        )
+        assert instr_resp.status_code == 200, instr_resp.text
+        assert instr_resp.json()["instructions_completed_at"] is not None
+
+        study_cfg_resp = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": participant_id},
+        )
+        assert study_cfg_resp.status_code == 200
+        day_label_name = study_cfg_resp.json()["day_labels"][0]["name"]
+
+        selection = await _get_first_activity_selection(
+            client, study_name_short, participant_id
+        )
+        activity_item = {
+            "timeline_key": selection["timeline_key"],
+            "activity": selection["activity_name"],
+            "category": selection["category_name"],
+            "start_minutes": 240,
+            "end_minutes": 1680,
+            "mode": selection["timeline_mode"],
+        }
+        if selection["timeline_mode"] == "single-choice":
+            activity_item["code"] = selection["activity_code"]
+        else:
+            activity_item["codes"] = [selection["activity_code"]]
+
+        submit_resp = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
+            json={"activities": [activity_item]},
+        )
+        assert submit_resp.status_code == 200, submit_resp.text
+
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "json"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert export_resp.status_code == 200
+        export_data = export_resp.json()
+
+        records = [
+            r for r in export_data["data"] if r["participant_id"] == participant_id
+        ]
+        assert records
+        for record in records:
+            instr_at = record["participant_instructions_completed_at"]
+            assert instr_at, "participant_instructions_completed_at must be set"
+            assert "T" in instr_at, f"expected ISO datetime, got {instr_at!r}"
+
+        # The column must also exist (as empty) for participants who never
+        # completed instructions: check another participant has the key at all.
+        assert "participant_instructions_completed_at" in export_data["data"][0]

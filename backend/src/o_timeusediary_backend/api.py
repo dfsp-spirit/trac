@@ -6980,15 +6980,16 @@ async def export_study_activities(
             detail=f"No activities found for study '{study_name_short}'",
         )
 
-    consent_by_participant: Dict[str, StudyParticipant] = {}
-    if study.require_consent:
-        study_participants = session.exec(
+    # Load the study-participant associations once. Needed for the consent
+    # fields (consent studies) and for the instructions-completion timestamp
+    # (all studies), which is the best available proxy for when a participant
+    # started filling in their diary.
+    study_participant_by_id: Dict[str, StudyParticipant] = {
+        sp.participant_id: sp
+        for sp in session.exec(
             select(StudyParticipant).where(StudyParticipant.study_id == study.id)
         ).all()
-        consent_by_participant = {
-            study_participant.participant_id: study_participant
-            for study_participant in study_participants
-        }
+    }
 
     completion_map = _build_participant_completion_map(session, study)
 
@@ -7033,8 +7034,20 @@ async def export_study_activities(
             "study_id": study.id,
         }
 
+        # Instructions-completion time: the participant clicked "Continue" on
+        # the instructions page, right before entering the diary. It is the
+        # best available proxy for when they started filling in their diary.
+        # None when the study shows no instructions page or the participant
+        # never completed that step. Researchers can combine this with
+        # participant_diary_completed_at to compute filling duration themselves.
+        study_participant = study_participant_by_id.get(participant.id)
+        record["participant_instructions_completed_at"] = (
+            study_participant.instructions_completed_at.isoformat()
+            if study_participant and study_participant.instructions_completed_at
+            else None
+        )
+
         if study.require_consent:
-            study_participant = consent_by_participant.get(participant.id)
             consent_decided_at = (
                 study_participant.consent_decided_at.isoformat()
                 if study_participant and study_participant.consent_decided_at
