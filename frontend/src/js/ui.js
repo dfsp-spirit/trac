@@ -25,6 +25,15 @@ function showToast(message, type = 'info', duration = 3000) {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
+  // Announce to screen readers: errors as alerts, other types as polite
+  // status updates.  The toast is transient, so use aria-atomic.
+  if (type === 'error') {
+    toast.setAttribute('role', 'alert');
+  } else {
+    toast.setAttribute('role', 'status');
+    toast.setAttribute('aria-live', 'polite');
+  }
+  toast.setAttribute('aria-atomic', 'true');
   document.body.appendChild(toast);
 
   // Trigger show animation
@@ -196,16 +205,19 @@ function createModal() {
   const customActivityModal = document.createElement('div');
   customActivityModal.className = 'modal-overlay';
   customActivityModal.id = 'customActivityModal';
+  customActivityModal.setAttribute('role', 'dialog');
+  customActivityModal.setAttribute('aria-modal', 'true');
+  customActivityModal.setAttribute('aria-labelledby', 'customActivityModalTitle');
   customActivityModal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3 data-i18n="modals.customActivity.title">Activity Details</h3>
-                <button class="modal-close">&times;</button>
+                <h3 id="customActivityModalTitle" data-i18n="modals.customActivity.title">Activity Details</h3>
+                <button class="modal-close" type="button" data-i18n-aria-label="buttons.close" aria-label="Close">&times;</button>
             </div>
             <div class="modal-content">
                 <div id="customActivityInputContainer">
                     <div class="custom-activity-input-wrapper">
-                        <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)">
+                        <input type="text" id="customActivityInput" maxlength="30" data-i18n-placeholder="modals.customActivity.placeholder" placeholder="Enter your activity (max 30 chars)" data-i18n-aria-label="modals.customActivity.placeholder" aria-label="Enter your activity (max 30 chars)">
                         <button id="customActivityClearBtn" class="custom-activity-clear-btn" title="Clear saved text" aria-label="Clear saved text" style="display: none;">✕</button>
                     </div>
                 </div>
@@ -244,11 +256,14 @@ function createModal() {
   const activitiesModal = document.createElement('div');
   activitiesModal.className = 'modal-overlay';
   activitiesModal.id = 'activitiesModal';
+  activitiesModal.setAttribute('role', 'dialog');
+  activitiesModal.setAttribute('aria-modal', 'true');
+  activitiesModal.setAttribute('aria-labelledby', 'activitiesModalTitle');
   activitiesModal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
-                <h3 data-i18n="modals.addActivity.title">Add Activity</h3>
-                <button class="modal-close">&times;</button>
+                <h3 id="activitiesModalTitle" data-i18n="modals.addActivity.title">Add Activity</h3>
+                <button class="modal-close" type="button" data-i18n-aria-label="buttons.close" aria-label="Close">&times;</button>
             </div>
             <div id="modalActivitiesContainer"></div>
         </div>
@@ -304,6 +319,9 @@ function createModal() {
   const confirmationModal = document.createElement('div');
   confirmationModal.className = 'modal-overlay';
   confirmationModal.id = 'confirmationModal';
+  confirmationModal.setAttribute('role', 'dialog');
+  confirmationModal.setAttribute('aria-modal', 'true');
+  confirmationModal.setAttribute('aria-labelledby', 'confirmationTitle');
   const numStudyDaysCount = window.studyConfigManager?.getStudyDaysCount() || 1;
   const urlParams = new URLSearchParams(window.location.search);
   const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
@@ -512,10 +530,13 @@ function createModal() {
   const skipConfirmationModal = document.createElement('div');
   skipConfirmationModal.className = 'modal-overlay';
   skipConfirmationModal.id = 'skipConfirmationModal';
+  skipConfirmationModal.setAttribute('role', 'dialog');
+  skipConfirmationModal.setAttribute('aria-modal', 'true');
+  skipConfirmationModal.setAttribute('aria-labelledby', 'skipConfirmationModalTitle');
   skipConfirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
-                <h3 data-i18n="modals.confirmSkip.title">Do you really want to skip all time reporting?</h3>
+                <h3 id="skipConfirmationModalTitle" data-i18n="modals.confirmSkip.title">Do you really want to skip all time reporting?</h3>
                 <p data-i18n="modals.confirmSkip.message">You will be taken directly to the thank-you page.</p>
                 <div class="button-container">
                     <button id="confirmSkipCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>

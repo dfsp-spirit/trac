@@ -24,34 +24,34 @@
             <span class="banner-text">
                 <span data-i18n="banner.dayOneInstructions">Usage Instructions: First select an activity from the list below. Then click on the timeline to place it, and drag its borders to extend. To delete an activity on mobile, long-press it for 2 seconds. On desktop, you can also hover over it and press the 'd' key or the DEL key.</span>
             </span>
-            <button class="banner-close">&times;</button>
+            <button class="banner-close" type="button" data-i18n-aria-label="buttons.close" aria-label="Close">&times;</button>
         </div>
     </div>
     <div class="header-section">
         <div class="controls" style="padding-top: 4px; padding-left: 4px; padding-bottom: 4px; padding-right: 4px;">
 
         <button class="btn back-btn" id="backBtn" data-is-active="false" style="display: none;">
-            <i class="fas fa-arrow-left"></i>
+            <i class="fas fa-arrow-left" aria-hidden="true"></i>
             <span data-i18n="buttons.previousTimeline">Previous timeline</span>
         </button>
 
         <button class="btn remove-last-btn" id="removeLastBtn" data-is-active="false" disabled>
-            <i class="fas fa-undo"></i>
+            <i class="fas fa-undo" aria-hidden="true"></i>
             <span data-i18n="buttons.removeLast">Remove Last</span>
         </button>
 
         <button class="btn clean-row-btn" id="cleanRowBtn" data-is-active="false" disabled>
-            <i class="fas fa-trash-alt"></i>
+            <i class="fas fa-trash-alt" aria-hidden="true"></i>
             <span data-i18n="buttons.cleanRow">Clean Row</span>
         </button>
 
         <button class="btn next-btn" id="nextBtn" data-is-active="false" disabled>
-            <i class="fas fa-arrow-right"></i>
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
             <span data-i18n="buttons.next">Next</span>
         </button>
 
         <button class="btn save-btn" id="saveBtn" data-is-active="true" style="display: none;">
-            <i class="fas fa-check"></i>
+            <i class="fas fa-check" aria-hidden="true"></i>
             <span data-i18n="buttons.submit">Submit</span>
         </button>
         </div>
@@ -112,11 +112,11 @@
         <div class="footer-actions-row">
             <div class="footer-actions-spacer" aria-hidden="true"></div>
             <button class="btn skip-btn footer-skip-btn" id="skipReportingBtn" data-is-active="true">
-                <i class="fas fa-forward"></i>
+                <i class="fas fa-forward" aria-hidden="true"></i>
                 <span data-i18n="buttons.skipReporting">Skip time reporting</span>
             </button>
             <button id="navSubmitBtn" class="nav-submit-btn">
-                <i class="fas fa-check"></i>
+                <i class="fas fa-check" aria-hidden="true"></i>
                 <span data-i18n="buttons.submit">Submit</span>
             </button>
         </div>

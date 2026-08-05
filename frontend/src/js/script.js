@@ -998,9 +998,9 @@ function ensureActivityInfoModal() {
   modalOverlay.id = 'activityInfoModal';
   modalOverlay.className = 'modal-overlay';
   modalOverlay.innerHTML = `
-        <div class="modal activity-info-modal">
+        <div class="modal activity-info-modal" role="dialog" aria-modal="true" aria-labelledby="activityInfoModalTitle">
             <div class="modal-header">
-                <h3>${translateOrFallback(
+                <h3 id="activityInfoModalTitle">${translateOrFallback(
                   'modals.activityContext.infoTitle',
                   'Activity details'
                 )}</h3>
@@ -2596,6 +2596,9 @@ function createChildItemsModal() {
   modal.id = 'childItemsModal';
   modal.className = 'modal';
   modal.style.display = 'none';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'childItemsModalTitle');
 
   const modalContent = document.createElement('div');
   modalContent.className = 'modal-content';
@@ -2603,9 +2606,12 @@ function createChildItemsModal() {
   const modalHeader = document.createElement('div');
   modalHeader.className = 'modal-header';
 
-  const closeButton = document.createElement('span');
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
   closeButton.className = 'close';
   closeButton.innerHTML = '&times;';
+  closeButton.setAttribute('aria-label', 'Close');
+  closeButton.setAttribute('data-i18n-aria-label', 'buttons.close');
   closeButton.addEventListener('click', () => {
     modal.style.display = 'none';
   });
@@ -5151,8 +5157,10 @@ function showTemplateBanner(templateSourceDay) {
   });
 
   const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
   closeBtn.textContent = '×';
   closeBtn.title = i18n.t('buttons.close');
+  closeBtn.setAttribute('aria-label', i18n.t('buttons.close'));
   closeBtn.style.cssText = `
         background: none;
         border: none;
