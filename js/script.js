@@ -5222,11 +5222,48 @@ function resolveDisplayDayLabel(dayLabel) {
     return dayLabel;
   }
 
+  const studyConfig = window.timelineManager?.studyConfig;
+
+  // Resolve a day-label object (or the matched one) to a localized display
+  // string, preferring the user's currently selected language from the
+  // per-language `display_names` map. Mirrors getDayDisplayLabel() so the
+  // template banner stays consistent with the rest of the UI.
+  const resolveFromLabel = (label) => {
+    if (!label || typeof label !== 'object') {
+      return dayLabel;
+    }
+
+    if (label.display_names && typeof label.display_names === 'object') {
+      const selectedLanguage =
+        (typeof window.studyConfigManager?.getSelectedLanguage === 'function' &&
+          window.studyConfigManager.getSelectedLanguage()) ||
+        getPreferredLanguage(
+          studyConfig?.supported_languages || [],
+          studyConfig?.default_language || 'en'
+        ) ||
+        'en';
+      const defaultLanguage = studyConfig?.default_language || 'en';
+      const backendDisplayName =
+        typeof label.display_name === 'string' ? label.display_name : null;
+
+      return (
+        label.display_names[selectedLanguage] ||
+        backendDisplayName ||
+        label.display_names[defaultLanguage] ||
+        label.display_names.en ||
+        label.name ||
+        dayLabel
+      );
+    }
+
+    return label.display_name || label.name || dayLabel;
+  };
+
   if (typeof dayLabel === 'object') {
-    return dayLabel.display_name || dayLabel.name || String(dayLabel);
+    return resolveFromLabel(dayLabel);
   }
 
-  const studyDayLabels = window.timelineManager?.studyConfig?.day_labels;
+  const studyDayLabels = studyConfig?.day_labels;
   if (!Array.isArray(studyDayLabels)) {
     return dayLabel;
   }
@@ -5242,7 +5279,7 @@ function resolveDisplayDayLabel(dayLabel) {
     return dayLabel;
   }
 
-  return matched.display_name || matched.name || dayLabel;
+  return resolveFromLabel(matched);
 }
 
 function getCurrentDayIndex() {

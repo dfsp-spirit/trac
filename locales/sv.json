@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Skicka dagen",
+    "saveDay": "Spara dagen",
+    "finishStudy": "Skicka dagen och avsluta studien",
     "start": "Starta",
     "removeLast": "Ta bort senaste",
     "cleanRow": "Rensa rad",
@@ -146,7 +148,15 @@
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
     "goBackToEditPreviousDays": "Byt till dag:",
-    "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen."
+    "copyDayLink": "Kopiera denna dag",
+    "copyToDay": "Kopiera till en annan dag",
+    "copySuccess": "Kopierade {{sourceDay}} till {{targetDay}}",
+    "copyError": "Kunde inte kopiera: {{message}}",
+    "copyEmptySource": "Källdagen har inga aktiviteter att kopiera.",
+    "completeMinimumActivitiesBeforeSwitching": "Komplettera minimiaktiviteterna innan du byter dag.",
+    "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen.",
+    "completeOtherDaysFirst": "Fyll först i {{days}} för att avsluta studien.",
+    "daySavedStayOnPage": "Dagen sparad. Fyll i de återstående dagarna för att avsluta studien."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",

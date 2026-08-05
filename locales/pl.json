@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Wyślij dzień",
+    "saveDay": "Zapisz dzień",
+    "finishStudy": "Wyślij dzień i zakończ badanie",
     "start": "Rozpocznij",
     "removeLast": "Usuń ostatnią",
     "cleanRow": "Wyczyść rząd",
@@ -146,7 +148,15 @@
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
     "goBackToEditPreviousDays": "Przełącz na dzień:",
-    "completeMinimumActivitiesBeforeCopying": "Uzupełnij minimalne aktywności przed skopiowaniem bieżącego dnia."
+    "copyDayLink": "Skopiuj ten dzień",
+    "copyToDay": "Skopiuj na inny dzień",
+    "copySuccess": "Skopiowano {{sourceDay}} do {{targetDay}}",
+    "copyError": "Nie udało się skopiować: {{message}}",
+    "copyEmptySource": "Dzień źródłowy nie ma aktywności do skopiowania.",
+    "completeMinimumActivitiesBeforeSwitching": "Uzupełnij minimalne aktywności przed zmianą dnia.",
+    "completeMinimumActivitiesBeforeCopying": "Uzupełnij minimalne aktywności przed skopiowaniem bieżącego dnia.",
+    "completeOtherDaysFirst": "Uzupełnij najpierw {{days}}, aby zakończyć badanie.",
+    "daySavedStayOnPage": "Dzień zapisany. Uzupełnij pozostałe dni, aby zakończyć badanie."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",

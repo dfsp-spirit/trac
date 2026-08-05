@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Lähetä päivä",
+    "saveDay": "Tallenna päivä",
+    "finishStudy": "Lähetä päivä ja lopeta tutkimus",
     "start": "Aloita",
     "removeLast": "Poista viimeisin",
     "cleanRow": "Tyhjennä rivi",
@@ -146,7 +148,15 @@
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
     "goBackToEditPreviousDays": "Vaihda päivään:",
-    "completeMinimumActivitiesBeforeCopying": "Täytä vähimmäisaktiviteetit ennen nykyisen päivän kopioimista."
+    "copyDayLink": "Kopioi tämä päivä",
+    "copyToDay": "Kopioi toiselle päivälle",
+    "copySuccess": "Kopioitu {{sourceDay}} päivälle {{targetDay}}",
+    "copyError": "Kopiointi epäonnistui: {{message}}",
+    "copyEmptySource": "Lähdepäivällä ei ole toimintoja kopioitavaksi.",
+    "completeMinimumActivitiesBeforeSwitching": "Täytä vähimmäisaktiviteetit ennen päivän vaihtamista.",
+    "completeMinimumActivitiesBeforeCopying": "Täytä vähimmäisaktiviteetit ennen nykyisen päivän kopioimista.",
+    "completeOtherDaysFirst": "Täytä ensin {{days}} päättääksesi tutkimuksen.",
+    "daySavedStayOnPage": "Päivä tallennettu. Täytä jäljellä olevat päivät päättääksesi tutkimuksen."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",

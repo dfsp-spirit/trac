@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Soumettre",
+    "saveDay": "Enregistrer le jour",
+    "finishStudy": "Soumettre le jour et terminer l'étude",
     "start": "Commencer",
     "removeLast": "Supprimer dernière",
     "cleanRow": "Nettoyer la Ligne",
@@ -146,7 +148,15 @@
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
     "goBackToEditPreviousDays": "Aller au jour :",
-    "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel."
+    "copyDayLink": "Copier ce jour",
+    "copyToDay": "Copier vers un autre jour",
+    "copySuccess": "{{sourceDay}} copié vers {{targetDay}}",
+    "copyError": "Échec de la copie : {{message}}",
+    "copyEmptySource": "Le jour source n'a aucune activité à copier.",
+    "completeMinimumActivitiesBeforeSwitching": "Complétez les activités minimales avant de changer de jour.",
+    "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel.",
+    "completeOtherDaysFirst": "Complétez d'abord {{days}} pour terminer l'étude.",
+    "daySavedStayOnPage": "Jour enregistré. Complétez les jours restants pour terminer l'étude."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
