@@ -21,6 +21,7 @@ jobs:
         node-version: '24'
 
     - name: Install dependencies
+      working-directory: frontend
       run: npm ci
 
     # Type-check the files marked with `// @ts-check` (currently 15 of the 17
