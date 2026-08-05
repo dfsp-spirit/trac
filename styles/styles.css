@@ -2481,6 +2481,10 @@ body.carrying-activity .modal-close {
   font-size: 28px;
   font-weight: bold;
   cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
 }
 
 #childItemsModal .close:hover,
