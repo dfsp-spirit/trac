@@ -51,6 +51,8 @@
   },
   "buttons": {
     "submit": "Tag absenden",
+    "saveDay": "Tag speichern",
+    "finishStudy": "Tag absenden und Studie abschließen",
     "start": "Start",
     "removeLast": "Letzte entfernen",
     "cleanRow": "Zeile leeren",
@@ -152,7 +154,9 @@
     "copyError": "Fehler beim Kopieren: {{message}}",
     "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren.",
     "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln.",
-    "completeMinimumActivitiesBeforeCopying": "Mindestaktivitäten vervollständigen, bevor Sie den aktuellen Tag kopieren."
+    "completeMinimumActivitiesBeforeCopying": "Mindestaktivitäten vervollständigen, bevor Sie den aktuellen Tag kopieren.",
+    "completeOtherDaysFirst": "Vervollständigen Sie zuerst {{days}}, um die Studie abzuschließen.",
+    "daySavedStayOnPage": "Tag gespeichert. Vervollständigen Sie die restlichen Tage, um die Studie abzuschließen."
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",

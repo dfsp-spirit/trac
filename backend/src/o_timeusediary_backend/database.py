@@ -420,16 +420,52 @@ def _ensure_day_labels_for_study(
         display_name = study_config.get_day_label_display_name(
             day_label_inst.name, study_config.default_language
         )
+        display_names = (
+            day_label_inst.get_display_names(study_config.default_language) or None
+        )
         new_day_label = DayLabel(
             study_id=study.id,
             name=day_label_inst.name,
             display_order=day_label_inst.display_order,
             display_name=display_name or day_label_inst.name,
+            display_names=display_names,
         )
         session.add(new_day_label)
         day_labels_by_name[new_day_label.name] = new_day_label
 
     return day_labels_by_name
+
+
+def _backfill_day_label_display_names(
+    session: Session, study: Study, study_config
+) -> bool:
+    """Backfill the per-language `display_names` map for existing day labels.
+
+    Populated from the studies config file so the API can localize day label
+    names per requested language. Returns True when any row was updated.
+    """
+    updated = False
+    existing_day_labels = session.exec(
+        select(DayLabel).where(DayLabel.study_id == study.id)
+    ).all()
+    day_labels_by_name = {
+        day_label.name: day_label for day_label in existing_day_labels
+    }
+
+    for day_label_inst in study_config.day_labels:
+        existing_day_label = day_labels_by_name.get(day_label_inst.name)
+        if not existing_day_label:
+            continue
+        display_names = (
+            day_label_inst.get_display_names(study_config.default_language) or None
+        )
+        if not display_names:
+            continue
+        if existing_day_label.display_names != display_names:
+            existing_day_label.display_names = display_names
+            updated = True
+
+    return updated
 
 
 def _ensure_timelines_for_study(
@@ -695,6 +731,10 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     _ensure_external_tasks_from_config(
                         session, existing_study, study_config
                     )
+                    if _backfill_day_label_display_names(
+                        session, existing_study, study_config
+                    ):
+                        study_updated = True
                     ensure_external_task_assignments(
                         session,
                         existing_study,

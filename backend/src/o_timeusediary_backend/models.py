@@ -341,7 +341,13 @@ class DayLabel(SQLModel, table=True):
     display_order: int = Field(default=0)  # For ordering in UI
     display_name: str = Field(
         index=True, sa_type=String(255)
-    )  # e.g., "Monday", "Typical Weekend"
+    )  # e.g., "Monday", "Typical Weekend" (default-language value)
+    # Full localized display names map, e.g. {"en": "Monday", "sv": "Måndag"}.
+    # The single-language `display_name` column holds the default-language value;
+    # this map lets the API localize day labels per requested language.
+    display_names: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
 
     # Relationships
     study: Study = Relationship(back_populates="day_labels")

@@ -3676,7 +3676,7 @@ def _create_study_from_import_payload(
     for day_label_data in sorted(
         study_payload.day_labels, key=lambda row: row.get("display_order", 0)
     ):
-        display_names = day_label_data.get("display_names", {})
+        display_names = day_label_data.get("display_names", {}) or {}
         display_name = (
             display_names.get(default_language)
             or display_names.get("en")
@@ -3687,6 +3687,7 @@ def _create_study_from_import_payload(
             name=day_label_data["name"],
             display_order=day_label_data.get("display_order", 0),
             display_name=display_name,
+            display_names=display_names or None,
         )
         session.add(day_label)
 
@@ -7946,6 +7947,9 @@ class DayLabelConfigResponse(BaseModel):
     name: str  # e.g., "monday", "typical_weekend"
     display_order: int
     display_name: Optional[str] = None
+    # Full per-language display names map, e.g. {"en": "Monday", "sv": "Måndag"}.
+    # Lets clients localize day labels for the requested language.
+    display_names: Optional[Dict[str, str]] = None
 
 
 class ParticipantExternalTaskResponse(BaseModel):
@@ -8133,6 +8137,7 @@ def get_study_config(
                 name=day_label.name,
                 display_order=day_label.display_order,
                 display_name=day_label.display_name,
+                display_names=day_label.display_names,
             )
         )
 
