@@ -1437,6 +1437,17 @@ function createActivityBlock(activityData, isFromTemplate = false) {
 
   // No extra title attribute - child/custom label is shown inline in the block
 
+  // Give the focusable block an accessible name (activity + time range) so a
+  // screen reader can announce what the block is when it receives focus.
+  currentBlock.setAttribute('role', 'group');
+  const blockStartTime = currentBlock.dataset.start;
+  const blockEndTime = currentBlock.dataset.end;
+  const blockA11yLabel =
+    blockStartTime && blockEndTime
+      ? `${combinedActivityText}, ${blockStartTime}\u2013${blockEndTime}`
+      : combinedActivityText;
+  currentBlock.setAttribute('aria-label', blockA11yLabel);
+
   // Make block keyboard-focusable for arrow-key resize
   currentBlock.tabIndex = 0;
   currentBlock.addEventListener('keydown', (event) => {
