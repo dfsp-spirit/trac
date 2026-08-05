@@ -6,9 +6,11 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:unit": "node --test --import ./tests/unit/setup.js tests/unit/*.test.js"
+    "test:unit": "node --test --import ./tests/unit/setup.js tests/unit/*.test.js",
+    "typecheck": "tsc -p jsconfig.json"
   },
   "devDependencies": {
-    "@playwright/test": "^1.55.0"
+    "@playwright/test": "^1.55.0",
+    "typescript": "^7.0.2"
   }
 }

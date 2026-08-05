@@ -5073,9 +5073,11 @@ function minutesSinceMidnightToHHMM(minutes, isEndTime = false) {
   return formatTimeHHMM(minutes, isEndTime);
 }
 
-/// Transform backend activities response to frontend format.
-/// This is for answer from endpoint like /studies/{study_name}/participants/{participant_uid}/day_label_index/{day_index}/activities/.
-/// The backend uses some different field names and formats (snake_case instead of CamelCase), so we need to convert them.
+/**
+ * Transform backend activities response to frontend format.
+ * The backend uses snake_case field names; the frontend uses camelCase.
+ * @param {import('./api_types.js').ActivitiesResponse} backendData
+ */
 function transformBackendActivitiesResponse(backendData) {
   try {
     // Extract mapping logic into separate function
@@ -6497,6 +6499,7 @@ async function init() {
         });
 
         if (copyResponse.ok) {
+          /** @type {import('./api_types.js').TemplateCopyResponse} */
           const copyPayload = await copyResponse.json();
           console.log('Cross-user template copy result:', copyPayload);
           if (copyPayload.copied_days_count > 0) {
