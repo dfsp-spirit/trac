@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * idle_timeout.js — Inactivity timeout with two-phase visual countdown.
  *
@@ -300,8 +301,15 @@ function _stopTimerInternal() {
 
 /**
  * Start the inactivity timer.
- * @param {object} cfg — { timeoutMinutes, stressTimeLeft?, customText?, redirectUrl? }
- *   timeoutMinutes = 0 disables the timer.
+ * @param {{
+ *   inactivity_timeout_minutes?: number,
+ *   timeoutMinutes?: number,
+ *   inactivity_timeout_stress_time_left?: number,
+ *   stressTimeLeft?: number,
+ *   inactivity_page_custom_text?: string | null,
+ *   customText?: string | null,
+ *   redirectUrl?: string,
+ * }} [cfg] - timeoutMinutes = 0 disables the timer.
  */
 export function startIdleTimer(cfg = {}) {
   const timeoutMinutes = cfg.inactivity_timeout_minutes ?? cfg.timeoutMinutes ?? 0;

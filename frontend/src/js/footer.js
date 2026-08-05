@@ -1,3 +1,4 @@
+// @ts-check
 // Footer renderer: reads TUD_SETTINGS + TUD_STUDY_CONFIG and inserts footer links.
     (function () {
         function resolveLocalizedText(textMap, docLang, fallback) {

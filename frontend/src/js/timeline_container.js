@@ -1,3 +1,4 @@
+// @ts-check
 import { TimelineMarker } from './timeline_marker.js';
 
 export class TimelineContainer {

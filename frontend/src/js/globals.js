@@ -1,3 +1,4 @@
+// @ts-check
 // Global state
 let isMobile = window.innerWidth < 1440;
 let lastBreakpointState = isMobile;

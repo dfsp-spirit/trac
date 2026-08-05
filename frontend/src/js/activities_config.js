@@ -1,3 +1,4 @@
+// @ts-check
 import { fetchWithSmartRetry } from './utils.js';
 
 function getUrlParams() {
@@ -69,8 +70,8 @@ function setActivitiesConfigCache(studyName, lang, configData) {
  * Fetch JSON with optional smart retry for transient errors
  * @param {string} url - URL to fetch
  * @param {string} errorMessage - Error message prefix
- * @param {object} fetchOptions - fetch options
- * @param {object} retryConfig - retry config { enableRetry: false, maxRetries: 2, delayMs: 1500 }
+ * @param {object} [fetchOptions] - fetch options
+ * @param {{ enableRetry?: boolean, maxRetries?: number, delayMs?: number }} [retryConfig] - retry config
  */
 async function fetchJson(
   url,

@@ -1,3 +1,4 @@
+// @ts-check
 /* autoscroll.js */
 
 import { getIsMobile } from './globals.js';
@@ -34,7 +35,9 @@ const autoScrollModule = (() => {
     const scrollHeight = document.documentElement.scrollHeight;
 
     // Get the header height to prevent scrolling above it
-    const headerSection = document.querySelector('.header-section');
+    const headerSection = /** @type {HTMLElement | null} */ (
+      document.querySelector('.header-section')
+    );
     const headerHeight = headerSection ? headerSection.offsetHeight : 0;
 
     // Retrieve footer element to prevent scrolling past it

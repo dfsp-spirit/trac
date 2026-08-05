@@ -1,3 +1,4 @@
+// @ts-check
 import { DEBUG_MODE, MINUTES_PER_DAY } from './constants.js';
 import { hideLoadingModal } from './ui.js';
 import { stopIdleTimer } from './idle_timeout.js';
@@ -6,12 +7,21 @@ import { stopIdleTimer } from './idle_timeout.js';
 // RETRY HELPER - Smart fetch with intelligent retry logic
 // ============================================================================
 /**
+ * Retry configuration for smart-fetch helpers.
+ * @typedef {Object} RetryConfig
+ * @property {number} [maxRetries]
+ * @property {number} [delayMs]
+ * @property {number[]} [skipRetryStatuses]
+ * @property {(info: { attempt: number, maxRetries: number, nextDelayMs: number, error: string }) => void} [onRetry]
+ */
+
+/**
  * Fetch with smart retries for transient errors (5xx, timeouts)
  * Fast-fails on client errors (4xx) immediately - no retries
  * @param {string} url - URL to fetch
- * @param {object} options - fetch options (method, headers, body, etc.)
- * @param {object} retryConfig - { maxRetries: 2, delayMs: 1500, skipRetryStatuses: [404] }
- * @returns {Response} - The response object
+ * @param {object} [options] - fetch options (method, headers, body, etc.)
+ * @param {RetryConfig} [retryConfig] - { maxRetries: 2, delayMs: 1500, skipRetryStatuses: [404] }
+ * @returns {Promise<Response>} - The response object
  * @throws {Error} - if all retries exhausted or client error encountered
  */
 export async function fetchWithSmartRetry(url, options = {}, retryConfig = {}) {
@@ -954,7 +964,11 @@ export async function sendData(
     'Full data structure we send to backend at ' + api_submit_url + ':',
     jsonString
   );
-  console.log('Number of records:', activitiesDataJSON.activities?.length || 0);
+  const activitiesCount =
+    typeof activitiesDataJSON === 'object' && activitiesDataJSON !== null
+      ? activitiesDataJSON.activities?.length || 0
+      : 0;
+  console.log('Number of records:', activitiesCount);
 
   // Send JSON data to backend API with smart retry for transient errors
   try {
@@ -1142,7 +1156,7 @@ export function checkAndRequestPID() {
   const day_label_index = urlParams.get('day_label_index');
   if (!day_label_index) {
     const defaultDayLabelIndex = 0;
-    urlParams.set('day_label_index', defaultDayLabelIndex);
+    urlParams.set('day_label_index', String(defaultDayLabelIndex));
     const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
     window.history.replaceState({}, '', newUrl);
     console.log(

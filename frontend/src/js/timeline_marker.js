@@ -1,3 +1,4 @@
+// @ts-check
 export class TimelineMarker {
   constructor(type, position, label = '') {
     this.type = type; // 'hour', 'minute-30', 'minute-10'
@@ -118,10 +119,12 @@ export class TimelineMarker {
           const labelWrappers = hourLabelsContainer.querySelectorAll(
             '.hour-label-wrapper'
           );
-          const labelWrapper = Array.from(labelWrappers).find((wrapper) => {
-            const label = wrapper.querySelector('.hour-label');
-            return label && label.textContent === this.label;
-          });
+          const labelWrapper = /** @type {HTMLElement | undefined} */ (
+            Array.from(labelWrappers).find((wrapper) => {
+              const label = wrapper.querySelector('.hour-label');
+              return label && label.textContent === this.label;
+            })
+          );
           if (labelWrapper) {
             labelWrapper.style.top = `${position}%`;
             labelWrapper.style.left = '';
@@ -142,10 +145,12 @@ export class TimelineMarker {
           const labelWrappers = hourLabelsContainer.querySelectorAll(
             '.hour-label-wrapper'
           );
-          const labelWrapper = Array.from(labelWrappers).find((wrapper) => {
-            const label = wrapper.querySelector('.hour-label');
-            return label && label.textContent === this.label;
-          });
+          const labelWrapper = /** @type {HTMLElement | undefined} */ (
+            Array.from(labelWrappers).find((wrapper) => {
+              const label = wrapper.querySelector('.hour-label');
+              return label && label.textContent === this.label;
+            })
+          );
           if (labelWrapper) {
             labelWrapper.style.left = `${this.position}%`;
             labelWrapper.style.top = '';

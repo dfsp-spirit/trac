@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Internationalization (i18n) utility module
  * Handles loading and applying translations based on language settings
@@ -6,8 +7,10 @@
 class I18n {
   constructor() {
     this.currentLanguage = 'en';
+    /** @type {Record<string, any>} */
     this.translations = {};
     this.isLoaded = false;
+    /** @type {Promise<void> | null} */
     this.loadPromise = null; // Track ongoing load operations
   }
 
@@ -118,6 +121,7 @@ class I18n {
     }
 
     const keys = keyPath.split('.');
+    /** @type {any} */
     let translation = this.translations;
 
     // Navigate through the nested object
@@ -156,7 +160,7 @@ class I18n {
 
   /**
    * Apply translations to elements with data-i18n attributes
-   * @param {HTMLElement} [container] - Optional container to scope the translation application
+   * @param {HTMLElement | Document} [container] - Optional container to scope the translation application
    */
   applyTranslations(container = document) {
     if (!this.isLoaded) {
@@ -192,7 +196,7 @@ class I18n {
       const key = element.getAttribute('data-i18n-placeholder');
       const translation = this.t(key);
       if (translation !== key) {
-        element.placeholder = translation;
+        /** @type {HTMLInputElement} */ (element).placeholder = translation;
       }
     });
 
@@ -202,7 +206,7 @@ class I18n {
       const key = element.getAttribute('data-i18n-value');
       const translation = this.t(key);
       if (translation !== key) {
-        element.value = translation;
+        /** @type {HTMLInputElement} */ (element).value = translation;
       }
     });
 
@@ -212,7 +216,7 @@ class I18n {
       const key = element.getAttribute('data-i18n-title');
       const translation = this.t(key);
       if (translation !== key) {
-        element.title = translation;
+        /** @type {HTMLElement} */ (element).title = translation;
       }
     });
 
