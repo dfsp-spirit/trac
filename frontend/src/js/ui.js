@@ -193,6 +193,154 @@ setInterval(() => {
 // Make the update function globally available for manual calls
 window.updateDisabledButtonOverlays = updateDisabledButtonOverlays;
 
+// ── Modal focus management (Tier 2 accessibility) ─────────────────────────
+// All dialogs carry role="dialog" (see createModal / ensureActivityInfoModal /
+// createChildItemsModal).  A MutationObserver watches those elements for style
+// changes (display none <-> block) to detect open/close; document-level
+// focusin/keydown handlers trap Tab inside the open dialog and close it on
+// Escape, restoring focus to the previously-focused element on close.
+//
+// Everything is centralized here so every existing show/hide call site keeps
+// working unchanged, on both the desktop and the mobile rendering paths.
+
+const MODAL_FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const MODAL_CLOSE_SELECTOR =
+  '.modal-close, .close, #confirmCancel, #confirmSkipCancel, #confirmCleanRowCancel';
+
+// Stack of open dialogs: [{ dialog, trigger }]
+const modalFocusStack = [];
+
+function isDialogVisible(dialog) {
+  return (
+    dialog &&
+    dialog.getAttribute('role') === 'dialog' &&
+    getComputedStyle(dialog).display !== 'none'
+  );
+}
+
+function getVisibleFocusables(dialog) {
+  return Array.from(dialog.querySelectorAll(MODAL_FOCUSABLE_SELECTOR)).filter(
+    (el) => el.getClientRects().length > 0
+  );
+}
+
+// The initial focus target skips pure close/cancel controls so the user lands
+// on the meaningful control (input, OK button, …) instead of the '×'.
+function getInitialFocusTarget(dialog) {
+  const focusables = getVisibleFocusables(dialog);
+  const preferred = focusables.find((el) => !el.matches(MODAL_CLOSE_SELECTOR));
+  if (preferred) return preferred;
+  if (focusables.length > 0) return focusables[0];
+  return null;
+}
+
+function focusDialog(dialog) {
+  const target = getInitialFocusTarget(dialog);
+  if (target) {
+    target.focus();
+    return;
+  }
+  // No focusable content — make the dialog itself the focus target so a screen
+  // reader still announces it together with its aria-labelledby title.
+  dialog.setAttribute('tabindex', '-1');
+  dialog.focus();
+}
+
+function getTopVisibleDialog() {
+  for (let i = modalFocusStack.length - 1; i >= 0; i--) {
+    if (isDialogVisible(modalFocusStack[i].dialog)) {
+      return modalFocusStack[i];
+    }
+  }
+  return null;
+}
+
+function handleModalFocusIn(event) {
+  const top = getTopVisibleDialog();
+  if (!top) return;
+  if (!top.dialog.contains(event.target)) {
+    // Focus escaped the open dialog (e.g. via Tab) — pull it back inside.
+    const focusables = getVisibleFocusables(top.dialog);
+    const target = focusables.length > 0 ? focusables[0] : top.dialog;
+    target.focus();
+  }
+}
+
+function closeTopDialogByEscape() {
+  for (let i = modalFocusStack.length - 1; i >= 0; i--) {
+    const entry = modalFocusStack[i];
+    if (!isDialogVisible(entry.dialog)) {
+      modalFocusStack.splice(i, 1);
+      continue;
+    }
+    // Use the dialog's own cancel/close control so any custom close logic
+    // (e.g. handleCustomActivityModalClose) still runs.
+    const cancelControl = entry.dialog.querySelector(MODAL_CLOSE_SELECTOR);
+    if (cancelControl) {
+      cancelControl.click();
+    } else {
+      entry.dialog.style.display = 'none';
+    }
+    return;
+  }
+}
+
+function handleModalKeyDown(event) {
+  if (event.key === 'Escape') {
+    closeTopDialogByEscape();
+  }
+}
+
+let modalFocusManagementInitialized = false;
+function initModalFocusManagement() {
+  if (modalFocusManagementInitialized) return;
+  modalFocusManagementInitialized = true;
+
+  const observeDialog = (dialog) => {
+    if (dialog.__tracModalObserved) return;
+    dialog.__tracModalObserved = true;
+
+    if (isDialogVisible(dialog)) {
+      modalFocusStack.push({ dialog, trigger: document.activeElement });
+      focusDialog(dialog);
+    }
+
+    const observer = new MutationObserver(() => {
+      const nowVisible = isDialogVisible(dialog);
+      const stackIndex = modalFocusStack.findIndex((e) => e.dialog === dialog);
+      const inStack = stackIndex !== -1;
+      if (nowVisible && !inStack) {
+        modalFocusStack.push({ dialog, trigger: document.activeElement });
+        focusDialog(dialog);
+      } else if (!nowVisible && inStack) {
+        const entry = modalFocusStack.splice(stackIndex, 1)[0];
+        if (entry.trigger && entry.trigger.isConnected) {
+          entry.trigger.focus();
+        }
+      }
+    });
+    observer.observe(dialog, { attributes: true, attributeFilter: ['style'] });
+  };
+
+  const scanDialogs = () => {
+    document.querySelectorAll('[role="dialog"]').forEach(observeDialog);
+  };
+  scanDialogs();
+
+  // Watch for dialogs created lazily after init (childItemsModal,
+  // activityInfoModal) and attach observers to them too.
+  const rootObserver = new MutationObserver(() => {
+    scanDialogs();
+  });
+  rootObserver.observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener('focusin', handleModalFocusIn);
+  document.addEventListener('keydown', handleModalKeyDown);
+}
+
+window.initModalFocusManagement = initModalFocusManagement;
+
 // Modal management
 function createModal() {
   // Check if modals already exist
@@ -568,10 +716,13 @@ function createModal() {
   const cleanRowConfirmationModal = document.createElement('div');
   cleanRowConfirmationModal.className = 'modal-overlay';
   cleanRowConfirmationModal.id = 'cleanRowConfirmationModal';
+  cleanRowConfirmationModal.setAttribute('role', 'dialog');
+  cleanRowConfirmationModal.setAttribute('aria-modal', 'true');
+  cleanRowConfirmationModal.setAttribute('aria-labelledby', 'cleanRowConfirmationModalTitle');
   cleanRowConfirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
-                <h3 data-i18n="modals.confirmCleanRow.title">Clear current timeline row?</h3>
+                <h3 id="cleanRowConfirmationModalTitle" data-i18n="modals.confirmCleanRow.title">Clear current timeline row?</h3>
                 <p data-i18n="modals.confirmCleanRow.message">Are you sure you want to delete all activities in the current timeline row?</p>
                 <div class="button-container">
                     <button id="confirmCleanRowCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
@@ -619,6 +770,10 @@ function createModal() {
   document.body.appendChild(cleanRowConfirmationModal);
   document.body.appendChild(loadingModal);
   document.body.appendChild(customActivityModal);
+
+  // Tier 2: enable focus management for the dialogs just created (it also
+  // observes lazily-created dialogs such as childItemsModal / activityInfoModal).
+  initModalFocusManagement();
 
   // Apply translations to the newly created modal elements
   if (window.i18n && window.i18n.isReady()) {
