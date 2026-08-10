@@ -527,9 +527,7 @@ function createModal() {
   //   - "finish-study" : last study day AND all previous days complete —
   //                      save and go to thank-you page.
   //   - "save-day"      : last study day but previous days incomplete —
-  //                      save and stay on this day.  Do NOT mention
-  //                      concluding the study; the OK button simply says
-  //                      "Submit Day".
+  // Copy Days: only save-day mode exists — save and stay on this day.
   function updateConfirmationModalContent(buttonMode) {
     const h3 = confirmationModal.querySelector('#confirmationTitle');
     const messageP = confirmationModal.querySelector('#confirmationMessage');
@@ -547,52 +545,21 @@ function createModal() {
       messageP.textContent = _t('modals.confirmSubmit.message', { dayLabel });
     }
 
-    let infoHtml = '';
-    let infoI18nKey = '';
-    let infoVisible = false;
-    let okText = _t('modals.confirmSubmit.submitDay', { dayLabel });
-
-    if (buttonMode === 'finish-study') {
-      infoI18nKey = 'modals.confirmSubmit.studyEnd';
-      infoHtml = _t('modals.confirmSubmit.studyEnd');
-      infoVisible = true;
-      okText = _t('modals.confirmSubmit.submitDayAndFinish', { dayLabel });
-    } else if (buttonMode === 'save-day') {
-      // Last calendar day but previous days incomplete: stay on this day.
-      // No "concludes the study" message; button just says "Submit Day".
-      infoI18nKey = '';
-      infoHtml = '';
-      infoVisible = false;
-      okText = _t('modals.confirmSubmit.submitDayNoDay');
-    } else {
-      // Default / "submit-day" (non-last study day).
-      infoI18nKey = 'modals.confirmSubmit.infoOnTemplate';
-      infoHtml = _t('modals.confirmSubmit.infoOnTemplate');
-      infoVisible = true;
-      okText = _t('modals.confirmSubmit.submitDay', { dayLabel });
-    }
-
+    // Always save-day: no info paragraph, OK says "Save Day"
     if (infoP) {
-      infoP.innerHTML = infoHtml;
-      if (infoI18nKey) {
-        infoP.setAttribute('data-i18n-html', infoI18nKey);
-      } else {
-        infoP.removeAttribute('data-i18n-html');
-      }
-      infoP.style.display = infoVisible ? '' : 'none';
+      infoP.innerHTML = '';
+      infoP.removeAttribute('data-i18n-html');
+      infoP.style.display = 'none';
     }
     if (okBtn) {
-      okBtn.textContent = okText;
+      okBtn.textContent = _t('modals.confirmSubmit.submitDayNoDay');
     }
 
-    // Remember the mode so the language-change handler can re-render the
-    // right content for the currently-active context.
-    confirmationModal.dataset.currentMode = buttonMode || 'submit-day';
+    confirmationModal.dataset.currentMode = 'save-day';
   }
 
-  // Initialize with a sensible default; the real content is set right before
-  // the modal is shown (see handleNextButtonAction).
-  updateConfirmationModalContent('submit-day');
+  // Initialize with save-day as the only mode
+  updateConfirmationModalContent('save-day');
   window.updateConfirmationModalContent = updateConfirmationModalContent;
 
   // Update modal text when the user switches language mid-session, using the
@@ -630,45 +597,27 @@ function createModal() {
       const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
       const totalDays = window.studyConfigManager?.getStudyDaysCount() || 1;
 
-      // Check button mode to determine save vs complete behavior
-      const buttonMode =
-        (navSubmitButton && navSubmitButton.getAttribute('data-mode')) ||
-        (nextButton && nextButton.getAttribute('data-mode')) ||
-        'next';
-
-      const isFinishStudy = buttonMode === 'finish-study';
-      const isSubmitDay = buttonMode === 'submit-day';
-      const isSaveDay = buttonMode === 'save-day';
-
-      // Defense-in-depth: re-verify completion eligibility even if
-      // button mode says finish-study.  Prevents stale `data-mode`
-      // from allowing completion when previous days are missing.
-      const actuallyCanFinish = isFinishStudy && canFinishStudy();
-      const effectiveIsLastDay = actuallyCanFinish;
-      const effectiveShouldRedirect = actuallyCanFinish || isSubmitDay;
-
-      // Send data with appropriate flags based on button mode
+      // Copy Days: always save-day mode — save and reload current day.
+      // No auto-advance, no redirect. Submit Study is a separate button.
       const result = await sendData({
-        shouldRedirect: effectiveShouldRedirect,
-        isLastDay: effectiveIsLastDay,
+        shouldRedirect: false,
+        isLastDay: false,
         currentDayIndex: currentDayIndex,
       });
 
       if (result?.success) {
-        if (isSaveDay || (isFinishStudy && !actuallyCanFinish)) {
-          const daySavedMsg = window.i18n
-            ? window.i18n.t('messages.daySavedStayOnPage')
-            : 'Day saved. Complete remaining days to finish the study.';
-          showToast(daySavedMsg, 'success', 3000);
-          // Reload to refresh the day data from backend
-          setTimeout(() => {
-            window.location.reload();
-          }, 1500);
-        }
+        const daySavedMsg = window.i18n
+          ? window.i18n.t('messages.daySavedStayOnPage')
+          : 'Day saved.';
+        showToast(daySavedMsg, 'success', 3000);
+        // Reload to refresh day button states from backend
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
       } else {
         const submitErrorMessage = window.i18n
           ? window.i18n.t('messages.submitError')
-          : 'Error submitting diary';
+          : 'Error saving diary';
         const errorDetails = result?.error ? `: ${result.error}` : '';
         showToast(`${submitErrorMessage}${errorDetails}`, 'error', 5000);
         updateButtonStates();
@@ -932,22 +881,13 @@ function addCopyDayLink(timelineTitle, dayIndex) {
     existingLink.remove();
   }
 
-  // The "Copy this day" button copies the *saved* state of the current day to
-  // other empty days.  Copying requires the current day to be saveable first
-  // (we save THEN copy, so unsaved-but-valid edits get persisted), and there
-  // must be at least one empty day to copy *to*.  Render the button whenever
-  // there is a copy target; gate its enabled/disabled state on the same
-  // min_coverage check the rest of the app uses for "can this day be saved".
-  const hasCopyTarget = getEmptyTargetDayCount() > 0;
+  // Copy Days: the button is always shown when there are other days to copy
+  // to.  The target picker shows whether each day is empty or populated,
+  // and a confirmation dialog handles overwrite.  No min_coverage gate.
+  const hasCopyTarget = getTargetDayCount() > 0;
   if (!hasCopyTarget) {
     return;
   }
-
-  const meetsMinCoverage = window.timelineManager.keys.every((timelineKey) => {
-    const timelineMetadata = window.timelineManager.metadata[timelineKey];
-    const timelineMinCoverage = parseInt(timelineMetadata?.minCoverage) || 0;
-    return getCoverageForTimelineKey(timelineKey) >= timelineMinCoverage;
-  });
 
   const t =
     window.i18n && window.i18n.isReady()
@@ -959,59 +899,44 @@ function addCopyDayLink(timelineTitle, dayIndex) {
   const link = document.createElement('button');
   link.type = 'button';
   link.className = 'btn copy-day-link';
-
-  if (!meetsMinCoverage) {
-    // Inactive copy-day button: use its own tooltip distinct from the
-    // day-switching message.
-    link.textContent = t('messages.copyDayLink');
-    link.title = t('messages.completeMinimumActivitiesBeforeCopying');
-    link.disabled = true;
-  } else {
-    link.textContent = t('messages.copyDayLink');
-    link.addEventListener('click', function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      const pickerEvent = {
-        clientX: event.clientX,
-        clientY: event.clientY + 8,
-      };
-      if (typeof window.showCopyTargetPicker === 'function') {
-        window.showCopyTargetPicker(dayIndex, pickerEvent);
-      }
-    });
-  }
+  link.textContent = t('messages.copyDayLink');
+  link.addEventListener('click', function (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    const pickerEvent = {
+      clientX: event.clientX,
+      clientY: event.clientY + 8,
+    };
+    if (typeof window.showCopyTargetPicker === 'function') {
+      window.showCopyTargetPicker(dayIndex, pickerEvent);
+    }
+  });
   timelineTitle.appendChild(link);
 }
 
 window.addCopyDayLink = addCopyDayLink;
 
-function getEmptyTargetDayCount() {
+/**
+ * Copy Days: count other days (excluding current) that can be copy targets.
+ * Overwrite is allowed, so populated days are included.
+ */
+function getTargetDayCount() {
   const studyDaysCount =
     window.timelineManager?.studyDaysCount ||
     window.studyConfigManager?.getStudyDaysCount?.() ||
     0;
-
-  const dayIndicesWithData = Array.isArray(
-    window.timelineManager?.dayIndicesWithData
-  )
-    ? window.timelineManager.dayIndicesWithData
-    : [];
 
   const currentDayIndex =
     parseInt(
       new URLSearchParams(window.location.search).get('day_label_index')
     ) || 0;
 
-  let count = 0;
-  for (let i = 0; i < studyDaysCount; i++) {
-    if (!dayIndicesWithData.includes(i) && i !== currentDayIndex) {
-      count++;
-    }
-  }
-  return count;
+  // All other days are valid targets (overwrite is allowed with confirmation).
+  return Math.max(0, studyDaysCount - 1);
 }
 
-window.getEmptyTargetDayCount = getEmptyTargetDayCount;
+window.getTargetDayCount = getTargetDayCount;
+window.getEmptyTargetDayCount = getTargetDayCount;  // backward compat alias
 
 // Add this function to update the day display
 export function updateCurrentDayDisplay() {
@@ -1229,9 +1154,10 @@ function updateButtonStates() {
     }
   );
 
-  const canProceed = isLastTimeline
-    ? allTimelinesMeetMinCoverage
-    : meetsMinCoverage;
+  // Copy Days feature: Save is always available regardless of min_coverage.
+  // The green/gray day buttons show completion status; the Submit Study
+  // button enforces the final gate.
+  const canProceed = true;
 
   const currentDayIndex =
     parseInt(
@@ -1240,10 +1166,9 @@ function updateButtonStates() {
   const totalStudyDays = window.studyConfigManager?.getStudyDaysCount() || 1;
   const isLastStudyDay = currentDayIndex >= totalStudyDays - 1;
 
-  const canFinish = canFinishStudy();
-
-  const needsSaveDay = isLastTimeline && isLastStudyDay && !canFinish;
-
+  // Copy Days: canFinishStudy() is now only used by the separate Submit Study
+  // button.  The save/submit buttons always show "Save Day" on the last
+  // timeline and "Next Timeline" otherwise.
   updateTimelineCoverageIndicators();
 
   // Get text values for buttons
@@ -1253,121 +1178,57 @@ function updateButtonStates() {
   const nextTextLowerSubmitButton = window.i18n
     ? window.i18n.t('buttons.next')
     : 'Next Timeline';
-  const submitText = window.i18n
-    ? window.i18n.t('buttons.submit')
-    : 'Submit Day';
   const saveDayText = window.i18n
     ? window.i18n.t('buttons.saveDay')
     : 'Save Day';
-  const finishStudyText = window.i18n
-    ? window.i18n.t('buttons.finishStudy')
-    : submitText;
 
   //console.log('Button texts - Next:', nextTextTopBarButton, 'Submit:', submitText);
 
   if (nextButtonInTopBar) {
-    //console.log('Next button before update - disabled:', nextButtonInTopBar.disabled, 'innerHTML:', nextButtonInTopBar.innerHTML);
-
+    // Copy Days: save is always available (canProceed is always true).
+    // On last timeline → "Save Day", otherwise → "Next Timeline".
     nextButtonInTopBar.disabled = !canProceed;
 
     if (isLastTimeline) {
-      if (canFinish) {
-        // Last study day + all previous complete: Finish Study
-        nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${finishStudyText}`;
-        nextButtonInTopBar.setAttribute('data-mode', 'finish-study');
-        nextButtonInTopBar.title = '';
-      } else if (needsSaveDay) {
-        // Last study day + previous days incomplete: Save Day
-        nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
-        nextButtonInTopBar.setAttribute('data-mode', 'save-day');
-        const incompleteDays = getIncompleteDaysList();
-        const hint = window.i18n
-          ? window.i18n.t('messages.completeOtherDaysFirst', {
-              days: incompleteDays,
-            })
-          : `Complete ${incompleteDays} first to finish the study.`;
-        nextButtonInTopBar.title = hint;
-      } else {
-        // Non-last study day: normal Submit Day (saves + goes to next day)
-        nextButtonInTopBar.innerHTML = `<i class="fas fa-check"></i> ${submitText}`;
-        nextButtonInTopBar.setAttribute('data-mode', 'submit-day');
-        nextButtonInTopBar.title = '';
-      }
+      nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
+      nextButtonInTopBar.setAttribute('data-mode', 'save-day');
+      nextButtonInTopBar.title = '';
     } else {
-      // For other timelines, show Next
       nextButtonInTopBar.innerHTML = `${nextTextTopBarButton} <i class="fas fa-arrow-right"></i>`;
       nextButtonInTopBar.setAttribute('data-mode', 'next');
       nextButtonInTopBar.title = '';
     }
-
-    //console.log('Next button after update - disabled:', nextButtonInTopBar.disabled, 'innerHTML:', nextButtonInTopBar.innerHTML);
   }
 
-  // Update navSubmitBtn to mirror nextButton exactly
+  // Update navSubmitBtn to mirror nextButton — Copy Days: always shows "Save Day"
   if (lowerNavSubmitBtn) {
-    //console.log('Nav button before update - disabled:', lowerNavSubmitBtn.disabled);
-
     lowerNavSubmitBtn.disabled = !canProceed;
 
-    // Find the span element inside navSubmitBtn
     const navSubmitIcon = lowerNavSubmitBtn.querySelector('i');
     const navSubmitSpan = lowerNavSubmitBtn.querySelector('span');
 
     if (isLastTimeline) {
-      if (canFinish) {
-        // Last study day + all previous complete: Finish Study
-        if (navSubmitSpan) {
-          navSubmitSpan.textContent = finishStudyText;
-        }
-        if (navSubmitIcon) {
-          navSubmitIcon.className = 'fas fa-check';
-        }
-        lowerNavSubmitBtn.classList.add('submit-mode');
-        lowerNavSubmitBtn.setAttribute('data-mode', 'finish-study');
-        lowerNavSubmitBtn.title = '';
-      } else if (needsSaveDay) {
-        // Last study day + previous days incomplete: Save Day
-        if (navSubmitSpan) {
-          navSubmitSpan.textContent = saveDayText;
-        }
-        if (navSubmitIcon) {
-          navSubmitIcon.className = 'fas fa-save';
-        }
-        lowerNavSubmitBtn.classList.add('submit-mode');
-        lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
-        const incompleteDays = getIncompleteDaysList();
-        const hint = window.i18n
-          ? window.i18n.t('messages.completeOtherDaysFirst', {
-              days: incompleteDays,
-            })
-          : `Complete ${incompleteDays} first to finish the study.`;
-        lowerNavSubmitBtn.title = hint;
-      } else {
-        // Non-last study day: normal Submit Day (saves + goes to next day)
-        if (navSubmitSpan) {
-          navSubmitSpan.textContent = submitText;
-        }
-        if (navSubmitIcon) {
-          navSubmitIcon.className = 'fas fa-check';
-        }
-        lowerNavSubmitBtn.classList.add('submit-mode');
-        lowerNavSubmitBtn.setAttribute('data-mode', 'submit-day');
-        lowerNavSubmitBtn.title = '';
+      if (navSubmitSpan) {
+        navSubmitSpan.textContent = saveDayText;
       }
+      if (navSubmitIcon) {
+        navSubmitIcon.className = 'fas fa-save';
+      }
+      lowerNavSubmitBtn.classList.add('submit-mode');
+      lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
+      lowerNavSubmitBtn.title = '';
     } else {
-      // For other timelines, show Next with blue color
       if (navSubmitSpan) {
         navSubmitSpan.textContent = nextTextLowerSubmitButton;
       }
       if (navSubmitIcon) {
-        navSubmitIcon.className = 'fas fa-arrow-right'; // Arrow icon for next
+        navSubmitIcon.className = 'fas fa-arrow-right';
       }
       lowerNavSubmitBtn.classList.remove('submit-mode');
       lowerNavSubmitBtn.setAttribute('data-mode', 'next');
       lowerNavSubmitBtn.title = '';
     }
-
-    //console.log('Nav button after update - disabled:', lowerNavSubmitBtn.disabled);
+  }
   }
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
@@ -1388,6 +1249,50 @@ function updateButtonStates() {
     if (timelineTitle) {
       window.addCopyDayLink(timelineTitle, currentDayIndex);
     }
+  }
+
+  // Copy Days: update the Submit Study button state
+  updateSubmitStudyButton();
+}
+
+/**
+ * Copy Days: Enable the Submit Study button only when ALL days meet
+ * min_coverage in the database.  Shows a tooltip listing incomplete days.
+ */
+function updateSubmitStudyButton() {
+  const btn = document.getElementById('submitStudyBtn');
+  if (!btn) return;
+
+  const dayIndicesMeetMinCoverage = Array.isArray(
+    window.timelineManager?.dayIndicesMeetMinCoverage
+  )
+    ? window.timelineManager.dayIndicesMeetMinCoverage
+    : [];
+
+  const totalDays =
+    window.studyConfigManager?.getStudyDaysCount() ||
+    window.timelineManager?.studyDaysCount ||
+    0;
+
+  const allComplete = dayIndicesMeetMinCoverage.length >= totalDays;
+
+  if (allComplete) {
+    btn.disabled = false;
+    btn.classList.add('submit-ready');
+    btn.title = '';
+  } else {
+    btn.disabled = true;
+    btn.classList.remove('submit-ready');
+    const incomplete = [];
+    for (let i = 0; i < totalDays; i++) {
+      if (!dayIndicesMeetMinCoverage.includes(i)) {
+        incomplete.push(i + 1);
+      }
+    }
+    const t = window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function(k) { return k; };
+    btn.title = t('messages.submitStudyIncomplete', { days: incomplete.join(', ') });
   }
 }
 
@@ -1469,18 +1374,9 @@ const handleNextButtonAction = () => {
     window.timelineManager.keys.length - 1;
 
   if (isLastTimeline) {
-    // On last timeline, show confirmation modal.  Refresh its visible
-    // content first so the info paragraph and OK-button label reflect the
-    // CURRENT button mode (submit-day / save-day / finish-study) rather than
-    // whichever mode was active when the modal was last built.
-    const navSubmitBtn = document.getElementById('navSubmitBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const buttonMode =
-      (navSubmitBtn && navSubmitBtn.getAttribute('data-mode')) ||
-      (nextBtn && nextBtn.getAttribute('data-mode')) ||
-      'submit-day';
+    // Copy Days: always save-day mode. Refresh confirmation modal content.
     if (typeof window.updateConfirmationModalContent === 'function') {
-      window.updateConfirmationModalContent(buttonMode);
+      window.updateConfirmationModalContent('save-day');
     }
     document.getElementById('confirmationModal').style.display = 'block';
   } else {
@@ -1593,28 +1489,11 @@ function initButtons() {
   const cleanRowBtn = document.getElementById('cleanRowBtn');
   const navSubmitBtn = document.getElementById('navSubmitBtn');
 
-  // Initialize the navigation submit button with proper debounce
+  // Initialize the navigation submit button — Copy Days: always call save action
   if (navSubmitBtn) {
-    // Allow pointer events on disabled button to show toast
-    navSubmitBtn.style.pointerEvents = 'auto';
-
     navSubmitBtn.addEventListener('click', () => {
-      const nextBtn = document.getElementById('nextBtn');
-
-      // Check if the Next button is disabled
-      if (nextBtn && nextBtn.disabled) {
-        // Show toast message when trying to click disabled nav button
-        const message = window.i18n
-          ? window.i18n.t('messages.timelineMissing')
-          : 'There is information missing from this timeline. Would you like to add anything?';
-        showToast(message, 'warning', 4000);
-        return;
-      }
-
-      if (nextBtn && !nextBtn.disabled) {
-        // Use the shared debounced function instead of programmatic click
-        handleNextButtonAction();
-      }
+      handleNextButtonAction();
+    });
     });
   }
 
@@ -1712,6 +1591,67 @@ function initButtons() {
   const backButton = document.getElementById('backBtn');
   if (backButton) {
     backButton.addEventListener('click', handleBackButtonAction);
+  }
+
+  // Copy Days: Submit Study button — POST to submit endpoint, redirect to thank-you
+  const submitStudyBtn = document.getElementById('submitStudyBtn');
+  if (submitStudyBtn) {
+    submitStudyBtn.addEventListener('click', async function () {
+      if (submitStudyBtn.disabled) return;
+
+      submitStudyBtn.disabled = true;
+
+      const studyName =
+        window.timelineManager?.study?.study_name_short ||
+        window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+        new URLSearchParams(window.location.search).get('study_name');
+      const participantId =
+        window.timelineManager?.study?.pid ||
+        new URLSearchParams(window.location.search).get('pid');
+
+      if (!studyName || !participantId) {
+        if (window.showToast) {
+          window.showToast('Missing study or participant info', 'error', 4000);
+        }
+        submitStudyBtn.disabled = false;
+        return;
+      }
+
+      try {
+        const apiUrl = TUD_SETTINGS.API_BASE_URL;
+        const response = await fetch(
+          apiUrl + '/studies/' + encodeURIComponent(studyName) +
+          '/participants/' + encodeURIComponent(participantId) +
+          '/submit',
+          { method: 'POST' }
+        );
+
+        if (!response.ok) {
+          const err = await response.json().catch(function () { return { detail: 'Unknown error' }; });
+          if (window.showToast) {
+            window.showToast(
+              (err.detail && err.detail.message) || err.detail || 'Failed to submit study',
+              'error',
+              5000
+            );
+          }
+          submitStudyBtn.disabled = false;
+          return;
+        }
+
+        // Success — redirect to thank-you page
+        const redirectUrl = getPostDiaryRedirectPath('completed');
+        const currentParams = new URLSearchParams(window.location.search);
+        currentParams.set('completion_status', 'completed');
+        const sep = redirectUrl.includes('?') ? '&' : '?';
+        window.location.href = redirectUrl + (currentParams.toString() ? sep + currentParams.toString() : '');
+      } catch (err) {
+        if (window.showToast) {
+          window.showToast('Network error submitting study', 'error', 5000);
+        }
+        submitStudyBtn.disabled = false;
+      }
+    });
   }
 }
 

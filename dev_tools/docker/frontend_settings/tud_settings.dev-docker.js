@@ -5,7 +5,8 @@ const TUD_SETTINGS = {
     ALLOW_NO_UID: true,
     DEFAULT_STUDY_NAME: 'default',
     DEFAULT_STUDIES_FILE: 'settings/studies_config.json',
-    SHOW_PREVIOUS_DAYS_BUTTONS: true
+    TEMPLATE_ENABLED: true,             // Copy Days: enable/disable template feature
+    SHOW_COPY_FROM_BUTTON: false        // Copy Days: show "Copy from..." button (default off)
 };
 
 window.TUD_SETTINGS = TUD_SETTINGS;

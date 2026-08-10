@@ -157,7 +157,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Komplettera minimiaktiviteterna innan du byter dag.",
     "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen.",
     "completeOtherDaysFirst": "Fyll först i {{days}} för att avsluta studien.",
-    "daySavedStayOnPage": "Dagen sparad. Fyll i de återstående dagarna för att avsluta studien."
+    "daySavedStayOnPage": "Day saved.",
+    "copyDayEmpty": "empty",
+    "copyDayHasData": "has data",
+    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudySuccess": "Study submitted successfully!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",

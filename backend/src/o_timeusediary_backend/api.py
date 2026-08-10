@@ -692,11 +692,24 @@ def _get_days_meeting_min_coverage(
 def _is_participant_study_complete(
     session: Session, study: Study, participant_id: Optional[str], study_days_count: int
 ) -> bool:
-    if not participant_id or study_days_count <= 0:
+    """Return True when the participant has explicitly submitted the study.
+
+    After the Copy Days feature, completion is determined by the
+    ``study_submitted_at`` timestamp on ``StudyParticipant``, not by
+    counting days with data.  This allows participants to freely
+    navigate, edit, and copy between days before submitting.
+    """
+    if not participant_id:
         return False
 
-    completed_day_indices = _get_completed_day_indices(session, study, participant_id)
-    return len(completed_day_indices) >= study_days_count
+    sp = session.exec(
+        select(StudyParticipant).where(
+            StudyParticipant.study_id == study.id,
+            StudyParticipant.participant_id == participant_id,
+        )
+    ).first()
+
+    return sp is not None and sp.study_submitted_at is not None
 
 
 def _is_external_tasks_locked_by_diary_requirement(
@@ -1766,31 +1779,13 @@ def submit_activities(
             },
         )
 
-    required_min_coverage_by_timeline = {
-        timeline_name: int(timeline.min_coverage or 0)
-        for timeline_name, timeline in timeline_map.items()
-    }
-    insufficient_timeline_coverage = _validate_timeline_min_coverage(
-        submitted_activities=activities_data.activities,
-        required_min_coverage_by_timeline=required_min_coverage_by_timeline,
-    )
-
-    if insufficient_timeline_coverage:
-        logger.error(
-            "Timeline min_coverage validation failed for study '%s': %s",
-            study_name_short,
-            insufficient_timeline_coverage,
-        )
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Submitted activities do not meet timeline minimum coverage requirements.",
-                "error_type": "insufficient_timeline_coverage",
-                "insufficient_timelines": insufficient_timeline_coverage,
-                "total_invalid": len(insufficient_timeline_coverage),
-                "suggestion": "Complete each required timeline until its min_coverage is reached before submitting the day.",
-            },
-        )
+    # NOTE: min_coverage validation intentionally removed (Copy Days feature).
+    # Saving is always allowed regardless of timeline coverage. The frontend
+    # day buttons show green/gray status and the submit-study endpoint enforces
+    # completion as the final gate. See dev_tools/copy_days_plan/.
+    #   required_min_coverage_by_timeline = { ... }
+    #   insufficient_timeline_coverage = _validate_timeline_min_coverage(...)
+    #   if insufficient_timeline_coverage: raise HTTPException(400, ...)
 
     # PHASE 2: Check if activities already exist for this user-study-day_label
     existing_activities = session.exec(
@@ -7297,9 +7292,9 @@ def copy_day_activities(
 ):
     """Copy all activities from one day to another for a participant within a study.
 
-    The target day must be empty (no existing activities). The source day must
-    have activities. All activities are copied with new database IDs — the copy
-    is a separate, independent set of rows.
+    If the target day already has activities they are deleted first (overwrite).
+    The source day must have activities. All activities are copied with new
+    database IDs — the copy is a separate, independent set of rows.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -7343,12 +7338,13 @@ def copy_day_activities(
             Activity.participant_id == participant_id,
             Activity.day_label_id == target_label.id,
         )
-    ).first()
-    if target_existing:
-        raise HTTPException(
-            status_code=409,
-            detail=f"Target day '{day_label_name}' already has activities — cannot overwrite",
-        )
+    ).all()
+
+    is_overwrite = len(target_existing) > 0
+    if is_overwrite:
+        for existing in target_existing:
+            session.delete(existing)
+        session.flush()
 
     source_activities = session.exec(
         select(Activity).where(
@@ -7387,8 +7383,9 @@ def copy_day_activities(
     session.commit()
 
     logger.info(
-        "Participant '%s' copied %d activities from '%s' to '%s' in study '%s'",
+        "Participant '%s' %s %d activities from '%s' to '%s' in study '%s'",
         participant_id,
+        "overwrote with" if is_overwrite else "copied",
         copied_count,
         source_day_label_name,
         day_label_name,
@@ -7399,6 +7396,98 @@ def copy_day_activities(
         "copied_count": copied_count,
         "source_day": source_day_label_name,
         "target_day": day_label_name,
+        "overwrite": is_overwrite,
+    }
+
+
+@app.post(
+    "/api/studies/{study_name_short}/participants/{participant_id}/submit"
+)
+def submit_study(
+    study_name_short: str,
+    participant_id: str,
+    session: Session = Depends(get_session),
+):
+    """Mark a participant's study as submitted.
+
+    Sets ``study_submitted_at`` on the participant's study record.  Requires
+    that all study days meet their timeline min_coverage requirements.
+
+    Idempotent: if already submitted, returns the existing timestamp.
+
+    Once submitted the frontend redirects the participant to the thank-you
+    page and prevents further diary access.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    study_participant = session.exec(
+        select(StudyParticipant).where(
+            StudyParticipant.study_id == study.id,
+            StudyParticipant.participant_id == participant_id,
+        )
+    ).first()
+    if not study_participant:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Participant '{participant_id}' not found in study '{study_name_short}'",
+        )
+
+    # Idempotent: return existing timestamp if already submitted
+    if study_participant.study_submitted_at is not None:
+        logger.info(
+            "Participant '%s' already submitted study '%s' at %s",
+            participant_id,
+            study_name_short,
+            study_participant.study_submitted_at.isoformat(),
+        )
+        return {
+            "study_submitted_at": study_participant.study_submitted_at.isoformat(),
+            "already_submitted": True,
+        }
+
+    # Verify all days meet min_coverage
+    day_labels = session.exec(
+        select(DayLabel).where(DayLabel.study_id == study.id)
+    ).all()
+    study_days_count = len(day_labels)
+    days_meeting = _get_days_meeting_min_coverage(session, study, participant_id)
+
+    if len(days_meeting) < study_days_count:
+        all_indices = set(range(study_days_count))
+        incomplete = sorted(all_indices - days_meeting)
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Cannot submit study: not all days meet min_coverage.",
+                "error_type": "incomplete_days",
+                "incomplete_day_indices": incomplete,
+                "days_meeting_coverage": len(days_meeting),
+                "total_days": study_days_count,
+            },
+        )
+
+    # All good — record submission
+    now = utc_now()
+    study_participant.study_submitted_at = now
+    session.add(study_participant)
+    session.commit()
+
+    logger.info(
+        "Participant '%s' submitted study '%s' at %s",
+        participant_id,
+        study_name_short,
+        now.isoformat(),
+    )
+
+    return {
+        "study_submitted_at": now.isoformat(),
+        "already_submitted": False,
     }
 
 

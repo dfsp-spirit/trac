@@ -157,7 +157,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Complétez les activités minimales avant de changer de jour.",
     "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel.",
     "completeOtherDaysFirst": "Complétez d'abord {{days}} pour terminer l'étude.",
-    "daySavedStayOnPage": "Jour enregistré. Complétez les jours restants pour terminer l'étude."
+    "daySavedStayOnPage": "Day saved.",
+    "copyDayEmpty": "empty",
+    "copyDayHasData": "has data",
+    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudySuccess": "Study submitted successfully!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
