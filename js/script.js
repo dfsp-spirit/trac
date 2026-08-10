@@ -5723,11 +5723,9 @@ function renderPreviousDaysSwitchRow() {
     ? window.timelineManager.dayIndicesMeetMinCoverage
     : dayIndicesWithData;
 
-  // Render the full day selector whenever the study spans more than one day,
-  // not just days that already have data.  This way the completion status of
-  // every day — including empty and incomplete ones — stays visible.
-  const shouldShow =
-    Boolean(TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS) && studyDaysCount > 1;
+  // Render the full day selector whenever the study spans more than one day.
+  // Copy Days: day buttons are always shown — free navigation is a core feature.
+  const shouldShow = studyDaysCount > 1;
 
   let existingRow = document.getElementById('previousDaysSwitchRow');
   if (!shouldShow) {
@@ -5799,28 +5797,8 @@ function renderPreviousDaysSwitchRow() {
         });
       }
 
-      const canProceed = window.timelineManager.keys.every((timelineKey) => {
-        const timelineMetadata = window.timelineManager.metadata[timelineKey];
-        const timelineMinCoverage =
-          parseInt(timelineMetadata?.minCoverage) || 0;
-        const activities = window.timelineManager.activities[timelineKey] || [];
-        const timelineCoverage = activities.reduce(
-          (total, activity) => total + (parseInt(activity?.blockLength) || 0),
-          0
-        );
-        return timelineCoverage >= timelineMinCoverage;
-      });
-
-      if (!canProceed) {
-        button.disabled = true;
-        const t =
-          window.i18n && window.i18n.isReady()
-            ? window.i18n.t.bind(window.i18n)
-            : function (key) {
-                return key;
-              };
-        button.title = t('messages.completeMinimumActivitiesBeforeSwitching');
-      }
+      // Copy Days: day switching is always allowed regardless of min_coverage.
+      // The green/gray indicator shows completion status.
     }
 
     existingRow.appendChild(button);
@@ -6573,6 +6551,7 @@ async function init() {
             activitiesToLoad = transformedData.activities;
           } else if (
             !loadedActivitiesFromBackend &&
+            TUD_SETTINGS.TEMPLATE_ENABLED !== false &&
             transformedData.template_activities &&
             transformedData.template_activities.length > 0
           ) {
@@ -6856,7 +6835,12 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-function getEmptyTargetDayIndices() {
+/**
+ * Copy Days: return all other day indices (excluding current) as potential
+ * copy targets.  Each entry includes whether the day has data so the picker
+ * can show empty vs. populated status.
+ */
+function getAllTargetDayIndices() {
   const studyDaysCount =
     window.timelineManager?.studyDaysCount ||
     window.studyConfigManager?.getStudyDaysCount() ||
@@ -6869,13 +6853,23 @@ function getEmptyTargetDayIndices() {
     : [];
 
   const currentDayIndex = getCurrentDayIndex();
-  const emptyIndices = [];
+  const targets = [];
   for (let i = 0; i < studyDaysCount; i++) {
-    if (!dayIndicesWithData.includes(i) && i !== currentDayIndex) {
-      emptyIndices.push(i);
+    if (i !== currentDayIndex) {
+      targets.push({
+        index: i,
+        hasData: dayIndicesWithData.includes(i),
+      });
     }
   }
-  return emptyIndices;
+  return targets;
+}
+
+// Keep old name as alias for backward compatibility with any remaining callers.
+function getEmptyTargetDayIndices() {
+  return getAllTargetDayIndices()
+    .filter(function (t) { return !t.hasData; })
+    .map(function (t) { return t.index; });
 }
 
 function removeCopyDayContextMenu() {
@@ -6888,8 +6882,8 @@ function removeCopyDayContextMenu() {
 function showCopyTargetPicker(sourceDayIndex, event) {
   removeCopyDayContextMenu();
 
-  const emptyIndices = getEmptyTargetDayIndices();
-  if (!emptyIndices.length) {
+  const targets = getAllTargetDayIndices();
+  if (!targets.length) {
     return;
   }
 
@@ -6912,17 +6906,21 @@ function showCopyTargetPicker(sourceDayIndex, event) {
   header.textContent = t('messages.copyToDay') + ': ' + sourceDayName;
   menu.appendChild(header);
 
-  for (const targetIndex of emptyIndices) {
+  for (const target of targets) {
     const item = document.createElement('button');
     item.type = 'button';
     item.className = 'copy-day-context-menu-item';
     const targetDayName =
-      window.studyConfigManager?.getDayDisplayLabel(targetIndex) ||
-      t('common.day') + ' ' + (targetIndex + 1);
-    item.textContent = targetDayName + ' (empty)';
+      window.studyConfigManager?.getDayDisplayLabel(target.index) ||
+      t('common.day') + ' ' + (target.index + 1);
+    // Copy Days: show status so users know whether they'll overwrite
+    const status = target.hasData
+      ? ' (' + t('messages.copyDayHasData') + ')'
+      : ' (' + t('messages.copyDayEmpty') + ')';
+    item.textContent = targetDayName + status;
     item.addEventListener('click', async () => {
       removeCopyDayContextMenu();
-      await copyDayTo(sourceDayIndex, targetIndex);
+      await copyDayTo(sourceDayIndex, target.index);
     });
     menu.appendChild(item);
   }
@@ -6978,6 +6976,26 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       true
     );
     return;
+  }
+
+  // Copy Days: if target day already has data, ask for confirmation first
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const targetHasData = dayIndicesWithData.includes(targetDayIndex);
+
+  if (targetHasData) {
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
+      t('common.day') + ' ' + (targetDayIndex + 1);
+    const confirmed = window.confirm(
+      t('messages.copyOverwriteConfirm', { day: targetDayName })
+    );
+    if (!confirmed) {
+      return;
+    }
   }
 
   const targetDayLabel = window.studyConfigManager?.getDayLabel(targetDayIndex);

@@ -1078,38 +1078,11 @@ export function getPostDiaryRedirectPath(completionStatus = 'completed') {
 
 // New function to handle day navigation
 async function handleDayNavigation(isLastDay, currentDayIndex) {
-  console.log('handleDayNavigation:', { isLastDay, currentDayIndex });
-
-  if (isLastDay) {
-    // Redirect to tasks page first when external tasks are pending,
-    // otherwise go directly to thank-you page.
-    const redirectUrl = getPostDiaryRedirectPath('completed');
-    console.log('Last day completed, redirecting to:', redirectUrl);
-
-    // Preserve URL parameters if needed
-    const currentParams = new URLSearchParams(window.location.search);
-    currentParams.set('completion_status', 'completed');
-    const separator = redirectUrl.includes('?') ? '&' : '?';
-    const finalUrl =
-      redirectUrl +
-      (currentParams.toString() ? separator + currentParams.toString() : '');
-
-    window.location.href = finalUrl;
-  } else {
-    // Go to next day
-    const nextDayIndex = currentDayIndex + 1;
-    console.log('Moving to next day with index:', nextDayIndex);
-
-    // Update URL with next day index
-    const currentParams = new URLSearchParams(window.location.search);
-    currentParams.set('day_label_index', nextDayIndex);
-
-    // Option 1: Reload same page with new day index
-    window.location.search = currentParams.toString();
-
-    // Option 2: If you want to clear timeline data for new day:
-    // window.location.href = window.location.pathname + '?' + currentParams.toString();
-  }
+  // Copy Days: after saving, always reload the current day to refresh
+  // day button states (green/gray) from the backend.  No auto-advance,
+  // no redirect to thank-you.  Submit Study is a separate action.
+  console.log('handleDayNavigation: reloading current day');
+  window.location.reload();
 }
 
 export function checkAndRequestPID() {
