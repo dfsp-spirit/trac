@@ -7232,6 +7232,10 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       renderPreviousDaysSwitchRow();
     }
 
+    if (typeof window.updateSubmitStudyButton === 'function') {
+      window.updateSubmitStudyButton();
+    }
+
     if (typeof window.addCopyDayLink === 'function') {
       const timelineTitle = document.querySelector('.timeline-title');
       const currentDayIndex = getCurrentDayIndex();
