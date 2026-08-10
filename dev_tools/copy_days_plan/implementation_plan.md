@@ -229,6 +229,59 @@ The admin portal (Jinja templates in `backend/src/o_timeuediary_backend/template
 
 Consider adding an admin action to clear `study_submitted_at` (reset submission). This can be deferred — a manual DB query suffices for now. File a follow-up issue.
 
+### 6.3 Data Export — New Completion Fields
+
+**File**: `api.py`, `GET /api/admin/export/{study_name_short}/activities`
+
+The activities export endpoint is the primary way scientists download study data (CSV/JSON). After Copy Days, the export must reflect the new completion model.
+
+**Current export fields** (from `_build_participant_completion_map`):
+- `participant_diary_completed_at` — derived from MAX(MIN(created_at) per day-label), i.e. "when did they first have data on all days"
+- `participant_everything_completed_at` — diary + external tasks all confirmed
+- `participant_task_{key}_completed_at` — per external task
+
+**New fields to add**:
+
+| Field | Type | Description |
+|---|---|---|
+| `participant_study_submitted_at` | `datetime \| null` | Explicit submission timestamp from `StudyParticipant.study_submitted_at`. This is the new authoritative "study complete" signal. NULL until the participant clicks "Submit Study". |
+| `participant_all_days_meet_min_coverage` | `bool` | Whether ALL days meet their timeline min_coverage requirements. Derived from `_get_days_meeting_min_coverage()`. This tells scientists the data quality is sufficient per-study-config, regardless of whether the participant clicked submit. |
+| `participant_days_with_data` | `int` | Count of days that have ANY activity data. From `_get_completed_day_indices()`. |
+| `participant_days_meeting_min_coverage` | `int` | Count of days meeting min_coverage. |
+| `participant_total_days` | `int` | Total days in the study (`study_days_count`). |
+| **Per-day status columns** | | See below. |
+
+**Per-day status columns** (one column per day, e.g. `day_0_status`, `day_1_status`, ...):
+
+Each column value is one of:
+- `"complete"` — day has data AND meets min_coverage for all timelines
+- `"partial"` — day has data but does NOT meet min_coverage for at least one timeline
+- `"empty"` — day has no data at all
+
+This per-day breakdown allows scientists to:
+- Judge data quality at a glance without computing coverage themselves
+- Decide whether to include a participant who has, say, 4 of 5 days complete but never submitted
+- Identify which specific days are problematic
+
+**Implementation approach**:
+- Reuse `_get_completed_day_indices()` and `_get_days_meeting_min_coverage()` — both already exist.
+- In `_build_participant_completion_map()`, add the new fields alongside the existing `diary_completed_at` / `everything_completed_at`.
+- In the export loop (~line 7068), add the per-participant fields to each activity record (they'll be repeated per row — same value for all rows of the same participant — which is fine for CSV analysis via GROUP BY / pivot).
+- The `participant_diary_completed_at` field can remain for backward compatibility, but `participant_study_submitted_at` is the new source of truth for "this participant is done."
+
+**Example CSV output** (new columns only):
+
+```csv
+participant_id,...,participant_study_submitted_at,participant_all_days_meet_min_coverage,participant_days_with_data,participant_days_meeting_min_coverage,participant_total_days,day_0_status,day_1_status,day_2_status
+abc123,...,2026-08-10T14:30:00,true,3,3,3,complete,complete,complete
+def456,...,,false,3,2,3,complete,partial,complete
+ghi789,...,,false,1,0,3,partial,empty,empty
+```
+
+- `abc123`: submitted, all days done.
+- `def456`: filled all 3 days but day 1 didn't meet min_coverage, never submitted (scientist can decide whether to use).
+- `ghi789`: barely started, only day 0 has partial data.
+
 ---
 
 ## 7. Tests
@@ -295,6 +348,7 @@ Recommended sequence to minimize broken intermediate states:
 12. **Settings: update `tud_settings.js` and all CI/local templates**.
 13. **Localization: add new strings to all 7 locale files**.
 14. **Admin portal: update completion display**.
+14.5. **Data export: add new completion fields and per-day status columns** — Updates `_build_participant_completion_map()` and the export loop.
 15. **Tests: update existing, add new** — Run after all changes are stable.
 16. **Remove `SHOW_PREVIOUS_DAYS_BUTTONS`** — Cleanup after full migration.
 
@@ -305,11 +359,12 @@ Recommended sequence to minimize broken intermediate states:
 | Area | Files Changed | Files Added |
 |---|---|---|
 | Database | `models.py` | 1 Alembic migration |
-| Backend API | `api.py` (~6 touch points) | — |
+| Backend API | `api.py` (~6 touch points, including export endpoint) | — |
 | Frontend JS | `script.js`, `ui.js`, `utils.js` | — |
 | Frontend HTML | `index.html` | — |
 | Settings | `tud_settings.js` + 4 CI/local copies | — |
 | Locales | 7 JSON files | — |
 | Admin | Jinja template(s) in `templates/` | — |
-| Backend tests | 3–4 files updated | 2–3 new files |
+| Data Export | `_build_participant_completion_map()` + export loop in `api.py` | — |
+| Backend tests | 3–4 files updated, including export tests | 2–3 new files |
 | E2E tests | ~13 files updated | 4 new files |
