@@ -1284,6 +1284,8 @@ function updateSubmitStudyButton() {
   }
 }
 
+window.updateSubmitStudyButton = updateSubmitStudyButton;
+
 function redirectToThankYouPage() {
   const redirectUrl = getPostDiaryRedirectPath('skipped');
   const currentParams = new URLSearchParams(window.location.search);
