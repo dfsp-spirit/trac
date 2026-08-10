@@ -1350,21 +1350,51 @@ const BACK_BUTTON_COOLDOWN = 500; // 1 second cooldown (shorter than Next)
 let removeLastButtonLastClick = 0;
 const REMOVE_LAST_BUTTON_COOLDOWN = 300; // 300ms cooldown
 
-// Shared function to handle Next button logic with debounce
-const handleNextButtonAction = () => {
+// Shared function to handle save button logic with debounce.
+// Copy Days: saving is a routine operation — no confirmation modal needed.
+const handleNextButtonAction = async () => {
   const currentTime = Date.now();
   if (currentTime - nextButtonLastClick < NEXT_BUTTON_COOLDOWN) {
-    console.log('Next button on cooldown');
+    console.log('Save button on cooldown');
     return;
   }
   nextButtonLastClick = currentTime;
 
-  // Copy Days: always show save confirmation — all timelines are always
-  // visible, so there's no "next timeline" to advance to.
-  if (typeof window.updateConfirmationModalContent === 'function') {
-    window.updateConfirmationModalContent('save-day');
+  const nextButton = document.getElementById('nextBtn');
+  const navSubmitButton = document.getElementById('navSubmitBtn');
+
+  if (nextButton) nextButton.disabled = true;
+  if (navSubmitButton) navSubmitButton.disabled = true;
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
+
+  const result = await sendData({
+    shouldRedirect: false,
+    isLastDay: false,
+    currentDayIndex,
+  });
+
+  if (result?.success) {
+    const daySavedMsg = window.i18n
+      ? window.i18n.t('messages.daySavedStayOnPage')
+      : 'Day saved.';
+    if (typeof showToast === 'function') {
+      showToast(daySavedMsg, 'success', 3000);
+    }
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
+  } else {
+    const errMsg = window.i18n
+      ? window.i18n.t('messages.submitError')
+      : 'Error saving diary';
+    const details = result?.error ? `: ${result.error}` : '';
+    if (typeof showToast === 'function') {
+      showToast(errMsg + details, 'error', 5000);
+    }
+    updateButtonStates();
   }
-  document.getElementById('confirmationModal').style.display = 'block';
 };
 
 // Shared function to handle Back button logic with debounce
