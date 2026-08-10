@@ -34,17 +34,25 @@
             grid-auto-rows: 1fr;
         }
 
-        .thank-you-container {
+        main {
             grid-column: 2;
+        }
+
+        .thank-you-container {
             width: 100%;
+            min-height: 100%;
             margin: 0;
             padding: 36px 28px;
+            box-sizing: border-box;
             background: white;
             border-left: 1px solid rgba(226, 232, 240, 0.95);
             border-right: 1px solid rgba(226, 232, 240, 0.95);
             border-radius: 0;
             box-shadow: none;
             text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
 
         @keyframes fadeInUp {
@@ -176,7 +184,6 @@
             }
 
             .thank-you-container {
-                grid-column: 2;
                 padding: 28px 20px;
             }
 
