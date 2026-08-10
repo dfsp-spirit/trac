@@ -912,6 +912,26 @@ function addCopyDayLink(timelineTitle, dayIndex) {
     }
   });
   timelineTitle.appendChild(link);
+
+  // Copy Days: optional "Copy from..." button (pull direction, configurable)
+  if (TUD_SETTINGS.SHOW_COPY_FROM_BUTTON && getTargetDayCount() > 0) {
+    const fromLink = document.createElement('button');
+    fromLink.type = 'button';
+    fromLink.className = 'btn copy-day-link copy-from-link';
+    fromLink.textContent = t('messages.copyFromDay');
+    fromLink.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      const pickerEvent = {
+        clientX: event.clientX,
+        clientY: event.clientY + 8,
+      };
+      if (typeof window.showCopySourcePicker === 'function') {
+        window.showCopySourcePicker(dayIndex, pickerEvent);
+      }
+    });
+    timelineTitle.appendChild(fromLink);
+  }
 }
 
 window.addCopyDayLink = addCopyDayLink;
