@@ -6955,6 +6955,87 @@ function showCopyTargetPicker(sourceDayIndex, event) {
   }, 0);
 }
 
+/**
+ * Copy Days: "Copy from..." picker — reverse direction.
+ * Shows all other days as SOURCE options; on selection copies FROM the
+ * selected source INTO the current day.
+ */
+function showCopySourcePicker(targetDayIndex, event) {
+  removeCopyDayContextMenu();
+
+  const targets = getAllTargetDayIndices();
+  if (!targets.length) {
+    return;
+  }
+
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) { return key; };
+
+  const targetDayName =
+    window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
+    t('common.day') + ' ' + (targetDayIndex + 1);
+
+  const menu = document.createElement('div');
+  menu.className = 'copy-day-context-menu';
+
+  const header = document.createElement('div');
+  header.className = 'copy-day-context-menu-header';
+  header.textContent = t('messages.copyFromDay') + ': ' + targetDayName;
+  menu.appendChild(header);
+
+  for (const source of targets) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'copy-day-context-menu-item';
+    const sourceDayName =
+      window.studyConfigManager?.getDayDisplayLabel(source.index) ||
+      t('common.day') + ' ' + (source.index + 1);
+    const status = source.hasData
+      ? ' (' + t('messages.copyDayHasData') + ')'
+      : ' (' + t('messages.copyDayEmpty') + ')';
+    item.textContent = sourceDayName + status;
+    item.addEventListener('click', async () => {
+      removeCopyDayContextMenu();
+      // Reverse: copy FROM selected source INTO current (target) day
+      await copyDayTo(source.index, targetDayIndex);
+    });
+    menu.appendChild(item);
+  }
+
+  // Position the menu
+  if (
+    window.globals &&
+    typeof window.globals.getIsMobile === 'function' &&
+    window.globals.getIsMobile()
+  ) {
+    document.body.appendChild(menu);
+    return;
+  }
+
+  const menuX = Math.min(event.clientX, window.innerWidth - 210);
+  const menuY = Math.min(event.clientY, window.innerHeight - 200);
+  menu.style.position = 'fixed';
+  menu.style.left = menuX + 'px';
+  menu.style.top = menuY + 'px';
+
+  document.body.appendChild(menu);
+
+  const closeHandler = function (e) {
+    if (!menu.contains(e.target)) {
+      removeCopyDayContextMenu();
+      document.removeEventListener('click', closeHandler, true);
+    }
+  };
+  setTimeout(function () {
+    document.addEventListener('click', closeHandler, true);
+  }, 0);
+}
+
+window.showCopySourcePicker = showCopySourcePicker;
+window.showCopyTargetPicker = showCopyTargetPicker;
+
 async function copyDayTo(sourceDayIndex, targetDayIndex) {
   const t =
     window.i18n && window.i18n.isReady()
@@ -7162,9 +7243,7 @@ function showCopyToast(message, isError) {
   }
 }
 
-window.showCopyTargetPicker = showCopyTargetPicker;
 window.renderPreviousDaysSwitchRow = renderPreviousDaysSwitchRow;
-window.getEmptyTargetDayIndices = getEmptyTargetDayIndices;
 
 window.addEventListener('beforeunload', function () {
   if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {

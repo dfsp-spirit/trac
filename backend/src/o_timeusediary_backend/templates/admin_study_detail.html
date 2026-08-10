@@ -358,7 +358,13 @@
                         <h3>{{ participant.id }} <span class="badge badge-participant">{{ participant.activity_count }} activities</span>{% if participant.has_completed_study and (external_task_count == 0 or participant.all_external_tasks_completed) %} <span style="color: #16a34a; font-size: 1.2rem;" title="Fully completed">✅</span>{% endif %}</h3>
                         <p><strong>Joined Study:</strong> {{ participant.joined_study_at.strftime('%Y-%m-%d %H:%M') }}</p>
                         <p><strong>Created:</strong> {{ participant.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                        <p><strong>Time-use completed:</strong> {% if participant.has_completed_study %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
+                        <p><strong>Days complete (min coverage):</strong>
+                            {% if participant.all_days_meet_min_coverage %}<span style="color: #16a34a; font-weight: 600;">Yes</span>
+                            {% else %}{{ participant.days_meeting_min_coverage }} of {{ participant.total_days }}{% endif %}</p>
+                        <p><strong>Study submitted:</strong>
+                            {% if participant.study_submitted_at %}<span style="color: #16a34a; font-weight: 600;">{{ participant.study_submitted_at }}</span>
+                            {% elif participant.all_days_meet_min_coverage %}<span style="color: #d97706;">All days complete — not yet submitted</span>
+                            {% else %}<span style="color: #9ca3af;">Not yet</span>{% endif %}</p>
                         {% if external_task_count > 0 %}
                         <p><strong>All external tasks completed:</strong> {% if participant.all_external_tasks_completed %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
                         {% endif %}

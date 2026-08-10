@@ -738,7 +738,15 @@ def _build_participant_completion_map(
     Returns a dict mapping participant_id to:
       {"diary_completed_at": datetime|None,
        "everything_completed_at": datetime|None,
-       "task_confirmed_at": {task_key: datetime|None, ...}}
+       "task_confirmed_at": {task_key: datetime|None, ...},
+       "study_submitted_at": datetime|None,
+       "all_days_meet_min_coverage": bool,
+       "days_with_data": int,
+       "days_meeting_min_coverage": int,
+       "total_days": int,
+       "day_status": {day_index: "complete"|"partial"|"empty", ...}}
+
+    New Copy Days fields:
 
     diary_completed_at
         The UTC timestamp when the participant first submitted activities for the
@@ -860,7 +868,79 @@ def _build_participant_completion_map(
             "diary_completed_at": diary_completed_at,
             "everything_completed_at": everything_completed_at,
             "task_confirmed_at": pid_task_times,
+            # Placeholders — populated below in a second pass.
+            "study_submitted_at": None,
+            "all_days_meet_min_coverage": False,
+            "days_with_data": 0,
+            "days_meeting_min_coverage": 0,
+            "total_days": study_days_count,
+            "day_status": {},
         }
+
+    # ── Copy Days: enrich with submission timestamp and per-day status ────
+    if result:
+        # Batch-load StudyParticipant rows for all participants at once.
+        sp_rows = session.exec(
+            select(StudyParticipant).where(
+                StudyParticipant.study_id == study.id,
+                StudyParticipant.participant_id.in_(list(result.keys())),
+            )
+        ).all()
+        sp_by_pid = {sp.participant_id: sp for sp in sp_rows}
+
+        # Per-day status: "complete" / "partial" / "empty"
+        timelines = session.exec(
+            select(Timeline).where(Timeline.study_id == study.id)
+        ).all()
+        required_by_timeline_id = {
+            t.id: int(t.min_coverage or 0)
+            for t in timelines
+            if (t.min_coverage or 0) > 0
+        }
+
+        # Group activities by (pid, day_label_id)
+        pid_day_covered: Dict[str, Dict[int, Dict[int, int]]] = {}
+        for a in activities:
+            pid_day_covered.setdefault(a.participant_id, {}).setdefault(
+                a.day_label_id, {}
+            )
+            dur = a.end_minutes - a.start_minutes
+            pid_day_covered[a.participant_id][a.day_label_id][a.timeline_id] = (
+                pid_day_covered[a.participant_id][a.day_label_id].get(a.timeline_id, 0) + dur
+            )
+
+        day_label_order = {dl.id: dl.display_order for dl in day_labels}
+
+        for pid in result:
+            sp = sp_by_pid.get(pid)
+            if sp and sp.study_submitted_at is not None:
+                result[pid]["study_submitted_at"] = sp.study_submitted_at
+
+            covered_by_day = pid_day_covered.get(pid, {})
+            days_with_data = len(covered_by_day)
+            result[pid]["days_with_data"] = days_with_data
+
+            days_meeting = 0
+            day_status: Dict[int, str] = {}
+            for dl_id, dl_order in day_label_order.items():
+                if dl_id not in covered_by_day:
+                    day_status[dl_order] = "empty"
+                else:
+                    coverage = covered_by_day[dl_id]
+                    if required_by_timeline_id:
+                        meets_all = all(
+                            coverage.get(tid, 0) >= req
+                            for tid, req in required_by_timeline_id.items()
+                        )
+                    else:
+                        meets_all = True  # no min_coverage → any data is complete
+                    day_status[dl_order] = "complete" if meets_all else "partial"
+                    if meets_all:
+                        days_meeting += 1
+
+            result[pid]["all_days_meet_min_coverage"] = days_meeting >= study_days_count
+            result[pid]["days_meeting_min_coverage"] = days_meeting
+            result[pid]["day_status"] = day_status
 
     return result
 
@@ -2232,6 +2312,12 @@ async def admin_study_detail(
                 participant_id=participant.id,
                 study_days_count=study_days_count,
             )
+            # Copy Days: separate "all days meet min_coverage" from "submitted"
+            participant_days_meeting = _get_days_meeting_min_coverage(
+                session, study, participant.id
+            )
+            participant_all_days_meet_min_coverage = len(participant_days_meeting) >= study_days_count
+            participant_study_submitted_at = sp.study_submitted_at
             participant_external_tasks = (
                 _get_participant_external_tasks(
                     session=session,
@@ -2255,6 +2341,14 @@ async def admin_study_detail(
                     "consent_decided_at": sp.consent_decided_at,
                     "activity_count": participant_activity_count,
                     "has_completed_study": participant_has_completed_study,
+                    "all_days_meet_min_coverage": participant_all_days_meet_min_coverage,
+                    "days_meeting_min_coverage": len(participant_days_meeting),
+                    "total_days": study_days_count,
+                    "study_submitted_at": (
+                        participant_study_submitted_at.isoformat()
+                        if participant_study_submitted_at
+                        else None
+                    ),
                     "all_external_tasks_completed": participant_all_external_tasks_completed,
                     "study_join_url": _build_frontend_study_join_url(
                         study.name_short,
@@ -7132,6 +7226,7 @@ async def export_study_activities(
         comp = completion_map.get(participant.id, {})
         diary_at = comp.get("diary_completed_at")
         everything_at = comp.get("everything_completed_at")
+        study_submitted = comp.get("study_submitted_at")
         record.update(
             {
                 "participant_diary_completed_at": (
@@ -7140,8 +7235,24 @@ async def export_study_activities(
                 "participant_everything_completed_at": (
                     everything_at.isoformat() if everything_at else None
                 ),
+                "participant_study_submitted_at": (
+                    study_submitted.isoformat() if study_submitted else None
+                ),
+                "participant_all_days_meet_min_coverage": comp.get(
+                    "all_days_meet_min_coverage", False
+                ),
+                "participant_days_with_data": comp.get("days_with_data", 0),
+                "participant_days_meeting_min_coverage": comp.get(
+                    "days_meeting_min_coverage", 0
+                ),
+                "participant_total_days": comp.get("total_days", 0),
             }
         )
+
+        # Per-day status columns: day_0_status, day_1_status, ...
+        day_status = comp.get("day_status", {})
+        for day_idx, status in day_status.items():
+            record[f"day_{day_idx}_status"] = status
 
         task_times = comp.get("task_confirmed_at", {})
         for task_key, confirmed_at in task_times.items():
