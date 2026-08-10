@@ -1186,68 +1186,37 @@ function updateButtonStates() {
   const totalStudyDays = window.studyConfigManager?.getStudyDaysCount() || 1;
   const isLastStudyDay = currentDayIndex >= totalStudyDays - 1;
 
-  // Copy Days: canFinishStudy() is now only used by the separate Submit Study
-  // button.  The save/submit buttons always show "Save Day" on the last
-  // timeline and "Next Timeline" otherwise.
+  // Copy Days: all timelines are always visible.  The save button always
+  // says "Save Day" and always triggers the save flow.
   updateTimelineCoverageIndicators();
 
-  // Get text values for buttons
-  const nextTextTopBarButton = window.i18n
-    ? window.i18n.t('buttons.next')
-    : 'Next Timeline';
-  const nextTextLowerSubmitButton = window.i18n
-    ? window.i18n.t('buttons.next')
-    : 'Next Timeline';
   const saveDayText = window.i18n
     ? window.i18n.t('buttons.saveDay')
     : 'Save Day';
 
-  //console.log('Button texts - Next:', nextTextTopBarButton, 'Submit:', submitText);
-
   if (nextButtonInTopBar) {
-    // Copy Days: save is always available (canProceed is always true).
-    // On last timeline → "Save Day", otherwise → "Next Timeline".
     nextButtonInTopBar.disabled = !canProceed;
-
-    if (isLastTimeline) {
-      nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
-      nextButtonInTopBar.setAttribute('data-mode', 'save-day');
-      nextButtonInTopBar.title = '';
-    } else {
-      nextButtonInTopBar.innerHTML = `${nextTextTopBarButton} <i class="fas fa-arrow-right"></i>`;
-      nextButtonInTopBar.setAttribute('data-mode', 'next');
-      nextButtonInTopBar.title = '';
-    }
+    nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
+    nextButtonInTopBar.setAttribute('data-mode', 'save-day');
+    nextButtonInTopBar.title = '';
   }
 
-  // Update navSubmitBtn to mirror nextButton — Copy Days: always shows "Save Day"
+  // Update navSubmitBtn to mirror nextButton — always "Save Day"
   if (lowerNavSubmitBtn) {
     lowerNavSubmitBtn.disabled = !canProceed;
 
     const navSubmitIcon = lowerNavSubmitBtn.querySelector('i');
     const navSubmitSpan = lowerNavSubmitBtn.querySelector('span');
 
-    if (isLastTimeline) {
-      if (navSubmitSpan) {
-        navSubmitSpan.textContent = saveDayText;
-      }
-      if (navSubmitIcon) {
-        navSubmitIcon.className = 'fas fa-save';
-      }
-      lowerNavSubmitBtn.classList.add('submit-mode');
-      lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
-      lowerNavSubmitBtn.title = '';
-    } else {
-      if (navSubmitSpan) {
-        navSubmitSpan.textContent = nextTextLowerSubmitButton;
-      }
-      if (navSubmitIcon) {
-        navSubmitIcon.className = 'fas fa-arrow-right';
-      }
-      lowerNavSubmitBtn.classList.remove('submit-mode');
-      lowerNavSubmitBtn.setAttribute('data-mode', 'next');
-      lowerNavSubmitBtn.title = '';
+    if (navSubmitSpan) {
+      navSubmitSpan.textContent = saveDayText;
     }
+    if (navSubmitIcon) {
+      navSubmitIcon.className = 'fas fa-save';
+    }
+    lowerNavSubmitBtn.classList.add('submit-mode');
+    lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
+    lowerNavSubmitBtn.title = '';
   }
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
@@ -1388,24 +1357,12 @@ const handleNextButtonAction = () => {
   }
   nextButtonLastClick = currentTime;
 
-  const isLastTimeline =
-    window.timelineManager.currentIndex ===
-    window.timelineManager.keys.length - 1;
-
-  if (isLastTimeline) {
-    // Copy Days: always save-day mode. Refresh confirmation modal content.
-    if (typeof window.updateConfirmationModalContent === 'function') {
-      window.updateConfirmationModalContent('save-day');
-    }
-    document.getElementById('confirmationModal').style.display = 'block';
-  } else {
-    // For other timelines, proceed to next timeline
-    addNextTimeline();
-    window.selectedActivity = null;
-    document.querySelectorAll('.activity-button.selected').forEach((btn) => {
-      btn.classList.remove('selected');
-    });
+  // Copy Days: always show save confirmation — all timelines are always
+  // visible, so there's no "next timeline" to advance to.
+  if (typeof window.updateConfirmationModalContent === 'function') {
+    window.updateConfirmationModalContent('save-day');
   }
+  document.getElementById('confirmationModal').style.display = 'block';
 };
 
 // Shared function to handle Back button logic with debounce

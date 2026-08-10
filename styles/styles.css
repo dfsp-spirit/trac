@@ -1541,6 +1541,26 @@ body.carrying-activity .modal-close {
   background-color: #047857;
 }
 
+/* Copy Days: Submit Study button — looks like a normal button when inactive
+   so users know it exists, turns green when all days are complete. */
+.submit-study-btn {
+  opacity: 1;  /* always fully visible, not faded like default disabled */
+  transition: background-color 0.3s ease;
+}
+.submit-study-btn:disabled {
+  /* Inactive: match other toolbar buttons so it doesn't look broken */
+  background-color: var(--btn-bg, #6c757d);
+  color: white;
+  cursor: not-allowed;
+}
+.submit-study-btn.submit-ready {
+  background-color: #16a34a;
+  color: white;
+}
+.submit-study-btn.submit-ready:hover:not(:disabled) {
+  background-color: #15803d;
+}
+
 /* Floating add button for mobile */
 .floating-add-button {
   display: none; /* Hidden by default */

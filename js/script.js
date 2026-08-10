@@ -6327,9 +6327,18 @@ async function init() {
       console.log(`Current day index from URL: ${dayIndex}`);
     }
 
-    // Initialize first timeline using addNextTimeline
-    window.timelineManager.currentIndex = -1; // Start at -1 so first addNextTimeline() sets to 0
-    await addNextTimeline(); // Only add first timeline initially
+    // Copy Days: initialize ALL timelines immediately instead of revealing
+    // them one-by-one with "Next Timeline".  Users see the full picture from
+    // the start and can freely navigate between timelines.
+    window.timelineManager.currentIndex = -1;
+    for (let i = 0; i < window.timelineManager.keys.length; i++) {
+      await addNextTimeline();
+    }
+    // After adding all timelines, addNextTimeline leaves currentIndex on the
+    // last one.  Walk back to the first — it's the natural starting point.
+    while (window.timelineManager.currentIndex > 0) {
+      await goToPreviousTimeline();
+    }
 
     const restoredPendingState = await tryRestorePendingTimelineState(
       participantId,
