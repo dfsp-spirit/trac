@@ -87,6 +87,30 @@ window.customInputContext = {
   categoryName: null,
 };
 
+// ── Copy Days: sessionStorage helpers for template suppression ───────────
+// When a user saves a day (even empty), we record it so templates aren't
+// re-loaded on the next visit within the same browser session.  If the user
+// closes the tab and returns, templates are offered again — that's a fresh
+// session and the head-start is useful.
+
+function _daySavedKey(study, pid, dayIndex) {
+  return 'tud_saved_' + study + '_' + pid + '_' + dayIndex;
+}
+
+function markDaySaved(study, pid, dayIndex) {
+  try {
+    sessionStorage.setItem(_daySavedKey(study, pid, dayIndex), '1');
+  } catch (_) { /* storage full or unavailable — best effort */ }
+}
+
+function wasDaySaved(study, pid, dayIndex) {
+  try {
+    return sessionStorage.getItem(_daySavedKey(study, pid, dayIndex)) === '1';
+  } catch (_) { return false; }
+}
+
+window.markDaySaved = markDaySaved;
+
 function clearSelectedActivityButtons() {
   document.querySelectorAll('.activity-button.selected').forEach((btn) => {
     btn.classList.remove('selected');
@@ -5689,6 +5713,16 @@ async function saveAndSwitchToDay(targetDayIndex) {
     return;
   }
 
+  // Copy Days: mark the source day as saved so templates aren't re-loaded
+  // if the user intentionally saved an empty day.
+  const urlParams = new URLSearchParams(window.location.search);
+  const studyName = urlParams.get('study_name') ||
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short;
+  const pid = urlParams.get('pid');
+  if (studyName && pid) {
+    markDaySaved(studyName, pid, currentDayIndex);
+  }
+
   const url = new URL(window.location.href);
   url.searchParams.set('day_label_index', String(targetDayIndex));
   window.location.href = url.toString();
@@ -6561,6 +6595,7 @@ async function init() {
           } else if (
             !loadedActivitiesFromBackend &&
             TUD_SETTINGS.TEMPLATE_ENABLED !== false &&
+            !wasDaySaved(studyName, participantId, dayIndex) &&
             transformedData.template_activities &&
             transformedData.template_activities.length > 0
           ) {
@@ -6845,11 +6880,16 @@ window.addEventListener('beforeunload', () => {
 });
 
 /**
- * Copy Days: return all other day indices (excluding current) as potential
- * copy targets.  Each entry includes whether the day has data so the picker
- * can show empty vs. populated status.
+ * Copy Days: return all day indices (excluding `excludeIndex`) as potential
+ * copy targets.  Defaults to excluding the current viewing day — the "Copy
+ * this day" button uses this.  Right-click on a day button passes that day's
+ * index so the viewing day becomes a valid target.
  */
-function getAllTargetDayIndices() {
+function getAllTargetDayIndices(excludeIndex) {
+  if (excludeIndex === undefined) {
+    excludeIndex = getCurrentDayIndex();
+  }
+
   const studyDaysCount =
     window.timelineManager?.studyDaysCount ||
     window.studyConfigManager?.getStudyDaysCount() ||
@@ -6862,16 +6902,28 @@ function getAllTargetDayIndices() {
     : [];
 
   const currentDayIndex = getCurrentDayIndex();
+
   const targets = [];
   for (let i = 0; i < studyDaysCount; i++) {
-    if (i !== currentDayIndex) {
-      targets.push({
-        index: i,
-        hasData: dayIndicesWithData.includes(i),
-      });
+    if (i !== excludeIndex) {
+      // For the current viewing day, check in-memory state — the DB may
+      // be stale because template activities or local edits haven't been
+      // saved yet (or local deletions haven't been persisted).
+      const inDb = dayIndicesWithData.includes(i);
+      const isCurrent = i === currentDayIndex;
+      const hasData = isCurrent ? hasFrontendActivities() : inDb;
+
+      targets.push({ index: i, hasData });
     }
   }
   return targets;
+}
+
+/** True when the current viewing day has any activity blocks rendered. */
+function hasFrontendActivities() {
+  return (window.timelineManager?.keys || []).some(function (key) {
+    return (window.timelineManager.activities[key] || []).length > 0;
+  });
 }
 
 // Keep old name as alias for backward compatibility with any remaining callers.
@@ -6891,7 +6943,7 @@ function removeCopyDayContextMenu() {
 function showCopyTargetPicker(sourceDayIndex, event) {
   removeCopyDayContextMenu();
 
-  const targets = getAllTargetDayIndices();
+  const targets = getAllTargetDayIndices(sourceDayIndex);
   if (!targets.length) {
     return;
   }
@@ -6972,7 +7024,7 @@ function showCopyTargetPicker(sourceDayIndex, event) {
 function showCopySourcePicker(targetDayIndex, event) {
   removeCopyDayContextMenu();
 
-  const targets = getAllTargetDayIndices();
+  const targets = getAllTargetDayIndices(targetDayIndex);
   if (!targets.length) {
     return;
   }
@@ -7068,13 +7120,18 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
     return;
   }
 
-  // Copy Days: if target day already has data, ask for confirmation first
+  // Copy Days: if target day already has data, ask for confirmation first.
+  // For the current viewing day, check in-memory state (same logic as the
+  // picker) so the confirmation matches what the user sees.
   const dayIndicesWithData = Array.isArray(
     window.timelineManager?.dayIndicesWithData
   )
     ? window.timelineManager.dayIndicesWithData
     : [];
-  const targetHasData = dayIndicesWithData.includes(targetDayIndex);
+  const currentDayIndex = getCurrentDayIndex();
+  const targetHasData = (targetDayIndex === currentDayIndex)
+    ? hasFrontendActivities()
+    : dayIndicesWithData.includes(targetDayIndex);
 
   if (targetHasData) {
     const targetDayName =
@@ -7105,7 +7162,6 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
   // applies, and if the current day doesn't meet min_coverage the save fails
   // and we abort the copy before touching the DB.  We stay on the current
   // day — copying never advances day_label_index.
-  const currentDayIndex = getCurrentDayIndex();
   if (sourceDayIndex === currentDayIndex) {
     try {
       const saveResult = await sendData({
@@ -7242,6 +7298,14 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       if (timelineTitle && typeof currentDayIndex === 'number') {
         window.addCopyDayLink(timelineTitle, currentDayIndex);
       }
+    }
+
+    // Copy Days: if the copy target is the current viewing day, reload so
+    // the user immediately sees the new data instead of the old state.
+    if (targetDayIndex === currentDayIndex) {
+      setTimeout(function () {
+        window.location.reload();
+      }, 3000);
     }
   } catch (error) {
     showCopyToast(t('messages.copyError', { message: error.message }), true);

@@ -1376,6 +1376,16 @@ const handleNextButtonAction = async () => {
   });
 
   if (result?.success) {
+    // Copy Days: mark this day as saved so templates aren't re-loaded
+    // if the user intentionally saved an empty day.
+    const studyName = window.timelineManager?.study?.study_name_short ||
+      new URLSearchParams(window.location.search).get('study_name');
+    const pid = window.timelineManager?.study?.pid ||
+      new URLSearchParams(window.location.search).get('pid');
+    if (studyName && pid && typeof window.markDaySaved === 'function') {
+      window.markDaySaved(studyName, pid, currentDayIndex);
+    }
+
     const daySavedMsg = window.i18n
       ? window.i18n.t('messages.daySavedStayOnPage')
       : 'Day saved.';
