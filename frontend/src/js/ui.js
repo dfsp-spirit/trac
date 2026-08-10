@@ -1249,7 +1249,6 @@ function updateButtonStates() {
       lowerNavSubmitBtn.title = '';
     }
   }
-  }
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
   // min_coverage check as the Next/Submit buttons above.  Every activity
@@ -1513,7 +1512,6 @@ function initButtons() {
   if (navSubmitBtn) {
     navSubmitBtn.addEventListener('click', () => {
       handleNextButtonAction();
-    });
     });
   }
 
