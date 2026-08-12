@@ -205,21 +205,33 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
  *
  * @param {import('@playwright/test').Page} page
  */
-async function saveCurrentDay(page) {
+async function saveCurrentDay(page, { reenter = true } = {}) {
   const saveBtn = page.locator('#navSubmitBtn');
   await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
   await expect(saveBtn).toBeEnabled({ timeout: 3000 });
 
-  // handleNextButtonAction reloads the page after 1.5s on success.
-  // Wait for that navigation to happen, then settle.
-  const navPromise = page.waitForEvent('framenavigated', { timeout: 15000 }).catch(() => null);
-  await saveBtn.click();
-  await navPromise;
-  await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => null);
-  await page.waitForTimeout(500);
+  // handleNextButtonAction calls sendData() (with retry), then on success
+  // does setTimeout(() => window.location.reload(), 1500).
+  // The retry + reload can destroy the page context, so catch everything.
+  try {
+    await saveBtn.click();
+    // Wait for the reload to happen (up to 5s for retries + 1.5s delay)
+    await page.waitForTimeout(5000);
+  } catch {
+    // Page context destroyed by reload — that's expected.
+  }
 
-  // Re-enter the diary UI after the reload
-  await enterStudyIfNeeded(page);
+  // After the reload, wait for the page to settle.
+  try {
+    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+    await page.waitForTimeout(500);
+  } catch {
+    // Page may not be ready yet.
+  }
+
+  if (reenter) {
+    await enterStudyIfNeeded(page);
+  }
 }
 
 /**
@@ -268,10 +280,10 @@ async function copyDayTo(page, sourceDayIndex, targetDayIndex, { expectOverwrite
   await copyBtn.waitFor({ state: 'visible', timeout: 5000 });
   await copyBtn.click();
 
-  const picker = page.locator('#copyDayPicker');
+  const picker = page.locator('.copy-day-context-menu');
   await picker.waitFor({ state: 'visible', timeout: 5000 });
 
-  const targetItem = picker.locator('.copy-target-item').nth(targetDayIndex);
+  const targetItem = picker.locator('.copy-day-context-menu-item').nth(targetDayIndex);
   await targetItem.waitFor({ state: 'visible', timeout: 3000 });
   await targetItem.click();
 
@@ -304,10 +316,10 @@ async function rightClickCopyDay(page, sourceDayIndex, targetDayIndex, { expectO
   await sourceBtn.waitFor({ state: 'visible', timeout: 5000 });
   await sourceBtn.click({ button: 'right' });
 
-  const picker = page.locator('#copyDayPicker');
+  const picker = page.locator('.copy-day-context-menu');
   await picker.waitFor({ state: 'visible', timeout: 5000 });
 
-  const targetItem = picker.locator('.copy-target-item').nth(targetDayIndex);
+  const targetItem = picker.locator('.copy-day-context-menu-item').nth(targetDayIndex);
   await targetItem.waitFor({ state: 'visible', timeout: 3000 });
   await targetItem.click();
 
