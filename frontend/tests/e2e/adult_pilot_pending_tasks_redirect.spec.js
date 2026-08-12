@@ -231,6 +231,12 @@ test('adult_pilot_de: bernd with pending external tasks lands on tasks page afte
     expect(submitResponse.ok()).toBeTruthy();
   }
 
+  // Copy Days: explicitly submit the study so diary requirement is met.
+  const submitStudyResponse = await request.post(
+    `${API_BASE_URL}/studies/${STUDY_NAME}/participants/${participantId}/submit`
+  );
+  expect(submitStudyResponse.ok()).toBeTruthy();
+
   await page.goto(
     `index.html?study_name=${STUDY_NAME}&pid=${participantId}&lang=de&instructions=completed`,
     {

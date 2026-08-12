@@ -203,6 +203,12 @@ test('adult_pilot_de closed-study full task flow with simulated external callbac
     expect(submitResponse.ok()).toBeTruthy();
   }
 
+
+  // Copy Days: explicitly submit the study so diary requirement is met.
+  const submitStudyResponse = await request.post(
+    `${API_BASE_URL}/studies/${STUDY_NAME}/participants/${participantId}/submit`
+  );
+  expect(submitStudyResponse.ok()).toBeTruthy();
   await page.context().route('**/external-tasks/*/launch?*', async (route) => {
     const requestUrl = new URL(route.request().url());
     const taskKeyMatch = requestUrl.pathname.match(/\/external-tasks\/([^/]+)\/launch/);
@@ -366,6 +372,12 @@ test('adult_pilot_de full external-task flow preserves return_url to thank-you p
     expect(submitResponse.ok()).toBeTruthy();
   }
 
+
+  // Copy Days: explicitly submit the study so diary requirement is met.
+  const submitStudyResponse = await request.post(
+    `${API_BASE_URL}/studies/${STUDY_NAME}/participants/${participantId}/submit`
+  );
+  expect(submitStudyResponse.ok()).toBeTruthy();
   await page.context().route('**/external-tasks/*/launch?*', async (route) => {
     const requestUrl = new URL(route.request().url());
     const taskKeyMatch = requestUrl.pathname.match(/\/external-tasks\/([^/]+)\/launch/);
