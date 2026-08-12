@@ -921,6 +921,9 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('Today', x, pad.top - 8);
             }
+
+            // Mark as drawn so e2e tests can reliably detect completion
+            canvas.dataset.drawn = 'true';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
