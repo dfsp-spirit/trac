@@ -40,28 +40,22 @@ test('admin study detail -> progress tab shows cumulative completion chart', asy
   const canvas = page.locator('canvas[id^="completionChart-"]');
   await expect(canvas).toBeVisible();
 
-  // Verify the chart has actually been drawn. Chart.js renders async via
-  // requestAnimationFrame, so poll until non-black pixels appear (flaky on
-  // slower CI runners like Firefox/Chrome if we check immediately).
-  const hasDrawing = await canvas.evaluate((el) => {
-    const ctx = el.getContext('2d');
-    if (!ctx) return false;
-    const imageData = ctx.getImageData(60, 40, 100, 100);
-    let totalNonZero = 0;
-    for (let i = 0; i < imageData.data.length; i += 4) {
-      if (imageData.data[i] > 0 || imageData.data[i + 1] > 0 || imageData.data[i + 2] > 0) {
-        totalNonZero++;
-      }
-    }
-    return totalNonZero > 10;
-  });
-  // If canvas hasn't rendered yet, wait and retry (animation may be in progress)
-  if (!hasDrawing) {
-    await page.waitForTimeout(1500);
-    const retryDrawing = await canvas.evaluate((el) => {
+  // Verify the chart has actually been drawn. The canvas uses pure Canvas 2D
+  // API with devicePixelRatio scaling, so sample from the central plot area
+  // using proportional coordinates to work across all DPR values and browsers.
+  async function canvasHasDrawing(canvasEl) {
+    return canvasEl.evaluate((el) => {
       const ctx = el.getContext('2d');
       if (!ctx) return false;
-      const imageData = ctx.getImageData(60, 40, 100, 100);
+      // Sample ~30%×40% of the canvas centered on the plot area, independent
+      // of devicePixelRatio (which scales the internal bitmap).
+      const w = el.width;
+      const h = el.height;
+      const sx = Math.floor(w * 0.2);
+      const sy = Math.floor(h * 0.15);
+      const sw = Math.floor(w * 0.3);
+      const sh = Math.floor(h * 0.4);
+      const imageData = ctx.getImageData(sx, sy, sw, sh);
       let totalNonZero = 0;
       for (let i = 0; i < imageData.data.length; i += 4) {
         if (imageData.data[i] > 0 || imageData.data[i + 1] > 0 || imageData.data[i + 2] > 0) {
@@ -70,6 +64,12 @@ test('admin study detail -> progress tab shows cumulative completion chart', asy
       }
       return totalNonZero > 10;
     });
+  }
+
+  const hasDrawing = await canvasHasDrawing(canvas);
+  if (!hasDrawing) {
+    await page.waitForTimeout(1500);
+    const retryDrawing = await canvasHasDrawing(canvas);
     expect(retryDrawing).toBe(true);
   } else {
     expect(hasDrawing).toBe(true);
