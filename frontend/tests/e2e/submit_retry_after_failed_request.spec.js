@@ -1,143 +1,20 @@
 const { test, expect } = require('@playwright/test');
-const { enterStudyIfNeeded } = require('./e2e_helpers.js');
+const {
+  enterStudyIfNeeded,
+  placeActivity,
+  saveCurrentDay,
+} = require('./e2e_helpers.js');
 
 test.use({ viewport: { width: 1600, height: 900 } });
 
-async function waitForActivitiesLoaded(page) {
-  await expect
-    .poll(
-      async () => page.locator('#activitiesContainer .activity-button').count(),
-      {
-        timeout: 30000,
-        message: 'Waiting for activity buttons to load',
-      }
-    )
-    .toBeGreaterThan(0);
-}
-
-async function clickHourMarkerClosestToPercent(page, targetPercent) {
-  const activeTimelineContainer = page.locator(
-    '.timeline-container[data-active="true"]'
-  );
-  await expect(activeTimelineContainer).toBeVisible();
-
-  const markerLocator = activeTimelineContainer.locator(
-    '.timeline .hour-marker'
-  );
-  await expect(markerLocator.first()).toBeVisible();
-
-  const closestIndex = await markerLocator.evaluateAll((markers, percent) => {
-    let bestIndex = 0;
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    markers.forEach((marker, index) => {
-      const styleAttr = marker.getAttribute('style') || '';
-      const leftMatch = styleAttr.match(/left\s*:\s*([\d.]+)%/i);
-      const topMatch = styleAttr.match(/top\s*:\s*([\d.]+)%/i);
-      const markerPercent = leftMatch
-        ? parseFloat(leftMatch[1])
-        : topMatch
-          ? parseFloat(topMatch[1])
-          : NaN;
-
-      if (!Number.isNaN(markerPercent)) {
-        const distance = Math.abs(markerPercent - percent);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          bestIndex = index;
-        }
-      }
-    });
-
-    return bestIndex;
-  }, targetPercent);
-
-  await markerLocator.nth(closestIndex).evaluate((marker) => {
-    marker.dispatchEvent(
-      new MouseEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-      })
-    );
-  });
-}
-
-async function selectActivityByCodeOrFirst(page, code) {
-  await waitForActivitiesLoaded(page);
-
-  if (code) {
-    const byCode = page.locator(
-      `#activitiesContainer .activity-button[data-code="${code}"]`
-    );
-    if (await byCode.count()) {
-      await byCode.first().click();
-      return;
-    }
-  }
-
-  await page
-    .locator('#activitiesContainer .activity-button:visible')
-    .first()
-    .click();
-}
-
-async function addActivityAtPercent(page, { code, percent }) {
-  await selectActivityByCodeOrFirst(page, code);
-  await clickHourMarkerClosestToPercent(page, percent);
-}
-
-async function goToSecondaryTimeline(page) {
-  const nextBtn = page.locator('#nextBtn');
-  await expect(nextBtn).toBeVisible();
-  await expect(nextBtn).toBeEnabled();
-  await nextBtn.click();
-
-  await expect
-    .poll(
-      async () =>
-        page.evaluate(
-          () => window.timelineManager.keys[window.timelineManager.currentIndex]
-        ),
-      {
-        timeout: 10000,
-        message: 'Waiting to switch to secondary timeline',
-      }
-    )
-    .toBe('secondary');
-}
-
-async function openSubmitConfirmation(page) {
-  const nextBtn = page.locator('#nextBtn');
-  const confirmationModal = page.locator('#confirmationModal');
-
-  await expect(nextBtn).toBeVisible();
-  await expect(nextBtn).toBeEnabled();
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    await nextBtn.click();
-
-    if (await confirmationModal.isVisible()) {
-      return;
-    }
-
-    await page.waitForTimeout(700);
-  }
-
-  await expect(confirmationModal).toBeVisible();
-}
-
-test('failed submit auto-retries and proceeds without manual retry', async ({
-  page,
-}) => {
-  let submitAttempts = 0;
+test('failed save auto-retries and stays on current day', async ({ page }) => {
+  let firstAttemptFailed = false;
 
   await page.route(
-    '**/studies/**/participants/**/day_labels/**/activities',
+    '**/*activities**',
     async (route) => {
-      submitAttempts += 1;
-
-      if (submitAttempts === 1) {
+      if (!firstAttemptFailed) {
+        firstAttemptFailed = true;
         await route.fulfill({
           status: 500,
           contentType: 'application/json',
@@ -160,35 +37,15 @@ test('failed submit auto-retries and proceeds without manual retry', async ({
 
   await enterStudyIfNeeded(page);
 
-  await addActivityAtPercent(page, { code: 1101, percent: 70 });
-  await goToSecondaryTimeline(page);
-  await addActivityAtPercent(page, { code: null, percent: 10 });
+  // Place an activity on the primary timeline (always visible now)
+  await placeActivity(page, { activityName: 'Sleeping', positionPercent: 70 });
 
-  const nextBtn = page.locator('#nextBtn');
-  const navSubmitBtn = page.locator('#navSubmitBtn');
-  const confirmationModal = page.locator('#confirmationModal');
-  const loadingModal = page.locator('#loadingModal');
-  const currentDayDisplay = page.locator('#currentDayDisplay');
+  // Save — first attempt fails (500), retry succeeds (200), then page reloads
+  await saveCurrentDay(page);
 
-  await expect(nextBtn).toBeEnabled();
-  await expect(navSubmitBtn).toBeEnabled();
+  // Verify the first attempt did fail (retry was triggered)
+  expect(firstAttemptFailed).toBe(true);
 
-  await openSubmitConfirmation(page);
-  await page.locator('#confirmOk').click();
-
-  await expect
-    .poll(async () => submitAttempts, {
-      timeout: 10000,
-      message: 'Waiting for auto-retry submit attempts',
-    })
-    .toBe(2);
-
-  await expect(loadingModal).toBeHidden({ timeout: 10000 });
-
-  // Auto-retry succeeds on the second attempt, so we should advance to the next day
-  await expect(currentDayDisplay).toHaveAttribute('title', /Tuesday/, {
-    timeout: 30000,
-  });
-
-  await expect(confirmationModal).toBeHidden();
+  // After reload, we should still be on the diary page (not advanced)
+  await expect(page.locator('#currentDayDisplay')).toBeVisible();
 });

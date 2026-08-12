@@ -1015,6 +1015,25 @@ async def test_study_config_tracks_instruction_completion_and_study_completion_s
             )
             assert submit_response.status_code == 200
 
+        # Before submitting the study, participant_has_completed_study should
+        # be False (Copy Days: completion == explicit submit, not all-days-filled).
+        pre_submit_config_response = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": "p1"},
+        )
+        assert pre_submit_config_response.status_code == 200
+        pre_submit_config = pre_submit_config_response.json()
+        assert pre_submit_config["participant_has_completed_study"] is False
+
+        # Submit the study explicitly (new Copy Days endpoint).
+        submit_study_response = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/p1/submit",
+        )
+        assert submit_study_response.status_code == 200
+        submit_study_data = submit_study_response.json()
+        assert submit_study_data["study_submitted_at"] is not None
+
+        # After submission, participant_has_completed_study should be True.
         completed_study_config_response = await client.get(
             f"{BASE_URL}/api/studies/{study_name_short}/study-config",
             params={"participant_id": "p1"},

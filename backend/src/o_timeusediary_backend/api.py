@@ -8188,6 +8188,7 @@ class StudyConfigResponse(BaseModel):
     instructions_completed: bool = False
     instructions_completed_at: Optional[datetime] = None
     participant_has_completed_study: bool = False
+    study_submitted_at: Optional[datetime] = None
     external_tasks: List[ParticipantExternalTaskResponse] = []
     all_external_tasks_confirmed: bool = False
     timelines: List[TimelineConfigResponse]
@@ -8365,6 +8366,7 @@ def get_study_config(
     consent_decided_at = None
     instructions_completed = False
     instructions_completed_at = None
+    study_submitted_at = None
     if participant_id is not None:
         study_participant = _get_study_participant_association(
             session, study, participant_id
@@ -8374,6 +8376,7 @@ def get_study_config(
             consent_decided_at = study_participant.consent_decided_at
             instructions_completed = bool(study_participant.instructions_completed)
             instructions_completed_at = study_participant.instructions_completed_at
+            study_submitted_at = study_participant.study_submitted_at
 
     participant_external_tasks = _get_participant_external_tasks(
         session, study, participant_id, selected_language, len(day_labels)
@@ -8420,6 +8423,7 @@ def get_study_config(
         instructions_completed=instructions_completed,
         instructions_completed_at=instructions_completed_at,
         participant_has_completed_study=participant_has_completed_study,
+        study_submitted_at=study_submitted_at,
         external_tasks=participant_external_tasks,
         all_external_tasks_confirmed=all_external_tasks_confirmed,
         timelines=timeline_responses,

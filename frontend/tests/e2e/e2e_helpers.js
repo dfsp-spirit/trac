@@ -170,7 +170,208 @@ async function enterStudyIfNeeded(page) {
   });
 }
 
+// ── Copy Days helpers ──────────────────────────────────────────────────────
+
+function isThankYouUrl(url) {
+  return /pages\/thank-you\.html/.test(url);
+}
+
+/**
+ * Place an activity on the first timeline at the given position.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {object} options
+ * @param {string} options.activityName - text label of the activity
+ * @param {number} [options.positionPercent=20] - horizontal position (0-100)
+ */
+async function placeActivity(page, { activityName, positionPercent = 20 }) {
+  const activityItem = page.locator('.activity-button', { hasText: activityName }).first();
+  await activityItem.waitFor({ state: 'visible', timeout: 5000 });
+  await activityItem.click();
+
+  const timeline = page.locator('.timelines-wrapper .timeline-container').first();
+  const box = await timeline.boundingBox();
+  if (!box) {
+    throw new Error('Timeline not found for placing activity');
+  }
+  const x = box.x + (box.width * positionPercent) / 100;
+  const y = box.y + box.height / 2;
+  await page.mouse.click(x, y);
+  await page.waitForTimeout(300);
+}
+
+/**
+ * Click "Save Day" and wait for save to complete. Page stays on current day.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function saveCurrentDay(page) {
+  const saveBtn = page.locator('#navSubmitBtn');
+  await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await expect(saveBtn).toBeEnabled({ timeout: 3000 });
+
+  // handleNextButtonAction reloads the page after 1.5s on success.
+  // Wait for that navigation to happen, then settle.
+  const navPromise = page.waitForEvent('framenavigated', { timeout: 15000 }).catch(() => null);
+  await saveBtn.click();
+  await navPromise;
+  await page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => null);
+  await page.waitForTimeout(500);
+
+  // Re-enter the diary UI after the reload
+  await enterStudyIfNeeded(page);
+}
+
+/**
+ * Click a day button to navigate. Auto-saves current day first.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} dayIndex - 0-based
+ */
+async function switchToDay(page, dayIndex) {
+  const dayButtons = page.locator('#previousDaysSwitchRow .previous-day-btn');
+  const button = dayButtons.nth(dayIndex);
+  await button.waitFor({ state: 'visible', timeout: 5000 });
+  await button.click();
+  await page.waitForTimeout(1500);
+  await page.locator('#currentDayDisplay').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Get current day index from page URL.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<number>}
+ */
+async function getCurrentDayIndex(page) {
+  const url = new URL(page.url());
+  const idx = url.searchParams.get('day_label_index');
+  return idx !== null ? parseInt(idx, 10) : 0;
+}
+
+/**
+ * Copy activities source→target via the copy picker. Handles overwrite dialog.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} sourceDayIndex
+ * @param {number} targetDayIndex
+ * @param {object} [options]
+ * @param {boolean} [options.expectOverwriteConfirm=false]
+ */
+async function copyDayTo(page, sourceDayIndex, targetDayIndex, { expectOverwriteConfirm = false } = {}) {
+  const currentIdx = await getCurrentDayIndex(page);
+  if (currentIdx !== sourceDayIndex) {
+    await switchToDay(page, sourceDayIndex);
+  }
+
+  const copyBtn = page.locator('.copy-day-link').first();
+  await copyBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await copyBtn.click();
+
+  const picker = page.locator('#copyDayPicker');
+  await picker.waitFor({ state: 'visible', timeout: 5000 });
+
+  const targetItem = picker.locator('.copy-target-item').nth(targetDayIndex);
+  await targetItem.waitFor({ state: 'visible', timeout: 3000 });
+  await targetItem.click();
+
+  if (expectOverwriteConfirm) {
+    const confirmDialog = page.locator('#copyOverwriteConfirm');
+    await confirmDialog.waitFor({ state: 'visible', timeout: 3000 });
+    await page.locator('#copyOverwriteYes').click();
+  }
+
+  if (targetDayIndex === currentIdx) {
+    await page.waitForTimeout(4000);
+  } else {
+    await page.waitForTimeout(1500);
+  }
+  await expect(picker).toBeHidden({ timeout: 5000 });
+}
+
+/**
+ * Right-click a day button to copy that day's data to another.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} sourceDayIndex
+ * @param {number} targetDayIndex
+ * @param {object} [options]
+ * @param {boolean} [options.expectOverwriteConfirm=false]
+ */
+async function rightClickCopyDay(page, sourceDayIndex, targetDayIndex, { expectOverwriteConfirm = false } = {}) {
+  const dayButtons = page.locator('#previousDaysSwitchRow .previous-day-btn');
+  const sourceBtn = dayButtons.nth(sourceDayIndex);
+  await sourceBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await sourceBtn.click({ button: 'right' });
+
+  const picker = page.locator('#copyDayPicker');
+  await picker.waitFor({ state: 'visible', timeout: 5000 });
+
+  const targetItem = picker.locator('.copy-target-item').nth(targetDayIndex);
+  await targetItem.waitFor({ state: 'visible', timeout: 3000 });
+  await targetItem.click();
+
+  if (expectOverwriteConfirm) {
+    const confirmDialog = page.locator('#copyOverwriteConfirm');
+    await confirmDialog.waitFor({ state: 'visible', timeout: 3000 });
+    await page.locator('#copyOverwriteYes').click();
+  }
+
+  await page.waitForTimeout(1500);
+  await expect(picker).toBeHidden({ timeout: 5000 });
+}
+
+/**
+ * Click "Submit Study" and verify redirect to thank-you page.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function submitStudy(page) {
+  const submitBtn = page.locator('#submitStudyBtn');
+  await submitBtn.waitFor({ state: 'visible', timeout: 5000 });
+  await expect(submitBtn).toBeEnabled({ timeout: 3000 });
+  await submitBtn.click();
+  await page.waitForURL((url) => isThankYouUrl(url.toString()), { timeout: 10000 });
+}
+
+/**
+ * Check whether a day button has the green checkmark.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} dayIndex
+ * @returns {Promise<boolean>}
+ */
+async function isDayButtonGreen(page, dayIndex) {
+  const dayButtons = page.locator('#previousDaysSwitchRow .previous-day-btn');
+  const button = dayButtons.nth(dayIndex);
+  return await button.evaluate((el) => el.classList.contains('day-complete'));
+}
+
+/**
+ * Count day buttons visible in the switch row.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<number>}
+ */
+async function getDayButtonCount(page) {
+  const row = page.locator('#previousDaysSwitchRow');
+  if (!(await row.isVisible())) {
+    return 0;
+  }
+  return await row.locator('.previous-day-btn').count();
+}
+
 module.exports = {
   enterConsentAndInstructionsIfNeeded,
   enterStudyIfNeeded,
+  // Copy Days helpers
+  placeActivity,
+  saveCurrentDay,
+  switchToDay,
+  getCurrentDayIndex,
+  copyDayTo,
+  rightClickCopyDay,
+  submitStudy,
+  isDayButtonGreen,
+  getDayButtonCount,
 };
