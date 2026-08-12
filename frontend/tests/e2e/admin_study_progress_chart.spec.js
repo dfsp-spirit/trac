@@ -40,24 +40,40 @@ test('admin study detail -> progress tab shows cumulative completion chart', asy
   const canvas = page.locator('canvas[id^="completionChart-"]');
   await expect(canvas).toBeVisible();
 
-  // Verify the chart has actually been drawn by checking that the canvas
-  // has non-zero width/height AND has pixel content (not just blank)
+  // Verify the chart has actually been drawn. Chart.js renders async via
+  // requestAnimationFrame, so poll until non-black pixels appear (flaky on
+  // slower CI runners like Firefox/Chrome if we check immediately).
   const hasDrawing = await canvas.evaluate((el) => {
     const ctx = el.getContext('2d');
     if (!ctx) return false;
-    // Check a few pixels in the chart area to see if anything was drawn
-    // (the area inside the padding where the plot should be)
     const imageData = ctx.getImageData(60, 40, 100, 100);
-    // Sum up non-zero pixel values - if any pixel has been drawn, it will be > 0
     let totalNonZero = 0;
     for (let i = 0; i < imageData.data.length; i += 4) {
       if (imageData.data[i] > 0 || imageData.data[i + 1] > 0 || imageData.data[i + 2] > 0) {
         totalNonZero++;
       }
     }
-    return totalNonZero > 10; // at least 10 non-black pixels indicate a drawing
+    return totalNonZero > 10;
   });
-  expect(hasDrawing).toBe(true);
+  // If canvas hasn't rendered yet, wait and retry (animation may be in progress)
+  if (!hasDrawing) {
+    await page.waitForTimeout(1500);
+    const retryDrawing = await canvas.evaluate((el) => {
+      const ctx = el.getContext('2d');
+      if (!ctx) return false;
+      const imageData = ctx.getImageData(60, 40, 100, 100);
+      let totalNonZero = 0;
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i] > 0 || imageData.data[i + 1] > 0 || imageData.data[i + 2] > 0) {
+          totalNonZero++;
+        }
+      }
+      return totalNonZero > 10;
+    });
+    expect(retryDrawing).toBe(true);
+  } else {
+    expect(hasDrawing).toBe(true);
+  }
 
   // Verify the legend is visible
   await expect(
