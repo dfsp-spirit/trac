@@ -115,7 +115,7 @@ class StudyExternalTask(SQLModel, table=True):
     study_id: int = Field(foreign_key="studies.id", index=True)
     task_key: str = Field(index=True, sa_type=String(255))
     name: str = Field(sa_type=String(512))
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, sa_type=String(2048))
     url: str = Field(sa_type=String(2048))
     confirmation_type: str = Field(default="none", index=True, sa_type=String(64))
     task_level: int = Field(default=1, index=True)
@@ -220,7 +220,7 @@ class StudyAvailableTimeline(SQLModel, table=True):
     study_id: int = Field(foreign_key="studies.id", index=True)
     timeline_key: str = Field(index=True, sa_type=String(255))
     display_name: str = Field(sa_type=String(255))
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, sa_type=String(2048))
     mode: str = Field(index=True, sa_type=String(64))
     min_coverage: Optional[int] = None
     sort_order: int = Field(default=0, index=True)
@@ -306,11 +306,11 @@ class StudyAvailableActivityI18n(SQLModel, table=True):
     activity_id: int = Field(foreign_key="study_available_activities.id", index=True)
     language: str = Field(index=True, sa_type=String(32))
     name: str = Field(index=True, sa_type=String(255))
-    label: Optional[str] = None
-    short: Optional[str] = None
-    vshort: Optional[str] = None
-    examples: Optional[str] = None
-    color: Optional[str] = None
+    label: Optional[str] = Field(default=None, sa_type=String(255))
+    short: Optional[str] = Field(default=None, sa_type=String(255))
+    vshort: Optional[str] = Field(default=None, sa_type=String(255))
+    examples: Optional[str] = Field(default=None, sa_type=String(2048))
+    color: Optional[str] = Field(default=None, sa_type=String(64))
     frequency_options: Optional[List[Dict[str, str]]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
@@ -370,7 +370,7 @@ class Timeline(SQLModel, table=True):
     display_name: str = Field(
         sa_type=String(255)
     )  # "Main Activity", "Digital Media Use", "Device"
-    description: Optional[str] = None
+    description: Optional[str] = Field(default=None, sa_type=String(2048))
     mode: str = Field(
         index=True, sa_type=String(64)
     )  # "single-choice", "multiple-choice"
@@ -435,9 +435,9 @@ class Activity(SQLModel, table=True):
     color: Optional[str] = Field(
         default=None, sa_type=String(64)
     )  # e.g., "#FF0000", used in frontend for display
-    category: Optional[str] = (
-        None  # e.g., "leisure", "work", "commuting", used for grouping in frontend
-    )
+    category: Optional[str] = Field(
+        default=None, sa_type=String(255)
+    )  # e.g., "leisure", "work", "commuting", used for grouping in frontend
     frequency_key: Optional[str] = Field(default=None, index=True, sa_type=String(128))
 
     # Hierarchy information
