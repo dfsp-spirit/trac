@@ -33,7 +33,9 @@ def upgrade() -> None:
             "hide_server_wide_links",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("false"),
+            # "0" instead of "false": SQL Server does not accept `false` as a
+            # DEFAULT constant for BIT columns; `0` is valid on all DBMSes.
+            server_default=sa.text("0"),
         ),
     )
 
