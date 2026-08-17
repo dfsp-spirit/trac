@@ -33,9 +33,13 @@ def upgrade() -> None:
             "hide_server_wide_links",
             sa.Boolean(),
             nullable=False,
-            # "0" instead of "false": SQL Server does not accept `false` as a
-            # DEFAULT constant for BIT columns; `0` is valid on all DBMSes.
-            server_default=sa.text("0"),
+            # Use a real boolean literal so SQLAlchemy compiles it per dialect:
+            #   PostgreSQL/SQLite -> DEFAULT false / 0
+            #   MSSQL (BIT)        -> DEFAULT 0
+            #   MySQL/MariaDB      -> DEFAULT false
+            # A raw text "0" breaks PostgreSQL, where BOOLEAN DEFAULT must be
+            # a boolean, not an integer.
+            server_default=sa.false(),
         ),
     )
 
