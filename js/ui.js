@@ -12,6 +12,7 @@ import {
   addNextTimeline,
   goToPreviousTimeline,
   renderActivities,
+  getCurrentDayIndex,
 } from './script.js';
 import { DEBUG_MODE } from './constants.js';
 
@@ -1165,15 +1166,6 @@ function updateButtonStates() {
   //console.log('Total timelines:', totalTimelines);
   //console.log('Is last timeline:', isLastTimeline);
 
-  const allTimelinesMeetMinCoverage = window.timelineManager.keys.every(
-    (timelineKey) => {
-      const timelineMetadata = window.timelineManager.metadata[timelineKey];
-      const timelineMinCoverage = parseInt(timelineMetadata?.minCoverage) || 0;
-      const timelineCoverage = getCoverageForTimelineKey(timelineKey);
-      return timelineCoverage >= timelineMinCoverage;
-    }
-  );
-
   // Copy Days feature: Save is always available regardless of min_coverage.
   // The green/gray day buttons show completion status; the Submit Study
   // button enforces the final gate.
@@ -1244,8 +1236,57 @@ function updateButtonStates() {
 }
 
 /**
+ * Whether the currently loaded day meets min_coverage for ALL of its
+ * timelines, computed from the live client state (not the database).
+ *
+ * Mirrors the backend notion in `_get_days_meeting_min_coverage()`:
+ * - If at least one timeline imposes a `min_coverage > 0`, every such
+ *   timeline must be covered by the current client activities.
+ * - If no timeline imposes a requirement, the day counts as complete once it
+ *   has any activity (the backend falls back to "has any data").
+ *
+ * Used by the Submit Study gate so unsaved edits (e.g. deleting activities so
+ * min_coverage is no longer met) gray out the button immediately, without
+ * waiting for a save + backend round-trip.
+ */
+function getCurrentDayMeetsMinCoverage() {
+  const keys = window.timelineManager?.keys;
+  if (!Array.isArray(keys) || keys.length === 0) {
+    return false; // No timelines loaded yet -> don't count the day as complete.
+  }
+
+  const requiredTimelines = keys.filter((key) => {
+    const minCoverage =
+      parseInt(window.timelineManager.metadata?.[key]?.minCoverage) || 0;
+    return minCoverage > 0;
+  });
+
+  if (requiredTimelines.length === 0) {
+    // No min_coverage requirements: a day counts as complete once it has any
+    // data, matching the backend's "_get_completed_day_indices" fallback.
+    return keys.some(
+      (key) => (window.timelineManager.activities?.[key] || []).length > 0
+    );
+  }
+
+  return requiredTimelines.every((key) => {
+    const minCoverage =
+      parseInt(window.timelineManager.metadata[key].minCoverage) || 0;
+    return getCoverageForTimelineKey(key) >= minCoverage;
+  });
+}
+
+/**
  * Copy Days: Enable the Submit Study button only when ALL days meet
- * min_coverage in the database.  Shows a tooltip listing incomplete days.
+ * min_coverage.  Shows a tooltip listing incomplete days.
+ *
+ * Hybrid gate:
+ * - Days other than the currently loaded one are evaluated against the
+ *   DB-derived set (`dayIndicesMeetMinCoverage`).  Those days cannot be
+ *   "dirty" because switching days always saves first.
+ * - The current day is evaluated against the live client state instead, so
+ *   unsaved edits (e.g. deleting activities so min_coverage is no longer met)
+ *   gray out the button immediately.
  */
 function updateSubmitStudyButton() {
   const btn = document.getElementById('submitStudyBtn');
@@ -1262,7 +1303,22 @@ function updateSubmitStudyButton() {
     window.timelineManager?.studyDaysCount ||
     0;
 
-  const allComplete = dayIndicesMeetMinCoverage.length >= totalDays;
+  const currentDayIndex = getCurrentDayIndex();
+
+  const incomplete = [];
+  for (let i = 0; i < totalDays; i++) {
+    if (i === currentDayIndex) {
+      continue; // Current day is checked against live client state below.
+    }
+    if (!dayIndicesMeetMinCoverage.includes(i)) {
+      incomplete.push(i + 1);
+    }
+  }
+  if (!getCurrentDayMeetsMinCoverage()) {
+    incomplete.push(currentDayIndex + 1);
+  }
+
+  const allComplete = incomplete.length === 0;
 
   if (allComplete) {
     btn.disabled = false;
@@ -1271,12 +1327,6 @@ function updateSubmitStudyButton() {
   } else {
     btn.disabled = true;
     btn.classList.remove('submit-ready');
-    const incomplete = [];
-    for (let i = 0; i < totalDays; i++) {
-      if (!dayIndicesMeetMinCoverage.includes(i)) {
-        incomplete.push(i + 1);
-      }
-    }
     const t = window.i18n && window.i18n.isReady()
       ? window.i18n.t.bind(window.i18n)
       : function(k) { return k; };
@@ -1610,7 +1660,11 @@ function initButtons() {
     backButton.addEventListener('click', handleBackButtonAction);
   }
 
-  // Copy Days: Submit Study button — POST to submit endpoint, redirect to thank-you
+  // Copy Days: Submit Study button — save the current day first, then POST to
+  // the submit endpoint and redirect to thank-you.  Saving first guarantees
+  // that the state the participant sees is what gets submitted (the backend
+  // validates all days meet min_coverage against the DB on submit), so unsaved
+  // edits are never silently discarded.
   const submitStudyBtn = document.getElementById('submitStudyBtn');
   if (submitStudyBtn) {
     submitStudyBtn.addEventListener('click', async function () {
@@ -1634,7 +1688,34 @@ function initButtons() {
         return;
       }
 
+      const reenableAfterFailure = () => {
+        submitStudyBtn.disabled = false;
+        updateButtonStates();
+      };
+
       try {
+        // Persist the current day before submitting so the backend validates
+        // the exact visible state.  Submit is a rare explicit action, so the
+        // extra save round-trip is acceptable.
+        const currentDayIndex = getCurrentDayIndex();
+        const saveResult = await sendData({
+          shouldRedirect: false,
+          isLastDay: false,
+          currentDayIndex,
+        });
+
+        if (!saveResult?.success) {
+          const submitErrorMessage = window.i18n
+            ? window.i18n.t('messages.submitError')
+            : 'Error saving diary';
+          const errorDetails = saveResult?.error ? `: ${saveResult.error}` : '';
+          if (window.showToast) {
+            window.showToast(submitErrorMessage + errorDetails, 'error', 5000);
+          }
+          reenableAfterFailure();
+          return;
+        }
+
         const apiUrl = TUD_SETTINGS.API_BASE_URL;
         const response = await fetch(
           apiUrl + '/studies/' + encodeURIComponent(studyName) +
@@ -1652,7 +1733,7 @@ function initButtons() {
               5000
             );
           }
-          submitStudyBtn.disabled = false;
+          reenableAfterFailure();
           return;
         }
 
@@ -1666,7 +1747,7 @@ function initButtons() {
         if (window.showToast) {
           window.showToast('Network error submitting study', 'error', 5000);
         }
-        submitStudyBtn.disabled = false;
+        reenableAfterFailure();
       }
     });
   }
