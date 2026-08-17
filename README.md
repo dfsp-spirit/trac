@@ -97,21 +97,6 @@ uv run tud db current
 ```
 
 
-### Important: Large Request Handling for non-root users in local development
-
-TRAC supports exporting and importing study configurations with embedded activity definitions, which can result in large HTTP POST request bodies (typically 10-50 KB depending on the number of activities and languages supported).
-
-For nginx, the size can become so large that it writes requests to a temp dir instead of relying on in-memory handling. This is no problem normally, as a dir for that should be configured by default, but for the dev scripts, where you run nginx without root priviledges as your own user, that directory is not usable. You will therefor need to:
-
-- **nginx**: Configure a `client_body_temp_path` directive in your nginx configuration to a directory where the nginx process has write permissions. See the [developer documentation](dev_tools/local_nginx/README.md) for details.
-- **Apache**: Ensure the `LimitRequestBody` directive is set high enough (default 10 MB should be sufficient).
-- **Other web servers**: Verify that large POST body handling is configured appropriately for your setup.
-
-If you encounter HTTP 413 (Payload Too Large) or 500 errors when importing study configurations, the root cause is typically insufficient request body handling configuration in your web server.
-
-As mentioned before, this should NOT be need for production.
-
-
 ### 3. Study Configuration
 
 > **👉 Scientists and study administrators**: See the dedicated guide
@@ -233,7 +218,25 @@ sudo apt install nginx git postgresql
 curl -LsSf https://astral.sh/uv/install.sh | sh  # get uv for your user
 ```
 
-Clone repo and change into it:
+
+
+#### Important: Large Request Handling for non-root users in local development
+
+TRAC supports exporting and importing study configurations with embedded activity definitions, which can result in large HTTP POST request bodies (typically 10-50 KB depending on the number of activities and languages supported).
+
+For nginx, the size can become so large that it writes requests to a temp dir instead of relying on in-memory handling. This is no problem in production, as a dir for that is configured by default, but for the dev scripts, where you run nginx without root priviledges as your own user, that system directory is not writeable by your user. You will therefor need to:
+
+- **nginx**: Configure a `client_body_temp_path` directive in your nginx configuration to a directory where the nginx process has write permissions. See the [developer documentation](dev_tools/local_nginx/README.md) for details.
+- **Apache**: Ensure the `LimitRequestBody` directive is set high enough (default 10 MB should be sufficient).
+- **Other web servers**: Verify that large POST body handling is configured appropriately for your setup.
+
+If you encounter HTTP 413 (Payload Too Large) or 500 errors when importing study configurations, the root cause is typically insufficient request body handling configuration in your web server.
+
+As mentioned before, this should NOT be need for production.
+
+Okay, let us continue:
+
+Clone the repo and change into it:
 
 ```bash
 git clone https://github.com/dfsp-spirit/trac
