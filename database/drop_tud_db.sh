@@ -71,11 +71,17 @@ fi
 
 echo "Dropping database '$TUD_DATABASE_NAME'..."
 
-sudo -u postgres psql << EOF
+# ON_ERROR_STOP makes psql stop and exit non-zero on the first failing
+# statement.  Without it psql keeps going after errors, and the old \echo
+# "success" lines printed even when the DROP had failed.
+if sudo -u postgres psql -v ON_ERROR_STOP=1 << EOF
 DROP DATABASE IF EXISTS $TUD_DATABASE_NAME;
 DROP USER IF EXISTS $TUD_DATABASE_USER;
-\echo "Database '$TUD_DATABASE_NAME' dropped successfully"
-\echo "User '$TUD_DATABASE_USER' dropped successfully"
 EOF
-
-echo "Database drop complete!"
+then
+    echo "Database '$TUD_DATABASE_NAME' and user '$TUD_DATABASE_USER' dropped successfully."
+else
+    echo "ERROR: Failed to drop database '$TUD_DATABASE_NAME' or user '$TUD_DATABASE_USER'."
+    echo "       Check the error messages above (e.g. active connections to the database)."
+    exit 1
+fi

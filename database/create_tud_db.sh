@@ -94,17 +94,21 @@ echo "Setting up PostgreSQL database '${TUD_DATABASE_NAME}' and new user '${TUD_
 
 if [ "$TUD_DATABASE_HOST" = "localhost" ] || [ "$TUD_DATABASE_HOST" = "127.0.0.1" ]; then
     echo "Using peer auth as system user postgres for local database server at host '$TUD_DATABASE_HOST'..."
-    sudo -u postgres psql << EOF
+    # ON_ERROR_STOP makes psql stop and exit non-zero on the first failing
+    # statement.  Without it psql keeps going after errors and this script
+    # used to report "setup complete" even when creation had failed.
+    sudo -u postgres psql -v ON_ERROR_STOP=1 << EOF
     $SQL_COMMANDS
 EOF
+    CREATE_EXIT_CODE=$?
 else
     echo "ERROR: Remote database hosts are not supported by this setup script."
     exit 1
 fi
 
-if [ $? -ne 0 ]; then
-    echo "ERROR: Failed to set up database or user. Please check the error messages above."
+if [ "$CREATE_EXIT_CODE" -ne 0 ]; then
+    echo "ERROR: Failed to set up database or user. Check the error messages above."
     exit 1
 fi
 
-echo "Database setup complete. Check for errors above."
+echo "Database setup complete."
