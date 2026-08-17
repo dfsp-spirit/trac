@@ -7337,5 +7337,11 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Export addNextTimeline, goToPreviousTimeline and renderActivities for ui.js
-export { addNextTimeline, goToPreviousTimeline, renderActivities };
+// Export addNextTimeline, goToPreviousTimeline, renderActivities and
+// getCurrentDayIndex for ui.js
+export {
+  addNextTimeline,
+  goToPreviousTimeline,
+  renderActivities,
+  getCurrentDayIndex,
+};
