@@ -7,9 +7,41 @@ const {
   getCurrentDayIndex,
   isDayButtonGreen,
   getDayButtonCount,
+  submitStudy,
 } = require('./e2e_helpers.js');
 
 test.use({ viewport: { width: 1600, height: 900 } });
+
+/**
+ * Place an activity on Monday, save it, then copy it to every other day
+ * (Tue..Sun).  Afterwards all 7 days meet min_coverage in the DB and the
+ * Submit Study button is enabled.
+ *
+ * The copy picker excludes the source day (Monday=0), so the item for day
+ * index `target` sits at picker position `target - 1`.
+ */
+async function fillAllDaysFromMonday(page) {
+  await placeActivity(page, { activityName: 'Sleeping', positionPercent: 20 });
+  await saveCurrentDay(page);
+
+  for (let target = 1; target <= 6; target += 1) {
+    const copyBtn = page.locator('.copy-day-link').first();
+    await copyBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await copyBtn.click();
+
+    const picker = page.locator('.copy-day-context-menu');
+    await picker.waitFor({ state: 'visible', timeout: 5000 });
+
+    const targetItem = picker
+      .locator('.copy-day-context-menu-item')
+      .nth(target - 1);
+    await targetItem.waitFor({ state: 'visible', timeout: 3000 });
+    await targetItem.click();
+
+    await page.waitForTimeout(2500);
+    await expect(picker).toBeHidden({ timeout: 8000 });
+  }
+}
 
 test.describe('Copy Days — core flows', () => {
 
@@ -162,5 +194,45 @@ test.describe('Copy Days — core flows', () => {
     await expect(submitBtn).toBeVisible();
     // Should be disabled because not all days are green yet
     await expect(submitBtn).toBeDisabled();
+  });
+
+  test('Submit Study grays out immediately when the current day drops below min_coverage (unsaved delete)', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('index.html?study_name=default&lang=en', {
+      waitUntil: 'domcontentloaded',
+    });
+    await enterStudyIfNeeded(page);
+
+    await fillAllDaysFromMonday(page);
+
+    // All 7 days now meet min_coverage in the DB -> Submit Study is enabled.
+    const submitBtn = page.locator('#submitStudyBtn');
+    await expect(submitBtn).toBeEnabled({ timeout: 8000 });
+
+    // Navigate to a (random) day and delete all its activities WITHOUT saving.
+    await switchToDay(page, 3);
+
+    // The copied day has exactly one activity; remove it (client state only).
+    const removeLastBtn = page.locator('#removeLastBtn');
+    await expect(removeLastBtn).toBeEnabled({ timeout: 3000 });
+    await removeLastBtn.click();
+
+    // The current day's client coverage is now 0 < min_coverage, so the Submit
+    // Study button must gray out immediately — before any save happens.
+    await expect(submitBtn).toBeDisabled({ timeout: 3000 });
+  });
+
+  test('Submit Study saves the current day first and redirects to thank-you once all days meet min_coverage', async ({ page }) => {
+    test.setTimeout(120000);
+    await page.goto('index.html?study_name=default&lang=en', {
+      waitUntil: 'domcontentloaded',
+    });
+    await enterStudyIfNeeded(page);
+
+    await fillAllDaysFromMonday(page);
+
+    // All days meet min_coverage -> the button is clickable, and the handler
+    // persists the current day before POSTing /submit, then redirects.
+    await submitStudy(page);
   });
 });
