@@ -1066,25 +1066,6 @@ def _to_utc_naive(value: datetime) -> datetime:
     return value.replace(tzinfo=None)
 
 
-def _align_datetime_to_reference_tz_style(
-    value: datetime, reference: datetime
-) -> datetime:
-    """Align datetime tz-style with the persisted reference value for safe ORM updates."""
-    normalized_value = _coerce_utc_aware(value)
-    if reference.tzinfo is None:
-        return _to_utc_naive(normalized_value)
-
-    try:
-        reference_offset = reference.tzinfo.utcoffset(reference)
-    except Exception:
-        reference_offset = None
-
-    if reference_offset is None:
-        return _to_utc_naive(normalized_value)
-
-    return normalized_value
-
-
 def _ensure_study_is_currently_available(study: Study) -> None:
     """Raise 403 when a study cannot currently be filled in by participants."""
     now = _coerce_utc_aware(utc_now())
@@ -1975,79 +1956,6 @@ async def admin_overview(
 
     # Get all studies with their relationships
     studies = session.exec(select(Study).order_by(Study.created_at.desc())).all()
-    mysql_like_backend = settings.database_url.startswith("mysql")
-
-    if mysql_like_backend:
-        export_link = f"{request.scope.get('root_path', '')}/api/admin/export/studies-runtime-config"
-        fallback_parts = [
-            "<!DOCTYPE html><html><head><title>TUD Admin Overview</title></head><body>",
-            "<h1>TUD Admin Overview</h1>",
-            "<h2>External Tasks</h2>",
-        ]
-
-        for study in studies:
-            study_external_tasks = session.exec(
-                select(StudyExternalTask)
-                .where(StudyExternalTask.study_id == study.id)
-                .order_by(StudyExternalTask.task_key)
-            ).all()
-            if not study_external_tasks:
-                continue
-
-            fallback_parts.append(f"<h3>{html.escape(study.name_short)}</h3><ul>")
-            for external_task in study_external_tasks:
-                config = (
-                    external_task.config
-                    if isinstance(external_task.config, dict)
-                    else {}
-                )
-                localized_name = _get_localized_external_task_text(
-                    config.get("name_i18n"),
-                    study.default_language,
-                    study.default_language,
-                )
-                task_display_name = (
-                    localized_name or external_task.name or external_task.task_key
-                )
-
-                fallback_parts.append(
-                    f"<li><strong>{html.escape(task_display_name)}</strong>"
-                )
-                fallback_parts.append(
-                    "<div><strong>Expected Return URL:</strong> "
-                    f"{html.escape(_build_external_task_expected_return_url_template(study.name_short, external_task.task_key, hmac_secret_reference=_get_hmac_secret_reference_from_task(external_task)))}"
-                    "</div>"
-                )
-
-                task_assignments = session.exec(
-                    select(StudyExternalTaskAssignment)
-                    .where(
-                        StudyExternalTaskAssignment.external_task_id == external_task.id
-                    )
-                    .order_by(
-                        StudyExternalTaskAssignment.assignment_order,
-                        StudyExternalTaskAssignment.participant_id,
-                    )
-                ).all()
-                if task_assignments:
-                    fallback_parts.append("<ul>")
-                    for assignment in task_assignments:
-                        fallback_parts.append(
-                            "<li>"
-                            f"{html.escape(assignment.participant_id)}: "
-                            f"{html.escape(assignment.assigned_token)}"
-                            "</li>"
-                        )
-                    fallback_parts.append("</ul>")
-
-                fallback_parts.append("</li>")
-
-            fallback_parts.append("</ul>")
-
-        fallback_parts.append(
-            f'<a href="{export_link}">Export runtime config</a></body></html>'
-        )
-        return HTMLResponse(content="".join(fallback_parts))
 
     # Lightweight overview: build minimal study data for the table
     studies_data = []
@@ -2127,19 +2035,16 @@ async def admin_overview(
     total_activities_all = session.exec(select(func.count(Activity.id))).first() or 0
 
     # Recent activities (last 10 overall)
-    if mysql_like_backend:
+    try:
+        recent_activities = session.exec(
+            select(Activity).order_by(Activity.created_at.desc()).limit(10)
+        ).all()
+    except TypeError as exc:
+        logger.warning(
+            "Skipping recent activities query due to datetime mismatch: %s",
+            exc,
+        )
         recent_activities = []
-    else:
-        try:
-            recent_activities = session.exec(
-                select(Activity).order_by(Activity.created_at.desc()).limit(10)
-            ).all()
-        except TypeError as exc:
-            logger.warning(
-                "Skipping recent activities query due to datetime mismatch: %s",
-                exc,
-            )
-            recent_activities = []
 
     enriched_recent_activities = []
     for activity in recent_activities:
@@ -2227,8 +2132,6 @@ async def admin_study_detail(
     audit_admin_action(
         current_admin, f"opened study detail page for '{study.name_short}'"
     )
-
-    mysql_like_backend = settings.database_url.startswith("mysql")
 
     # --- Query lightweight study data ---
     supported_cfg_languages = _get_study_blob_languages(session, study.id) or [
@@ -2367,23 +2270,20 @@ async def admin_study_detail(
     )
 
     # --- Activities (last 10) ---
-    if mysql_like_backend:
+    try:
+        activities = session.exec(
+            select(Activity)
+            .where(Activity.study_id == study.id)
+            .order_by(Activity.created_at.desc())
+            .limit(10)
+        ).all()
+    except TypeError as exc:
+        logger.warning(
+            "Skipping activity preview for study '%s': %s",
+            study.name_short,
+            exc,
+        )
         activities = []
-    else:
-        try:
-            activities = session.exec(
-                select(Activity)
-                .where(Activity.study_id == study.id)
-                .order_by(Activity.created_at.desc())
-                .limit(10)
-            ).all()
-        except TypeError as exc:
-            logger.warning(
-                "Skipping activity preview for study '%s': %s",
-                study.name_short,
-                exc,
-            )
-            activities = []
 
     enriched_activities = []
     for activity in activities:
@@ -2423,23 +2323,20 @@ async def admin_study_detail(
             )
             continue
 
-    if mysql_like_backend:
+    try:
+        last_study_activity = session.exec(
+            select(Activity)
+            .where(Activity.study_id == study.id)
+            .order_by(Activity.created_at.desc())
+            .limit(1)
+        ).first()
+    except TypeError as exc:
+        logger.warning(
+            "Skipping last activity query for study '%s': %s",
+            study.name_short,
+            exc,
+        )
         last_study_activity = None
-    else:
-        try:
-            last_study_activity = session.exec(
-                select(Activity)
-                .where(Activity.study_id == study.id)
-                .order_by(Activity.created_at.desc())
-                .limit(1)
-            ).first()
-        except TypeError as exc:
-            logger.warning(
-                "Skipping last activity query for study '%s': %s",
-                study.name_short,
-                exc,
-            )
-            last_study_activity = None
 
     last_study_activity_time = (
         last_study_activity.created_at if last_study_activity else None
@@ -2600,27 +2497,26 @@ async def admin_study_detail(
 
     # Find last activity date for each participant (proxy for time-use diary completion)
     last_activity_per_participant: dict[str, date] = {}
-    if not mysql_like_backend:
-        try:
-            rows = session.exec(
-                select(
-                    Activity.participant_id,
-                    func.max(Activity.created_at),
-                )
-                .where(Activity.study_id == study.id)
-                .group_by(Activity.participant_id)
-            ).all()
-            for pid, last_created in rows:
-                if last_created is not None:
-                    last_activity_per_participant[pid] = _to_utc_naive(
-                        last_created
-                    ).date()
-        except TypeError as exc:
-            logger.warning(
-                "Skipping completion chart data for study '%s': %s",
-                study.name_short,
-                exc,
+    try:
+        rows = session.exec(
+            select(
+                Activity.participant_id,
+                func.max(Activity.created_at),
             )
+            .where(Activity.study_id == study.id)
+            .group_by(Activity.participant_id)
+        ).all()
+        for pid, last_created in rows:
+            if last_created is not None:
+                last_activity_per_participant[pid] = _to_utc_naive(
+                    last_created
+                ).date()
+    except TypeError as exc:
+        logger.warning(
+            "Skipping completion chart data for study '%s': %s",
+            study.name_short,
+            exc,
+        )
 
     # For ET studies, find the date each participant completed ALL external tasks
     last_all_completed_per_participant: dict[str, date] = {}
@@ -4116,21 +4012,12 @@ async def update_study_collection_window(
 
     previous_start = study.data_collection_start
     previous_end = study.data_collection_end
-    mysql_like_backend = settings.database_url.startswith("mysql")
 
     requested_start = payload.data_collection_start or previous_start
     requested_end = payload.data_collection_end or previous_end
 
-    if mysql_like_backend:
-        # Keep tz-style aligned with persisted values to avoid mysql/mariadb
-        # timezone comparison issues during ORM attribute assignment.
-        new_start = _align_datetime_to_reference_tz_style(
-            requested_start, previous_start
-        )
-        new_end = _align_datetime_to_reference_tz_style(requested_end, previous_end)
-    else:
-        new_start = _coerce_utc_aware(requested_start)
-        new_end = _coerce_utc_aware(requested_end)
+    new_start = _coerce_utc_aware(requested_start)
+    new_end = _coerce_utc_aware(requested_end)
 
     if _to_utc_naive(new_start) >= _to_utc_naive(new_end):
         raise HTTPException(
@@ -4138,29 +4025,22 @@ async def update_study_collection_window(
             detail="data_collection_start must be earlier than data_collection_end",
         )
 
-    if not mysql_like_backend:
-        session.exec(
-            update(Study)
-            .where(Study.id == study.id)
-            .values(
-                data_collection_start=new_start,
-                data_collection_end=new_end,
-            )
+    session.exec(
+        update(Study)
+        .where(Study.id == study.id)
+        .values(
+            data_collection_start=new_start,
+            data_collection_end=new_end,
         )
-        session.commit()
+    )
+    session.commit()
 
-        study = session.exec(select(Study).where(Study.id == study.id)).first()
-        if not study:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Study '{study_name_short}' not found after update",
-            )
-    else:
-        # MariaDB driver can raise timezone comparison errors with timezone=True
-        # columns. Keep endpoint functional for integration checks by applying
-        # request validation/response semantics without persisting this update.
-        study.data_collection_start = new_start
-        study.data_collection_end = new_end
+    study = session.exec(select(Study).where(Study.id == study.id)).first()
+    if not study:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Study '{study_name_short}' not found after update",
+        )
 
     logger.info(
         "Admin '%s' updated study collection window for '%s': %s -> %s, %s -> %s",

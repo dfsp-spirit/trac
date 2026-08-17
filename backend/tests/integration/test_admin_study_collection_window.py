@@ -26,6 +26,19 @@ def _parse_dt(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def _as_utc(value: datetime) -> datetime:
+    """Normalize a datetime to UTC-aware for cross-DBMS comparison.
+
+    DBMSes with timezone-aware columns (PostgreSQL, MSSQL) make the API return
+    aware datetimes, while MariaDB/MySQL return naive datetimes because their
+    DATETIME type stores no timezone. The backend always persists UTC, so naive
+    values are interpreted as UTC.
+    """
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 @pytest.fixture
 def created_studies_for_cleanup():
     created_studies = []
@@ -134,12 +147,12 @@ async def test_admin_collection_window_update_and_pause_behavior(
         )
         assert future_window_response.status_code == 200
         future_window_json = future_window_response.json()
-        updated_start = _parse_dt(
-            future_window_json["updated"]["data_collection_start"]
-        ).astimezone(timezone.utc)
-        updated_end = _parse_dt(
-            future_window_json["updated"]["data_collection_end"]
-        ).astimezone(timezone.utc)
+        updated_start = _as_utc(
+            _parse_dt(future_window_json["updated"]["data_collection_start"])
+        )
+        updated_end = _as_utc(
+            _parse_dt(future_window_json["updated"]["data_collection_end"])
+        )
         assert updated_start == tomorrow_start
         assert updated_end == tomorrow_end
         assert future_window_json["is_currently_collecting"] is False
@@ -161,12 +174,12 @@ async def test_admin_collection_window_update_and_pause_behavior(
         )
         assert paused_response.status_code == 200
         paused_json = paused_response.json()
-        paused_start = _parse_dt(
-            paused_json["updated"]["data_collection_start"]
-        ).astimezone(timezone.utc)
-        paused_end = _parse_dt(
-            paused_json["updated"]["data_collection_end"]
-        ).astimezone(timezone.utc)
+        paused_start = _as_utc(
+            _parse_dt(paused_json["updated"]["data_collection_start"])
+        )
+        paused_end = _as_utc(
+            _parse_dt(paused_json["updated"]["data_collection_end"])
+        )
         assert paused_start == pause_start
         assert paused_end == yesterday_end
         assert paused_json["is_currently_collecting"] is False
