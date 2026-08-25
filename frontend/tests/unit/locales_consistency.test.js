@@ -29,6 +29,26 @@ for (const file of localeFiles) {
   parsed[file] = JSON.parse(readFileSync(join(LOCALES_DIR, file), 'utf8'));
 }
 
+// Look up a value by dot-path (e.g. 'messages.copyDayHasData').
+function getByPath(obj, path) {
+  return path.split('.').reduce((o, key) => (o == null ? o : o[key]), obj);
+}
+
+// Values that are intentionally identical across all locales: universal
+// tokens, app/proper nouns, or genuine cognates that are correct in the
+// target language (e.g. German "Name", French "Code"). These are NOT
+// considered untranslated and are excluded from the untranslated-value check.
+const LANGUAGE_NEUTRAL_VALUES = new Set([
+  'OK', // universal acknowledgment
+  'TRAC', // app name
+  '✓', // symbol (timelineCoverageMet)
+  'Start', // de/sv: "Start" is the natural word
+  'No', // es: Spanish for "No"
+  'Name', // de: German for "Name"
+  'Code', // de/fr: "Code" is the same word
+  'Description', // fr: French for "Description"
+]);
+
 test('every locale file is valid JSON and shares the same key set as en.json', () => {
   assert.ok(localeFiles.length >= 2, 'expected at least 2 locale files');
   const enKeys = flattenKeys(parsed['en.json']);
@@ -70,5 +90,35 @@ test('all translation values are strings or nested objects', () => {
   };
   for (const file of localeFiles) {
     walk(parsed[file], file);
+  }
+});
+
+// Guards against locales that share the en.json key set but keep the English
+// text as the value (i.e. "untranslated"). This is what the key-set check
+// above cannot catch. Language-neutral values are excluded via the allowlist.
+test('non-English locales contain no untranslated English values', () => {
+  const en = parsed['en.json'];
+  for (const file of localeFiles) {
+    if (file === 'en.json') continue;
+    const untranslated = [];
+    for (const key of flattenKeys(en)) {
+      const enValue = getByPath(en, key);
+      const value = getByPath(parsed[file], key);
+      if (
+        typeof enValue === 'string' &&
+        typeof value === 'string' &&
+        value === enValue &&
+        enValue.trim() !== '' &&
+        /[A-Za-z]/.test(enValue) && // ignore pure symbols like "✓"
+        !LANGUAGE_NEUTRAL_VALUES.has(enValue)
+      ) {
+        untranslated.push(key);
+      }
+    }
+    assert.deepEqual(
+      untranslated,
+      [],
+      `${file} still has values identical to English (translate them): ${untranslated.join(', ')}`
+    );
   }
 });
