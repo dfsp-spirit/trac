@@ -563,13 +563,26 @@
                     <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
                     <br />
                     <p>We recommend to <b>always</b> backup your data before deleting a study, even if you think you will not need it anymore. It's very easy and done in seconds, use the <i>Export Study Data</i> section above.</p>
-                    <div style="margin-top: 0.65rem;">
+                    <div style="margin-top: 0.65rem; display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start;">
                         <button type="button" class="danger-btn open-delete-study-btn"
                             data-study-id="{{ study.id }}"
                             data-study-name-short="{{ study.name_short }}"
                             data-study-name="{{ study.name | e }}" disabled>
                             Delete Study
                         </button>
+                        <div>
+                            <button type="button" class="danger-btn open-delete-participant-data-btn"
+                                data-study-id="{{ study.id }}"
+                                data-study-name-short="{{ study.name_short }}"
+                                data-study-name="{{ study.name | e }}" disabled>
+                                Delete All Participant Data
+                            </button>
+                            <p style="margin-top: 0.4rem; color: #6b7280; font-size: 0.85rem;">
+                                Removes all recorded participant data for this study (diary activities, external-task
+                                assignments, participant associations) while keeping the study itself and its
+                                configuration (days, available activities, timelines, external tasks) intact.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -589,6 +602,24 @@
                 <button type="button" id="deleteStudyConfirmBtn" class="danger-btn" disabled>Delete permanently</button>
             </div>
             <div id="deleteStudyModalStatus" class="danger-modal-status"></div>
+        </div>
+    </div>
+
+    <!-- Delete All Participant Data Modal -->
+    <div id="deleteParticipantDataModal" class="danger-modal" role="dialog" aria-modal="true" aria-labelledby="deleteParticipantDataModalTitle">
+        <div class="danger-modal-card">
+            <h2 id="deleteParticipantDataModalTitle" class="danger-modal-title">Danger</h2>
+            <p class="danger-modal-warning">This deletes ALL recorded participant data for this study and cannot be undone.</p>
+            <p class="danger-modal-hint">Removed: diary activities, external-task assignments, and participant associations for this study.</p>
+            <p class="danger-modal-hint">Kept: the study itself and its configuration (days, available activities, timelines, external tasks). Participants can rejoin afterwards.</p>
+            <p class="danger-modal-hint" id="deleteParticipantDataModalTarget"></p>
+            <p class="danger-modal-hint">To confirm, type the study <strong>name_short</strong> exactly (case-sensitive):</p>
+            <input id="deleteParticipantDataConfirmInput" class="danger-modal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type name_short to confirm">
+            <div class="danger-modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeDeleteParticipantDataModal()">Cancel</button>
+                <button type="button" id="deleteParticipantDataConfirmBtn" class="danger-btn" disabled>Delete participant data</button>
+            </div>
+            <div id="deleteParticipantDataModalStatus" class="danger-modal-status"></div>
         </div>
     </div>
 
@@ -666,6 +697,86 @@
                 setDeleteModalStatus(`Request failed: ${error.message}`, 'error');
                 deleteStudyConfirmBtn.textContent = 'Delete permanently';
                 updateDeleteConfirmState();
+            }
+        }
+
+        // --- Delete All Participant Data modal ---
+        const deleteParticipantDataModal = document.getElementById('deleteParticipantDataModal');
+        const deleteParticipantDataModalTarget = document.getElementById('deleteParticipantDataModalTarget');
+        const deleteParticipantDataConfirmInput = document.getElementById('deleteParticipantDataConfirmInput');
+        const deleteParticipantDataConfirmBtn = document.getElementById('deleteParticipantDataConfirmBtn');
+        const deleteParticipantDataModalStatus = document.getElementById('deleteParticipantDataModalStatus');
+        let deleteParticipantDataContext = null;
+
+        function setDeleteParticipantDataStatus(message, statusClass = '') {
+            if (!deleteParticipantDataModalStatus) return;
+            deleteParticipantDataModalStatus.textContent = message || '';
+            deleteParticipantDataModalStatus.className = `danger-modal-status ${statusClass}`.trim();
+        }
+
+        function openDeleteParticipantDataModal(studyId, studyNameShort, studyName) {
+            if (!deleteParticipantDataModal || !deleteParticipantDataConfirmInput || !deleteParticipantDataConfirmBtn) return;
+            deleteParticipantDataContext = { studyId: String(studyId), studyNameShort: String(studyNameShort), studyName: String(studyName || '') };
+            if (deleteParticipantDataModalTarget) {
+                deleteParticipantDataModalTarget.innerHTML = `Target study: <strong>${deleteParticipantDataContext.studyName}</strong> (<code>${deleteParticipantDataContext.studyNameShort}</code>)`;
+            }
+            deleteParticipantDataConfirmInput.value = '';
+            deleteParticipantDataConfirmBtn.disabled = true;
+            setDeleteParticipantDataStatus('Type the exact name_short to enable deletion.');
+            deleteParticipantDataModal.classList.add('open');
+            deleteParticipantDataConfirmInput.focus();
+        }
+
+        function closeDeleteParticipantDataModal() {
+            if (!deleteParticipantDataModal) return;
+            deleteParticipantDataModal.classList.remove('open');
+            deleteParticipantDataConfirmInput.value = '';
+            deleteParticipantDataConfirmBtn.disabled = true;
+            setDeleteParticipantDataStatus('');
+            deleteParticipantDataContext = null;
+        }
+
+        function updateDeleteParticipantDataConfirmState() {
+            if (!deleteParticipantDataContext || !deleteParticipantDataConfirmInput || !deleteParticipantDataConfirmBtn) return;
+            const typed = deleteParticipantDataConfirmInput.value;
+            const matches = typed === deleteParticipantDataContext.studyNameShort;
+            deleteParticipantDataConfirmBtn.disabled = !matches;
+            if (!typed) { setDeleteParticipantDataStatus('Type the exact name_short to enable deletion.'); return; }
+            if (!matches) { setDeleteParticipantDataStatus('Typed value does not match the required name_short.', 'error'); return; }
+            setDeleteParticipantDataStatus('Name confirmed. You can now delete participant data.', 'ok');
+        }
+
+        async function deleteParticipantDataFromModal() {
+            if (!deleteParticipantDataContext || !deleteParticipantDataConfirmBtn || !deleteParticipantDataConfirmInput) return;
+            if (deleteParticipantDataConfirmInput.value !== deleteParticipantDataContext.studyNameShort) {
+                setDeleteParticipantDataStatus('Typed value does not match the required name_short.', 'error');
+                deleteParticipantDataConfirmBtn.disabled = true;
+                return;
+            }
+            deleteParticipantDataConfirmBtn.disabled = true;
+            deleteParticipantDataConfirmBtn.textContent = 'Deleting...';
+            setDeleteParticipantDataStatus('Deleting all participant data...', '');
+            try {
+                const response = await fetch(`${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(deleteParticipantDataContext.studyNameShort)}/participant-data`, { method: 'DELETE' });
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    setDeleteParticipantDataStatus(payload.detail || 'Failed to delete participant data.', 'error');
+                    deleteParticipantDataConfirmBtn.textContent = 'Delete participant data';
+                    updateDeleteParticipantDataConfirmState();
+                    return;
+                }
+                const activities = payload.deleted_activities ?? 0;
+                const assignments = payload.deleted_external_task_assignments ?? 0;
+                const associations = payload.deleted_participant_associations ?? 0;
+                setDeleteParticipantDataStatus(
+                    `Deleted ${activities} activities, ${assignments} external-task assignments, ${associations} participant associations. Reloading...`,
+                    'ok'
+                );
+                setTimeout(() => { window.location.reload(); }, 900);
+            } catch (error) {
+                setDeleteParticipantDataStatus(`Request failed: ${error.message}`, 'error');
+                deleteParticipantDataConfirmBtn.textContent = 'Delete participant data';
+                updateDeleteParticipantDataConfirmState();
             }
         }
 
@@ -934,6 +1045,14 @@
             if (deleteStudyConfirmBtn) deleteStudyConfirmBtn.addEventListener('click', deleteStudyFromModal);
             if (deleteStudyModal) deleteStudyModal.addEventListener('click', (event) => { if (event.target === deleteStudyModal) closeDeleteStudyModal(); });
             document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && deleteStudyModal && deleteStudyModal.classList.contains('open')) closeDeleteStudyModal(); });
+
+            document.querySelectorAll('.open-delete-participant-data-btn').forEach((button) => {
+                button.addEventListener('click', () => openDeleteParticipantDataModal(button.dataset.studyId, button.dataset.studyNameShort, button.dataset.studyName));
+            });
+            if (deleteParticipantDataConfirmInput) deleteParticipantDataConfirmInput.addEventListener('input', updateDeleteParticipantDataConfirmState);
+            if (deleteParticipantDataConfirmBtn) deleteParticipantDataConfirmBtn.addEventListener('click', deleteParticipantDataFromModal);
+            if (deleteParticipantDataModal) deleteParticipantDataModal.addEventListener('click', (event) => { if (event.target === deleteParticipantDataModal) closeDeleteParticipantDataModal(); });
+            document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && deleteParticipantDataModal && deleteParticipantDataModal.classList.contains('open')) closeDeleteParticipantDataModal(); });
 
             const url = new URL(window.location.href);
             const requestedTabId = url.searchParams.get('tab');

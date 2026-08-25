@@ -6877,6 +6877,99 @@ async def delete_all_pool_tokens(
     return {"deleted": deleted, "study_name_short": study_name_short}
 
 
+@app.delete("/api/admin/studies/{study_name_short}/participant-data")
+async def delete_study_participant_data(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Delete all participant data for a study, keeping the study operational.
+
+    Removes every participant-attached row for this study: recorded diary
+    activities, per-user external-task assignments, and the study-participant
+    associations (consent/instructions/submission flags).
+
+    Study configuration is deliberately kept intact so the study can keep
+    running: the study row itself, day labels, timelines, the available
+    activities catalog (incl. i18n), the activities-config blobs, and the
+    external-task definitions (incl. their token pool, which becomes
+    available again once assignments are removed).
+
+    The global `participants` rows are NOT deleted: they are shared across
+    studies and hold no study-scoped data themselves. Removing the
+    study-participant associations is enough to make the users disappear
+    from this study in the admin interface, exports, and task assignments.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    # Per-user external-task assignments (scoped to this study's tasks).
+    external_task_ids = session.exec(
+        select(StudyExternalTask.id).where(StudyExternalTask.study_id == study.id)
+    ).all()
+
+    deleted_assignments = 0
+    if external_task_ids:
+        deleted_assignments = (
+            session.exec(
+                delete(StudyExternalTaskAssignment).where(
+                    StudyExternalTaskAssignment.external_task_id.in_(
+                        external_task_ids
+                    )
+                )
+            ).rowcount
+            or 0
+        )
+
+    # Recorded diary activities.
+    deleted_activities = (
+        session.exec(delete(Activity).where(Activity.study_id == study.id)).rowcount
+        or 0
+    )
+
+    # Study-participant associations (participant membership in this study).
+    deleted_participant_associations = (
+        session.exec(
+            delete(StudyParticipant).where(StudyParticipant.study_id == study.id)
+        ).rowcount
+        or 0
+    )
+
+    session.commit()
+
+    logger.info(
+        "Admin '%s' deleted all participant data for study '%s' "
+        "(activities_deleted=%s, assignments_deleted=%s, participant_associations_deleted=%s).",
+        current_admin,
+        study_name_short,
+        deleted_activities,
+        deleted_assignments,
+        deleted_participant_associations,
+    )
+    audit_admin_action(
+        current_admin,
+        (
+            f"deleted all participant data for study '{study_name_short}' "
+            f"(activities_deleted={deleted_activities}, "
+            f"assignments_deleted={deleted_assignments}, "
+            f"participant_associations_deleted={deleted_participant_associations})"
+        ),
+    )
+
+    return {
+        "message": "All participant data deleted",
+        "study_name_short": study_name_short,
+        "deleted_activities": int(deleted_activities),
+        "deleted_external_task_assignments": int(deleted_assignments),
+        "deleted_participant_associations": int(deleted_participant_associations),
+    }
+
+
 @app.delete("/api/admin/studies/{study_name_short}")
 async def delete_study(
     study_name_short: str,
