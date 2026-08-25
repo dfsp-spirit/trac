@@ -1,12 +1,12 @@
 {
   "instructions": {
-    "pageTitle": "Instructions | Time Use Diary",
-    "title": "Instructions",
-    "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
-    "generalInfoTitle": "General Information on the Study",
-    "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
-    "visualGuideTitle": "Visual Illustrations of how to use the Interface",
-    "startPrompt": "Please click the blue Start button to begin your diary entry.",
+    "pageTitle": "Consignes | Journal d'utilisation du temps",
+    "title": "Consignes",
+    "welcomeTitle": "Bienvenue dans votre journal de temps hebdomadaire. Merci de participer !",
+    "generalInfoTitle": "Informations générales sur l'étude",
+    "studyIntroDefault": "Ceci est notre étude sur l'utilisation du temps.<br><br>Nous vous demandons de <b>reconstituer une semaine typique</b> de vos activités quotidiennes à l'aide de notre outil d'utilisation du temps.<br><br>Quelle semaine dois-je choisir ? Pensez à votre dernière semaine (les 7 derniers jours).<br>Exception : si vous avez été malade ou en vacances la semaine dernière, choisissez une autre semaine récente qui représente mieux votre routine habituelle.",
+    "visualGuideTitle": "Illustrations visuelles de l'utilisation de l'interface",
+    "startPrompt": "Veuillez cliquer sur le bouton bleu Démarrer pour commencer votre saisie.",
     "mainInstruction": "Pensez aux activités que vous avez faites <span class=\"emphasis\">hier</span>. Ensuite, remplissez la chronologie complète avec les activités que vous avez réalisées.",
     "step1": {
       "title": "Sélectionner et Placer une Activité",
@@ -45,14 +45,15 @@
     "studyNotFound": "L'étude demandée n'existe pas."
   },
   "common": {
-    "language": "Language",
-    "chooseLanguage": "Choose language",
-    "day": "Day"
+    "language": "Langue",
+    "chooseLanguage": "Choisir la langue",
+    "day": "Jour"
   },
   "buttons": {
     "submit": "Soumettre",
     "saveDay": "Enregistrer le jour",
     "finishStudy": "Soumettre le jour et terminer l'étude",
+    "submitStudy": "Soumettre l'étude",
     "start": "Commencer",
     "removeLast": "Supprimer dernière",
     "cleanRow": "Nettoyer la Ligne",
@@ -141,11 +142,11 @@
     "timelineHoverInactive": "Cliquez pour passer à cette chronologie",
     "timelineHoverActiveNoSelection": "Sélectionnez une activité ci-dessous, puis placez-la ici.",
     "timelineHoverActiveWithSelection": "Cliquez pour placer l'activité sélectionnée ici.",
-    "invalidPlacement": "Cannot place activity here due to invalid position.",
-    "timelineValidationError": "Timeline validation error: {{message}}",
+    "invalidPlacement": "Impossible de placer l'activité ici en raison d'une position invalide.",
+    "timelineValidationError": "Erreur de validation de la chronologie : {{message}}",
     "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
     "templateCopiedBanner": "Nous avons pré-rempli votre journal avec les activités d'un participant modèle. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous.",
-    "reportingForDay": "Reporting for day:",
+    "reportingForDay": "Saisie pour le jour :",
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
     "goBackToEditPreviousDays": "Aller au jour :",
@@ -157,17 +158,17 @@
     "completeMinimumActivitiesBeforeSwitching": "Complétez les activités minimales avant de changer de jour.",
     "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel.",
     "completeOtherDaysFirst": "Complétez d'abord {{days}} pour terminer l'étude.",
-    "daySavedStayOnPage": "Day saved.",
-    "copyDayEmpty": "empty",
-    "copyDayHasData": "has data",
-    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}",
-    "submitStudySuccess": "Study submitted successfully!"
+    "daySavedStayOnPage": "Journée enregistrée.",
+    "copyDayEmpty": "vide",
+    "copyDayHasData": "contient des données",
+    "copyOverwriteConfirm": "{{day}} contient déjà des données. Écraser ?",
+    "submitStudyIncomplete": "Jours incomplets : {{days}}",
+    "submitStudySuccess": "Étude soumise avec succès !"
   },
   "errors": {
-    "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
-    "loadingActivitiesConfigurationHelp": "The application requires a valid backend connection to load the appropriate activities for your study.",
-    "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
+    "loadingActivitiesConfigurationTitle": "Erreur lors du chargement de la configuration des activités :",
+    "loadingActivitiesConfigurationHelp": "L'application nécessite une connexion valide au backend pour charger les activités appropriées pour votre étude.",
+    "loadingActivitiesShort": "Erreur lors du chargement des activités. Veuillez actualiser la page et réessayer. Erreur :"
   },
   "banner": {
     "dayOneInstructions": "Instructions : Sélectionnez une activité ci-dessous, puis cliquez sur la chronologie pour la placer et faites glisser les bords pour l'étendre. Pour supprimer une activité, maintenez-la appuyée sur mobile ou utilisez le menu contextuel sur ordinateur."
