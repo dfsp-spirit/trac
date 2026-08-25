@@ -5823,8 +5823,11 @@ function renderPreviousDaysSwitchRow() {
         await saveAndSwitchToDay(dayIndex);
       });
 
-      const hasData = dayIndicesWithData.includes(dayIndex);
-      if (hasData && !window.globals?.isMobile) {
+      // Right-click (desktop) on a day button copies THAT day to another day.
+      // Attached for every non-current day; if the day has no activities yet,
+      // showCopyTargetPicker explains there is nothing to copy instead of
+      // silently doing nothing.
+      if (!getIsMobile()) {
         button.addEventListener('contextmenu', (event) => {
           event.preventDefault();
           showCopyTargetPicker(dayIndex, event);
@@ -6943,17 +6946,38 @@ function removeCopyDayContextMenu() {
 function showCopyTargetPicker(sourceDayIndex, event) {
   removeCopyDayContextMenu();
 
-  const targets = getAllTargetDayIndices(sourceDayIndex);
-  if (!targets.length) {
-    return;
-  }
-
   const t =
     window.i18n && window.i18n.isReady()
       ? window.i18n.t.bind(window.i18n)
       : function (key) {
           return key;
         };
+
+  // Copy Days: right-click on a day button (desktop) copies THAT day to
+  // another.  If the source day has no activities yet there is nothing to
+  // copy — inform the user instead of showing an empty picker or silently
+  // doing nothing.  The current viewing day may hold unsaved frontend data,
+  // so check its in-memory state (same logic as getAllTargetDayIndices).
+  const currentDayIndex = getCurrentDayIndex();
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const sourceHasData =
+    sourceDayIndex === currentDayIndex
+      ? hasFrontendActivities()
+      : dayIndicesWithData.includes(sourceDayIndex);
+
+  if (!sourceHasData) {
+    showCopyToast(t('messages.copyEmptySource'), false);
+    return;
+  }
+
+  const targets = getAllTargetDayIndices(sourceDayIndex);
+  if (!targets.length) {
+    return;
+  }
 
   const sourceDayName =
     window.studyConfigManager?.getDayDisplayLabel(sourceDayIndex) ||
@@ -6986,17 +7010,9 @@ function showCopyTargetPicker(sourceDayIndex, event) {
     menu.appendChild(item);
   }
 
-  const isMobile = false;
-
-  if (
-    window.globals &&
-    typeof window.globals.getIsMobile === 'function' &&
-    window.globals.getIsMobile()
-  ) {
-    document.body.appendChild(menu);
-    return;
-  }
-
+  // Position the menu at the cursor.  The CSS keeps the menu position:fixed,
+  // so this works both for the desktop right-click entry point and for the
+  // "Copy this day" button (which supplies clientX/clientY).
   const menuX = Math.min(event.clientX, window.innerWidth - 210);
   const menuY = Math.min(event.clientY, window.innerHeight - 200);
   menu.style.position = 'fixed';
@@ -7065,16 +7081,9 @@ function showCopySourcePicker(targetDayIndex, event) {
     menu.appendChild(item);
   }
 
-  // Position the menu
-  if (
-    window.globals &&
-    typeof window.globals.getIsMobile === 'function' &&
-    window.globals.getIsMobile()
-  ) {
-    document.body.appendChild(menu);
-    return;
-  }
-
+  // Position the menu at the cursor.  The CSS keeps the menu position:fixed,
+  // so this works both for the desktop right-click entry point and for the
+  // "Copy from..." button (which supplies clientX/clientY).
   const menuX = Math.min(event.clientX, window.innerWidth - 210);
   const menuY = Math.min(event.clientY, window.innerHeight - 200);
   menu.style.position = 'fixed';
