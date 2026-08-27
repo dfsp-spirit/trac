@@ -17,7 +17,8 @@ const TUD_SETTINGS = {
         fr: { imprint: 'Mentions légales', privacy: 'Protection des données' },
         pl: { imprint: 'Impressum', privacy: 'Ochrona danych' },
         sv: { imprint: 'Impressum', privacy: 'Integritet' }
-    }
+    },
+    TEMPLATE_ENABLED: false
 };
 
 
