@@ -2,8 +2,8 @@ TRAC MPIAE Changes
 ===================
 
 
-Current WIP
-------------
+Version 0.20.0 -- New user type Scientist
+------------------------------------------
 - NEW: scoped admin accounts ("scientists") via TUD_API_SCIENTISTS: each scientist fully manages the studies she owns (or that are granted to her), so routine study work (tokens, participants, study changes, delete + re-create) no longer needs a super admin. Super admins (TUD_API_ADMIN_USERNAME) keep unrestricted access.
 - NEW: studies can have several owners; ownership is shown on the admin overview and managed in the "Study Owners" section of the study detail page (bottom, in the danger zone, only editable after clicking "Enable Editing"). Owners are managed as chips: add from the list of configured scientists, remove with one click, and "Make unowned" for super admins. Scientists can add/remove co-owners but not themselves; only configured scientists can be added, and removing an owner revokes access immediately.
 - NEW: per-owner endpoints POST/DELETE /api/admin/studies/{study_name_short}/owners/{username} (idempotent, one audit log entry per change, so administrator actions no longer overwrite each other). PATCH /api/admin/studies/{study_name_short}/owners remains as the batch/unowned path.
