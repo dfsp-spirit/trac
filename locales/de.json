@@ -53,7 +53,6 @@
     "submit": "Tag absenden",
     "saveDay": "Tag speichern",
     "finishStudy": "Tag absenden und Studie abschließen",
-    "submitStudy": "Studie absenden",
     "start": "Start",
     "removeLast": "Letzte entfernen",
     "cleanRow": "Zeile leeren",
@@ -158,12 +157,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln.",
     "completeMinimumActivitiesBeforeCopying": "Mindestaktivitäten vervollständigen, bevor Sie den aktuellen Tag kopieren.",
     "completeOtherDaysFirst": "Vervollständigen Sie zuerst {{days}}, um die Studie abzuschließen.",
-    "daySavedStayOnPage": "Tag gespeichert.",
-    "copyDayEmpty": "leer",
-    "copyDayHasData": "hat Daten",
-    "copyOverwriteConfirm": "{{day}} hat bereits Daten. Überschreiben?",
-    "submitStudyIncomplete": "Unvollständige Tage: {{days}}",
-    "submitStudySuccess": "Studie erfolgreich übermittelt!"
+    "daySavedStayOnPage": "Day saved.",
+    "copyDayEmpty": "empty",
+    "copyDayHasData": "has data",
+    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudySuccess": "Study submitted successfully!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",
