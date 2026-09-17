@@ -120,7 +120,9 @@ async def test_external_task_launch_redirects_to_provider_url_with_assigned_toke
         assert location.startswith("https://survey.academiccloud.de/")
 
         redirected_query = parse_qs(urlparse(location).query)
-        flattened_values = [value for values in redirected_query.values() for value in values]
+        flattened_values = [
+            value for values in redirected_query.values() for value in values
+        ]
         assert assigned_token in flattened_values
         assert participant_id in flattened_values
 

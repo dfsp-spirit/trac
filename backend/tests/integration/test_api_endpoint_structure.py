@@ -18,7 +18,9 @@ BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")
 
 
 async def _get_first_activity_selection(
-    client: httpx.AsyncClient, study_name_short: str, participant_id: Optional[str] = None
+    client: httpx.AsyncClient,
+    study_name_short: str,
+    participant_id: Optional[str] = None,
 ) -> dict:
     activities_response = await client.get(
         f"{BASE_URL}/api/studies/{study_name_short}/activities-config",
@@ -114,7 +116,9 @@ async def adult_pilot_de2_with_activity():
         study_cfg = study_cfg_resp.json()
         day_label_name = study_cfg["day_labels"][0]["name"]
 
-        selection = await _get_first_activity_selection(client, study_name_short, participant_id)
+        selection = await _get_first_activity_selection(
+            client, study_name_short, participant_id
+        )
 
         activity_item = {
             "timeline_key": selection["timeline_key"],
@@ -322,13 +326,12 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert runtime_config_export_response.status_code == 200
         runtime_config_export_text = runtime_config_export_response.text
         assert "\n" in runtime_config_export_text
-        assert "\n  \"studies_config\"" in runtime_config_export_text
+        assert '\n  "studies_config"' in runtime_config_export_text
         runtime_config_export_data = runtime_config_export_response.json()
         assert "studies_config" in runtime_config_export_data
         assert "activities" in runtime_config_export_data
         assert "studies" in runtime_config_export_data["studies_config"]
-        assert len(
-            runtime_config_export_data["studies_config"]["studies"]) == 1
+        assert len(runtime_config_export_data["studies_config"]["studies"]) == 1
 
         exported_study = runtime_config_export_data["studies_config"]["studies"][0]
         for key in [
@@ -376,10 +379,9 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert "studies_config.json" in archive_names
         assert "export_manifest.json" in archive_names
 
-        studies_config_zip_text = archive.read(
-            "studies_config.json").decode("utf-8")
+        studies_config_zip_text = archive.read("studies_config.json").decode("utf-8")
         assert "\n" in studies_config_zip_text
-        assert "\n  \"studies\"" in studies_config_zip_text
+        assert '\n  "studies"' in studies_config_zip_text
         studies_config_in_zip = json.loads(studies_config_zip_text)
         assert "studies" in studies_config_in_zip
         assert len(studies_config_in_zip["studies"]) == 1
@@ -392,12 +394,11 @@ async def test_admin_endpoints_are_available_with_auth_and_expected_structure(
         assert activity_file_path in archive_names
         activity_file_text = archive.read(activity_file_path).decode("utf-8")
         assert "\n" in activity_file_text
-        assert "\n  \"timeline\"" in activity_file_text
+        assert '\n  "timeline"' in activity_file_text
         activity_file_payload = json.loads(activity_file_text)
         assert "timeline" in activity_file_payload
 
-        export_manifest_text = archive.read(
-            "export_manifest.json").decode("utf-8")
+        export_manifest_text = archive.read("export_manifest.json").decode("utf-8")
         assert "\n" in export_manifest_text
 
 
@@ -421,8 +422,10 @@ async def test_export_activities_includes_completion_timestamps():
         rows1 = list(csv.DictReader(StringIO(resp1.text)))
         assert rows1
 
-        required = ("participant_diary_completed_at",
-                    "participant_everything_completed_at")
+        required = (
+            "participant_diary_completed_at",
+            "participant_everything_completed_at",
+        )
         for key in required:
             assert key in rows1[0], f"missing column {key} in first CSV row"
 
@@ -430,14 +433,14 @@ async def test_export_activities_includes_completion_timestamps():
             for key in required:
                 val = row[key]
                 # must be either empty/None or a valid ISO-format datetime string
-                assert val is None or val == "" or "T" in val, (
-                    f"unexpected value for {key}: {val!r}"
-                )
+                assert (
+                    val is None or val == "" or "T" in val
+                ), f"unexpected value for {key}: {val!r}"
             # consistency: everything-completed implies diary-completed
             if row["participant_everything_completed_at"]:
-                assert row["participant_diary_completed_at"], (
-                    "everything_completed_at set but diary_completed_at is empty"
-                )
+                assert row[
+                    "participant_diary_completed_at"
+                ], "everything_completed_at set but diary_completed_at is empty"
 
         # same participant should have the same timestamps in every row
         comp_by_pid = {}
@@ -448,9 +451,9 @@ async def test_export_activities_includes_completion_timestamps():
                 row["participant_everything_completed_at"],
             )
             if pid in comp_by_pid:
-                assert comp_by_pid[pid] == comp, (
-                    f"inconsistent completion timestamps for {pid}"
-                )
+                assert (
+                    comp_by_pid[pid] == comp
+                ), f"inconsistent completion timestamps for {pid}"
             else:
                 comp_by_pid[pid] = comp
 
@@ -497,9 +500,9 @@ async def test_export_includes_per_task_completion_timestamps(
         for row in rows:
             for col in expected_task_cols:
                 val = row[col]
-                assert val is None or val == "" or "T" in val, (
-                    f"unexpected value for {col}: {val!r}"
-                )
+                assert (
+                    val is None or val == "" or "T" in val
+                ), f"unexpected value for {col}: {val!r}"
 
 
 @pytest.mark.asyncio

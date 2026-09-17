@@ -83,11 +83,19 @@ async def test_create_from_files_accepts_windows_style_subdir_activity_reference
                 files=[
                     (
                         "studies_config_file",
-                        ("studies_config.json", studies_config_bytes, "application/json"),
+                        (
+                            "studies_config.json",
+                            studies_config_bytes,
+                            "application/json",
+                        ),
                     ),
                     (
                         "activities_files",
-                        ("activities_test.en.json", activities_bytes, "application/json"),
+                        (
+                            "activities_test.en.json",
+                            activities_bytes,
+                            "application/json",
+                        ),
                     ),
                 ],
             )
@@ -95,7 +103,10 @@ async def test_create_from_files_accepts_windows_style_subdir_activity_reference
             assert create_response.status_code == 200
             create_payload = create_response.json()
             assert create_payload.get("ok") is True
-            assert create_payload.get("summary", {}).get("study_name_short") == study_name_short
+            assert (
+                create_payload.get("summary", {}).get("study_name_short")
+                == study_name_short
+            )
 
             activities_config_response = await client.get(
                 f"{BASE_URL}/api/studies/{study_name_short}/activities-config"

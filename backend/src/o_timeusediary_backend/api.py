@@ -3165,7 +3165,7 @@ def _build_split_export_activities_relative_path(
 ) -> str:
     safe_study = _sanitize_export_filename_part(study_name_short)
     safe_language = _sanitize_export_filename_part(language)
-    return f"activities/{safe_study}/" f"activities_{safe_study}_{safe_language}.json"
+    return f"activities/{safe_study}/activities_{safe_study}_{safe_language}.json"
 
 
 def _clean_export_outbound_tokens(

@@ -59,8 +59,7 @@ def test_expected_return_url_template_fills_known_study_and_task(monkeypatch):
     )
 
     assert (
-        url
-        == "https://frontend.example.org/report/pages/tasks.html"
+        url == "https://frontend.example.org/report/pages/tasks.html"
         "?study_name=adult_pilot_de"
         "&pid={participant_id}"
         "&callback_task_key=depression_survey"
@@ -77,8 +76,7 @@ def test_build_frontend_study_join_url_builds_concrete_participant_link(monkeypa
     )
 
     assert (
-        url
-        == "https://frontend.example.org/report/index.html"
+        url == "https://frontend.example.org/report/index.html"
         "?pid=user+1"
         "&study_name=adult+pilot%2Fde"
     )

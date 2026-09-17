@@ -102,18 +102,12 @@ def upgrade() -> None:
         rows = conn.execute(
             text("SELECT id, description FROM studies WHERE description IS NOT NULL")
         ).fetchall()
-        op.execute(
-            text(
-                "ALTER TABLE studies MODIFY COLUMN description JSON NULL"
-            )
-        )
+        op.execute(text("ALTER TABLE studies MODIFY COLUMN description JSON NULL"))
         for study_id, desc in rows:
             if desc is None:
                 continue
             desc_stripped = desc.strip() if isinstance(desc, str) else desc
-            if isinstance(desc_stripped, str) and desc_stripped.startswith(
-                ("{", "[")
-            ):
+            if isinstance(desc_stripped, str) and desc_stripped.startswith(("{", "[")):
                 # Already looks like JSON — store as-is (MariaDB will parse it)
                 conn.execute(
                     text("UPDATE studies SET description = :d WHERE id = :id"),

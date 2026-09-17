@@ -32,6 +32,7 @@ dependencies = [
     "gunicorn>=23.0.0", # Production WSGI server
     "jinja2>=3.1.6",
     "pytest>=9.0.0",
+    "ruff>=0.16.8",
 ]
 requires-python = ">=3.11"
 

@@ -177,9 +177,7 @@ async def test_admin_collection_window_update_and_pause_behavior(
         paused_start = _as_utc(
             _parse_dt(paused_json["updated"]["data_collection_start"])
         )
-        paused_end = _as_utc(
-            _parse_dt(paused_json["updated"]["data_collection_end"])
-        )
+        paused_end = _as_utc(_parse_dt(paused_json["updated"]["data_collection_end"]))
         assert paused_start == pause_start
         assert paused_end == yesterday_end
         assert paused_json["is_currently_collecting"] is False

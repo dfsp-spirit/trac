@@ -12,8 +12,12 @@ BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")
 ADMIN_AUTH = (settings.admin_username, settings.admin_password)
 
 
-async def _get_first_activity_selection(client: httpx.AsyncClient, study_name_short: str):
-    cfg_response = await client.get(f"{BASE_URL}/api/studies/{study_name_short}/activities-config")
+async def _get_first_activity_selection(
+    client: httpx.AsyncClient, study_name_short: str
+):
+    cfg_response = await client.get(
+        f"{BASE_URL}/api/studies/{study_name_short}/activities-config"
+    )
     assert cfg_response.status_code == 200
     cfg = cfg_response.json()
 

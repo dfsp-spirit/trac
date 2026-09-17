@@ -40,7 +40,9 @@ def upgrade() -> None:
         "studies",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
         sa.Column("name", sa.String(255), index=True, nullable=False),
-        sa.Column("name_short", sa.String(255), index=True, unique=True, nullable=False),
+        sa.Column(
+            "name_short", sa.String(255), index=True, unique=True, nullable=False
+        ),
         sa.Column("description", sa.JSON(), nullable=True),
         sa.Column("allow_unlisted_participants", sa.Boolean(), nullable=False),
         sa.Column("require_consent", sa.Boolean(), nullable=False),
@@ -141,9 +143,7 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "study_id", "participant_id", name="uq_study_participant"
-        ),
+        sa.UniqueConstraint("study_id", "participant_id", name="uq_study_participant"),
     )
 
     # ── activities ────────────────────────────────────────────────────────
@@ -219,9 +219,7 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "study_id", "task_key", name="uq_study_external_task_key"
-        ),
+        sa.UniqueConstraint("study_id", "task_key", name="uq_study_external_task_key"),
     )
 
     # ── study_external_task_assignments ───────────────────────────────────
@@ -383,9 +381,7 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.Column("activity_code", sa.Integer(), index=True, nullable=False),
-        sa.Column(
-            "parent_activity_code", sa.Integer(), index=True, nullable=True
-        ),
+        sa.Column("parent_activity_code", sa.Integer(), index=True, nullable=True),
         sa.Column("is_custom_input", sa.Boolean(), nullable=False),
         sa.Column("sort_order", sa.Integer(), index=True, nullable=False),
         sa.Column(

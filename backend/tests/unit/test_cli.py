@@ -27,7 +27,14 @@ def test_cli_studies_import_runs_schema_then_import(monkeypatch, tmp_path, capsy
 
     def _fake_import(path: str):
         calls.append(("import", path))
-        return [{"study_name_short": "demo", "created": True, "reason": "", "is_error": False}]
+        return [
+            {
+                "study_name_short": "demo",
+                "created": True,
+                "reason": "",
+                "is_error": False,
+            }
+        ]
 
     monkeypatch.setattr(cli, "_get_db_counts", _fake_counts)
     monkeypatch.setattr(cli, "initialize_db_schema", _fake_initialize_schema)
@@ -116,12 +123,16 @@ def test_cli_studies_import_fails_early_on_duplicate_short_names(monkeypatch, tm
     monkeypatch.setattr(
         cli,
         "_get_db_counts",
-        lambda: pytest.fail("DB counts should not be queried when duplicate short names exist"),
+        lambda: pytest.fail(
+            "DB counts should not be queried when duplicate short names exist"
+        ),
     )
     monkeypatch.setattr(
         cli,
         "initialize_db_schema",
-        lambda: pytest.fail("Schema initialization should not run on duplicate short names"),
+        lambda: pytest.fail(
+            "Schema initialization should not run on duplicate short names"
+        ),
     )
     monkeypatch.setattr(
         cli,
@@ -163,7 +174,14 @@ def test_cli_studies_import_no_ensure_schema(monkeypatch, tmp_path):
         "create_config_file_studies_in_database",
         lambda path: (
             calls.append(("import", path))
-            or [{"study_name_short": "demo", "created": True, "reason": "", "is_error": False}]
+            or [
+                {
+                    "study_name_short": "demo",
+                    "created": True,
+                    "reason": "",
+                    "is_error": False,
+                }
+            ]
         ),
     )
 
@@ -258,9 +276,13 @@ def test_cli_studies_export_runtime_config_writes_zip(monkeypatch, tmp_path, cap
     fake_response = SimpleNamespace(
         status_code=200,
         body=b"zip-bytes",
-        headers={"Content-Disposition": "attachment; filename=studies_config_2026-06-18.zip"},
+        headers={
+            "Content-Disposition": "attachment; filename=studies_config_2026-06-18.zip"
+        },
     )
-    monkeypatch.setattr(cli, "_build_runtime_export_response", lambda _session: fake_response)
+    monkeypatch.setattr(
+        cli, "_build_runtime_export_response", lambda _session: fake_response
+    )
 
     out_file = tmp_path / "backup.zip"
     exit_code = cli.main(
@@ -303,7 +325,9 @@ def test_cli_studies_export_runtime_config_uses_directory_output(monkeypatch, tm
         body=b"zip-bytes",
         headers={"Content-Disposition": "attachment; filename=my_export.zip"},
     )
-    monkeypatch.setattr(cli, "_build_runtime_export_response", lambda _session: fake_response)
+    monkeypatch.setattr(
+        cli, "_build_runtime_export_response", lambda _session: fake_response
+    )
 
     exit_code = cli.main(
         [

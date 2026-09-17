@@ -35,7 +35,7 @@ async def test_admin_participant_management_page_and_actions_work():
             auth=ADMIN_AUTH,
         )
         assert selected_page.status_code == 200
-        assert f'Participants in study {study_name_short}' in selected_page.text
+        assert f"Participants in study {study_name_short}" in selected_page.text
 
         assign_response = await client.post(
             f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
@@ -77,7 +77,6 @@ async def test_admin_participant_management_page_and_actions_work():
         assert participant_keep in after_remove_page.text
         assert participant_remove not in after_remove_page.text
 
-
     @pytest.mark.asyncio
     async def test_admin_participant_management_external_tasks_ui():
         study_name_short = "adult_pilot_de2"
@@ -94,7 +93,6 @@ async def test_admin_participant_management_page_and_actions_work():
             # The configured external task keys should be visible
             assert "depression_survey" in page_response.text
             assert "payment_info" in page_response.text
-
 
     @pytest.mark.asyncio
     async def test_admin_delete_tokens_preview_and_commit_scoped():
@@ -284,7 +282,9 @@ async def test_pool_tokens_import_csv_adds_tokens():
     new_token_pay = f"it-pool-pay-{unique_tag}"
 
     # Build CSV in-memory: one row with both task columns (no pid)
-    csv_content = "depression_survey,payment_info\r\n" + f"{new_token_dep},{new_token_pay}\r\n"
+    csv_content = (
+        "depression_survey,payment_info\r\n" + f"{new_token_dep},{new_token_pay}\r\n"
+    )
 
     async with httpx.AsyncClient() as client:
         # Import pool tokens
@@ -545,6 +545,8 @@ async def test_pool_tokens_import_missing_column():
             auth=ADMIN_AUTH,
         )
         assert resp.status_code == 400
+
+
 @pytest.mark.asyncio
 async def test_delete_multiple_participants_basic():
     """Delete multiple participants from a study via the batch endpoint."""

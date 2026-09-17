@@ -42,7 +42,9 @@ def created_studies_for_cleanup():
                 )
 
 
-async def _import_footer_links_study(client: httpx.AsyncClient, study_name_short: str) -> None:
+async def _import_footer_links_study(
+    client: httpx.AsyncClient, study_name_short: str
+) -> None:
     """Import a minimal study with footer_links via the admin API."""
     activities_payload = _load_activities_template()
 
@@ -100,9 +102,9 @@ async def _import_footer_links_study(client: httpx.AsyncClient, study_name_short
         json=payload,
         auth=ADMIN_AUTH,
     )
-    assert import_response.status_code == 200, (
-        f"Import failed: {import_response.status_code} {import_response.text}"
-    )
+    assert (
+        import_response.status_code == 200
+    ), f"Import failed: {import_response.status_code} {import_response.text}"
     import_data = import_response.json()
     assert import_data["summary"]["created"] == 1
     assert import_data["summary"]["failed"] == 0
@@ -120,22 +122,22 @@ async def test_study_config_includes_footer_links(created_studies_for_cleanup):
         url = f"{BASE_URL}/api/studies/{study_name_short}/study-config?lang=en"
         response = await client.get(url)
 
-    assert response.status_code == 200, (
-        f"Expected 200, got {response.status_code}: {response.text}"
-    )
+    assert (
+        response.status_code == 200
+    ), f"Expected 200, got {response.status_code}: {response.text}"
 
     data = response.json()
-    assert "footer_links" in data, (
-        f"study-config response missing 'footer_links' key. Keys: {list(data.keys())}"
-    )
+    assert (
+        "footer_links" in data
+    ), f"study-config response missing 'footer_links' key. Keys: {list(data.keys())}"
 
     footer_links = data["footer_links"]
-    assert isinstance(footer_links, list), (
-        f"footer_links should be a list, got {type(footer_links)}"
-    )
-    assert len(footer_links) == 2, (
-        f"Expected 2 footer links, got {len(footer_links)}: {footer_links}"
-    )
+    assert isinstance(
+        footer_links, list
+    ), f"footer_links should be a list, got {type(footer_links)}"
+    assert (
+        len(footer_links) == 2
+    ), f"Expected 2 footer links, got {len(footer_links)}: {footer_links}"
 
     # Verify first link: Study Information (opens in new tab)
     link1 = footer_links[0]
@@ -157,7 +159,9 @@ async def test_study_config_includes_footer_links(created_studies_for_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_study_config_includes_hide_server_wide_links(created_studies_for_cleanup):
+async def test_study_config_includes_hide_server_wide_links(
+    created_studies_for_cleanup,
+):
     """Verify hide_server_wide_links is present and defaults to false."""
     study_name_short = f"it_fl_{uuid.uuid4().hex[:8]}"
     created_studies_for_cleanup.append(study_name_short)
@@ -171,9 +175,9 @@ async def test_study_config_includes_hide_server_wide_links(created_studies_for_
     assert response.status_code == 200
 
     data = response.json()
-    assert "hide_server_wide_links" in data, (
-        "study-config response missing 'hide_server_wide_links' key"
-    )
-    assert data["hide_server_wide_links"] is False, (
-        f"Expected hide_server_wide_links=False, got {data['hide_server_wide_links']}"
-    )
+    assert (
+        "hide_server_wide_links" in data
+    ), "study-config response missing 'hide_server_wide_links' key"
+    assert (
+        data["hide_server_wide_links"] is False
+    ), f"Expected hide_server_wide_links=False, got {data['hide_server_wide_links']}"

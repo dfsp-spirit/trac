@@ -225,6 +225,5 @@ async def test_admin_delete_all_participant_data_keeps_study_operational(
         assert runtime_response.status_code == 200
         exported_study = runtime_response.json()["studies_config"]["studies"][0]
         assert any(
-            task["task_key"] == "payment"
-            for task in exported_study["external_tasks"]
+            task["task_key"] == "payment" for task in exported_study["external_tasks"]
         )
