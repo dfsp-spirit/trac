@@ -174,6 +174,44 @@ https://your.domain.example.com/tud_backend/admin
 Because the admin interface is part of the backend application, it must be exposed through the same reverse-proxy setup as the API. As with the rest of the backend, it should only be made available over HTTPS.
 
 
+#### 6.1 Study ownership and scientist accounts
+
+The admin interface knows two kinds of accounts:
+
+- **Super admins** (`TUD_API_ADMIN_USERNAME` / `TUD_API_ADMIN_PASSWORD`) can manage every study.
+- **Scientists** (`TUD_API_SCIENTISTS`) can fully manage the studies they own, plus any study that is explicitly granted to them.
+
+Scientist accounts are configured as a JSON list in the backend `.env` file:
+
+```dotenv
+TUD_API_SCIENTISTS='[{"name": "alice", "password": "secret1", "studies": ["existing_study"]}, {"name": "bob", "password": "secret2"}]'
+```
+
+- `studies` is optional and grants access to studies that are not (yet) owned by that scientist (values are study `name_short` names).
+- A username must not appear both in `TUD_API_ADMIN_USERNAME` and in `TUD_API_SCIENTISTS`; the backend refuses to start otherwise.
+- A study created by a scientist (admin interface, *File Validation* → create study) is owned by that scientist. Studies created by a super admin, or imported with `tud studies import` / `POST /api/admin/studies/import-config`, are **unowned** and can only be managed by super admins.
+- Ownership is edited in the *Study Owners* card on the study detail page. A study can have several owners. Scientists may add and remove co-owners but cannot remove themselves, so they cannot lock themselves out of a study they administer. A super admin can also remove all owners, which makes the study unowned again.
+
+Scientists have the full set of admin capabilities for their studies: study settings and texts, participant management, token and pool management, data export, and deleting the study. For studies they do not own they get HTTP 403.
+
+Two operations stay super-admin-only because they are not scoped to a single study:
+
+- `POST /api/admin/studies/import-config` (bulk import - scientists create studies through the file-validation flow instead)
+- `GET /api/admin/export/studies-runtime-config` without a `study_name` parameter (export of *all* studies)
+
+##### What this isolation is (and is not)
+
+Study ownership is an **accident-prevention feature for a trusted group of researchers, not a security boundary**:
+
+- It prevents a scientist from accidentally changing or deleting a colleague's study.
+- It does **not** hide information: study short names are discoverable (study names are globally unique, so creating a study with an existing name reveals that it exists), and participant IDs are global identifiers that may be shared across studies.
+- Super admins always have unrestricted access to every study and participant.
+- Co-owners are equals: any owner of a study can delete that study together with its data and can remove the other owners (but not themselves).
+- All accounts use long-lived HTTP Basic Auth credentials. Use strong passwords and serve the admin interface over HTTPS only.
+
+Removing a scientist from `TUD_API_SCIENTISTS` disables the account but leaves the owner entries of her studies in the database. Those studies stay unreachable for scientists until a super admin assigns new owners.
+
+
 ### 7. API and Automation
 
 The backend exposes a REST API and also serves FastAPI's live interactive API documentation. A convenient entry point is:
@@ -187,9 +225,10 @@ This redirects to the automatically generated FastAPI docs for the running backe
 Some endpoints are especially useful for automation, monitoring, backup, and integration with other systems:
 
 - `GET /api/health` checks that the backend is running and can reach the database. This is useful for uptime monitoring and health checks.
-- `POST /api/admin/studies/import-config` creates one or more studies from a study configuration payload (including activities and study texts), which is useful for automated study setup and server-to-server provisioning workflows.
+- `POST /api/admin/studies/import-config` creates one or more studies from a study configuration payload (including activities and study texts), which is useful for automated study setup and server-to-server provisioning workflows. Restricted to super admins.
 - `PATCH /api/admin/studies/{study_name_short}/collection-window` updates the study data-collection time window (`data_collection_start`/`data_collection_end`), which is useful for closing a study early, extending it, or pausing data collection by setting a date range that excludes today.
-- `GET /api/admin/export/studies-runtime-config` exports the full runtime study configuration together with participant assignments and logged activities. This is useful for backups and server-to-server synchronization.
+- `GET /api/admin/export/studies-runtime-config` exports the full runtime study configuration together with participant assignments and logged activities. This is useful for backups and server-to-server synchronization. Exporting all studies at once is restricted to super admins; pass `study_name` to export a single study.
+- `PATCH /api/admin/studies/{study_name_short}/owners` replaces the list of scientist owners of a study (`{"owner_usernames": ["alice", "bob"]}`). Only configured scientists can be owners; an empty list makes the study super-admin-only.
 - `GET /api/admin/export/{study_name_short}/activities` exports all recorded activities for one study in CSV or JSON, which is useful for data pipelines and integration with external systems.
 - `POST /api/admin/studies/{study_name_short}/assign-participants` assigns one or more participants to a study and can create participant records when needed, which is useful for automated invitation workflows.
 

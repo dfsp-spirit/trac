@@ -2,6 +2,15 @@ TRAC MPIAE Changes
 ===================
 
 
+Current WIP
+------------
+- NEW: scoped admin accounts ("scientists") via TUD_API_SCIENTISTS: each scientist fully manages the studies she owns (or that are granted to her), so routine study work (tokens, participants, study changes, delete + re-create) no longer needs a super admin. Super admins (TUD_API_ADMIN_USERNAME) keep unrestricted access.
+- NEW: studies can have several owners; ownership is shown on the admin overview and edited in the "Study Owners" card on the study detail page. New endpoint PATCH /api/admin/studies/{study_name_short}/owners. Scientists can add/remove co-owners but not themselves; only configured scientists can be owners.
+- NEW: a study created by a scientist is owned by that scientist. Studies created by a super admin or imported via CLI/import-config stay unowned (super-admin-only).
+- CHG: POST /api/admin/studies/import-config and the all-studies export GET /api/admin/export/studies-runtime-config are now restricted to super admins. Exporting a single study (study_name param) stays available to its owners.
+- DEV: migration 0009 adds studies.owner_usernames (JSON list). All admin authentication and study-scope enforcement now lives in api_deps/admin_auth.py and is applied centrally for every admin route; see README.md, section "Study ownership and scientist accounts", for behaviour and non-goals. New unit tests (settings/identity) and integration tests (exhaustive study-scoped endpoint matrix) for the scoping.
+
+
 Version 0.19.0 -- Copy Days
 ----------------------------
 - NEW: Allow copying days in frontend

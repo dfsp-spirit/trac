@@ -16,8 +16,18 @@ from o_timeusediary_backend.api import (
     create_study_from_validated_uploads,
     validate_files_in_memory,
 )
+from o_timeusediary_backend.api_deps.admin_auth import (
+    ROLE_SCIENTIST,
+    ROLE_SUPER_ADMIN,
+    AdminIdentity,
+)
 from o_timeusediary_backend.models import Study
 from fastapi import UploadFile
+
+
+# The endpoint functions are called directly in this module, so the admin
+# identity that the HTTP layer would inject has to be passed explicitly.
+SUPER_ADMIN_IDENTITY = AdminIdentity(username="unit_test_admin", role=ROLE_SUPER_ADMIN)
 
 
 def _backend_root() -> Path:
@@ -25,14 +35,20 @@ def _backend_root() -> Path:
 
 
 def _load_studies_config_payload() -> dict:
-    return json.loads((_backend_root() / "studies_config.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (_backend_root() / "studies_config.json").read_text(encoding="utf-8")
+    )
 
 
-def _get_study_by_name_short(studies_config_payload: dict, study_name_short: str) -> dict:
+def _get_study_by_name_short(
+    studies_config_payload: dict, study_name_short: str
+) -> dict:
     for study in studies_config_payload.get("studies", []):
         if study.get("name_short") == study_name_short:
             return study
-    raise AssertionError(f"Study '{study_name_short}' was not found in studies_config.json")
+    raise AssertionError(
+        f"Study '{study_name_short}' was not found in studies_config.json"
+    )
 
 
 def _make_upload_file(filename: str, content_bytes: bytes) -> UploadFile:
@@ -43,7 +59,9 @@ def _build_full_study_uploads(
     studies_config_payload: dict,
     selected_study_name_short: str,
 ) -> tuple[UploadFile, list[UploadFile]]:
-    selected_study = _get_study_by_name_short(studies_config_payload, selected_study_name_short)
+    selected_study = _get_study_by_name_short(
+        studies_config_payload, selected_study_name_short
+    )
     language_to_file = selected_study.get("activities_json_files") or {}
     if not isinstance(language_to_file, dict) or not language_to_file:
         raise AssertionError("Selected study has no activities_json_files mapping")
@@ -102,11 +120,16 @@ def _build_embedded_studies_config_upload(
         second_study_name_short = None
         for study in studies_config_payload.get("studies", []):
             candidate_name_short = str(study.get("name_short") or "").strip()
-            if candidate_name_short and candidate_name_short != selected_study_name_short:
+            if (
+                candidate_name_short
+                and candidate_name_short != selected_study_name_short
+            ):
                 second_study_name_short = candidate_name_short
                 break
         if not second_study_name_short:
-            raise AssertionError("Could not find an alternate study for multi-study test upload")
+            raise AssertionError(
+                "Could not find an alternate study for multi-study test upload"
+            )
 
         second_study = _build_embedded_study_payload(
             studies_config_payload,
@@ -148,7 +171,9 @@ def _insert_existing_default_study(session: Session) -> None:
 
 
 @pytest.mark.asyncio
-async def test_full_study_validation_reports_conflict_notice_for_existing_study(db_session):
+async def test_full_study_validation_reports_conflict_notice_for_existing_study(
+    db_session,
+):
     _insert_existing_default_study(db_session)
 
     studies_config_payload = _load_studies_config_payload()
@@ -196,6 +221,7 @@ async def test_create_from_files_blocks_existing_study_name_short(db_session):
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
+        identity=SUPER_ADMIN_IDENTITY,
         current_admin="unit_test_admin",
         session=db_session,
     )
@@ -257,6 +283,7 @@ async def test_create_from_files_creates_only_selected_study_when_config_contain
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
+        identity=SUPER_ADMIN_IDENTITY,
         current_admin="unit_test_admin",
         session=db_session,
     )
@@ -270,7 +297,9 @@ async def test_create_from_files_creates_only_selected_study_when_config_contain
 
 
 @pytest.mark.asyncio
-async def test_full_study_embedded_requires_selection_for_multi_study_upload(db_session):
+async def test_full_study_embedded_requires_selection_for_multi_study_upload(
+    db_session,
+):
     studies_config_payload = _load_studies_config_payload()
     studies_config_upload = _build_embedded_studies_config_upload(
         studies_config_payload,
@@ -349,6 +378,7 @@ async def test_full_study_embedded_validation_and_create_selected_study(db_sessi
         activities_language_map=None,
         activities_files=[],
         studies_config_file=studies_config_upload,
+        identity=SUPER_ADMIN_IDENTITY,
         current_admin="unit_test_admin",
         session=db_session,
     )
@@ -357,6 +387,45 @@ async def test_full_study_embedded_validation_and_create_selected_study(db_sessi
     assert create_payload["mode"] == "create_only"
     assert create_payload["summary"]["created"] == 1
     assert create_payload["summary"]["study_name_short"] == selected_study_name_short
+
+
+@pytest.mark.asyncio
+async def test_create_from_files_assigns_creating_scientist_as_owner(db_session):
+    """A study created by a scientist is owned by that scientist."""
+    studies_config_payload = _load_studies_config_payload()
+
+    random_suffix = uuid.uuid4().hex[:8]
+    selected_study_name_short = f"default_owner_{random_suffix}"
+    default_study = _get_study_by_name_short(studies_config_payload, "default")
+    default_study["name_short"] = selected_study_name_short
+    default_study["name"] = f"Default Weekly Study Owner Copy {random_suffix}"
+
+    studies_config_upload, activities_uploads = _build_full_study_uploads(
+        studies_config_payload,
+        selected_study_name_short,
+    )
+
+    scientist_identity = AdminIdentity(
+        username="unit_test_scientist",
+        role=ROLE_SCIENTIST,
+    )
+
+    create_payload = await create_study_from_validated_uploads(
+        full_study_name_short=selected_study_name_short,
+        activities_language_map=None,
+        activities_files=activities_uploads,
+        studies_config_file=studies_config_upload,
+        identity=scientist_identity,
+        current_admin=scientist_identity.username,
+        session=db_session,
+    )
+
+    assert create_payload["ok"] is True
+    assert create_payload["summary"]["created"] == 1
+
+    created_study = db_session.exec(select(Study)).one()
+    assert created_study.name_short == selected_study_name_short
+    assert created_study.owner_usernames == ["unit_test_scientist"]
 
     all_studies = db_session.exec(select(Study)).all()
     assert len(all_studies) == 1

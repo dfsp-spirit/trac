@@ -39,9 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Alembic target revision (default: head)",
     )
 
-    db_subparsers.add_parser(
-        "current", help="Show current database schema revision"
-    )
+    db_subparsers.add_parser("current", help="Show current database schema revision")
 
     studies_parser = subparsers.add_parser("studies", help="Study management commands")
     studies_subparsers = studies_parser.add_subparsers(dest="studies_command")
@@ -137,12 +135,11 @@ def _print_study_creation_summary(
         print("- (none)")
 
 
-
 def _run_studies_import(configs: list[str], ensure_schema: bool) -> int:
     config_paths = [str(Path(config).expanduser().resolve()) for config in configs]
 
-    studies_in_order, duplicate_entries = _collect_studies_and_duplicates_across_configs(
-        config_paths
+    studies_in_order, duplicate_entries = (
+        _collect_studies_and_duplicates_across_configs(config_paths)
     )
 
     if duplicate_entries:
@@ -155,9 +152,7 @@ def _run_studies_import(configs: list[str], ensure_schema: bool) -> int:
                     + ", ".join(sorted(duplicate_paths))
                 )
             else:
-                reason = (
-                    "import aborted because other files contain duplicate name_short values"
-                )
+                reason = "import aborted because other files contain duplicate name_short values"
             not_created_studies.append((study_name_short, reason))
 
         print(
@@ -226,11 +221,15 @@ def _run_db_current() -> int:
 def _build_runtime_export_response(session: Session):
     # Lazy import to avoid API module side effects unless this command is used.
     from .api import export_runtime_studies_config
+    from .api_deps.admin_auth import ROLE_SUPER_ADMIN, AdminIdentity
 
     return asyncio.run(
         export_runtime_studies_config(
             study_name=None,
             mode="split_zip",
+            # The CLI runs locally on the server by an operator, so it acts as a
+            # super admin (it may export every study).
+            identity=AdminIdentity(username="cli", role=ROLE_SUPER_ADMIN),
             current_admin="cli",
             session=session,
         )

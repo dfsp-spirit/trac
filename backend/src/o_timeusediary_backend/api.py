@@ -17,11 +17,9 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, RedirectResponse
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import logging
 import string
 import uuid
-import html
 from typing import Dict, List, Optional, Set, Tuple, Any, Union
 from datetime import date, datetime, timedelta, timezone
 import csv
@@ -84,16 +82,19 @@ from io import StringIO, BytesIO
 from pydantic import BaseModel, Field, model_validator, ConfigDict
 import o_timeusediary_backend
 
+from .api_deps.admin_auth import (
+    AdminIdentity,
+    ensure_can_access_study,
+    require_admin_identity,
+    require_super_admin,
+    verify_admin,
+)
 from .utils import utc_now, get_time_for_minutes_from_midnight
 
 
 setup_logging()
 logger = logging.getLogger(__name__)
 admin_audit_logger = get_admin_audit_logger()
-
-
-ADMIN_AUTH_REALM = "TRAC Administration"
-security = HTTPBasic(realm=ADMIN_AUTH_REALM)
 
 
 def audit_admin_action(admin_username: str, action_text: str) -> None:
@@ -657,7 +658,9 @@ def _get_days_meeting_min_coverage(
     day_labels = session.exec(
         select(DayLabel).where(DayLabel.study_id == study.id)
     ).all()
-    display_order_by_id = {day_label.id: day_label.display_order for day_label in day_labels}
+    display_order_by_id = {
+        day_label.id: day_label.display_order for day_label in day_labels
+    }
 
     activities = session.exec(
         select(Activity).where(
@@ -906,7 +909,8 @@ def _build_participant_completion_map(
             )
             dur = a.end_minutes - a.start_minutes
             pid_day_covered[a.participant_id][a.day_label_id][a.timeline_id] = (
-                pid_day_covered[a.participant_id][a.day_label_id].get(a.timeline_id, 0) + dur
+                pid_day_covered[a.participant_id][a.day_label_id].get(a.timeline_id, 0)
+                + dur
             )
 
         day_label_order = {dl.id: dl.display_order for dl in day_labels}
@@ -959,6 +963,10 @@ tud_version = o_timeusediary_backend.__version__
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    # Fail fast when the admin/scientist configuration is inconsistent, e.g. a
+    # username configured both as super admin and as scientist.
+    settings.validate_auth_configuration()
+
     logger.info(
         f"TUD Backend version {tud_version} starting with allowed origins: {settings.allowed_origins}"
     )
@@ -1006,33 +1014,6 @@ async def favicon():
     if favicon_path.exists():
         return FileResponse(favicon_path)
     return Response(status_code=204)
-
-
-def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
-    """Verify admin credentials using HTTP Basic Auth. Raises HTTP 401 if authentication fails.
-
-    @param credentials: HTTPBasicCredentials object containing the username and password provided by the client
-    @return: The username of the authenticated admin
-    """
-    for expected_username, expected_password in settings.admin_credentials:
-        correct_username = secrets.compare_digest(
-            credentials.username, expected_username
-        )
-        correct_password = secrets.compare_digest(
-            credentials.password, expected_password
-        )
-        if correct_username and correct_password:
-            logger.info(f"Admin '{credentials.username}' authenticated successfully.")
-            return credentials.username
-
-    logger.info(
-        f"Failed admin authentication attempt for user '{credentials.username}'"
-    )
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid admin credentials",
-        headers={"WWW-Authenticate": f'Basic realm="{ADMIN_AUTH_REALM}"'},
-    )
 
 
 def _coerce_utc_aware(value: datetime) -> datetime:
@@ -1939,13 +1920,17 @@ def submit_activities(
 @app.get("/admin", name="Admin Overview Page", response_class=HTMLResponse)
 async def admin_overview(
     request: Request,
+    identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
     """
     Admin overview page showing database contents.
     Shows studies, participants, timelines, and activities.
+    Scientists only see the studies they have access to, which also scopes the
+    aggregate statistics and the recent-activity list on the page.
     @param request FastAPI request object for template rendering.
+    @param identity Authenticated admin identity (role + study scope).
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
     @returns An HTML admin overview page with studies, participants, timelines, and activities.
@@ -1954,8 +1939,9 @@ async def admin_overview(
     logger.info(f"Admin '{current_admin}' accessed the admin overview page.")
     audit_admin_action(current_admin, "opened admin overview page")
 
-    # Get all studies with their relationships
-    studies = session.exec(select(Study).order_by(Study.created_at.desc())).all()
+    # Get all studies with their relationships, restricted to the caller's scope.
+    all_studies = session.exec(select(Study).order_by(Study.created_at.desc())).all()
+    studies = [study for study in all_studies if identity.can_access_study(study)]
 
     # Lightweight overview: build minimal study data for the table
     studies_data = []
@@ -2029,16 +2015,51 @@ async def admin_overview(
             }
         )
 
-    # Get database-wide statistics
+    # Get statistics, scoped to the studies the caller may access.
+    # Super admins keep the previous behaviour of counting globally.
     total_studies = len(studies)
-    total_participants = session.exec(select(func.count(Participant.id))).first() or 0
-    total_activities_all = session.exec(select(func.count(Activity.id))).first() or 0
+    accessible_study_ids = [study.id for study in studies]
+    if identity.is_super_admin:
+        total_participants = (
+            session.exec(select(func.count(Participant.id))).first() or 0
+        )
+        total_activities_all = (
+            session.exec(select(func.count(Activity.id))).first() or 0
+        )
+    else:
+        total_participants = (
+            (
+                session.exec(
+                    select(
+                        func.count(func.distinct(StudyParticipant.participant_id))
+                    ).where(StudyParticipant.study_id.in_(accessible_study_ids))
+                ).first()
+                or 0
+            )
+            if accessible_study_ids
+            else 0
+        )
+        total_activities_all = (
+            (
+                session.exec(
+                    select(func.count(Activity.id)).where(
+                        Activity.study_id.in_(accessible_study_ids)
+                    )
+                ).first()
+                or 0
+            )
+            if accessible_study_ids
+            else 0
+        )
 
-    # Recent activities (last 10 overall)
+    # Recent activities (last 10 within scope)
     try:
-        recent_activities = session.exec(
-            select(Activity).order_by(Activity.created_at.desc()).limit(10)
-        ).all()
+        recent_activities_query = select(Activity).order_by(Activity.created_at.desc())
+        if not identity.is_super_admin:
+            recent_activities_query = recent_activities_query.where(
+                Activity.study_id.in_(accessible_study_ids)
+            )
+        recent_activities = session.exec(recent_activities_query.limit(10)).all()
     except TypeError as exc:
         logger.warning(
             "Skipping recent activities query due to datetime mismatch: %s",
@@ -2093,6 +2114,8 @@ async def admin_overview(
         "total_participants": total_participants,
         "total_activities_all": total_activities_all,
         "recent_activities": enriched_recent_activities,
+        "is_super_admin": identity.is_super_admin,
+        "current_admin_role": identity.role,
         "current_time": utc_now(),
     }
     template = templates.get_template("admin_overview.html")
@@ -2108,12 +2131,14 @@ async def admin_overview(
 async def admin_study_detail(
     request: Request,
     name_short: str,
+    identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
     """
     Admin study detail page showing all information for a single study.
     Shows timelines, participants, external tasks, activities, day labels, and cfg activities.
+    Access for scientists is enforced by the shared admin auth dependency.
     """
     study = session.exec(select(Study).where(Study.name_short == name_short)).first()
 
@@ -2219,7 +2244,9 @@ async def admin_study_detail(
             participant_days_meeting = _get_days_meeting_min_coverage(
                 session, study, participant.id
             )
-            participant_all_days_meet_min_coverage = len(participant_days_meeting) >= study_days_count
+            participant_all_days_meet_min_coverage = (
+                len(participant_days_meeting) >= study_days_count
+            )
             participant_study_submitted_at = sp.study_submitted_at
             participant_external_tasks = (
                 _get_participant_external_tasks(
@@ -2508,9 +2535,7 @@ async def admin_study_detail(
         ).all()
         for pid, last_created in rows:
             if last_created is not None:
-                last_activity_per_participant[pid] = _to_utc_naive(
-                    last_created
-                ).date()
+                last_activity_per_participant[pid] = _to_utc_naive(last_created).date()
     except TypeError as exc:
         logger.warning(
             "Skipping completion chart data for study '%s': %s",
@@ -2620,6 +2645,10 @@ async def admin_study_detail(
         "require_consent": bool(study.require_consent),
         "frontend_open_join_url": frontend_open_join_url,
         "completion_progress": completion_progress,
+        "study_owner_usernames": list(study.owner_usernames or []),
+        "scientist_names": sorted(settings.scientist_names),
+        "is_super_admin": identity.is_super_admin,
+        "current_admin_role": identity.role,
         "current_time": utc_now(),
     }
     template = templates.get_template("admin_study_detail.html")
@@ -2668,6 +2697,12 @@ class UpdateStudyCollectionWindowRequest(BaseModel):
 class RenameStudyRequest(BaseModel):
     name: Optional[str] = None
     name_short: Optional[str] = None
+
+
+class UpdateStudyOwnersRequest(BaseModel):
+    """Replacement list of scientist owners for a study."""
+
+    owner_usernames: List[str]
 
 
 class ImportStudiesConfigStudy(BaseModel):
@@ -3584,7 +3619,17 @@ def _create_study_from_import_payload(
     session: Session,
     study_payload: ImportStudiesConfigStudy,
     validated_data: Dict,
+    owner_usernames: Optional[List[str]] = None,
 ) -> Study:
+    """Create a study (and its related rows) from a validated import payload.
+
+    @param session Database session.
+    @param study_payload Validated study import payload.
+    @param validated_data Pre-validated activities/config data for this study.
+    @param owner_usernames Scientist usernames that own the new study, or None for
+        an unowned study that only super admins can manage.
+    @return: The newly created Study row.
+    """
     default_language = validated_data["default_language"]
     parsed_default_activities: ActivitiesConfig = validated_data[
         "parsed_activities_by_lang"
@@ -3631,6 +3676,7 @@ def _create_study_from_import_payload(
         inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
         footer_links=study_payload.footer_links,
         hide_server_wide_links=study_payload.hide_server_wide_links,
+        owner_usernames=(list(owner_usernames) if owner_usernames else None),
     )
     session.add(study)
     session.flush()
@@ -3811,6 +3857,7 @@ async def get_available_activities_summary(
 async def import_studies_config(
     payload: ImportStudiesConfigRequest,
     dry_run: bool = Query(False, description="Validate only, no database writes"),
+    identity: AdminIdentity = Depends(require_super_admin),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
@@ -3819,6 +3866,10 @@ async def import_studies_config(
     Each study payload must provide exactly one of:
     - activities_json_data (embedded multilingual activity payloads), or
     - activities_json_files (language -> file path references)
+
+    Restricted to super admins: this bulk path creates several studies at once,
+    so it has no meaningful per-study ownership scope. Scientists create studies
+    through the file-validation upload flow instead.
     """
     allowed_modes = {"create_only"}
     allowed_transaction_modes = {"all_or_nothing", "per_study"}
@@ -4229,6 +4280,97 @@ async def rename_study(
     }
 
 
+@app.patch(
+    "/api/admin/studies/{study_name_short}/owners",
+    name="Update study owners",
+)
+async def update_study_owners(
+    study_name_short: str,
+    payload: UpdateStudyOwnersRequest,
+    identity: AdminIdentity = Depends(require_admin_identity),
+    session: Session = Depends(get_session),
+):
+    """Replace the list of scientist owners of a study.
+
+    Study access is already enforced centrally by the admin auth dependency, so
+    reaching this handler implies access (super admin, owner or env-granted
+    scientist).
+
+    Rules:
+    - Only usernames configured as scientists (`TUD_API_SCIENTISTS`) can be owners.
+    - Scientists cannot remove themselves, so they cannot lock themselves out of
+      a study they administer. A super admin can.
+    - An empty owner list (super admins only, in practice) means the study is
+      unowned and therefore only manageable by super admins.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    normalized_owners: List[str] = []
+    for raw_username in payload.owner_usernames:
+        username = (raw_username or "").strip()
+        if username and username not in normalized_owners:
+            normalized_owners.append(username)
+
+    known_scientists = set(settings.scientist_names)
+    unknown_usernames = sorted(
+        username for username in normalized_owners if username not in known_scientists
+    )
+    if unknown_usernames:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unknown_scientist",
+                "message": (
+                    f"Not configured as scientist(s): {unknown_usernames}. "
+                    "Add them to TUD_API_SCIENTISTS first."
+                ),
+            },
+        )
+
+    if not identity.is_super_admin and identity.username not in normalized_owners:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "cannot_remove_self",
+                "message": (
+                    "You cannot remove yourself as an owner of this study. "
+                    "Ask a super admin to change the owners."
+                ),
+            },
+        )
+
+    previous_owners = list(study.owner_usernames or [])
+    study.owner_usernames = normalized_owners or None
+    session.add(study)
+    session.commit()
+
+    logger.info(
+        "Admin '%s' changed owners of study '%s': %s -> %s",
+        identity.username,
+        study_name_short,
+        previous_owners,
+        normalized_owners,
+    )
+    audit_admin_action(
+        identity.username,
+        (
+            f"changed owners of study '{study_name_short}' "
+            f"from {previous_owners} to {normalized_owners}"
+        ),
+    )
+
+    return {
+        "study_name_short": study_name_short,
+        "owner_usernames": normalized_owners,
+    }
+
+
 @app.get("/api/admin/export/studies-runtime-config")
 async def export_runtime_studies_config(
     study_name: Optional[str] = Query(
@@ -4241,6 +4383,7 @@ async def export_runtime_studies_config(
             "'split_zip' returns a ZIP containing studies_config.json plus separate activities files"
         ),
     ),
+    identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
@@ -4260,6 +4403,20 @@ async def export_runtime_studies_config(
     studies = session.exec(study_query).all()
     if study_name and not studies:
         raise HTTPException(status_code=404, detail=f"Study '{study_name}' not found")
+
+    if not identity.is_super_admin:
+        if not study_name:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "super_admin_required",
+                    "message": (
+                        "Only super admins may export all studies at once. "
+                        "Pass study_name=<study> to export a single study."
+                    ),
+                },
+            )
+        ensure_can_access_study(identity, studies[0])
 
     exported_studies = []
     activities_by_study: Dict = {}
@@ -4574,6 +4731,7 @@ async def export_runtime_studies_config(
 async def admin_participant_management(
     request: Request,
     study_name_short: Optional[str] = Query(None),
+    identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
@@ -4581,6 +4739,7 @@ async def admin_participant_management(
 
     @param request FastAPI request object for template rendering.
     @param study_name_short Optional selected study short name.
+    @param identity Authenticated admin identity (role + study scope).
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
     @returns HTML page with study selector and participant management controls.
@@ -4596,7 +4755,8 @@ async def admin_participant_management(
     else:
         audit_admin_action(current_admin, "opened participant management page")
 
-    studies = session.exec(select(Study).order_by(Study.name_short)).all()
+    all_studies = session.exec(select(Study).order_by(Study.name_short)).all()
+    studies = [study for study in all_studies if identity.can_access_study(study)]
     studies_for_dropdown = []
     for study in studies:
         participant_count = (
@@ -4629,6 +4789,9 @@ async def admin_participant_management(
             raise HTTPException(
                 status_code=404, detail=f"Study '{study_name_short}' not found"
             )
+
+        # Study scope is carried in a query parameter here, so it is checked explicitly.
+        ensure_can_access_study(identity, selected_study)
 
         selected_study_requires_consent = bool(selected_study.require_consent)
 
@@ -5951,6 +6114,7 @@ async def create_study_from_validated_uploads(
     activities_language_map: Optional[str] = Form(None),
     activities_files: List[UploadFile] = File(default_factory=list),
     studies_config_file: Optional[UploadFile] = File(None),
+    identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
@@ -5960,6 +6124,9 @@ async def create_study_from_validated_uploads(
     - create_only
     - all_or_nothing
     - fail if study with same name_short or same name already exists
+
+    A study created by a scientist is owned by that scientist; studies created by
+    a super admin stay unowned (only super admins can manage them).
     """
     normalized_mode = mode if isinstance(mode, str) else "full_study"
     normalized_mode = normalized_mode.strip() or "full_study"
@@ -6025,13 +6192,22 @@ async def create_study_from_validated_uploads(
                 f"'{import_study_payload.name}' already exists"
             )
 
-        _create_study_from_import_payload(session, import_study_payload, validated_data)
+        new_study_owner_usernames = (
+            None if identity.is_super_admin else [identity.username]
+        )
+        _create_study_from_import_payload(
+            session,
+            import_study_payload,
+            validated_data,
+            owner_usernames=new_study_owner_usernames,
+        )
         session.commit()
 
         logger.info(
-            "Admin '%s' created study from file validation package: study_name_short='%s'",
+            "Admin '%s' created study from file validation package: study_name_short='%s', owner_usernames=%s",
             current_admin,
             import_study_payload.name_short,
+            new_study_owner_usernames,
         )
         audit_admin_action(
             current_admin,
@@ -6918,9 +7094,7 @@ async def delete_study_participant_data(
         deleted_assignments = (
             session.exec(
                 delete(StudyExternalTaskAssignment).where(
-                    StudyExternalTaskAssignment.external_task_id.in_(
-                        external_task_ids
-                    )
+                    StudyExternalTaskAssignment.external_task_id.in_(external_task_ids)
                 )
             ).rowcount
             or 0
@@ -7224,8 +7398,8 @@ async def export_study_activities(
 
         # Per-day status columns: day_0_status, day_1_status, ...
         day_status = comp.get("day_status", {})
-        for day_idx, status in day_status.items():
-            record[f"day_{day_idx}_status"] = status
+        for day_idx, day_state in day_status.items():
+            record[f"day_{day_idx}_status"] = day_state
 
         task_times = comp.get("task_confirmed_at", {})
         for task_key, confirmed_at in task_times.items():
@@ -7484,9 +7658,7 @@ def copy_day_activities(
     }
 
 
-@app.post(
-    "/api/studies/{study_name_short}/participants/{participant_id}/submit"
-)
+@app.post("/api/studies/{study_name_short}/participants/{participant_id}/submit")
 def submit_study(
     study_name_short: str,
     participant_id: str,

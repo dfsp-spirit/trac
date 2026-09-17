@@ -84,6 +84,12 @@ class Study(SQLModel, table=True):
         default=None, sa_column=Column(JSON, nullable=True)
     )
     hide_server_wide_links: bool = Field(default=False)
+    # Usernames of the scientists who own (i.e. administer) this study.
+    # `None` means the study is not owned by any scientist and can only be
+    # managed by super admins. Stored as JSON so a study can have several owners.
+    owner_usernames: Optional[List[str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
 
     # Relationships
     day_labels: List["DayLabel"] = Relationship(back_populates="study")

@@ -258,6 +258,7 @@
             <div><strong>Last Activity:</strong> {{ last_activity_time.strftime('%Y-%m-%d %H:%M:%S') if last_activity_time else 'N/A' }}</div>
             <div><strong>Last Activity (Ago):</strong> {{ last_activity_time_str_ago if last_activity_time_str_ago else 'N/A' }}</div>
             <div><strong>Default Language:</strong> {{ study.default_language }}</div>
+            <div><strong>Owners:</strong> <span id="studyOwnersDisplay">{{ study_owner_usernames|join(', ') if study_owner_usernames else '— (super admins only)' }}</span></div>
         </div>
 
         <!-- Export buttons -->
@@ -280,6 +281,24 @@
             <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
                 <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
+            </div>
+        </div>
+
+        <!-- Study owners -->
+        <div style="margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 8px;">
+            <strong style="display: block; margin-bottom: 0.5rem;">Study Owners</strong>
+            <p style="margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem;">
+                Scientists listed here can fully administer this study (configure, export and delete it).
+                Separate several usernames with commas; an empty list makes the study super-admin-only.
+                {% if scientist_names %}Configured scientists: {{ scientist_names|join(', ') }}.{% endif %}
+                {% if not is_super_admin %}You cannot remove yourself as an owner.{% endif %}
+            </p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <input id="studyOwnersInput" type="text" value="{{ study_owner_usernames|join(', ') }}"
+                       placeholder="scientist1, scientist2"
+                       style="flex: 1 1 320px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);">
+                <button type="button" class="export-btn" onclick="saveStudyOwners()">Save owners</button>
+                <span id="studyOwnersStatus" style="font-size: 0.85rem; color: var(--muted);"></span>
             </div>
         </div>
 
@@ -625,6 +644,65 @@
 
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
+        const STUDY_NAME_SHORT = "{{ study.name_short }}";
+
+        async function saveStudyOwners() {
+            const input = document.getElementById('studyOwnersInput');
+            const status = document.getElementById('studyOwnersStatus');
+            if (!input) return;
+
+            const owners = input.value
+                .split(',')
+                .map((value) => value.trim())
+                .filter((value) => value.length > 0);
+
+            if (status) {
+                status.textContent = 'Saving...';
+                status.style.color = 'var(--muted)';
+            }
+
+            try {
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(STUDY_NAME_SHORT)}/owners`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ owner_usernames: owners }),
+                    }
+                );
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    const detail = payload.detail;
+                    const message = detail && typeof detail === 'object'
+                        ? (detail.message || JSON.stringify(detail))
+                        : (detail || 'Failed to save owners.');
+                    if (status) {
+                        status.textContent = message;
+                        status.style.color = '#b91c1c';
+                    }
+                    return;
+                }
+
+                const savedOwners = payload.owner_usernames || [];
+                input.value = savedOwners.join(', ');
+                const display = document.getElementById('studyOwnersDisplay');
+                if (display) {
+                    display.textContent = savedOwners.length
+                        ? savedOwners.join(', ')
+                        : '— (super admins only)';
+                }
+                if (status) {
+                    status.textContent = 'Owners saved.';
+                    status.style.color = '#15803d';
+                }
+            } catch (error) {
+                if (status) {
+                    status.textContent = `Request failed: ${error.message}`;
+                    status.style.color = '#b91c1c';
+                }
+            }
+        }
+
         const deleteStudyModal = document.getElementById('deleteStudyModal');
         const deleteStudyModalTarget = document.getElementById('deleteStudyModalTarget');
         const deleteStudyConfirmInput = document.getElementById('deleteStudyConfirmInput');

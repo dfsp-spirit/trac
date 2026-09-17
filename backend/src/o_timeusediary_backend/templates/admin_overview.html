@@ -740,6 +740,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Short</th>
+                                <th>Owners</th>
                                 <th>Participants</th>
                                 <th>Activities</th>
                                 <th>Ext. Tasks</th>
@@ -757,6 +758,9 @@
                                     {% if sd.study.is_paused %}<span class="badge-paused" style="font-size: 0.7rem; margin-left: 0.3rem;">PAUSED</span>{% endif %}
                                 </td>
                                 <td><span class="badge badge-study">{{ sd.study.name_short }}</span></td>
+                                <td style="font-size: 0.85rem;">
+                                    {% if sd.study.owner_usernames %}{{ sd.study.owner_usernames|join(', ') }}{% else %}<span style="color: var(--muted);">—</span>{% endif %}
+                                </td>
                                 <td>{{ sd.participant_count }}</td>
                                 <td>{{ sd.activity_count }}</td>
                                 <td>{{ sd.external_task_count }}</td>
@@ -794,8 +798,8 @@
         <!-- Recent Activities Section -->
         <div class="study-section">
             <div class="study-header">
-                <h2>📊 Recently Logged Activities (Across All Studies)</h2>
-                <p>These are the most recent {{ recent_activities|length }} out of total {{ total_activities_all }} activities recorded across all studies. See the Activities tab of each study to see only results specific to that study.</p>
+                <h2>📊 Recently Logged Activities ({% if is_super_admin %}Across All Studies{% else %}Across Your Studies{% endif %})</h2>
+                <p>These are the most recent {{ recent_activities|length }} out of total {{ total_activities_all }} activities recorded {% if is_super_admin %}across all studies{% else %}across the studies you have access to{% endif %}. See the Activities tab of each study to see only results specific to that study.</p>
             </div>
             <div class="tab-content">
                 <div class="table-container">
@@ -833,6 +837,7 @@
             </div>
         </div>
 
+        {% if is_super_admin %}
         <div class="study-section">
             <div class="study-header">
                 <h2>⚙️ Runtime Config Export</h2>
@@ -854,6 +859,14 @@
                 </div>
             </div>
         </div>
+        {% else %}
+        <div class="study-section">
+            <div class="study-header">
+                <h2>⚙️ Runtime Config Export</h2>
+                <p>Runtime config backups for a single study are available on that study's detail page.</p>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <div id="deleteStudyModal" class="danger-modal" role="dialog" aria-modal="true" aria-labelledby="deleteStudyModalTitle">
