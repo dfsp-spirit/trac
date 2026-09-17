@@ -99,7 +99,7 @@ uv run tud db current
 
 ### 3. Study Configuration
 
-> **👉 Scientists and study administrators**: See the dedicated guide
+> **Scientists and study administrators**: See the dedicated guide
 > **[How to Create a Study](README_CREATE_STUDY.md)** for comprehensive
 > documentation on defining studies, configuring `studies_config.json`,
 > creating activities files, setting up external tasks, managing invitation
