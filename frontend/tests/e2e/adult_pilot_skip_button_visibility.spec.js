@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { enterStudyIfNeeded } = require('./e2e_helpers.js');
 
 const STUDY_NAME = 'adult_pilot_de';
 
@@ -87,6 +88,11 @@ test('adult_pilot_de hides skip reporting button when allow_skip_timeuse is fals
     }
   );
 
-  await expect(page).toHaveURL(/index\.html/);
+  // Wait until the diary UI is actually up (enterStudyIfNeeded also asserts
+  // that we stayed on index.html).  Asserting on a half-loaded page, or on a
+  // page that is about to redirect a submitted participant to the tasks or
+  // thank-you page, would let this test pass for the wrong reason.
+  await enterStudyIfNeeded(page);
+  await expect(page.locator('#currentDayDisplay')).toBeVisible();
   await expect(page.locator('#skipReportingBtn')).toBeHidden();
 });

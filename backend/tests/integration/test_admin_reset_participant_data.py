@@ -74,7 +74,8 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         )
         assert study_cfg_response.status_code == 200
         study_cfg = study_cfg_response.json()
-        day_label_name = study_cfg["day_labels"][0]["name"]
+        day_label_names = [day_label["name"] for day_label in study_cfg["day_labels"]]
+        assert day_label_names
 
         selection = await _get_first_activity_selection(client, study_name_short)
 
@@ -92,11 +93,20 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         else:
             activity_item["codes"] = [selection["activity_code"]]
 
-        submit_response = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-            json={"activities": [activity_item]},
+        # Every study day needs data before the study can be submitted.
+        for day_label_name in day_label_names:
+            submit_response = await client.post(
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
+                json={"activities": [activity_item]},
+            )
+            assert submit_response.status_code == 200
+
+        # Submit the study: without a reset the participant would stay submitted
+        # and the frontend would keep redirecting them away from the diary.
+        study_submit_response = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/submit",
         )
-        assert submit_response.status_code == 200
+        assert study_submit_response.status_code == 200
 
         cfg_before_reset_response = await client.get(
             f"{BASE_URL}/api/studies/{study_name_short}/study-config",
@@ -106,6 +116,8 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         cfg_before_reset = cfg_before_reset_response.json()
         assert cfg_before_reset["instructions_completed"] is True
         assert cfg_before_reset["consent_given"] is True
+        assert cfg_before_reset["participant_has_completed_study"] is True
+        assert cfg_before_reset["study_submitted_at"] is not None
 
         reset_response = await client.delete(
             f"{BASE_URL}/api/admin/studies/{study_name_short}/participants/{participant_id}/data",
@@ -118,6 +130,7 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         assert reset_data["deleted_activity_rows"] >= 1
         assert "reset_external_task_assignment_rows" in reset_data
         assert reset_data["association_reset"] is True
+        assert reset_data["submission_reset"] is True
 
         activities_after_reset_response = await client.get(
             f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
@@ -136,3 +149,15 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         assert cfg_after_reset["instructions_completed"] is False
         assert cfg_after_reset["consent_given"] is None
         assert cfg_after_reset["participant_has_completed_study"] is False
+        assert cfg_after_reset["study_submitted_at"] is None
+
+        # Resetting again is idempotent and reports that there was no
+        # submission left to clear.
+        second_reset_response = await client.delete(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/participants/{participant_id}/data",
+            auth=ADMIN_AUTH,
+        )
+        assert second_reset_response.status_code == 200
+        second_reset_data = second_reset_response.json()
+        assert second_reset_data["deleted_activity_rows"] == 0
+        assert second_reset_data["submission_reset"] is False

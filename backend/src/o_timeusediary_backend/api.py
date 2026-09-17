@@ -6690,8 +6690,12 @@ async def reset_participant_study_data(
     """Reset participant data scoped to one study.
 
     Deletes submitted activity rows for the participant in this study, deletes
-    external task assignments for this study, and resets consent/instructions
-    flags on the study-participant association if present.
+    external task assignments for this study, and resets the consent,
+    instructions and study-submission flags on the study-participant
+    association if present.  Clearing the submission makes the participant
+    active again: a submitted participant is redirected away from the diary by
+    the frontend (see ``_is_participant_study_complete``), so without this the
+    reset would leave the participant unable to record anything.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -6733,24 +6737,31 @@ async def reset_participant_study_data(
 
     association = _get_study_participant_association(session, study, participant_id)
     association_reset = False
+    submission_reset = False
     if association:
+        # A submitted participant is redirected to the post-diary page by the
+        # frontend, so resetting the data must also clear the submission flag --
+        # otherwise the reset would leave the participant locked out of the diary.
+        submission_reset = association.study_submitted_at is not None
         association.consent_given = None
         association.consent_decided_at = None
         association.instructions_completed = False
         association.instructions_completed_at = None
+        association.study_submitted_at = None
         session.add(association)
         association_reset = True
 
     session.commit()
 
     logger.info(
-        "Admin '%s' reset participant '%s' data in study '%s' (activities_deleted=%s, external_assignments_deleted=%s, association_reset=%s).",
+        "Admin '%s' reset participant '%s' data in study '%s' (activities_deleted=%s, external_assignments_deleted=%s, association_reset=%s, submission_reset=%s).",
         current_admin,
         participant_id,
         study_name_short,
         deleted_activity_rows,
         reset_external_task_assignment_rows,
         association_reset,
+        submission_reset,
     )
     audit_admin_action(
         current_admin,
@@ -6758,7 +6769,8 @@ async def reset_participant_study_data(
             f"reset participant '{participant_id}' data in study '{study_name_short}' "
             f"(activities_deleted={deleted_activity_rows}, "
             f"external_assignments_reset={reset_external_task_assignment_rows}, "
-            f"association_reset={association_reset})"
+            f"association_reset={association_reset}, "
+            f"submission_reset={submission_reset})"
         ),
     )
 
@@ -6769,6 +6781,7 @@ async def reset_participant_study_data(
         "deleted_activity_rows": deleted_activity_rows,
         "reset_external_task_assignment_rows": reset_external_task_assignment_rows,
         "association_reset": association_reset,
+        "submission_reset": submission_reset,
     }
 
 

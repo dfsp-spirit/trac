@@ -334,6 +334,51 @@ async function rightClickCopyDay(page, sourceDayIndex, targetDayIndex, { expectO
 }
 
 /**
+ * Close an open copy-day picker by clicking outside of it.
+ *
+ * The picker is positioned at the cursor and may cover large parts of the page
+ * (including elements one might naively click to close it).  Playwright refuses
+ * to click an element that is covered by the picker, so click a point that is
+ * guaranteed to be outside the picker's bounding box instead of an element.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function closeCopyDayPicker(page) {
+  const picker = page.locator('.copy-day-context-menu');
+  await picker.waitFor({ state: 'visible', timeout: 5000 });
+
+  const box = await picker.boundingBox();
+  const viewport =
+    page.viewportSize() ||
+    (await page.evaluate(() => ({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    })));
+
+  // Click near the bottom edge of the viewport (below the timelines, so the
+  // click cannot place an activity) on the first candidate point that is not
+  // covered by the picker.
+  const margin = 8;
+  const candidates = [
+    { x: Math.round(viewport.width / 2), y: viewport.height - margin },
+    { x: margin, y: viewport.height - margin },
+    { x: viewport.width - margin, y: viewport.height - margin },
+  ];
+  const outsidePicker = (point) => {
+    if (!box) {
+      return true;
+    }
+    const outsideX = point.x < box.x || point.x > box.x + box.width;
+    const outsideY = point.y < box.y || point.y > box.y + box.height;
+    return outsideX || outsideY;
+  };
+  const point = candidates.find(outsidePicker) || candidates[0];
+
+  await page.mouse.click(point.x, point.y);
+  await expect(picker).toBeHidden({ timeout: 5000 });
+}
+
+/**
  * Click "Submit Study" and verify redirect to thank-you page.
  *
  * @param {import('@playwright/test').Page} page
@@ -383,6 +428,7 @@ module.exports = {
   getCurrentDayIndex,
   copyDayTo,
   rightClickCopyDay,
+  closeCopyDayPicker,
   submitStudy,
   isDayButtonGreen,
   getDayButtonCount,

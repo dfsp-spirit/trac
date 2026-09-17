@@ -7,6 +7,7 @@ const {
   getCurrentDayIndex,
   isDayButtonGreen,
   getDayButtonCount,
+  closeCopyDayPicker,
   submitStudy,
 } = require('./e2e_helpers.js');
 
@@ -179,9 +180,9 @@ test.describe('Copy Days — core flows', () => {
     const itemCount = await pickerItems.count();
     expect(itemCount).toBe(6);
 
-    // Close picker by clicking outside it
-    await page.locator('#currentDayDisplay').click();
-    await expect(picker).toBeHidden();
+    // The picker is anchored at the cursor and covers the day header, so click
+    // a point that is provably outside of it to dismiss it.
+    await closeCopyDayPicker(page);
   });
 
   test('Submit Study button exists and is disabled when days are incomplete', async ({ page }) => {
