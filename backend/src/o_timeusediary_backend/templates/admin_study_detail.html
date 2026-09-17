@@ -164,6 +164,15 @@
         .danger-zone h4 { color: #8b1c13; margin-bottom: 0.45rem; }
         .danger-btn { border: none; border-radius: 4px; padding: 0.5rem 0.85rem; color: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; background: #b42318; }
         .danger-btn:disabled { cursor: not-allowed; opacity: 0.6; }
+        .owner-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.55rem 0 0.35rem; }
+        .owner-chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.2rem 0.5rem; border: 1px solid #e0c6c4; border-radius: 999px; background: #fff; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.82rem; color: var(--text); }
+        .owner-chip-you { border-color: #b42318; background: #fdf2f1; font-weight: 600; }
+        .owner-chip-remove { border: none; background: transparent; color: #b42318; cursor: pointer; font-size: 0.95rem; line-height: 1; padding: 0 0.1rem; }
+        .owner-chip-remove:disabled { color: #c9a9a6; cursor: not-allowed; }
+        .owner-empty { color: #6b7280; font-style: italic; font-size: 0.88rem; }
+        .owner-add-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.35rem; }
+        .owner-add-row select { padding: 0.42rem 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 0.88rem; color: var(--text); }
+        .owner-hint { margin-top: 0.55rem; color: #6b7280; font-size: 0.85rem; }
         .danger-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); z-index: 1200; padding: 1rem; }
         .danger-modal.open { display: flex; }
         .danger-modal-card { width: 100%; max-width: 560px; background: #fff; border-radius: 10px; border: 2px solid #b42318; box-shadow: 0 12px 40px rgba(0,0,0,0.25); padding: 1.25rem; }
@@ -281,24 +290,6 @@
             <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
                 <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
-            </div>
-        </div>
-
-        <!-- Study owners -->
-        <div style="margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 8px;">
-            <strong style="display: block; margin-bottom: 0.5rem;">Study Owners</strong>
-            <p style="margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem;">
-                Scientists listed here can fully administer this study (configure, export and delete it).
-                Separate several usernames with commas; an empty list makes the study super-admin-only.
-                {% if scientist_names %}Configured scientists: {{ scientist_names|join(', ') }}.{% endif %}
-                {% if not is_super_admin %}You cannot remove yourself as an owner.{% endif %}
-            </p>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                <input id="studyOwnersInput" type="text" value="{{ study_owner_usernames|join(', ') }}"
-                       placeholder="scientist1, scientist2"
-                       style="flex: 1 1 320px; padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text);">
-                <button type="button" class="export-btn" onclick="saveStudyOwners()">Save owners</button>
-                <span id="studyOwnersStatus" style="font-size: 0.85rem; color: var(--muted);"></span>
             </div>
         </div>
 
@@ -603,6 +594,30 @@
                             </p>
                         </div>
                     </div>
+
+                    <hr style="border: none; border-top: 1px solid #f3c2c0; margin: 1.2rem 0 0.9rem;">
+                    <h4>Study Owners</h4>
+                    <p>Owners are scientists who can fully administer this study: change its configuration, manage
+                        participants and tokens, export data, and delete it. Removing an owner revokes that access
+                        immediately.</p>
+                    <div id="studyOwnersChips" class="owner-chips" aria-live="polite"></div>
+                    <div class="owner-add-row">
+                        <select id="studyOwnerAddSelect" disabled>
+                            <option value="">Select a scientist…</option>
+                        </select>
+                        <button type="button" class="window-btn window-btn-save" id="studyOwnerAddBtn"
+                            onclick="addStudyOwnerFromSelect()" disabled>Add owner</button>
+                        {% if is_super_admin %}
+                        <button type="button" class="danger-btn" id="studyOwnerClearBtn"
+                            onclick="makeStudyUnowned()" disabled>Make unowned</button>
+                        {% endif %}
+                    </div>
+                    <p class="owner-hint">
+                        Only accounts configured in <code>TUD_API_SCIENTISTS</code> can be owners; a study without
+                        owners can only be managed by super admins.
+                        {% if not is_super_admin %}You cannot remove yourself as an owner.{% endif %}
+                    </p>
+                    <div class="window-status-msg" id="studyOwnersStatus"></div>
                 </div>
             </div>
         </div>
@@ -645,61 +660,197 @@
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
         const STUDY_NAME_SHORT = "{{ study.name_short }}";
+        const CURRENT_ADMIN = {{ current_admin | tojson }};
+        const IS_SUPER_ADMIN = {{ is_super_admin | tojson }};
+        const SCIENTIST_NAMES = {{ scientist_names | tojson }};
+        let studyOwners = {{ study_owner_usernames | tojson }};
 
-        async function saveStudyOwners() {
-            const input = document.getElementById('studyOwnersInput');
+        function ownersAreLocked() {
+            const body = document.getElementById('edit-section-body');
+            return !body || body.classList.contains('edit-section-body-locked');
+        }
+
+        function setOwnersStatus(message, kind) {
             const status = document.getElementById('studyOwnersStatus');
-            if (!input) return;
+            if (!status) return;
+            status.textContent = message || '';
+            status.style.color = kind === 'error'
+                ? '#b42318'
+                : (kind === 'ok' ? '#0f5132' : 'var(--muted)');
+        }
 
-            const owners = input.value
-                .split(',')
-                .map((value) => value.trim())
-                .filter((value) => value.length > 0);
+        function renderOwners() {
+            const container = document.getElementById('studyOwnersChips');
+            if (!container) return;
 
-            if (status) {
-                status.textContent = 'Saving...';
-                status.style.color = 'var(--muted)';
+            const locked = ownersAreLocked();
+            container.innerHTML = '';
+
+            if (studyOwners.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'owner-empty';
+                empty.textContent = 'No owners — only super admins can manage this study.';
+                container.appendChild(empty);
             }
 
-            try {
-                const response = await fetch(
-                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(STUDY_NAME_SHORT)}/owners`,
-                    {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ owner_usernames: owners }),
-                    }
-                );
-                const payload = await response.json().catch(() => ({}));
-                if (!response.ok) {
-                    const detail = payload.detail;
-                    const message = detail && typeof detail === 'object'
-                        ? (detail.message || JSON.stringify(detail))
-                        : (detail || 'Failed to save owners.');
-                    if (status) {
-                        status.textContent = message;
-                        status.style.color = '#b91c1c';
-                    }
-                    return;
-                }
+            studyOwners.forEach((owner) => {
+                const isSelf = owner === CURRENT_ADMIN;
+                const selfLocked = isSelf && !IS_SUPER_ADMIN;
 
-                const savedOwners = payload.owner_usernames || [];
-                input.value = savedOwners.join(', ');
-                const display = document.getElementById('studyOwnersDisplay');
-                if (display) {
-                    display.textContent = savedOwners.length
-                        ? savedOwners.join(', ')
-                        : '— (super admins only)';
-                }
-                if (status) {
-                    status.textContent = 'Owners saved.';
-                    status.style.color = '#15803d';
-                }
+                const chip = document.createElement('span');
+                chip.className = isSelf ? 'owner-chip owner-chip-you' : 'owner-chip';
+
+                const label = document.createElement('span');
+                label.textContent = isSelf ? `${owner} (you)` : owner;
+                chip.appendChild(label);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'owner-chip-remove';
+                removeBtn.textContent = '×';
+                removeBtn.disabled = locked || selfLocked;
+                removeBtn.title = selfLocked
+                    ? 'You cannot remove yourself as an owner. Ask a super admin to change the owners.'
+                    : `Remove ${owner} as owner of this study`;
+                removeBtn.setAttribute('aria-label', removeBtn.title);
+                removeBtn.addEventListener('click', () => {
+                    if (!removeBtn.disabled) removeStudyOwner(owner);
+                });
+                chip.appendChild(removeBtn);
+                container.appendChild(chip);
+            });
+
+            renderOwnerAddOptions(locked);
+
+            const display = document.getElementById('studyOwnersDisplay');
+            if (display) {
+                display.textContent = studyOwners.length
+                    ? studyOwners.join(', ')
+                    : '— (super admins only)';
+            }
+
+            const clearBtn = document.getElementById('studyOwnerClearBtn');
+            if (clearBtn) clearBtn.disabled = locked || studyOwners.length === 0;
+        }
+
+        function renderOwnerAddOptions(locked) {
+            const select = document.getElementById('studyOwnerAddSelect');
+            if (!select) return;
+
+            const candidates = SCIENTIST_NAMES.filter((name) => !studyOwners.includes(name));
+            const previousValue = select.value;
+            select.innerHTML = '';
+
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.textContent = candidates.length
+                ? 'Select a scientist…'
+                : 'No other scientists configured';
+            select.appendChild(placeholder);
+
+            candidates.forEach((name) => {
+                const option = document.createElement('option');
+                option.value = name;
+                option.textContent = name;
+                select.appendChild(option);
+            });
+
+            select.value = candidates.includes(previousValue) ? previousValue : '';
+            select.disabled = locked || candidates.length === 0;
+
+            const addBtn = document.getElementById('studyOwnerAddBtn');
+            if (addBtn) addBtn.disabled = locked || candidates.length === 0;
+        }
+
+        async function ownerRequest(method, path, body) {
+            const options = { method, headers: {} };
+            if (body !== undefined) {
+                options.headers['Content-Type'] = 'application/json';
+                options.body = JSON.stringify(body);
+            }
+
+            const response = await fetch(`${ADMIN_ROOT_PATH}${path}`, options);
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                const detail = payload.detail;
+                throw new Error(
+                    detail && typeof detail === 'object'
+                        ? (detail.message || JSON.stringify(detail))
+                        : (detail || `Request failed (${response.status}).`)
+                );
+            }
+            return payload;
+        }
+
+        function applyOwnerChange(payload, successMessage) {
+            studyOwners = payload.owner_usernames || [];
+            renderOwners();
+            setOwnersStatus(successMessage, 'ok');
+        }
+
+        async function addStudyOwner(username) {
+            if (!username) return;
+            setOwnersStatus(`Adding ${username}…`);
+            try {
+                const payload = await ownerRequest(
+                    'POST',
+                    `/api/admin/studies/${encodeURIComponent(STUDY_NAME_SHORT)}/owners/${encodeURIComponent(username)}`
+                );
+                applyOwnerChange(
+                    payload,
+                    payload.changed === false
+                        ? `${username} was already an owner.`
+                        : `${username} can now fully manage this study.`
+                );
             } catch (error) {
-                if (status) {
-                    status.textContent = `Request failed: ${error.message}`;
-                    status.style.color = '#b91c1c';
-                }
+                setOwnersStatus(error.message, 'error');
+            }
+        }
+
+        async function removeStudyOwner(username) {
+            if (!username) return;
+            setOwnersStatus(`Removing ${username}…`);
+            try {
+                const payload = await ownerRequest(
+                    'DELETE',
+                    `/api/admin/studies/${encodeURIComponent(STUDY_NAME_SHORT)}/owners/${encodeURIComponent(username)}`
+                );
+                applyOwnerChange(
+                    payload,
+                    payload.changed === false
+                        ? `${username} was not an owner.`
+                        : `${username} no longer has access to this study.`
+                );
+            } catch (error) {
+                setOwnersStatus(error.message, 'error');
+            }
+        }
+
+        function addStudyOwnerFromSelect() {
+            const select = document.getElementById('studyOwnerAddSelect');
+            if (!select || !select.value) {
+                setOwnersStatus('Select a scientist to add first.', 'error');
+                return;
+            }
+            addStudyOwner(select.value);
+        }
+
+        async function makeStudyUnowned() {
+            const confirmed = window.confirm(
+                'Remove all owners? This study can then only be managed by super admins.'
+            );
+            if (!confirmed) return;
+
+            setOwnersStatus('Removing all owners…');
+            try {
+                const payload = await ownerRequest(
+                    'PATCH',
+                    `/api/admin/studies/${encodeURIComponent(STUDY_NAME_SHORT)}/owners`,
+                    { owner_usernames: [] }
+                );
+                applyOwnerChange(payload, 'This study is now unowned.');
+            } catch (error) {
+                setOwnersStatus(error.message, 'error');
             }
         }
 
@@ -1116,6 +1267,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            renderOwners();
+
             document.querySelectorAll('.open-delete-study-btn').forEach((button) => {
                 button.addEventListener('click', () => openDeleteStudyModal(button.dataset.studyId, button.dataset.studyNameShort, button.dataset.studyName));
             });
@@ -1174,6 +1327,9 @@
                 warning.style.color = '#0d6efd';
                 body.classList.add('edit-section-body-locked');
             }
+
+            // Re-apply the owner-control state, including the self-lock for scientists.
+            renderOwners();
         }
 
     </script>

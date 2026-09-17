@@ -4280,6 +4280,18 @@ async def rename_study(
     }
 
 
+def _get_study_or_404(session: Session, study_name_short: str) -> Study:
+    """Load a study by short name, raising HTTP 404 when it does not exist."""
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+    return study
+
+
 @app.patch(
     "/api/admin/studies/{study_name_short}/owners",
     name="Update study owners",
@@ -4302,14 +4314,11 @@ async def update_study_owners(
       a study they administer. A super admin can.
     - An empty owner list (super admins only, in practice) means the study is
       unowned and therefore only manageable by super admins.
+
+    This is the batch path; adding or removing a single owner is also possible
+    with `POST`/`DELETE /api/admin/studies/{study_name_short}/owners/{username}`.
     """
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
+    study = _get_study_or_404(session, study_name_short)
 
     normalized_owners: List[str] = []
     for raw_username in payload.owner_usernames:
@@ -4368,6 +4377,150 @@ async def update_study_owners(
     return {
         "study_name_short": study_name_short,
         "owner_usernames": normalized_owners,
+    }
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/owners/{username}",
+    name="Add study owner",
+)
+async def add_study_owner(
+    study_name_short: str,
+    username: str,
+    identity: AdminIdentity = Depends(require_admin_identity),
+    session: Session = Depends(get_session),
+):
+    """Add a single scientist as owner of a study.
+
+    Per-owner instead of list-replacing, so two administrators editing owner
+    lists at the same time cannot undo each other's change, and so that the audit
+    log records who added whom.
+
+    The operation is idempotent: adding an existing owner succeeds without
+    changing anything (`changed: false`).
+    """
+    study = _get_study_or_404(session, study_name_short)
+    normalized_username = (username or "").strip()
+
+    if normalized_username not in set(settings.scientist_names):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "unknown_scientist",
+                "message": (
+                    f"'{normalized_username}' is not configured as a scientist. "
+                    "Add the account to TUD_API_SCIENTISTS first."
+                ),
+            },
+        )
+
+    owners = list(study.owner_usernames or [])
+    if normalized_username in owners:
+        logger.info(
+            "Admin '%s' added owner '%s' to study '%s' (already an owner, no change).",
+            identity.username,
+            normalized_username,
+            study_name_short,
+        )
+        return {
+            "study_name_short": study_name_short,
+            "owner_usernames": owners,
+            "changed": False,
+        }
+
+    owners.append(normalized_username)
+    study.owner_usernames = owners
+    session.add(study)
+    session.commit()
+
+    logger.info(
+        "Admin '%s' added owner '%s' to study '%s'.",
+        identity.username,
+        normalized_username,
+        study_name_short,
+    )
+    audit_admin_action(
+        identity.username,
+        f"added owner '{normalized_username}' to study '{study_name_short}'",
+    )
+
+    return {
+        "study_name_short": study_name_short,
+        "owner_usernames": owners,
+        "changed": True,
+    }
+
+
+@app.delete(
+    "/api/admin/studies/{study_name_short}/owners/{username}",
+    name="Remove study owner",
+)
+async def remove_study_owner(
+    study_name_short: str,
+    username: str,
+    identity: AdminIdentity = Depends(require_admin_identity),
+    session: Session = Depends(get_session),
+):
+    """Remove a single owner from a study.
+
+    Unlike adding, this deliberately does *not* require the username to be a
+    currently configured scientist: when an account is removed from
+    `TUD_API_SCIENTISTS`, its owner entries stay behind and a super admin must
+    still be able to clean them up.
+
+    Scientists cannot remove themselves (HTTP 403), so they cannot lock
+    themselves out of a study they administer. The operation is idempotent:
+    removing somebody who is not an owner succeeds with `changed: false`.
+    """
+    study = _get_study_or_404(session, study_name_short)
+    normalized_username = (username or "").strip()
+
+    if not identity.is_super_admin and normalized_username == identity.username:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "cannot_remove_self",
+                "message": (
+                    "You cannot remove yourself as an owner of this study. "
+                    "Ask a super admin to change the owners."
+                ),
+            },
+        )
+
+    owners = list(study.owner_usernames or [])
+    if normalized_username not in owners:
+        logger.info(
+            "Admin '%s' removed owner '%s' from study '%s' (was not an owner, no change).",
+            identity.username,
+            normalized_username,
+            study_name_short,
+        )
+        return {
+            "study_name_short": study_name_short,
+            "owner_usernames": owners,
+            "changed": False,
+        }
+
+    owners.remove(normalized_username)
+    study.owner_usernames = owners or None
+    session.add(study)
+    session.commit()
+
+    logger.info(
+        "Admin '%s' removed owner '%s' from study '%s'.",
+        identity.username,
+        normalized_username,
+        study_name_short,
+    )
+    audit_admin_action(
+        identity.username,
+        f"removed owner '{normalized_username}' from study '{study_name_short}'",
+    )
+
+    return {
+        "study_name_short": study_name_short,
+        "owner_usernames": list(study.owner_usernames or []),
+        "changed": True,
     }
 
 

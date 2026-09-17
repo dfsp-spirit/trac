@@ -190,7 +190,8 @@ TUD_API_SCIENTISTS='[{"name": "alice", "password": "secret1", "studies": ["exist
 - `studies` is optional and grants access to studies that are not (yet) owned by that scientist (values are study `name_short` names).
 - A username must not appear both in `TUD_API_ADMIN_USERNAME` and in `TUD_API_SCIENTISTS`; the backend refuses to start otherwise.
 - A study created by a scientist (admin interface, *File Validation* → create study) is owned by that scientist. Studies created by a super admin, or imported with `tud studies import` / `POST /api/admin/studies/import-config`, are **unowned** and can only be managed by super admins.
-- Ownership is edited in the *Study Owners* card on the study detail page. A study can have several owners. Scientists may add and remove co-owners but cannot remove themselves, so they cannot lock themselves out of a study they administer. A super admin can also remove all owners, which makes the study unowned again.
+- Ownership is edited in the *Study Owners* section at the bottom of the study detail page. It sits in the danger zone, so it only becomes editable after clicking *Enable Editing* - removing an owner revokes their access immediately. A study can have several owners. Scientists may add and remove co-owners but cannot remove themselves, so they cannot lock themselves out of a study they administer. A super admin can also remove all owners, which makes the study unowned again.
+- Every ownership change is recorded as its own entry in the admin audit log (`added owner 'bob' to study 'x'`, `removed owner ...`).
 
 Scientists have the full set of admin capabilities for their studies: study settings and texts, participant management, token and pool management, data export, and deleting the study. For studies they do not own they get HTTP 403.
 
@@ -229,6 +230,7 @@ Some endpoints are especially useful for automation, monitoring, backup, and int
 - `PATCH /api/admin/studies/{study_name_short}/collection-window` updates the study data-collection time window (`data_collection_start`/`data_collection_end`), which is useful for closing a study early, extending it, or pausing data collection by setting a date range that excludes today.
 - `GET /api/admin/export/studies-runtime-config` exports the full runtime study configuration together with participant assignments and logged activities. This is useful for backups and server-to-server synchronization. Exporting all studies at once is restricted to super admins; pass `study_name` to export a single study.
 - `PATCH /api/admin/studies/{study_name_short}/owners` replaces the list of scientist owners of a study (`{"owner_usernames": ["alice", "bob"]}`). Only configured scientists can be owners; an empty list makes the study super-admin-only.
+- `POST` / `DELETE /api/admin/studies/{study_name_short}/owners/{username}` add or remove a single owner (both idempotent, so they are safe to retry and cannot overwrite a concurrent change by someone else). `DELETE` also removes owner entries whose account is no longer configured; scientists cannot delete themselves.
 - `GET /api/admin/export/{study_name_short}/activities` exports all recorded activities for one study in CSV or JSON, which is useful for data pipelines and integration with external systems.
 - `POST /api/admin/studies/{study_name_short}/assign-participants` assigns one or more participants to a study and can create participant records when needed, which is useful for automated invitation workflows.
 

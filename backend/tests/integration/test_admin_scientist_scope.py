@@ -395,6 +395,76 @@ def test_owner_management_rules(scoped_studies):
         assert restored.status_code == 200, restored.text
 
 
+@requires_two_scientists
+def test_single_owner_add_and_remove_endpoints(scoped_studies):
+    """Per-owner endpoints: idempotent, self-lock aware, immediate effect."""
+    study_a = scoped_studies["study_a"]
+    scientist_a = SCIENTIST_A["name"]
+    scientist_b = SCIENTIST_B["name"]
+    owners_url = f"{BASE_URL}/api/admin/studies/{study_a}/owners"
+
+    with httpx.Client(timeout=60.0) as client:
+        # Adding a configured scientist grants access immediately.
+        added = client.post(f"{owners_url}/{scientist_b}", auth=SCIENTIST_A_AUTH)
+        assert added.status_code == 200, added.text
+        assert added.json()["changed"] is True
+        assert added.json()["owner_usernames"] == [scientist_a, scientist_b]
+        assert (
+            client.get(
+                f"{BASE_URL}/admin/study/{study_a}", auth=SCIENTIST_B_AUTH
+            ).status_code
+            == 200
+        )
+
+        # Adding an existing owner is a no-op, not an error.
+        added_again = client.post(f"{owners_url}/{scientist_b}", auth=SCIENTIST_A_AUTH)
+        assert added_again.status_code == 200, added_again.text
+        assert added_again.json()["changed"] is False
+        assert added_again.json()["owner_usernames"] == [scientist_a, scientist_b]
+
+        # Only configured scientists can be added.
+        unknown = client.post(
+            f"{owners_url}/not_a_configured_scientist", auth=SCIENTIST_A_AUTH
+        )
+        assert unknown.status_code == 400
+        assert unknown.json()["detail"]["code"] == "unknown_scientist"
+
+        # Scientists cannot remove themselves, even while they still have a co-owner.
+        self_removal = client.delete(
+            f"{owners_url}/{scientist_a}", auth=SCIENTIST_A_AUTH
+        )
+        assert self_removal.status_code == 403
+        assert self_removal.json()["detail"]["code"] == "cannot_remove_self"
+
+        # They can remove a co-owner, which revokes access immediately.
+        removed = client.delete(f"{owners_url}/{scientist_b}", auth=SCIENTIST_A_AUTH)
+        assert removed.status_code == 200, removed.text
+        assert removed.json()["changed"] is True
+        assert removed.json()["owner_usernames"] == [scientist_a]
+        assert (
+            client.get(
+                f"{BASE_URL}/admin/study/{study_a}", auth=SCIENTIST_B_AUTH
+            ).status_code
+            == 403
+        )
+
+        # Removing somebody who is not an owner is a no-op, not an error.
+        removed_again = client.delete(
+            f"{owners_url}/{scientist_b}", auth=SCIENTIST_A_AUTH
+        )
+        assert removed_again.status_code == 200, removed_again.text
+        assert removed_again.json()["changed"] is False
+        assert removed_again.json()["owner_usernames"] == [scientist_a]
+
+        # A super admin can also remove an entry that is no longer a configured
+        # scientist (left behind after removing an account from the env config).
+        stale = client.delete(
+            f"{owners_url}/removed_from_env_long_ago", auth=ADMIN_AUTH
+        )
+        assert stale.status_code == 200, stale.text
+        assert stale.json()["changed"] is False
+
+
 # Every admin route whose path contains a study short name must deny a scientist
 # without access. Adding a new study-scoped route without protection makes this
 # matrix fail, which is the point: it is an exhaustive guard.
@@ -410,6 +480,8 @@ STUDY_SCOPED_ADMIN_ENDPOINTS = [
     ("PATCH", "/api/admin/studies/{study}/unpause", None),
     ("PATCH", "/api/admin/studies/{study}/rename", {"name_short": "{study}"}),
     ("PATCH", "/api/admin/studies/{study}/owners", {"owner_usernames": []}),
+    ("POST", "/api/admin/studies/{study}/owners/{username}", None),
+    ("DELETE", "/api/admin/studies/{study}/owners/{username}", None),
     ("POST", "/api/admin/studies/{study}/import-external-tokens", "upload"),
     ("POST", "/api/admin/studies/{study}/import-pool-tokens", "upload"),
     ("POST", "/api/admin/studies/{study}/generate-tokens", None),
@@ -489,6 +561,9 @@ def test_every_study_scoped_endpoint_denies_foreign_scientist(
         path_template.replace("{study}", scoped_studies["study_b"])
         .replace("{task_key}", "missing_task")
         .replace("{participant_id}", "missing_participant")
+        # A configured scientist's own name: so a 403 can only come from the
+        # study-scope check (and not from the unknown-scientist validation).
+        .replace("{username}", scoped_studies["scientist_a"])
     )
 
     request_kwargs = {"auth": SCIENTIST_A_AUTH}
