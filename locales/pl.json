@@ -53,6 +53,7 @@
     "submit": "Wyślij dzień",
     "saveDay": "Zapisz dzień",
     "finishStudy": "Wyślij dzień i zakończ badanie",
+    "submitStudy": "Wyślij badanie",
     "start": "Rozpocznij",
     "removeLast": "Usuń ostatnią",
     "cleanRow": "Wyczyść rząd",
@@ -157,12 +158,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Uzupełnij minimalne aktywności przed zmianą dnia.",
     "completeMinimumActivitiesBeforeCopying": "Uzupełnij minimalne aktywności przed skopiowaniem bieżącego dnia.",
     "completeOtherDaysFirst": "Uzupełnij najpierw {{days}}, aby zakończyć badanie.",
-    "daySavedStayOnPage": "Day saved.",
-    "copyDayEmpty": "empty",
-    "copyDayHasData": "has data",
-    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}",
-    "submitStudySuccess": "Study submitted successfully!"
+    "daySavedStayOnPage": "Dzień zapisany.",
+    "copyDayEmpty": "pusty",
+    "copyDayHasData": "ma dane",
+    "copyOverwriteConfirm": "{{day}} ma już dane. Nadpisać?",
+    "submitStudyIncomplete": "Niekompletne dni: {{days}}",
+    "submitStudySuccess": "Badanie wysłane pomyślnie!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",

@@ -53,6 +53,7 @@
     "submit": "Skicka dagen",
     "saveDay": "Spara dagen",
     "finishStudy": "Skicka dagen och avsluta studien",
+    "submitStudy": "Skicka studien",
     "start": "Starta",
     "removeLast": "Ta bort senaste",
     "cleanRow": "Rensa rad",
@@ -157,12 +158,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Komplettera minimiaktiviteterna innan du byter dag.",
     "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen.",
     "completeOtherDaysFirst": "Fyll först i {{days}} för att avsluta studien.",
-    "daySavedStayOnPage": "Day saved.",
-    "copyDayEmpty": "empty",
-    "copyDayHasData": "has data",
-    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}",
-    "submitStudySuccess": "Study submitted successfully!"
+    "daySavedStayOnPage": "Dagen sparad.",
+    "copyDayEmpty": "tom",
+    "copyDayHasData": "har data",
+    "copyOverwriteConfirm": "{{day}} har redan data. Skriva över?",
+    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}",
+    "submitStudySuccess": "Studien skickades framgångsrikt!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",

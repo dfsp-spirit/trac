@@ -53,6 +53,7 @@
     "submit": "Lähetä päivä",
     "saveDay": "Tallenna päivä",
     "finishStudy": "Lähetä päivä ja lopeta tutkimus",
+    "submitStudy": "Lähetä tutkimus",
     "start": "Aloita",
     "removeLast": "Poista viimeisin",
     "cleanRow": "Tyhjennä rivi",
@@ -157,12 +158,12 @@
     "completeMinimumActivitiesBeforeSwitching": "Täytä vähimmäisaktiviteetit ennen päivän vaihtamista.",
     "completeMinimumActivitiesBeforeCopying": "Täytä vähimmäisaktiviteetit ennen nykyisen päivän kopioimista.",
     "completeOtherDaysFirst": "Täytä ensin {{days}} päättääksesi tutkimuksen.",
-    "daySavedStayOnPage": "Day saved.",
-    "copyDayEmpty": "empty",
-    "copyDayHasData": "has data",
-    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}",
-    "submitStudySuccess": "Study submitted successfully!"
+    "daySavedStayOnPage": "Päivä tallennettu.",
+    "copyDayEmpty": "tyhjä",
+    "copyDayHasData": "sisältää dataa",
+    "copyOverwriteConfirm": "{{day}} sisältää jo dataa. Ylikirjoitetaanko?",
+    "submitStudyIncomplete": "Puutteelliset päivät: {{days}}",
+    "submitStudySuccess": "Tutkimus lähetetty onnistuneesti!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",
