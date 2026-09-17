@@ -66,31 +66,34 @@ def _load_activities_template() -> dict:
     )
 
 
+def _embedded_study_payload(study_name_short: str) -> dict:
+    """Single study definition with embedded activities (import-config / create-from-files)."""
+    return {
+        "name": f"Scope Test Study {study_name_short}",
+        "name_short": study_name_short,
+        "description": "Study created by integration tests for scientist scoping",
+        "day_labels": [
+            {
+                "name": "monday",
+                "display_order": 0,
+                "display_names": {"en": "Monday"},
+            }
+        ],
+        "study_participant_ids": [],
+        "allow_unlisted_participants": True,
+        "default_language": "en",
+        "supported_languages": ["en"],
+        "activities_json_data": {"en": _load_activities_template()},
+        "data_collection_start": "2024-01-01T00:00:00Z",
+        "data_collection_end": "2028-12-31T23:59:59Z",
+    }
+
+
 def _build_study_payload(study_name_short: str) -> dict:
     return {
         "mode": "create_only",
         "transaction_mode": "all_or_nothing",
-        "studies": [
-            {
-                "name": f"Scope Test Study {study_name_short}",
-                "name_short": study_name_short,
-                "description": "Study created by integration tests for scientist scoping",
-                "day_labels": [
-                    {
-                        "name": "monday",
-                        "display_order": 0,
-                        "display_names": {"en": "Monday"},
-                    }
-                ],
-                "study_participant_ids": [],
-                "allow_unlisted_participants": True,
-                "default_language": "en",
-                "supported_languages": ["en"],
-                "activities_json_data": {"en": _load_activities_template()},
-                "data_collection_start": "2024-01-01T00:00:00Z",
-                "data_collection_end": "2028-12-31T23:59:59Z",
-            }
-        ],
+        "studies": [_embedded_study_payload(study_name_short)],
     }
 
 
@@ -463,6 +466,230 @@ def test_single_owner_add_and_remove_endpoints(scoped_studies):
         )
         assert stale.status_code == 200, stale.text
         assert stale.json()["changed"] is False
+
+
+@requires_two_scientists
+def test_scientist_creates_study_owned_by_creator(scoped_studies):
+    """A scientist can create a study through the file-validation flow and owns it."""
+    created_short = f"it_scope_created_{uuid.uuid4().hex[:8]}"
+    studies_config_bytes = json.dumps(
+        {"studies": [_embedded_study_payload(created_short)]}
+    ).encode("utf-8")
+
+    with httpx.Client(timeout=60.0) as client:
+        create_response = client.post(
+            f"{BASE_URL}/api/admin/studies/create-from-files",
+            auth=SCIENTIST_A_AUTH,
+            data={"mode": "full_study_embedded"},
+            files=[
+                (
+                    "studies_config_file",
+                    ("studies_config.json", studies_config_bytes, "application/json"),
+                )
+            ],
+        )
+        _require_authenticated(create_response, SCIENTIST_A_AUTH)
+        assert create_response.status_code == 200, create_response.text
+        create_payload = create_response.json()
+        assert create_payload["ok"] is True, create_payload
+        assert create_payload["summary"]["study_name_short"] == created_short
+
+        try:
+            # The creator is the owner and can fully use the new study.
+            detail = client.get(
+                f"{BASE_URL}/admin/study/{created_short}", auth=SCIENTIST_A_AUTH
+            )
+            assert detail.status_code == 200, detail.text
+            assert SCIENTIST_A["name"] in detail.text
+
+            pause = client.patch(
+                f"{BASE_URL}/api/admin/studies/{created_short}/pause",
+                auth=SCIENTIST_A_AUTH,
+            )
+            assert pause.status_code == 200, pause.text
+
+            # The other scientist cannot see or reach it.
+            assert (
+                client.get(
+                    f"{BASE_URL}/admin/study/{created_short}", auth=SCIENTIST_B_AUTH
+                ).status_code
+                == 403
+            )
+            assert (
+                created_short
+                not in client.get(f"{BASE_URL}/admin", auth=SCIENTIST_B_AUTH).text
+            )
+            assert (
+                created_short
+                in client.get(f"{BASE_URL}/admin", auth=SCIENTIST_A_AUTH).text
+            )
+
+            # The creator can delete what she created.
+            delete_response = client.delete(
+                f"{BASE_URL}/api/admin/studies/{created_short}",
+                auth=SCIENTIST_A_AUTH,
+            )
+            assert delete_response.status_code == 200, delete_response.text
+            assert (
+                client.get(
+                    f"{BASE_URL}/admin/study/{created_short}", auth=SCIENTIST_A_AUTH
+                ).status_code
+                == 404
+            )
+        finally:
+            # Idempotent cleanup if the test failed before deleting the study.
+            client.delete(
+                f"{BASE_URL}/api/admin/studies/{created_short}", auth=ADMIN_AUTH
+            )
+
+
+@requires_two_scientists
+def test_scientist_manages_participants_in_own_study(scoped_studies):
+    """A scientist can assign and remove participants in her own study."""
+    study_a = scoped_studies["study_a"]
+    participant_ids = [f"it_scope_p_{uuid.uuid4().hex[:8]}" for _ in range(2)]
+
+    with httpx.Client(timeout=60.0) as client:
+        assign = client.post(
+            f"{BASE_URL}/api/admin/studies/{study_a}/assign-participants",
+            json={"participant_ids": participant_ids, "must_be_new": True},
+            auth=SCIENTIST_A_AUTH,
+        )
+        _require_authenticated(assign, SCIENTIST_A_AUTH)
+        assert assign.status_code == 200, assign.text
+        summary = assign.json()["summary"]
+        assert summary["created_and_assigned"] == 2
+        assert summary["total_after_assignment"] == 2
+
+        # Both show up on the participant-management page for her study.
+        with_participants = client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": study_a},
+            auth=SCIENTIST_A_AUTH,
+        )
+        assert with_participants.status_code == 200
+        for participant_id in participant_ids:
+            assert participant_id in with_participants.text
+
+        # She can remove a participant from her own study.
+        remove = client.delete(
+            f"{BASE_URL}/api/admin/studies/{study_a}/participants/{participant_ids[0]}",
+            auth=SCIENTIST_A_AUTH,
+        )
+        assert remove.status_code == 200, remove.text
+
+        after_remove = client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": study_a},
+            auth=SCIENTIST_A_AUTH,
+        )
+        assert participant_ids[0] not in after_remove.text
+        assert participant_ids[1] in after_remove.text
+
+
+@requires_two_scientists
+def test_scientist_deletes_own_study(scoped_studies):
+    """Deleting a study she owns works for a scientist and removes it everywhere."""
+    study_a = scoped_studies["study_a"]
+    study_b = scoped_studies["study_b"]
+
+    with httpx.Client(timeout=60.0) as client:
+        assert (
+            client.get(
+                f"{BASE_URL}/admin/study/{study_a}", auth=SCIENTIST_A_AUTH
+            ).status_code
+            == 200
+        )
+
+        delete_response = client.delete(
+            f"{BASE_URL}/api/admin/studies/{study_a}", auth=SCIENTIST_A_AUTH
+        )
+        _require_authenticated(delete_response, SCIENTIST_A_AUTH)
+        assert delete_response.status_code == 200, delete_response.text
+        assert delete_response.json()["study_name_short"] == study_a
+
+        # Gone for everyone, and no longer listed in her overview.
+        assert (
+            client.get(
+                f"{BASE_URL}/admin/study/{study_a}", auth=SCIENTIST_A_AUTH
+            ).status_code
+            == 404
+        )
+        assert (
+            client.get(f"{BASE_URL}/admin/study/{study_a}", auth=ADMIN_AUTH).status_code
+            == 404
+        )
+        overview = client.get(f"{BASE_URL}/admin", auth=SCIENTIST_A_AUTH)
+        assert overview.status_code == 200
+        assert study_a not in overview.text
+        assert study_b not in overview.text
+
+
+@requires_two_scientists
+def test_env_granted_study_is_accessible_without_ownership(scoped_studies):
+    """A study granted through TUD_API_SCIENTISTS 'studies' is accessible to that scientist only."""
+    granted_study = "default"
+    if granted_study not in SCIENTIST_A.get("studies", []):
+        pytest.skip(
+            f"'{granted_study}' is not granted to {SCIENTIST_A['name']} "
+            "in TUD_API_SCIENTISTS."
+        )
+
+    with httpx.Client(timeout=60.0) as client:
+        detail = client.get(
+            f"{BASE_URL}/admin/study/{granted_study}", auth=SCIENTIST_A_AUTH
+        )
+        _require_authenticated(detail, SCIENTIST_A_AUTH)
+        assert detail.status_code == 200
+
+        assert (
+            client.get(
+                f"{BASE_URL}/api/admin/studies/{granted_study}/available-activities-summary",
+                auth=SCIENTIST_A_AUTH,
+            ).status_code
+            == 200
+        )
+
+        # Read-only usage without ownership: exports work for the granted study,
+        # but granting is not ownership, so nothing else changes for other studies.
+        export = client.get(
+            f"{BASE_URL}/api/admin/export/studies-runtime-config",
+            params={"study_name": granted_study},
+            auth=SCIENTIST_A_AUTH,
+        )
+        assert export.status_code == 200, export.text
+
+        # The grant is per scientist: the other scientist still has no access.
+        assert (
+            client.get(
+                f"{BASE_URL}/admin/study/{granted_study}", auth=SCIENTIST_B_AUTH
+            ).status_code
+            == 403
+        )
+
+
+@requires_two_scientists
+def test_single_study_export_contains_only_that_study(scoped_studies):
+    """The per-study runtime config export never leaks data of other studies."""
+    study_a = scoped_studies["study_a"]
+    study_b = scoped_studies["study_b"]
+
+    with httpx.Client(timeout=60.0) as client:
+        response = client.get(
+            f"{BASE_URL}/api/admin/export/studies-runtime-config",
+            params={"study_name": study_a},
+            auth=SCIENTIST_A_AUTH,
+        )
+        _require_authenticated(response, SCIENTIST_A_AUTH)
+        assert response.status_code == 200, response.text
+
+        payload = response.json()
+        exported_names = [
+            study["name_short"] for study in payload["studies_config"]["studies"]
+        ]
+        assert exported_names == [study_a]
+        assert list(payload["activities"].keys()) == [study_a]
+        assert study_b not in json.dumps(payload)
 
 
 # Every admin route whose path contains a study short name must deny a scientist

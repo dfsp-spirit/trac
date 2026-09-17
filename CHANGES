@@ -10,6 +10,8 @@ Current WIP
 - NEW: a study created by a scientist is owned by that scientist. Studies created by a super admin or imported via CLI/import-config stay unowned (super-admin-only).
 - CHG: POST /api/admin/studies/import-config and the all-studies export GET /api/admin/export/studies-runtime-config are now restricted to super admins. Exporting a single study (study_name param) stays available to its owners.
 - DEV: migration 0009 adds studies.owner_usernames (JSON list). All admin authentication and study-scope enforcement now lives in api_deps/admin_auth.py and is applied centrally for every admin route; see README.md, section "Study ownership and scientist accounts", for behaviour and non-goals. New unit tests (settings/identity) and integration tests (exhaustive study-scoped endpoint matrix) for the scoping.
+- DEV: scientist tests now also cover the positive paths: creating a study through the file-validation flow (owned by the creator, invisible to the other scientist), assigning and removing participants in her own study, deleting a study she owns, accessing an env-granted study, and that a single-study runtime config export contains no data of other studies. The dev/CI env files grant the "default" study to test_scientist_alpha so the TUD_API_SCIENTISTS "studies" path is exercised too.
+- DEV: new Playwright spec frontend/tests/e2e/admin_study_owners.spec.js covers the owners UI in a real browser (locked until "Enable Editing", add/remove chips, "Make unowned" only for super admins, scientist self-removal locked even after unlocking).
 
 
 Version 0.19.0 -- Copy Days
