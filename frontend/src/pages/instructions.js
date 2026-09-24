@@ -327,6 +327,40 @@ function updateLayout() {
   document.body.classList.toggle('is-vertical', !isHorizontal);
 }
 
+/**
+ * The "Copy a Day" step only makes sense when there is another day to copy
+ * to. The diary page shows the copy button under the same condition
+ * (addCopyDayLink() in ui.js), so hide the step for single-day studies and
+ * keep the visible steps numbered consecutively.
+ */
+function applyCopyDayStepVisibility(studyConfig) {
+  const copyDayStep = document.getElementById('instruction-step-copy-day');
+
+  const declaredDaysCount = Number(studyConfig?.study_days_count);
+  const daysCount = Number.isFinite(declaredDaysCount)
+    ? declaredDaysCount
+    : Array.isArray(studyConfig?.day_labels)
+      ? studyConfig.day_labels.length
+      : null;
+
+  // Without a study config we cannot tell, so keep the step visible.
+  if (copyDayStep && daysCount !== null) {
+    copyDayStep.hidden = daysCount <= 1;
+  }
+
+  // Number only the visible steps, so a hidden step does not leave a gap.
+  let visibleStepCount = 0;
+  document.querySelectorAll('.instruction-step').forEach((step) => {
+    if (!step.hidden) {
+      visibleStepCount += 1;
+    }
+    const badge = step.querySelector('.step-number');
+    if (badge) {
+      badge.textContent = String(visibleStepCount);
+    }
+  });
+}
+
 // Initialize i18n when the module loads
 (async () => {
   try {
@@ -396,6 +430,7 @@ function updateLayout() {
       applyStudyIntroText(studyConfig);
       applyStudyInstructionsText(studyConfig);
     }
+    applyCopyDayStepVisibility(studyConfig);
     console.log('i18n initialized successfully');
   } catch (error) {
     console.error('Error initializing i18n:', error);
