@@ -7,7 +7,6 @@
     "studyIntroDefault": "Detta är vår tidsanvändningsstudie.<br><br>Vi ber dig att <b>återskapa en typisk vecka</b> av dina dagliga aktiviteter med hjälp av vårt tidsanvändningsverktyg.<br><br>Vilken vecka ska jag välja? Tänk på din senaste vecka (de senaste 7 dagarna).<br>Undantag: Om du var sjuk eller på semester förra veckan, välj en annan nylig vecka som bättre representerar din vanliga rutin.",
     "visualGuideTitle": "Visuella illustrationer av hur du använder gränssnittet",
     "startPrompt": "Klicka på den blå Starta-knappen för att börja din dagboksregistrering.",
-    "mainInstruction": "Tänk på de aktiviteter du gjorde <span class=\"emphasis\">igår</span>. Fyll sedan i hela tidslinjen med de aktiviteter du gjorde.",
     "step1": {
       "title": "Välj och placera en aktivitet",
       "horizontal": "Välj en aktivitet från menyn längst ner på skärmen och placera den på tidslinjen.",
@@ -58,16 +57,11 @@
     "cleanRow": "Rensa rad",
     "skipReporting": "Hoppa över tidsrapportering",
     "previousTimeline": "Föregående tidslinje",
-    "backToInstructions": "Tillbaka till instruktioner",
     "giveConsent": "Jag samtycker och fortsätter",
     "declineConsent": "Jag samtycker inte",
     "ok": "OK",
     "cancel": "Avbryt",
-    "save": "Spara",
-    "close": "Stäng",
-    "confirm": "Bekräfta",
-    "yes": "Ja",
-    "no": "Nej"
+    "close": "Stäng"
   },
   "modals": {
     "customActivity": {
@@ -84,15 +78,6 @@
       "title": "Välj ett alternativ",
       "titleFor": "Välj ett alternativ för \"{activityName}\""
     },
-    "confirmSubmit": {
-      "title": "Skicka in data för {{dayLabel}} (dag {{currentDay}} av {{totalDays}})?",
-      "message": "Du kommer inte att kunna ändra dina svar för dag {{dayLabel}}.",
-      "infoOnTemplate": "För nästa dag visas de data du angav idag som en mall för att hjälpa dig rapportera enklare. Anpassa dem efter behov.<br /><br /> Kom ihåg att du kan ta bort data genom att hålla ned eller hålla muspekaren över aktiviteten i tidslinjen och trycka på 'd' eller DEL.",
-      "studyEnd": "Den här inlämningen avslutar studien.",
-      "submitDay": "Skicka in dag {{dayLabel}}",
-      "submitDayAndFinish": "Skicka in dag {{dayLabel}} och avsluta studien",
-      "submitDayNoDay": "Skicka dagen"
-    },
     "confirmSkip": {
       "title": "Vill du verkligen hoppa över all tidsrapportering?",
       "message": "Du kommer att skickas direkt till tack-sidan."
@@ -100,10 +85,6 @@
     "confirmCleanRow": {
       "title": "Rensa aktuell tidslinjerad?",
       "message": "Är du säker på att du vill ta bort alla aktiviteter i den aktuella tidslinjeraden?"
-    },
-    "loading": {
-      "title": "Skickar din dagbok...",
-      "message": "Var god vänta medan vi sparar dina svar."
     },
     "activityContext": {
       "copy": "Kopiera",
@@ -123,13 +104,6 @@
     "selectStudy": "Välj en studie för att fortsätta",
     "noStudiesAvailable": "Inga studier finns på servern.",
     "studyNotFound": "Den begärda studien finns inte.",
-    "loading": "Laddar...",
-    "saving": "Sparar...",
-    "saved": "Sparat framgångsrikt",
-    "error": "Ett fel uppstod",
-    "noActivities": "Inga aktiviteter hittades",
-    "fillRequired": "Fyll i alla obligatoriska aktiviteter",
-    "submitSuccess": "Dagbok inskickad framgångsrikt",
     "submitError": "Fel vid inskickning av dagbok",
     "sending_retry": "Nytt försök att spara dagboken (försök {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -144,7 +118,6 @@
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
     "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
     "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan.",
-    "reportingForDay": "Rapportering för dag:",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
     "goBackToEditPreviousDays": "Byt till dag:",
@@ -153,15 +126,12 @@
     "copySuccess": "Kopierade {{sourceDay}} till {{targetDay}}",
     "copyError": "Kunde inte kopiera: {{message}}",
     "copyEmptySource": "Källdagen har inga aktiviteter att kopiera.",
-    "completeMinimumActivitiesBeforeSwitching": "Komplettera minimiaktiviteterna innan du byter dag.",
-    "completeMinimumActivitiesBeforeCopying": "Komplettera minimiaktiviteterna innan du kopierar den aktuella dagen.",
     "completeOtherDaysFirst": "Fyll först i {{days}} för att avsluta studien.",
     "daySavedStayOnPage": "Dagen sparad.",
     "copyDayEmpty": "tom",
     "copyDayHasData": "har data",
     "copyOverwriteConfirm": "{{day}} har redan data. Skriva över?",
-    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}",
-    "submitStudySuccess": "Studien skickades framgångsrikt!"
+    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",
@@ -171,14 +141,10 @@
   "banner": {
     "dayOneInstructions": "Instruktioner: Välj en aktivitet nedan, klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet, håll den nedtryckt på mobil eller använd högerklicksmenyn på dator."
   },
-  "activities": {
-    "otherNotListed": "Annat som inte finns med (ange)"
-  },
   "thankYou": {
     "title": "Tack - TRAC",
     "heading": "Tack!",
     "subtitle": "Din inskickning har slutförts framgångsrikt.",
-    "message": "Tack för att du deltar i vår <span class=\"app-name\">TRAC</span>-studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
     "continueLink": "Klicka här för att fortsätta."
   },
   "taskPage": {
@@ -206,7 +172,6 @@
   "openStudies": {
     "pageTitle": "Öppna studier | TRAC",
     "heading": "TRAC -- Öppna studier",
-    "noStudies": "Inga öppna studier tillgängliga.",
-    "accessLink": "Till studien"
+    "noStudies": "Inga öppna studier tillgängliga."
   }
 }

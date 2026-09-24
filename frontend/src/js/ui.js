@@ -5,11 +5,9 @@ import {
   getPostDiaryRedirectPath,
   formatTimeHHMM,
   positionToMinutes,
-  canFinishStudy,
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
 import {
-  addNextTimeline,
   goToPreviousTimeline,
   renderActivities,
   getCurrentDayIndex,
@@ -207,7 +205,7 @@ window.updateDisabledButtonOverlays = updateDisabledButtonOverlays;
 const MODAL_FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const MODAL_CLOSE_SELECTOR =
-  '.modal-close, .close, #confirmCancel, #confirmSkipCancel, #confirmCleanRowCancel';
+  '.modal-close, .close, #confirmSkipCancel, #confirmCleanRowCancel';
 
 // Stack of open dialogs: [{ dialog, trigger }]
 const modalFocusStack = [];
@@ -356,7 +354,10 @@ function createModal() {
   customActivityModal.id = 'customActivityModal';
   customActivityModal.setAttribute('role', 'dialog');
   customActivityModal.setAttribute('aria-modal', 'true');
-  customActivityModal.setAttribute('aria-labelledby', 'customActivityModalTitle');
+  customActivityModal.setAttribute(
+    'aria-labelledby',
+    'customActivityModalTitle'
+  );
   customActivityModal.innerHTML = `
         <div class="modal">
             <div class="modal-header">
@@ -464,173 +465,15 @@ function createModal() {
     }
   });
 
-  // Create confirmation modal
-  const confirmationModal = document.createElement('div');
-  confirmationModal.className = 'modal-overlay';
-  confirmationModal.id = 'confirmationModal';
-  confirmationModal.setAttribute('role', 'dialog');
-  confirmationModal.setAttribute('aria-modal', 'true');
-  confirmationModal.setAttribute('aria-labelledby', 'confirmationTitle');
-  const numStudyDaysCount = window.studyConfigManager?.getStudyDaysCount() || 1;
-  const urlParams = new URLSearchParams(window.location.search);
-  const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
-  const dayLabel =
-    window.studyConfigManager?.getDayDisplayLabel(currentDayIndex) ||
-    window.studyConfigManager?.getDayLabel(currentDayIndex) ||
-    `day_${currentDayIndex + 1}`;
-
-  const i18n = window.i18n;
-  const _t = (key, params) =>
-    i18n && i18n.isReady() ? i18n.t(key, params) : key;
-
-  // Show the original "cannot change previous days" message only when
-  // previous-day switching buttons are disabled in settings.
-  const showPreviousDaysButtons = Boolean(
-    TUD_SETTINGS.SHOW_PREVIOUS_DAYS_BUTTONS
-  );
-  const showCannotChangeMessage = !showPreviousDaysButtons;
-  const messageText = showCannotChangeMessage
-    ? _t('modals.confirmSubmit.message', { dayLabel })
-    : '';
-
-  // Build a skeleton once; the info paragraph and OK-button text are filled
-  // dynamically by updateConfirmationModalContent(buttonMode) right before the
-  // modal is shown, based on the actual current button mode.  The OK click
-  // handler (below) already branches on button mode; only the visible label
-  // and info paragraph were stale when a user manually navigated to the last
-  // study day with previous days incomplete (mode="save-day" but modal said
-  // "Submit Day ... and Finish Study / This submission concludes the study").
-  confirmationModal.innerHTML = `
-        <div class="modal">
-            <div class="modal-content">
-                <h3 id="confirmationTitle">${_t('modals.confirmSubmit.title', {
-                  dayLabel,
-                  currentDay: currentDayIndex + 1,
-                  totalDays: numStudyDaysCount,
-                })}</h3>
-                ${
-                  showCannotChangeMessage
-                    ? `<p id="confirmationMessage">${messageText}</p>`
-                    : ''
-                }
-                <p id="confirmationInfo" style="display:none;"></p>
-                <div class="button-container">
-                    <button id="confirmCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
-                    <button id="confirmOk" class="btn save-btn"></button>
-                </div>
-            </div>
-        </div>
-    `;
-
-  // Update the modal's visible content for the given button mode.  Modes are
-  // set on #navSubmitBtn / #nextBtn by updateButtonStates():
-  //   - "submit-day"   : non-last study day — save and advance.
-  //   - "finish-study" : last study day AND all previous days complete —
-  //                      save and go to thank-you page.
-  //   - "save-day"      : last study day but previous days incomplete —
-  // Copy Days: only save-day mode exists — save and stay on this day.
-  function updateConfirmationModalContent(buttonMode) {
-    const h3 = confirmationModal.querySelector('#confirmationTitle');
-    const messageP = confirmationModal.querySelector('#confirmationMessage');
-    const infoP = confirmationModal.querySelector('#confirmationInfo');
-    const okBtn = confirmationModal.querySelector('#confirmOk');
-
-    if (h3) {
-      h3.textContent = _t('modals.confirmSubmit.title', {
-        dayLabel,
-        currentDay: currentDayIndex + 1,
-        totalDays: numStudyDaysCount,
-      });
-    }
-    if (messageP) {
-      messageP.textContent = _t('modals.confirmSubmit.message', { dayLabel });
-    }
-
-    // Always save-day: no info paragraph, OK says "Save Day"
-    if (infoP) {
-      infoP.innerHTML = '';
-      infoP.removeAttribute('data-i18n-html');
-      infoP.style.display = 'none';
-    }
-    if (okBtn) {
-      okBtn.textContent = _t('modals.confirmSubmit.submitDayNoDay');
-    }
-
-    confirmationModal.dataset.currentMode = 'save-day';
-  }
-
-  // Initialize with save-day as the only mode
-  updateConfirmationModalContent('save-day');
-  window.updateConfirmationModalContent = updateConfirmationModalContent;
-
-  // Update modal text when the user switches language mid-session, using the
-  // mode that was active when the modal was last configured.
-  window.addEventListener('i18n:languageChanged', () => {
-    updateConfirmationModalContent(
-      confirmationModal.dataset.currentMode || 'submit-day'
-    );
-  });
-
-  confirmationModal
-    .querySelector('#confirmCancel')
-    .addEventListener('click', () => {
-      confirmationModal.style.cssText = 'display: none !important';
-    });
-
-  confirmationModal
-    .querySelector('#confirmOk')
-    .addEventListener('click', async () => {
-      confirmationModal.style.cssText = 'display: none !important';
-      showLoadingModal();
-
-      const nextButton = document.getElementById('nextBtn');
-      const navSubmitButton = document.getElementById('navSubmitBtn');
-
-      if (nextButton) {
-        nextButton.disabled = true;
-      }
-      if (navSubmitButton) {
-        navSubmitButton.disabled = true;
-      }
-
-      // Get current day index
-      const urlParams = new URLSearchParams(window.location.search);
-      const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
-      const totalDays = window.studyConfigManager?.getStudyDaysCount() || 1;
-
-      // Copy Days: always save-day mode — save and reload current day.
-      // No auto-advance, no redirect. Submit Study is a separate button.
-      const result = await sendData({
-        shouldRedirect: false,
-        isLastDay: false,
-        currentDayIndex: currentDayIndex,
-      });
-
-      if (result?.success) {
-        const daySavedMsg = window.i18n
-          ? window.i18n.t('messages.daySavedStayOnPage')
-          : 'Day saved.';
-        showToast(daySavedMsg, 'success', 3000);
-        // Reload to refresh day button states from backend
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
-      } else {
-        const submitErrorMessage = window.i18n
-          ? window.i18n.t('messages.submitError')
-          : 'Error saving diary';
-        const errorDetails = result?.error ? `: ${result.error}` : '';
-        showToast(`${submitErrorMessage}${errorDetails}`, 'error', 5000);
-        updateButtonStates();
-      }
-    });
-
   const skipConfirmationModal = document.createElement('div');
   skipConfirmationModal.className = 'modal-overlay';
   skipConfirmationModal.id = 'skipConfirmationModal';
   skipConfirmationModal.setAttribute('role', 'dialog');
   skipConfirmationModal.setAttribute('aria-modal', 'true');
-  skipConfirmationModal.setAttribute('aria-labelledby', 'skipConfirmationModalTitle');
+  skipConfirmationModal.setAttribute(
+    'aria-labelledby',
+    'skipConfirmationModalTitle'
+  );
   skipConfirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
@@ -668,7 +511,10 @@ function createModal() {
   cleanRowConfirmationModal.id = 'cleanRowConfirmationModal';
   cleanRowConfirmationModal.setAttribute('role', 'dialog');
   cleanRowConfirmationModal.setAttribute('aria-modal', 'true');
-  cleanRowConfirmationModal.setAttribute('aria-labelledby', 'cleanRowConfirmationModalTitle');
+  cleanRowConfirmationModal.setAttribute(
+    'aria-labelledby',
+    'cleanRowConfirmationModalTitle'
+  );
   cleanRowConfirmationModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
@@ -700,25 +546,9 @@ function createModal() {
     }
   });
 
-  // Create loading modal
-  const loadingModal = document.createElement('div');
-  loadingModal.className = 'modal-overlay';
-  loadingModal.id = 'loadingModal';
-  loadingModal.innerHTML = `
-        <div class="modal loading-modal">
-            <div class="modal-content">
-                <div class="loading-spinner"></div>
-                <h3 data-i18n="modals.loading.title">Submitting your diary...</h3>
-                <p data-i18n="modals.loading.message">Please wait while we save your responses.</p>
-            </div>
-        </div>
-    `;
-
   document.body.appendChild(activitiesModal);
-  document.body.appendChild(confirmationModal);
   document.body.appendChild(skipConfirmationModal);
   document.body.appendChild(cleanRowConfirmationModal);
-  document.body.appendChild(loadingModal);
   document.body.appendChild(customActivityModal);
 
   // Tier 2: enable focus management for the dialogs just created (it also
@@ -957,7 +787,7 @@ function getTargetDayCount() {
 }
 
 window.getTargetDayCount = getTargetDayCount;
-window.getEmptyTargetDayCount = getTargetDayCount;  // backward compat alias
+window.getEmptyTargetDayCount = getTargetDayCount; // backward compat alias
 
 // Add this function to update the day display
 export function updateCurrentDayDisplay() {
@@ -1327,10 +1157,15 @@ function updateSubmitStudyButton() {
   } else {
     btn.disabled = true;
     btn.classList.remove('submit-ready');
-    const t = window.i18n && window.i18n.isReady()
-      ? window.i18n.t.bind(window.i18n)
-      : function(k) { return k; };
-    btn.title = t('messages.submitStudyIncomplete', { days: incomplete.join(', ') });
+    const t =
+      window.i18n && window.i18n.isReady()
+        ? window.i18n.t.bind(window.i18n)
+        : function (k) {
+            return k;
+          };
+    btn.title = t('messages.submitStudyIncomplete', {
+      days: incomplete.join(', '),
+    });
   }
 }
 
@@ -1428,9 +1263,11 @@ const handleNextButtonAction = async () => {
   if (result?.success) {
     // Copy Days: mark this day as saved so templates aren't re-loaded
     // if the user intentionally saved an empty day.
-    const studyName = window.timelineManager?.study?.study_name_short ||
+    const studyName =
+      window.timelineManager?.study?.study_name_short ||
       new URLSearchParams(window.location.search).get('study_name');
-    const pid = window.timelineManager?.study?.pid ||
+    const pid =
+      window.timelineManager?.study?.pid ||
       new URLSearchParams(window.location.search).get('pid');
     if (studyName && pid && typeof window.markDaySaved === 'function') {
       window.markDaySaved(studyName, pid, currentDayIndex);
@@ -1718,17 +1555,24 @@ function initButtons() {
 
         const apiUrl = TUD_SETTINGS.API_BASE_URL;
         const response = await fetch(
-          apiUrl + '/studies/' + encodeURIComponent(studyName) +
-          '/participants/' + encodeURIComponent(participantId) +
-          '/submit',
+          apiUrl +
+            '/studies/' +
+            encodeURIComponent(studyName) +
+            '/participants/' +
+            encodeURIComponent(participantId) +
+            '/submit',
           { method: 'POST' }
         );
 
         if (!response.ok) {
-          const err = await response.json().catch(function () { return { detail: 'Unknown error' }; });
+          const err = await response.json().catch(function () {
+            return { detail: 'Unknown error' };
+          });
           if (window.showToast) {
             window.showToast(
-              (err.detail && err.detail.message) || err.detail || 'Failed to submit study',
+              (err.detail && err.detail.message) ||
+                err.detail ||
+                'Failed to submit study',
               'error',
               5000
             );
@@ -1742,7 +1586,9 @@ function initButtons() {
         const currentParams = new URLSearchParams(window.location.search);
         currentParams.set('completion_status', 'completed');
         const sep = redirectUrl.includes('?') ? '&' : '?';
-        window.location.href = redirectUrl + (currentParams.toString() ? sep + currentParams.toString() : '');
+        window.location.href =
+          redirectUrl +
+          (currentParams.toString() ? sep + currentParams.toString() : '');
       } catch (err) {
         if (window.showToast) {
           window.showToast('Network error submitting study', 'error', 5000);
@@ -1962,21 +1808,6 @@ function handleResize() {
   updateFooterHeight();
 }
 
-// Loading modal functions
-function showLoadingModal() {
-  const loadingModal = document.getElementById('loadingModal');
-  if (loadingModal) {
-    loadingModal.style.display = 'block';
-  }
-}
-
-function hideLoadingModal() {
-  const loadingModal = document.getElementById('loadingModal');
-  if (loadingModal) {
-    loadingModal.style.cssText = 'display: none !important';
-  }
-}
-
 // Initialize UI components
 export {
   showToast,
@@ -1995,6 +1826,4 @@ export {
   preventPullToRefresh,
   updateFooterHeight,
   updateHeaderHeight,
-  showLoadingModal,
-  hideLoadingModal,
 };

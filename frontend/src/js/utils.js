@@ -1,6 +1,5 @@
 // @ts-check
 import { DEBUG_MODE, MINUTES_PER_DAY } from './constants.js';
-import { hideLoadingModal } from './ui.js';
 import { stopIdleTimer } from './idle_timeout.js';
 
 // ============================================================================
@@ -1035,8 +1034,6 @@ export async function sendData(
       '?'
     );
     return { success: false, error: error?.message || String(error) };
-  } finally {
-    hideLoadingModal();
   }
 }
 
@@ -1164,36 +1161,4 @@ export function syncURLParamsToStudy() {
       window.timelineManager.study[key] = value;
     }
   }
-}
-
-export function canFinishStudy() {
-  // A day only counts as complete once it meets the min_coverage requirement
-  // for every timeline (the same notion the backend uses to accept a
-  // submission).  The backend sends this explicitly as
-  // day_indices_meet_min_coverage; fall back to the old "has any data" set
-  // when talking to a backend that does not provide it yet.
-  const completedDays = Array.isArray(
-    window.timelineManager?.dayIndicesMeetMinCoverage
-  )
-    ? window.timelineManager.dayIndicesMeetMinCoverage
-    : Array.isArray(window.timelineManager?.dayIndicesWithData)
-      ? window.timelineManager.dayIndicesWithData
-      : [];
-  const urlParams = new URLSearchParams(window.location.search);
-  const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
-  const totalDays =
-    window.studyConfigManager?.getStudyDaysCount() ||
-    window.timelineManager?.studyDaysCount ||
-    1;
-
-  if (currentDayIndex !== totalDays - 1) {
-    return false;
-  }
-
-  for (let i = 0; i < currentDayIndex; i++) {
-    if (!completedDays.includes(i)) {
-      return false;
-    }
-  }
-  return true;
 }

@@ -7,7 +7,6 @@
     "studyIntroDefault": "Dies ist unsere Zeitnutzungsstudie.<br><br>Wir bitten Sie, <b>eine typische Woche</b> Ihrer täglichen Aktivitäten mit unserem Zeitnutzungstool zu rekonstruieren.<br><br>Welche Woche soll ich wählen? Bitte denken Sie an die vergangene Woche (die letzten 7 Tage).<br>Ausnahme: Wenn Sie letzte Woche krank waren oder im Urlaub, wählen Sie bitte eine andere kürzliche Woche, die Ihren normalen Alltag besser widerspiegelt.",
     "visualGuideTitle": "Visuelle Darstellungen zur Nutzung der Oberfläche",
     "startPrompt": "Bitte klicken Sie auf den blauen Start-Button, um mit Ihrem Tagebucheintrag zu beginnen.",
-    "mainInstruction": "Denken Sie an die Aktivitäten, die Sie <span class=\"emphasis\">gestern</span> ausgeführt haben. Füllen Sie anschließend die gesamte Zeitleiste mit Ihren Aktivitäten aus.",
     "step1": {
       "title": "Aktivität auswählen und platzieren",
       "horizontal": "Wählen Sie eine Aktivität aus dem Menü am unteren Bildschirmrand und platzieren Sie sie auf der Zeitleiste.",
@@ -58,16 +57,11 @@
     "cleanRow": "Zeile leeren",
     "skipReporting": "Zeiterfassung überspringen",
     "previousTimeline": "Vorherige Zeitleiste",
-    "backToInstructions": "Zurück zur Anleitung",
     "giveConsent": "Einwilligen und fortfahren",
     "declineConsent": "Einwilligung ablehnen",
     "ok": "OK",
     "cancel": "Abbrechen",
-    "save": "Speichern",
-    "close": "Schließen",
-    "confirm": "Bestätigen",
-    "yes": "Ja",
-    "no": "Nein"
+    "close": "Schließen"
   },
   "modals": {
     "customActivity": {
@@ -84,15 +78,6 @@
       "title": "Option auswählen",
       "titleFor": "Option für \"{activityName}\" auswählen"
     },
-    "confirmSubmit": {
-      "title": "Daten für {{dayLabel}} (Tag {{currentDay}} von {{totalDays}}) einreichen?",
-      "message": "Sie können Ihre Antworten für Tag {{dayLabel}} nicht mehr ändern.",
-      "infoOnTemplate": "Für den nächsten Tag werden die Daten, die Sie heute eingegeben haben, als Vorlage angezeigt. Bitte passen Sie sie nach Bedarf an.<br /><br /> Denken Sie daran, dass Sie Daten löschen können, indem Sie lange auf die Aktivität in der Zeitleiste drücken oder mit der Maus darüber fahren und 'd' oder ENTF drücken.",
-      "studyEnd": "Diese Einreichung schließt die Studie ab.",
-      "submitDay": "Tag {{dayLabel}} einreichen",
-      "submitDayAndFinish": "Tag {{dayLabel}} einreichen und Studie beenden",
-      "submitDayNoDay": "Tag einreichen"
-    },
     "confirmSkip": {
       "title": "Möchten Sie die Zeiterfassung wirklich überspringen?",
       "message": "Sie werden direkt zur Dankesseite weitergeleitet."
@@ -100,10 +85,6 @@
     "confirmCleanRow": {
       "title": "Aktuelle Zeitleisten-Zeile leeren?",
       "message": "Möchten Sie wirklich alle Aktivitäten in der aktuellen Zeitleisten-Zeile löschen?"
-    },
-    "loading": {
-      "title": "Ihr Tagebuch wird übermittelt...",
-      "message": "Bitte warten Sie, während Ihre Antworten gespeichert werden."
     },
     "activityContext": {
       "copy": "Kopieren",
@@ -123,13 +104,6 @@
     "selectStudy": "Bitte wählen Sie eine Studie, um fortzufahren",
     "noStudiesAvailable": "Keine Studien auf dem Server verfügbar.",
     "studyNotFound": "Die angeforderte Studie existiert nicht.",
-    "loading": "Lädt...",
-    "saving": "Speichert...",
-    "saved": "Erfolgreich gespeichert",
-    "error": "Ein Fehler ist aufgetreten",
-    "noActivities": "Keine Aktivitäten gefunden",
-    "fillRequired": "Bitte füllen Sie alle erforderlichen Aktivitäten aus",
-    "submitSuccess": "Tagebuch erfolgreich übermittelt",
     "submitError": "Fehler beim Übermitteln des Tagebuchs",
     "sending_retry": "Erneuter Versuch beim Speichern (Versuch {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -144,7 +118,6 @@
     "timelineValidationError": "Fehler bei der Zeitleistenvalidierung: {{message}}",
     "templateLoadedBanner": "Wir haben Ihre Aktivitäten von <strong>{{day}}</strong> als Ausgangspunkt geladen. Klicken Sie auf <strong>'Zeile leeren'</strong>, um neu zu beginnen, oder bearbeiten Sie die untenstehenden Aktivitäten. Auf dem Handy löschen Sie eine einzelne Aktivität durch langes Drücken. Auf dem Desktop klicken Sie mit der rechten Maustaste auf eine Aktivität und wählen <strong>'Löschen'</strong> (oder fahren mit der Maus darüber und drücken DEL oder 'd').",
     "templateCopiedBanner": "Wir haben Ihr Tagebuch mit Aktivitäten eines Vorlagen-Teilnehmers vorausgefüllt. Klicken Sie auf <strong>'Zeile leeren'</strong>, um neu zu beginnen, oder bearbeiten Sie die untenstehenden Aktivitäten.",
-    "reportingForDay": "Bericht für Tag:",
     "studyDayOf": "Tag {{current}} von {{total}}",
     "currentDayTooltip": "{{dayName}} (Tag {{current}} von {{total}})",
     "goBackToEditPreviousDays": "Zu Tag wechseln:",
@@ -153,15 +126,12 @@
     "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
     "copyError": "Fehler beim Kopieren: {{message}}",
     "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren.",
-    "completeMinimumActivitiesBeforeSwitching": "Mindestaktivitäten vervollständigen, bevor Sie den Tag wechseln.",
-    "completeMinimumActivitiesBeforeCopying": "Mindestaktivitäten vervollständigen, bevor Sie den aktuellen Tag kopieren.",
     "completeOtherDaysFirst": "Vervollständigen Sie zuerst {{days}}, um die Studie abzuschließen.",
     "daySavedStayOnPage": "Tag gespeichert.",
     "copyDayEmpty": "leer",
     "copyDayHasData": "hat Daten",
     "copyOverwriteConfirm": "{{day}} hat bereits Daten. Überschreiben?",
-    "submitStudyIncomplete": "Unvollständige Tage: {{days}}",
-    "submitStudySuccess": "Studie erfolgreich übermittelt!"
+    "submitStudyIncomplete": "Unvollständige Tage: {{days}}"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",
@@ -171,14 +141,10 @@
   "banner": {
     "dayOneInstructions": "Anleitung: Wählen Sie eine Aktivität unten aus, klicken Sie dann auf die Zeitleiste, um sie zu platzieren, und ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, halten Sie sie auf dem Handy gedrückt oder verwenden Sie am Desktop das Rechtsklick-Menü."
   },
-  "activities": {
-    "otherNotListed": "Sonstiges (eingeben)"
-  },
   "thankYou": {
     "title": "Vielen Dank - TRAC",
     "heading": "Vielen Dank!",
     "subtitle": "Ihre Übermittlung wurde erfolgreich abgeschlossen.",
-    "message": "Vielen Dank für Ihre Teilnahme an unserer <span class=\"app-name\">TRAC</span>-Studie. Ihre Antworten wurden gespeichert und tragen zu wertvoller Forschung bei.",
     "continueLink": "Klicken Sie hier, um fortzufahren."
   },
   "taskPage": {
@@ -206,7 +172,6 @@
   "openStudies": {
     "pageTitle": "Offene Studien | TRAC",
     "heading": "TRAC -- Offene Studien",
-    "noStudies": "Keine offenen Studien verfügbar.",
-    "accessLink": "Zur Studie"
+    "noStudies": "Keine offenen Studien verfügbar."
   }
 }

@@ -7,7 +7,6 @@
     "studyIntroDefault": "To jest nasze badanie dotyczące wykorzystania czasu.<br><br>Prosimy, abyś <b>odtworzył typowy tydzień</b> swoich codziennych aktywności przy użyciu naszego narzędzia do rejestrowania czasu.<br><br>Który tydzień powinienem wybrać? Proszę pomyśleć o minionym tygodniu (ostatnie 7 dni).<br>Wyjątek: Jeśli byłeś chory lub na urlopie w zeszłym tygodniu, wybierz inny, niedawny tydzień, który lepiej odzwierciedla Twój normalny plan dnia.",
     "visualGuideTitle": "Wizualne instrukcje korzystania z interfejsu",
     "startPrompt": "Kliknij niebieski przycisk 'Rozpocznij', aby rozpocząć wypełnianie dziennika.",
-    "mainInstruction": "Pomyśl o aktywnościach, które wykonywałeś <span class=\"emphasis\">wczoraj</span>. Następnie wypełnij całą oś czasu swoimi aktywnościami.",
     "step1": {
       "title": "Wybierz i umieść aktywność",
       "horizontal": "Wybierz aktywność z menu na dole ekranu, a następnie umieść ją na osi czasu.",
@@ -58,16 +57,11 @@
     "cleanRow": "Wyczyść rząd",
     "skipReporting": "Pomiń raportowanie czasu",
     "previousTimeline": "Poprzednia oś czasu",
-    "backToInstructions": "Wróć do instrukcji",
     "giveConsent": "Wyrażam zgodę i kontynuuję",
     "declineConsent": "Nie wyrażam zgody",
     "ok": "OK",
     "cancel": "Anuluj",
-    "save": "Zapisz",
-    "close": "Zamknij",
-    "confirm": "Potwierdź",
-    "yes": "Tak",
-    "no": "Nie"
+    "close": "Zamknij"
   },
   "modals": {
     "customActivity": {
@@ -84,15 +78,6 @@
       "title": "Wybierz opcję",
       "titleFor": "Wybierz opcję dla \"{activityName}\""
     },
-    "confirmSubmit": {
-      "title": "Wyślij dane za {{dayLabel}} (dzień {{currentDay}} z {{totalDays}})?",
-      "message": "Nie będziesz mógł zmienić swoich odpowiedzi dla dnia {{dayLabel}}.",
-      "infoOnTemplate": "Następnego dnia zobaczysz dane wprowadzone dzisiaj jako szablon ułatwiający raportowanie. Dostosuj je według potrzeb.<br /><br /> Pamiętaj, że możesz usunąć dane, przytrzymując lub najeżdżając na aktywność na osi czasu myszką i naciskając 'd' lub DEL.",
-      "studyEnd": "To przesłanie kończy badanie.",
-      "submitDay": "Wyślij dzień {{dayLabel}}",
-      "submitDayAndFinish": "Wyślij dzień {{dayLabel}} i zakończ badanie",
-      "submitDayNoDay": "Wyślij dzień"
-    },
     "confirmSkip": {
       "title": "Czy na pewno chcesz pominąć raportowanie czasu?",
       "message": "Zostaniesz przeniesiony bezpośrednio na stronę z podziękowaniami."
@@ -100,10 +85,6 @@
     "confirmCleanRow": {
       "title": "Wyczyścić bieżący rząd osi czasu?",
       "message": "Czy na pewno chcesz usunąć wszystkie aktywności z bieżącego rzędu osi czasu?"
-    },
-    "loading": {
-      "title": "Wysyłanie dziennika...",
-      "message": "Proszę czekać, podczas gdy zapisujemy Twoje odpowiedzi."
     },
     "activityContext": {
       "copy": "Kopiuj",
@@ -123,13 +104,6 @@
     "selectStudy": "Wybierz badanie, aby kontynuować",
     "noStudiesAvailable": "Brak dostępnych badań na serwerze.",
     "studyNotFound": "Żądane badanie nie istnieje.",
-    "loading": "Ładowanie...",
-    "saving": "Zapisuję...",
-    "saved": "Zapisano pomyślnie",
-    "error": "Wystąpił błąd",
-    "noActivities": "Brak aktywności",
-    "fillRequired": "Proszę wypełnić wszystkie wymagane aktywności",
-    "submitSuccess": "Dziennik został pomyślnie wysłany",
     "submitError": "Błąd przy wysyłaniu dziennika",
     "sending_retry": "Ponawianie próby zapisania dziennika (próba {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -144,7 +118,6 @@
     "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
     "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
     "templateCopiedBanner": "Wstępnie wypełniliśmy Twój dziennik aktywnościami uczestnika wzorcowego. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności.",
-    "reportingForDay": "Raportowanie dla dnia:",
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
     "goBackToEditPreviousDays": "Przełącz na dzień:",
@@ -153,15 +126,12 @@
     "copySuccess": "Skopiowano {{sourceDay}} do {{targetDay}}",
     "copyError": "Nie udało się skopiować: {{message}}",
     "copyEmptySource": "Dzień źródłowy nie ma aktywności do skopiowania.",
-    "completeMinimumActivitiesBeforeSwitching": "Uzupełnij minimalne aktywności przed zmianą dnia.",
-    "completeMinimumActivitiesBeforeCopying": "Uzupełnij minimalne aktywności przed skopiowaniem bieżącego dnia.",
     "completeOtherDaysFirst": "Uzupełnij najpierw {{days}}, aby zakończyć badanie.",
     "daySavedStayOnPage": "Dzień zapisany.",
     "copyDayEmpty": "pusty",
     "copyDayHasData": "ma dane",
     "copyOverwriteConfirm": "{{day}} ma już dane. Nadpisać?",
-    "submitStudyIncomplete": "Niekompletne dni: {{days}}",
-    "submitStudySuccess": "Badanie wysłane pomyślnie!"
+    "submitStudyIncomplete": "Niekompletne dni: {{days}}"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",
@@ -171,14 +141,10 @@
   "banner": {
     "dayOneInstructions": "Instrukcje: Wybierz aktywność poniżej, potem kliknij na osi czasu, aby ją umieścić, i przeciągnij krawędzie, aby wydłużyć. Aby usunąć aktywność, przytrzymaj ją na telefonie lub użyj menu po kliknięciu prawym przyciskiem myszy na komputerze."
   },
-  "activities": {
-    "otherNotListed": "Inne (wpisz)"
-  },
   "thankYou": {
     "title": "Dziękujemy - O-ELIDDI",
     "heading": "Dziękujemy!",
     "subtitle": "Twoje zgłoszenie zostało pomyślnie zakończone.",
-    "message": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">O-ELIDDI</span>. Twoje odpowiedzi zostały zapisane i będą miały wartość w badaniach naukowych.",
     "continueLink": "Kliknij tutaj, aby kontynuować."
   },
   "taskPage": {
@@ -206,7 +172,6 @@
   "openStudies": {
     "pageTitle": "Otwarte badania | TRAC",
     "heading": "TRAC -- Otwarte badania",
-    "noStudies": "Brak dostępnych otwartych badań.",
-    "accessLink": "Przejdź do badania"
+    "noStudies": "Brak dostępnych otwartych badań."
   }
 }
