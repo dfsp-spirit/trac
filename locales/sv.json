@@ -19,9 +19,10 @@
       "vertical": "Dra kanterna vertikalt för att ställa in längden."
     },
     "step3": {
-      "title": "Skicka in din dagbok",
-      "description": "När du har registrerat alla dina aktiviteter för dagen, klicka på Skicka-knappen för att slutföra din dagbok.",
-      "submitHelp": "Klicka för att skicka in din ifyllda dagbok"
+      "title": "Spara och skicka in din dagbok",
+      "description": "När du har registrerat dina aktiviteter för en dag, klicka på knappen \"Spara dagen\" för att spara dem. Du kan fortfarande redigera dagen senare. När alla dagar i studien är kompletta, klicka på \"Skicka studien\" för att skicka in din dagbok och avsluta studien.",
+      "saveHelp": "Klicka för att spara aktiviteterna för dagen du arbetar med",
+      "submitStudyHelp": "Klicka för att skicka in din dagbok när alla dagar är kompletta"
     },
     "helpfulTools": "Användbara verktyg",
     "removeLastHelp": "Ta bort den senast placerade aktiviteten",
@@ -50,14 +51,11 @@
     "day": "Dag"
   },
   "buttons": {
-    "submit": "Skicka dagen",
     "saveDay": "Spara dagen",
-    "finishStudy": "Skicka dagen och avsluta studien",
     "submitStudy": "Skicka studien",
     "start": "Starta",
     "removeLast": "Ta bort senaste",
     "cleanRow": "Rensa rad",
-    "next": "Nästa tidslinje",
     "skipReporting": "Hoppa över tidsrapportering",
     "previousTimeline": "Föregående tidslinje",
     "backToInstructions": "Tillbaka till instruktioner",

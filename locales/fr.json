@@ -19,9 +19,10 @@
       "vertical": "Faites glisser les bords verticalement pour définir la durée."
     },
     "step3": {
-      "title": "Soumettre votre Journal",
-      "description": "Une fois que vous avez enregistré toutes vos activités de la journée, cliquez sur le bouton Soumettre pour terminer votre journal.",
-      "submitHelp": "Cliquez pour soumettre votre journal terminé"
+      "title": "Enregistrer et soumettre votre journal",
+      "description": "Une fois vos activités d'une journée enregistrées, cliquez sur le bouton \"Enregistrer le jour\" pour les sauvegarder. Vous pourrez encore modifier cette journée plus tard. Lorsque tous les jours de l'étude sont complets, cliquez sur \"Soumettre l'étude\" pour envoyer votre journal et terminer l'étude.",
+      "saveHelp": "Cliquez pour enregistrer les activités du jour en cours",
+      "submitStudyHelp": "Cliquez pour soumettre votre journal lorsque tous les jours sont complets"
     },
     "helpfulTools": "Outils utiles",
     "removeLastHelp": "Supprimer la dernière activité placée",
@@ -50,14 +51,11 @@
     "day": "Jour"
   },
   "buttons": {
-    "submit": "Soumettre",
     "saveDay": "Enregistrer le jour",
-    "finishStudy": "Soumettre le jour et terminer l'étude",
     "submitStudy": "Soumettre l'étude",
     "start": "Commencer",
     "removeLast": "Supprimer dernière",
     "cleanRow": "Nettoyer la Ligne",
-    "next": "Suivant",
     "skipReporting": "Ignorer le rapport de temps",
     "previousTimeline": "Ligne de temps précédente",
     "backToInstructions": "Retour aux Instructions",

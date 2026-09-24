@@ -19,9 +19,10 @@
       "vertical": "Arrastra los bordes verticalmente para establecer la duración."
     },
     "step3": {
-      "title": "Enviar tu Diario",
-      "description": "Una vez que hayas registrado todas tus actividades del día, haz clic en el botón Enviar para completar tu diario.",
-      "submitHelp": "Haz clic para enviar tu diario completado"
+      "title": "Guardar y enviar tu diario",
+      "description": "Una vez que hayas registrado tus actividades de un día, haz clic en el botón \"Guardar día\" para guardarlas. Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
+      "saveHelp": "Haz clic para guardar las actividades del día en el que estás trabajando",
+      "submitStudyHelp": "Haz clic para enviar tu diario cuando todos los días estén completos"
     },
     "helpfulTools": "Herramientas útiles",
     "removeLastHelp": "Elimina la última actividad colocada",
@@ -50,14 +51,11 @@
     "day": "Día"
   },
   "buttons": {
-    "submit": "Enviar",
     "saveDay": "Guardar día",
-    "finishStudy": "Enviar día y finalizar el estudio",
     "submitStudy": "Enviar estudio",
     "start": "Comenzar",
     "removeLast": "Eliminar última",
     "cleanRow": "Limpiar Fila",
-    "next": "Siguiente",
     "skipReporting": "Omitir reporte de tiempo",
     "previousTimeline": "Línea de tiempo anterior",
     "backToInstructions": "Volver a Instrucciones",
