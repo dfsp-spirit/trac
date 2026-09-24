@@ -19,9 +19,10 @@
       "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania."
     },
     "step3": {
-      "title": "Wyślij dziennik",
-      "description": "Po zapisaniu wszystkich swoich aktywności na dany dzień, kliknij przycisk 'Wyślij', aby zakończyć wypełnianie dziennika.",
-      "submitHelp": "Kliknij, aby wysłać wypełniony dziennik"
+      "title": "Zapisz i wyślij dziennik",
+      "description": "Po zapisaniu aktywności z danego dnia kliknij przycisk \"Zapisz dzień\", aby je zapisać. Nadal możesz później edytować ten dzień. Gdy wszystkie dni badania będą kompletne, kliknij \"Wyślij badanie\", aby wysłać dziennik i zakończyć badanie.",
+      "saveHelp": "Kliknij, aby zapisać aktywności z dnia, nad którym pracujesz",
+      "submitStudyHelp": "Kliknij, aby wysłać dziennik, gdy wszystkie dni będą kompletne"
     },
     "helpfulTools": "Pomocne narzędzia",
     "removeLastHelp": "Usuń ostatnio umieszczoną aktywność",
@@ -50,14 +51,11 @@
     "day": "Dzień"
   },
   "buttons": {
-    "submit": "Wyślij dzień",
     "saveDay": "Zapisz dzień",
-    "finishStudy": "Wyślij dzień i zakończ badanie",
     "submitStudy": "Wyślij badanie",
     "start": "Rozpocznij",
     "removeLast": "Usuń ostatnią",
     "cleanRow": "Wyczyść rząd",
-    "next": "Następna oś czasu",
     "skipReporting": "Pomiń raportowanie czasu",
     "previousTimeline": "Poprzednia oś czasu",
     "backToInstructions": "Wróć do instrukcji",

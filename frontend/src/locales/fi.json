@@ -19,9 +19,10 @@
       "vertical": "Vedä reunoja pystysuunnassa asettaaksesi keston."
     },
     "step3": {
-      "title": "Lähetä päiväkirja",
-      "description": "Kun olet kirjannut kaikki päivän toiminnot, klikkaa Lähetä-painiketta viimeistelläksesi päiväkirjan.",
-      "submitHelp": "Klikkaa lähettääksesi täytetyn päiväkirjan"
+      "title": "Tallenna ja lähetä päiväkirja",
+      "description": "Kun olet kirjannut päivän toiminnot, klikkaa \"Tallenna päivä\" -painiketta tallentaaksesi ne. Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
+      "saveHelp": "Klikkaa tallentaaksesi sen päivän toiminnot, jota parhaillaan muokkaat",
+      "submitStudyHelp": "Klikkaa lähettääksesi päiväkirjasi, kun kaikki päivät ovat valmiit"
     },
     "helpfulTools": "Hyödylliset työkalut",
     "removeLastHelp": "Poista viimeksi sijoitettu toiminto",
@@ -50,14 +51,11 @@
     "day": "Päivä"
   },
   "buttons": {
-    "submit": "Lähetä päivä",
     "saveDay": "Tallenna päivä",
-    "finishStudy": "Lähetä päivä ja lopeta tutkimus",
     "submitStudy": "Lähetä tutkimus",
     "start": "Aloita",
     "removeLast": "Poista viimeisin",
     "cleanRow": "Tyhjennä rivi",
-    "next": "Seuraava aikajana",
     "skipReporting": "Ohita ajankäytön raportointi",
     "previousTimeline": "Edellinen aikajana",
     "backToInstructions": "Takaisin ohjeisiin",

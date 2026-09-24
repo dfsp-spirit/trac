@@ -19,9 +19,10 @@
       "vertical": "Ziehen Sie die Ränder vertikal, um die Dauer festzulegen."
     },
     "step3": {
-      "title": "Tagebuch absenden",
-      "description": "Nachdem Sie alle Aktivitäten des Tages erfasst haben, klicken Sie auf die Schaltfläche „Absenden“, um Ihr Tagebuch abzuschließen.",
-      "submitHelp": "Klicken Sie, um Ihr ausgefülltes Tagebuch abzusenden"
+      "title": "Tagebuch speichern und absenden",
+      "description": "Nachdem Sie Ihre Aktivitäten für einen Tag erfasst haben, klicken Sie auf die Schaltfläche \"Tag speichern\", um sie zu speichern. Sie können diesen Tag später weiterhin bearbeiten. Wenn alle Tage der Studie vollständig sind, klicken Sie auf \"Studie absenden\", um Ihr Tagebuch zu senden und die Studie abzuschließen.",
+      "saveHelp": "Klicken Sie, um die Aktivitäten des Tages zu speichern, an dem Sie gerade arbeiten",
+      "submitStudyHelp": "Klicken Sie, um Ihr Tagebuch abzusenden, sobald alle Tage vollständig sind"
     },
     "helpfulTools": "Hilfreiche Werkzeuge",
     "removeLastHelp": "Die zuletzt platzierte Aktivität entfernen",
@@ -50,14 +51,11 @@
     "day": "Tag"
   },
   "buttons": {
-    "submit": "Tag absenden",
     "saveDay": "Tag speichern",
-    "finishStudy": "Tag absenden und Studie abschließen",
     "submitStudy": "Studie absenden",
     "start": "Start",
     "removeLast": "Letzte entfernen",
     "cleanRow": "Zeile leeren",
-    "next": "Nächste Zeitleiste",
     "skipReporting": "Zeiterfassung überspringen",
     "previousTimeline": "Vorherige Zeitleiste",
     "backToInstructions": "Zurück zur Anleitung",

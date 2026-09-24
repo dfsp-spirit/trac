@@ -19,9 +19,10 @@
       "vertical": "Drag the edges vertically to set the duration."
     },
     "step3": {
-      "title": "Submit Your Diary",
-      "description": "Once you've recorded all your activities for the day, click the Submit button to complete your diary.",
-      "submitHelp": "Click to submit your completed diary"
+      "title": "Save and Submit Your Diary",
+      "description": "Once you have recorded your activities for a day, click the \"Save Day\" button to store them. You can still edit that day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
+      "saveHelp": "Click to save the activities of the day you are working on",
+      "submitStudyHelp": "Click to submit your diary when every day is complete"
     },
     "helpfulTools": "Helpful tools",
     "removeLastHelp": "Remove the last placed activity",
@@ -50,14 +51,11 @@
     "day": "Day"
   },
   "buttons": {
-    "submit": "Submit Day",
     "saveDay": "Save Day",
-    "finishStudy": "Submit Day and Finish Study",
     "submitStudy": "Submit Study",
     "start": "Start",
     "removeLast": "Remove Last",
     "cleanRow": "Clean Row",
-    "next": "Next Timeline",
     "skipReporting": "Skip time reporting",
     "previousTimeline": "Previous timeline",
     "backToInstructions": "Back to Instructions",

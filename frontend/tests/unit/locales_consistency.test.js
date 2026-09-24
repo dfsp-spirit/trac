@@ -66,7 +66,6 @@ test('all locales contain the banner and recently added keys', () => {
     'messages.templateLoadedBanner',
     'messages.templateCopiedBanner',
     'buttons.saveDay',
-    'buttons.finishStudy',
     'messages.completeOtherDaysFirst',
     'messages.daySavedStayOnPage',
   ];
