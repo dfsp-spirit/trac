@@ -104,15 +104,23 @@ for API-based import workflows).
 ### Languages and Internationalization
 
 Each study defines a `default_language` (a 2-letter ISO 639-1 code like `"en"`,
-`"de"`, `"sv"`) and a list of `supported_languages`.  Study texts (intro,
-consent, end messages, day labels) are provided as localized maps, e.g.:
+`"de"`, `"sv"`) and a list of `supported_languages`.  Study texts (the
+instructions page texts, consent, end messages, day labels) are provided as
+localized maps, e.g.:
 
 ```json
 "study_text_intro": {
   "en": "Welcome to our study!",
   "de": "Willkommen zu unserer Studie!"
+},
+"study_text_instructions": {
+  "en": "## How to fill out the diary\n\nClick an activity to select it, then click on the timeline to place it.",
+  "de": "## So füllen Sie das Tagebuch aus\n\nKlicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste."
 }
 ```
+
+A participant gets the entry of the language the frontend selected; if that
+entry is missing, the study's `default_language` is used, then `en`.
 
 The frontend selects the display language in this order:
 
@@ -217,15 +225,24 @@ defines a single study.
 #### Study Text (Localized)
 
 All text fields are localized maps (`{lang: text}`).  If the study supports
-multiple languages, every supported language must have an entry.
+multiple languages, every supported language should have an entry; a missing
+entry falls back to the study's `default_language`, then to `en`.
+
+The instructions page and the consent page render their texts as **Markdown**:
+headings (`#`), `**bold**`, `*italic*`, bullet lists (`- `), numbered lists
+(`1. `) and links (`[label](https://example.org)`) are supported.  HTML is
+escaped, so `<br>`, `<b>` and friends appear as literal text — use a blank line
+to start a new paragraph.  The end texts (`study_text_end_*`) are inserted as
+raw HTML instead (no Markdown rendering, no escaping).
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `study_text_intro` | `{lang: text}` | No | Introduction text shown before the participant starts the diary. |
-| `study_text_end_completed` | `{lang: text}` | No | Text shown after the participant completes all days. |
-| `study_text_end_skipped` | `{lang: text}` | No | Text shown if the participant skipped the time-use part. |
-| `study_text_consent` | `{lang: text}` | No | Consent text shown on the consent page. Supports Markdown headings (`#`). |
-| `study_text_end_noconsent` | `{lang: text}` | No | Text shown if the participant did not give consent. |
+| `study_text_intro` | `{lang: text}` | No | Introduction text at the top of the instructions page. Markdown. Falls back to a built-in default text. |
+| `study_text_instructions` | `{lang: text}` | No | Second text block on the instructions page, below the intro (e.g. how to fill out the diary). Markdown. Falls back to a built-in default text. |
+| `study_text_end_completed` | `{lang: text}` | No | Text shown after the participant completes all days. Raw HTML. |
+| `study_text_end_skipped` | `{lang: text}` | No | Text shown if the participant skipped the time-use part. Raw HTML. |
+| `study_text_consent` | `{lang: text}` | No | Consent text shown on the consent page. Markdown. |
+| `study_text_end_noconsent` | `{lang: text}` | No | Text shown if the participant did not give consent. Raw HTML. |
 
 #### Study Flow Control
 
