@@ -31,7 +31,11 @@ class Study(SQLModel, table=True):
     __tablename__ = "studies"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(unique=True, index=True, sa_type=String(255))
+    # `name` is the human-readable label (not an identifier): studies are looked
+    # up by `name_short` everywhere, so duplicate labels are allowed and the
+    # admin interface only warns about them. Migration 0010 dropped the old
+    # unique constraint on `name`.
+    name: str = Field(index=True, sa_type=String(255))
     name_short: str = Field(index=True, unique=True, sa_type=String(255))
     # `description` stores either a single-string fallback or a localized
     # language->text map. Persisted as JSON so it can hold either form.

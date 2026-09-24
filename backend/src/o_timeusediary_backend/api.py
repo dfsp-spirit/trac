@@ -3256,35 +3256,42 @@ def _format_exception_for_client(error: Exception) -> List[Dict[str, Any]]:
     ]
 
 
-def _study_creation_conflict_message(
-    field: str, value: str, existing_study: "Study"
-) -> str:
-    """Explain why a study cannot be created because of a uniqueness conflict.
+def _study_name_short_conflict_message(value: str, existing_study: "Study") -> str:
+    """Explain why a study cannot be created/renamed onto an existing name_short.
 
-    Study creation enforces two unique keys: ``name_short`` (the technical id) and
-    ``name`` (the long display name). The message states which of the two clashed
-    and names the existing study by both ``name_short`` and ``name``: the admin
-    overview and the study URLs use ``name_short``, so without it the conflicting
-    study is hard to find.
+    ``name_short`` is the technical study identifier (API paths, participant URLs,
+    admin selectors, import matching), so it has to be unique. The message names
+    the existing study by ``name_short`` and ``name`` so the admin can actually
+    find it: the overview lists name_short, and it may be hidden from a scoped
+    (scientist) admin, while this check is global.
 
-    @param field Either "name_short" or "name".
-    @param value The conflicting value from the uploaded study config.
-    @param existing_study The study that already uses that value.
+    @param value The conflicting name_short from the uploaded study config.
+    @param existing_study The study that already uses that name_short.
     @returns A single-sentence message for the admin UI.
     """
-    existing_reference = (
-        f"existing study: name_short '{existing_study.name_short}', "
-        f"name '{existing_study.name}'"
-    )
-    if field == "name_short":
-        return (
-            f"Study creation blocked: the name_short '{value}' already exists "
-            f"({existing_reference}). Choose a different name_short."
-        )
     return (
-        f"Study creation blocked: the study name '{value}' already exists "
-        f"({existing_reference}). Study names must be unique; choose a different "
-        "name, for example by adding a version suffix."
+        f"Study creation blocked: the name_short '{value}' already exists "
+        f"(existing study: name_short '{existing_study.name_short}', "
+        f"name '{existing_study.name}'). Choose a different name_short."
+    )
+
+
+def _study_name_duplicate_notice(value: str, existing_study: "Study") -> str:
+    """Warn that another study already uses the same long ``name``.
+
+    The long name is a display label, not an identifier, so a duplicate is allowed
+    (studies are copied on purpose, e.g. for a new wave). The notice exists only to
+    prevent picking the wrong one in the admin overview.
+
+    @param value The duplicated long study name from the uploaded config.
+    @param existing_study The other study that already uses that name.
+    @returns A single-sentence notice for the admin UI.
+    """
+    return (
+        f"Note: another study already uses the name '{value}' "
+        f"(existing study: name_short '{existing_study.name_short}'). Long study "
+        "names do not have to be unique - the name_short identifies a study, so "
+        "double-check which one you are editing."
     )
 
 
@@ -4255,16 +4262,8 @@ async def rename_study(
     if new_name == study.name and new_name_short == study.name_short:
         raise HTTPException(status_code=400, detail="No changes detected")
 
-    if new_name is not None and new_name != study.name:
-        existing = session.exec(
-            select(Study).where(Study.name == new_name, Study.id != study.id)
-        ).first()
-        if existing:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Study '{existing.name_short}' already uses the name '{new_name}'",
-            )
-
+    # Only name_short has to be unique: the long name is a display label (see
+    # migration 0010), so renaming a study onto another study's name is allowed.
     if new_name_short is not None and new_name_short != study.name_short:
         existing = session.exec(
             select(Study).where(
@@ -6210,6 +6209,10 @@ async def validate_files_in_memory(
 
         creation_conflicts: List[Dict[str, Any]] = []
         validation_notices: List[Dict[str, str]] = []
+        # Duplicate long names are allowed (the label is not an identifier); they
+        # are reported as warnings so the admin can still tell copies apart.
+        creation_warnings: List[Dict[str, Any]] = []
+        validation_warnings: List[Dict[str, str]] = []
 
         if existing_name_short_study:
             creation_conflicts.append(
@@ -6222,8 +6225,7 @@ async def validate_files_in_memory(
             )
             validation_notices.append(
                 {
-                    "message": _study_creation_conflict_message(
-                        "name_short",
+                    "message": _study_name_short_conflict_message(
                         import_study_payload.name_short,
                         existing_name_short_study,
                     ),
@@ -6233,7 +6235,7 @@ async def validate_files_in_memory(
             )
 
         if existing_name_study:
-            creation_conflicts.append(
+            creation_warnings.append(
                 {
                     "field": "name",
                     "value": import_study_payload.name,
@@ -6241,15 +6243,14 @@ async def validate_files_in_memory(
                     "existing_study_name": existing_name_study.name,
                 }
             )
-            validation_notices.append(
+            validation_warnings.append(
                 {
-                    "message": _study_creation_conflict_message(
-                        "name",
+                    "message": _study_name_duplicate_notice(
                         import_study_payload.name,
                         existing_name_study,
                     ),
                     "path": "studies[0].name",
-                    "type": "conflict_notice",
+                    "type": "duplicate_name_notice",
                 }
             )
 
@@ -6276,8 +6277,10 @@ async def validate_files_in_memory(
                 "transaction_mode": "all_or_nothing",
                 "creation_eligible": len(creation_conflicts) == 0,
                 "creation_conflicts": creation_conflicts,
+                "creation_warnings": creation_warnings,
             },
             "errors": validation_notices,
+            "warnings": validation_warnings,
         }
 
     except Exception as error:
@@ -6315,7 +6318,8 @@ async def create_study_from_validated_uploads(
     Enforced constraints:
     - create_only
     - all_or_nothing
-    - fail if study with same name_short or same name already exists
+    - fail if a study with the same name_short already exists (name_short is the
+      study identifier; the long display name does not have to be unique)
 
     A study created by a scientist is owned by that scientist; studies created by
     a super admin stay unowned (only super admins can manage them).
@@ -6370,23 +6374,12 @@ async def create_study_from_validated_uploads(
             select(Study).where(Study.name_short == import_study_payload.name_short)
         ).first()
         if existing_by_name_short:
+            # Only name_short is unique; duplicate long names are allowed (see
+            # migration 0010), so this is the single hard creation constraint.
             raise ValueError(
-                _study_creation_conflict_message(
-                    "name_short",
+                _study_name_short_conflict_message(
                     import_study_payload.name_short,
                     existing_by_name_short,
-                )
-            )
-
-        existing_by_name = session.exec(
-            select(Study).where(Study.name == import_study_payload.name)
-        ).first()
-        if existing_by_name:
-            raise ValueError(
-                _study_creation_conflict_message(
-                    "name",
-                    import_study_payload.name,
-                    existing_by_name,
                 )
             )
 

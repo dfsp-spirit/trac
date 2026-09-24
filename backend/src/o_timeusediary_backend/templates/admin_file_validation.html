@@ -250,7 +250,7 @@
                 </div>
                 <p id="createStudyStatus" class="create-status subtle" aria-live="polite"></p>
 
-                <p class="hint" id="createStudyHint">Validate full study first. Creation is only allowed when no existing study has the same name or name_short.</p>
+                <p class="hint" id="createStudyHint">Validate full study first. Creation is only allowed when no existing study uses the same name_short.</p>
             </form>
 
             <form class="card validation-form" data-mode="full_study_embedded">
@@ -270,7 +270,7 @@
                     <button type="button" id="createEmbeddedStudyBtn" disabled>Create study</button>
                 </div>
                 <p id="createEmbeddedStudyStatus" class="create-status subtle" aria-live="polite"></p>
-                <p class="hint" id="createEmbeddedStudyHint">Validate embedded full study first. Creation is only allowed when no existing study has the same name or name_short.</p>
+                <p class="hint" id="createEmbeddedStudyHint">Validate embedded full study first. Creation is only allowed when no existing study uses the same name_short.</p>
             </form>
         </div>
 
@@ -374,12 +374,23 @@
                 errorsHtml = `<div><strong>Errors</strong><ul>${items}</ul></div>`;
             }
 
+            let warningsHtml = '';
+            if (payload.warnings && payload.warnings.length > 0) {
+                const items = payload.warnings.map((warning) => {
+                    const message = escapeHtml(warning.message || 'Warning');
+                    const path = warning.path ? `<br><span class="subtle">Path: ${escapeHtml(warning.path)}</span>` : '';
+                    return `<li>${message}${path}</li>`;
+                }).join('');
+                warningsHtml = `<div><strong>Notes</strong><ul>${items}</ul></div>`;
+            }
+
             resultBox.innerHTML = `
                 <div class="result-title ${titleClass}">${titleText}</div>
                 <p class="subtle">Mode: <code>${escapeHtml(mode)}</code></p>
                 ${summaryHtml}
                 ${conflictsHtml}
                 ${errorsHtml}
+                ${warningsHtml}
             `;
 
             updateFullStudySelector(payload);
@@ -402,7 +413,7 @@
 
             if (!isFullStudyPayload) {
                 createStudyHint.textContent =
-                    'Validate full study first. Creation is only allowed when no existing study has the same name or name_short.';
+                    'Validate full study first. Creation is only allowed when no existing study uses the same name_short.';
                 return;
             }
 
@@ -413,6 +424,18 @@
             }
 
             if (creationEligible) {
+                const duplicateNameWarnings = Array.isArray(payload?.summary?.creation_warnings)
+                    ? payload.summary.creation_warnings
+                    : [];
+                if (duplicateNameWarnings.length > 0) {
+                    const details = duplicateNameWarnings
+                        .map((warning) => `'${warning.value}' is also used by study '${warning.existing_study_name_short}'`)
+                        .join('; ');
+                    createStudyHint.textContent =
+                        `Validation passed, you can create this study now. Note: ${details} ` +
+                        'Long study names do not have to be unique; the name_short identifies a study.';
+                    return;
+                }
                 createStudyHint.textContent =
                     'Validation passed and no conflicts found. You can create this study now.';
                 return;
@@ -423,10 +446,7 @@
                 : [];
             if (creationConflicts.length > 0) {
                 const details = creationConflicts
-                    .map((conflict) => {
-                        const field = conflict.field === 'name_short' ? 'name_short' : 'name';
-                        return `${field} '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`;
-                    })
+                    .map((conflict) => `name_short '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`)
                     .join('; ');
                 createStudyHint.textContent =
                     `Validation passed, but creation is blocked: ${details}. ` +
@@ -435,7 +455,7 @@
             }
 
             createStudyHint.textContent =
-                'Validation passed, but creation is blocked because a study with the same name or name_short already exists.';
+                'Validation passed, but creation is blocked because the name_short already exists.';
         }
 
         function setFullStudySelectorOptions(studyNameShorts, preserveCurrentValue = true) {
@@ -784,7 +804,7 @@
 
             if (!isEmbeddedPayload) {
                 createEmbeddedStudyHint.textContent =
-                    'Validate embedded full study first. Creation is only allowed when no existing study has the same name or name_short.';
+                    'Validate embedded full study first. Creation is only allowed when no existing study uses the same name_short.';
                 return;
             }
 
@@ -795,6 +815,18 @@
             }
 
             if (creationEligible) {
+                const duplicateNameWarnings = Array.isArray(payload?.summary?.creation_warnings)
+                    ? payload.summary.creation_warnings
+                    : [];
+                if (duplicateNameWarnings.length > 0) {
+                    const details = duplicateNameWarnings
+                        .map((warning) => `'${warning.value}' is also used by study '${warning.existing_study_name_short}'`)
+                        .join('; ');
+                    createEmbeddedStudyHint.textContent =
+                        `Validation passed, you can create this study now. Note: ${details} ` +
+                        'Long study names do not have to be unique; the name_short identifies a study.';
+                    return;
+                }
                 createEmbeddedStudyHint.textContent =
                     'Validation passed and no conflicts found. You can create this study now.';
                 return;
@@ -805,10 +837,7 @@
                 : [];
             if (creationConflicts.length > 0) {
                 const details = creationConflicts
-                    .map((conflict) => {
-                        const field = conflict.field === 'name_short' ? 'name_short' : 'name';
-                        return `${field} '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`;
-                    })
+                    .map((conflict) => `name_short '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`)
                     .join('; ');
                 createEmbeddedStudyHint.textContent =
                     `Validation passed, but creation is blocked: ${details}. ` +
@@ -817,7 +846,7 @@
             }
 
             createEmbeddedStudyHint.textContent =
-                'Validation passed, but creation is blocked because a study with the same name or name_short already exists.';
+                'Validation passed, but creation is blocked because the name_short already exists.';
         }
 
         async function createStudyFromEmbeddedForm() {

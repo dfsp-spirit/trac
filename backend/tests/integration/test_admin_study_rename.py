@@ -216,8 +216,8 @@ async def test_admin_rename_empty_payload(created_studies_for_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_admin_rename_duplicate_name(created_studies_for_cleanup):
-    """Renaming to a name that another study already uses returns 400."""
+async def test_admin_rename_duplicate_name_is_allowed(created_studies_for_cleanup):
+    """Renaming onto another study's long name is allowed (labels are not ids)."""
     short_a = f"it_rnd_a_{uuid.uuid4().hex[:6]}"
     short_b = f"it_rnd_b_{uuid.uuid4().hex[:6]}"
     name_a = f"Study A {short_a}"
@@ -233,8 +233,11 @@ async def test_admin_rename_duplicate_name(created_studies_for_cleanup):
             json={"name": name_b},
             auth=ADMIN_AUTH,
         )
-        assert response.status_code == 400
-        assert "already uses" in response.json()["detail"]
+        # Accepted before, 400 "already uses the name" — the long name is a label,
+        # not an identifier (migration 0010 dropped the DB constraint).
+        assert response.status_code == 200
+        assert response.json()["name"] == name_b
+        assert response.json()["name_short"] == short_a
 
 
 @pytest.mark.asyncio

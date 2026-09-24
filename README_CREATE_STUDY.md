@@ -198,18 +198,20 @@ defines a single study.
 | `name_short` | string | **Yes** | Technical short name used in URLs and API calls. Must contain only lowercase letters, digits, and underscores (`[a-z0-9_]+`), 2–50 characters. Example: `"default"`. |
 | `description` | string or `{lang: text}` | No | Study description. Can be a plain string (legacy, treated as the default language) or a localized map. |
 
-> **Note on unique study identity**: both `name` and `name_short` have to be
-> unique across studies. Creating a study through the admin interface (*File
-> Validation* → *Full study package*) is blocked if either value is already in
-> use, and the error names the conflicting field plus the existing study's
-> `name_short` and `name`, so the study can be found on the overview page.
-> `tud studies import` behaves differently: it looks studies up by `name_short`
-> only, so an upload whose `name_short` already exists *updates* that study, and
-> long-name duplicates are not checked at all. Note also that the uniqueness
-> check covers all studies, while the admin overview only lists the studies you
-> may manage (studies created by a super admin or imported via CLI/config file
-> are unowned and super-admin-only), so the conflicting study may not show up in
-> your list.
+> **Note on study identity**: `name_short` is the study identifier and has to be
+> unique — API paths, participant links, admin selectors and `tud studies import`
+> all use it. The long `name` is only a display label and **may** be duplicated:
+> the admin interface still tells you when another study uses the same name (so
+> copied studies stay tellable apart) but it does not block creation. Creating a
+> study through the admin interface (*File Validation* → *Full study package*)
+> therefore fails only on a duplicate `name_short`, and that error names the
+> existing study by `name_short` and `name` so it can be found on the overview
+> page. `tud studies import` matches studies by `name_short` only: an upload
+> whose `name_short` already exists *updates* that study. Note that these checks
+> cover all studies, while the admin overview only lists the studies you may
+> manage (studies created by a super admin or imported via CLI/config file are
+> unowned and super-admin-only), so a clashing study may not show up in your
+> list.
 
 #### Participant Handling
 
