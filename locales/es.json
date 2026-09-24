@@ -2,12 +2,12 @@
   "instructions": {
     "pageTitle": "Instrucciones | Time Use Diary",
     "title": "Instrucciones",
-    "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
-    "generalInfoTitle": "General Information on the Study",
-    "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
-    "visualGuideTitle": "Visual Illustrations of how to use the Interface",
-    "startPrompt": "Please click the blue Start button to begin your diary entry.",
-    "mainInstruction": "Piensa en las actividades que hiciste <span class=\"emphasis\">ayer</span>. Luego, completa la línea de tiempo con las actividades que realizaste.",
+    "welcomeTitle": "Bienvenido a su diario de tiempo semanal. ¡Gracias por participar!",
+    "generalInfoTitle": "Información General sobre el Estudio",
+    "studyIntroDefault": "Este es nuestro estudio de uso del tiempo.<br><br>Le pedimos que <b>reconstruya una semana típica</b> de sus actividades diarias con nuestra herramienta de uso del tiempo.<br><br>¿Qué semana debo elegir? Piense en su última semana (los últimos 7 días).<br>Excepción: si la semana pasada estuvo enfermo o de vacaciones, elija otra semana reciente que represente mejor su rutina habitual.",
+    "instructionsDefault": "#### Cómo completar el diario\n\nVerá una lista de actividades en la parte inferior de la pantalla. Haga clic en una actividad para seleccionarla, luego haga clic en la línea de tiempo para indicar lo que estuvo haciendo durante el día.\n\n- **Ajustar duración:** Arrastre el borde izquierdo o derecho de una actividad colocada para establecer su duración.\n- **Eliminar una actividad:** Haga clic derecho en una actividad en el escritorio, o manténgala presionada en el móvil, y elija \"Eliminar\".\n\nDependiendo del estudio, puede haber más de una línea de tiempo para cada día. Estas capturan diferentes aspectos de su día o le permiten registrar actividades que realizó en paralelo.\n\n**Función de ahorro de tiempo:** No necesita empezar desde cero cada día. Después de completar el primer día, su horario se copiará automáticamente al día siguiente como plantilla. Adapte esta plantilla para reflejar los cambios en sus actividades de ese día.",
+    "visualGuideTitle": "Ilustraciones Visuales de cómo usar la Interfaz",
+    "startPrompt": "Por favor, haga clic en el botón azul Inicio para comenzar su entrada del diario.",
     "step1": {
       "title": "Seleccionar y Colocar una Actividad",
       "horizontal": "Elige una actividad del menú en la parte inferior de la pantalla, luego colócala en la línea de tiempo.",
@@ -19,9 +19,10 @@
       "vertical": "Arrastra los bordes verticalmente para establecer la duración."
     },
     "step3": {
-      "title": "Enviar tu Diario",
-      "description": "Una vez que hayas registrado todas tus actividades del día, haz clic en el botón Enviar para completar tu diario.",
-      "submitHelp": "Haz clic para enviar tu diario completado"
+      "title": "Guardar y enviar tu diario",
+      "description": "Una vez que hayas registrado tus actividades de un día, haz clic en el botón \"Guardar día\" para guardarlas. Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
+      "saveHelp": "Haz clic para guardar las actividades del día en el que estás trabajando",
+      "submitStudyHelp": "Haz clic para enviar tu diario cuando todos los días estén completos"
     },
     "helpfulTools": "Herramientas útiles",
     "removeLastHelp": "Elimina la última actividad colocada",
@@ -45,30 +46,23 @@
     "studyNotFound": "El estudio solicitado no existe."
   },
   "common": {
-    "language": "Language",
-    "chooseLanguage": "Choose language",
-    "day": "Day"
+    "language": "Idioma",
+    "chooseLanguage": "Elegir idioma",
+    "day": "Día"
   },
   "buttons": {
-    "submit": "Enviar",
     "saveDay": "Guardar día",
-    "finishStudy": "Enviar día y finalizar el estudio",
+    "submitStudy": "Enviar estudio",
     "start": "Comenzar",
     "removeLast": "Eliminar última",
     "cleanRow": "Limpiar Fila",
-    "next": "Siguiente",
     "skipReporting": "Omitir reporte de tiempo",
     "previousTimeline": "Línea de tiempo anterior",
-    "backToInstructions": "Volver a Instrucciones",
     "giveConsent": "Doy mi consentimiento y continúo",
     "declineConsent": "No doy mi consentimiento",
     "ok": "OK",
     "cancel": "Cancelar",
-    "save": "Guardar",
-    "close": "Cerrar",
-    "confirm": "Confirmar",
-    "yes": "Sí",
-    "no": "No"
+    "close": "Cerrar"
   },
   "modals": {
     "customActivity": {
@@ -85,15 +79,6 @@
       "title": "Selecciona una opción",
       "titleFor": "Selecciona una opción para \"{activityName}\""
     },
-    "confirmSubmit": {
-      "title": "¿Enviar datos de {{dayLabel}} (día {{currentDay}} de {{totalDays}})?",
-      "message": "No podrás cambiar tus respuestas del día {{dayLabel}}.",
-      "infoOnTemplate": "Para el día siguiente verás los datos ingresados hoy como plantilla para ayudarte a reportar más fácilmente. Adáptala según sea necesario.<br /><br /> Recuerda que puedes eliminar datos manteniendo presionado o pasando el cursor sobre la actividad en la línea de tiempo y presionando 'd' o DEL.",
-      "studyEnd": "Esta entrega concluye el estudio.",
-      "submitDay": "Enviar día {{dayLabel}}",
-      "submitDayAndFinish": "Enviar día {{dayLabel}} y finalizar estudio",
-      "submitDayNoDay": "Enviar día"
-    },
     "confirmSkip": {
       "title": "¿Realmente quieres omitir todo el reporte de tiempo?",
       "message": "Serás llevado directamente a la página de agradecimiento."
@@ -101,10 +86,6 @@
     "confirmCleanRow": {
       "title": "¿Limpiar la fila actual de la línea de tiempo?",
       "message": "¿Seguro que quieres eliminar todas las actividades de la fila actual de la línea de tiempo?"
-    },
-    "loading": {
-      "title": "Enviando tu diario...",
-      "message": "Por favor espera mientras guardamos tus respuestas."
     },
     "activityContext": {
       "copy": "Copiar",
@@ -124,13 +105,6 @@
     "selectStudy": "Seleccione un estudio para continuar",
     "noStudiesAvailable": "No hay estudios disponibles en el servidor.",
     "studyNotFound": "El estudio solicitado no existe.",
-    "loading": "Cargando...",
-    "saving": "Guardando...",
-    "saved": "Guardado exitosamente",
-    "error": "Ocurrió un error",
-    "noActivities": "No se encontraron actividades",
-    "fillRequired": "Por favor completa todas las actividades requeridas",
-    "submitSuccess": "Diario enviado exitosamente",
     "submitError": "Error al enviar el diario",
     "sending_retry": "Reintentando guardar tu diario (intento {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -141,11 +115,10 @@
     "timelineHoverInactive": "Haz clic para cambiar a esta línea de tiempo",
     "timelineHoverActiveNoSelection": "Selecciona una actividad abajo y luego colócala aquí.",
     "timelineHoverActiveWithSelection": "Haz clic para colocar aquí la actividad seleccionada.",
-    "invalidPlacement": "Cannot place activity here due to invalid position.",
-    "timelineValidationError": "Timeline validation error: {{message}}",
+    "invalidPlacement": "No se puede colocar la actividad aquí debido a una posición no válida.",
+    "timelineValidationError": "Error de validación de la línea de tiempo: {{message}}",
     "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
     "templateCopiedBanner": "Hemos precargado tu diario con las actividades de un participante de plantilla. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación.",
-    "reportingForDay": "Reporting for day:",
     "studyDayOf": "Día {{current}} de {{total}}",
     "currentDayTooltip": "{{dayName}} (Día {{current}} de {{total}})",
     "goBackToEditPreviousDays": "Cambiar al día:",
@@ -154,32 +127,25 @@
     "copySuccess": "Se copió {{sourceDay}} a {{targetDay}}",
     "copyError": "Error al copiar: {{message}}",
     "copyEmptySource": "El día de origen no tiene actividades para copiar.",
-    "completeMinimumActivitiesBeforeSwitching": "Completa las actividades mínimas antes de cambiar de día.",
-    "completeMinimumActivitiesBeforeCopying": "Complete las actividades mínimas antes de copiar el día actual.",
     "completeOtherDaysFirst": "Completa primero {{days}} para finalizar el estudio.",
-    "daySavedStayOnPage": "Day saved.",
-    "copyDayEmpty": "empty",
-    "copyDayHasData": "has data",
-    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}",
-    "submitStudySuccess": "Study submitted successfully!"
+    "daySavedStayOnPage": "Día guardado.",
+    "copyDayEmpty": "vacío",
+    "copyDayHasData": "tiene datos",
+    "copyOverwriteConfirm": "{{day}} ya tiene datos. ¿Sobrescribir?",
+    "submitStudyIncomplete": "Días incompletos: {{days}}"
   },
   "errors": {
-    "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
-    "loadingActivitiesConfigurationHelp": "The application requires a valid backend connection to load the appropriate activities for your study.",
-    "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
+    "loadingActivitiesConfigurationTitle": "Error al cargar la configuración de actividades:",
+    "loadingActivitiesConfigurationHelp": "La aplicación requiere una conexión válida con el backend para cargar las actividades adecuadas para su estudio.",
+    "loadingActivitiesShort": "Error al cargar las actividades. Actualice la página para intentarlo de nuevo. Error:"
   },
   "banner": {
     "dayOneInstructions": "Instrucciones: Selecciona una actividad abajo, luego haz clic en la línea de tiempo para colocarla y arrastra los bordes para ampliar. Para eliminar una actividad, mantenla pulsada en móvil o usa el menú contextual en escritorio."
-  },
-  "activities": {
-    "otherNotListed": "Otro no listado (ingresar)"
   },
   "thankYou": {
     "title": "Gracias - TRAC",
     "heading": "¡Gracias!",
     "subtitle": "Tu envío se ha completado exitosamente.",
-    "message": "Gracias por participar en nuestro estudio <span class=\"app-name\">TRAC</span>. Tus respuestas han sido registradas y contribuirán a una investigación valiosa.",
     "continueLink": "Haz clic aquí para continuar."
   },
   "taskPage": {
@@ -207,7 +173,6 @@
   "openStudies": {
     "pageTitle": "Estudios abiertos | TRAC",
     "heading": "TRAC -- Estudios abiertos",
-    "noStudies": "No hay estudios abiertos disponibles.",
-    "accessLink": "Acceder al estudio"
+    "noStudies": "No hay estudios abiertos disponibles."
   }
 }

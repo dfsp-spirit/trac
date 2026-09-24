@@ -49,7 +49,6 @@ interface Window {
   showToast?: (...args: any[]) => any;
   toggleDebugOverlay?: (...args: any[]) => any;
   tudClearCustomActivityText?: (...args: any[]) => any;
-  updateConfirmationModalContent?: (...args: any[]) => any;
   updateDisabledButtonOverlays?: (...args: any[]) => any;
   deleteActivityBlock?: (...args: any[]) => any;
   // legacy hacky globals
