@@ -20,4 +20,4 @@
 - The backend resolves each text's language before sending it in the participant `study-config` response (`_get_localized_study_text`: selected language -> study `default_language` -> `en`).
 - `pages/instructions.js` and `pages/consent.html` render these texts through `js/markdown.js`, which escapes HTML first (so `<br>` in study text shows up literally). The built-in intro default (`instructions.studyIntroDefault`) is injected as raw HTML via `data-i18n-html`; the override removes that attribute so i18n cannot overwrite it.
 - `pages/thank-you.html` assigns the end text straight to `innerHTML` (raw HTML, no Markdown rendering, no escaping).
-- Built-in fallbacks when a study sets nothing: `instructions.studyIntroDefault` (all locales) for the intro, `DEFAULT_STUDY_TEXT_INSTRUCTIONS` in `pages/instructions.js` for the second block.
+- Built-in fallbacks when a study sets nothing live in the locale files (all 7 locales): `instructions.studyIntroDefault` for the intro and `instructions.instructionsDefault` for the second block (`pages/instructions.js` looks the latter up via `i18n.t()`).
