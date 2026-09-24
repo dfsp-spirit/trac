@@ -7,7 +7,6 @@
     "studyIntroDefault": "Tämä on ajankäyttötutkimuksemme.<br><br>Pyydämme sinua <b>rekonstruoimaan tyypillisen viikon</b> päivittäisistä toiminnoistasi ajankäyttötyökalumme avulla.<br><br>Minkä viikon minun tulisi valita? Ajattele viime viikkoa (viimeiset 7 päivää).<br>Poikkeus: Jos olit viime viikolla sairas tai lomalla, valitse jokin muu viimeaikainen viikko, joka kuvaa paremmin normaalia arkeasi.",
     "visualGuideTitle": "Visuaaliset ohjeet käyttöliittymän käyttöön",
     "startPrompt": "Klikkaa sinistä Aloita-painiketta aloittaaksesi päiväkirjan täyttämisen.",
-    "mainInstruction": "Ajattele toimintoja, joita teit <span class=\"emphasis\">eilen</span>. Täytä sitten koko aikajana tekemilläsi toiminnoilla.",
     "step1": {
       "title": "Valitse ja sijoita toiminto",
       "horizontal": "Valitse toiminto näytön alareunan valikosta ja sijoita se aikajanalle.",
@@ -58,16 +57,11 @@
     "cleanRow": "Tyhjennä rivi",
     "skipReporting": "Ohita ajankäytön raportointi",
     "previousTimeline": "Edellinen aikajana",
-    "backToInstructions": "Takaisin ohjeisiin",
     "giveConsent": "Annan suostumukseni ja jatkan",
     "declineConsent": "En anna suostumustani",
     "ok": "OK",
     "cancel": "Peruuta",
-    "save": "Tallenna",
-    "close": "Sulje",
-    "confirm": "Vahvista",
-    "yes": "Kyllä",
-    "no": "Ei"
+    "close": "Sulje"
   },
   "modals": {
     "customActivity": {
@@ -84,15 +78,6 @@
       "title": "Valitse vaihtoehto",
       "titleFor": "Valitse vaihtoehto \"{activityName}\""
     },
-    "confirmSubmit": {
-      "title": "Lähetä tiedot: {{dayLabel}} (päivä {{currentDay}} / {{totalDays}})?",
-      "message": "Et voi enää muuttaa päivän {{dayLabel}} vastauksia.",
-      "infoOnTemplate": "Seuraavaa päivää varten näet tänään syöttämäsi tiedot mallina helpottamaan raportointia. Muokkaa niitä tarvittaessa.<br /><br /> Muista, että voit poistaa tietoja painamalla pitkään tai viemällä hiiren aikajanalla olevan aktiviteetin päälle ja painamalla 'd' tai DEL.",
-      "studyEnd": "Tämä lähetys päättää tutkimuksen.",
-      "submitDay": "Lähetä päivä {{dayLabel}}",
-      "submitDayAndFinish": "Lähetä päivä {{dayLabel}} ja lopeta tutkimus",
-      "submitDayNoDay": "Lähetä päivä"
-    },
     "confirmSkip": {
       "title": "Haluatko varmasti ohittaa ajankäytön raportoinnin?",
       "message": "Sinut ohjataan suoraan kiitossivulle."
@@ -100,10 +85,6 @@
     "confirmCleanRow": {
       "title": "Tyhjennetäänkö nykyinen aikajanarivi?",
       "message": "Haluatko varmasti poistaa kaikki aktiviteetit nykyiseltä aikajanariviltä?"
-    },
-    "loading": {
-      "title": "Päiväkirjaa lähetetään...",
-      "message": "Odota, kun tallennamme vastauksesi."
     },
     "activityContext": {
       "copy": "Kopioi",
@@ -123,13 +104,6 @@
     "selectStudy": "Valitse tutkimus jatkaaksesi",
     "noStudiesAvailable": "Palvelimella ei ole saatavilla tutkimuksia.",
     "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
-    "loading": "Ladataan...",
-    "saving": "Tallennetaan...",
-    "saved": "Tallennettu onnistuneesti",
-    "error": "Tapahtui virhe",
-    "noActivities": "Toimintoja ei löytynyt",
-    "fillRequired": "Täytä kaikki vaaditut toiminnot",
-    "submitSuccess": "Päiväkirja lähetetty onnistuneesti",
     "submitError": "Virhe päiväkirjan lähetyksessä",
     "sending_retry": "Yritetään tallentaa päiväkirjaa uudelleen (yritys {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -144,7 +118,6 @@
     "timelineValidationError": "Aikajanan validointivirhe: {{message}}",
     "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
     "templateCopiedBanner": "Olemme esitäyttäneet päiväkirjasi malliosallistujan toiminnoilla. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja.",
-    "reportingForDay": "Raportointi päivälle:",
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
     "goBackToEditPreviousDays": "Vaihda päivään:",
@@ -153,15 +126,12 @@
     "copySuccess": "Kopioitu {{sourceDay}} päivälle {{targetDay}}",
     "copyError": "Kopiointi epäonnistui: {{message}}",
     "copyEmptySource": "Lähdepäivällä ei ole toimintoja kopioitavaksi.",
-    "completeMinimumActivitiesBeforeSwitching": "Täytä vähimmäisaktiviteetit ennen päivän vaihtamista.",
-    "completeMinimumActivitiesBeforeCopying": "Täytä vähimmäisaktiviteetit ennen nykyisen päivän kopioimista.",
     "completeOtherDaysFirst": "Täytä ensin {{days}} päättääksesi tutkimuksen.",
     "daySavedStayOnPage": "Päivä tallennettu.",
     "copyDayEmpty": "tyhjä",
     "copyDayHasData": "sisältää dataa",
     "copyOverwriteConfirm": "{{day}} sisältää jo dataa. Ylikirjoitetaanko?",
-    "submitStudyIncomplete": "Puutteelliset päivät: {{days}}",
-    "submitStudySuccess": "Tutkimus lähetetty onnistuneesti!"
+    "submitStudyIncomplete": "Puutteelliset päivät: {{days}}"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",
@@ -171,14 +141,10 @@
   "banner": {
     "dayOneInstructions": "Ohjeet: Valitse toiminto alta, napsauta sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi. Poistaaksesi toiminnon, pidä sitä painettuna mobiilissa tai käytä tietokoneella hiiren oikean painikkeen valikkoa."
   },
-  "activities": {
-    "otherNotListed": "Muu (kirjoita)"
-  },
   "thankYou": {
     "title": "Kiitos - TRAC",
     "heading": "Kiitos!",
     "subtitle": "Lähetys on suoritettu onnistuneesti.",
-    "message": "Kiitos osallistumisestasi <span class=\"app-name\">TRAC</span>-tutkimukseen. Vastauksesi on tallennettu ja ne edistävät arvokasta tutkimusta.",
     "continueLink": "Jatka napsauttamalla tästä."
   },
   "taskPage": {
@@ -206,7 +172,6 @@
   "openStudies": {
     "pageTitle": "Avoimet tutkimukset | TRAC",
     "heading": "TRAC -- Avoimet tutkimukset",
-    "noStudies": "Ei avoimia tutkimuksia saatavilla.",
-    "accessLink": "Siirry tutkimukseen"
+    "noStudies": "Ei avoimia tutkimuksia saatavilla."
   }
 }
