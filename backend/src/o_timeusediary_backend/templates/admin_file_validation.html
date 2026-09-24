@@ -331,15 +331,36 @@
                 titleText = payload.ok ? 'Study creation succeeded' : 'Study creation failed';
             }
 
+            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
+                ? payload.summary.creation_conflicts
+                : [];
+
             let summaryHtml = '';
             if (payload.summary && Object.keys(payload.summary).length > 0) {
-                const parts = Object.entries(payload.summary).map(([key, value]) => {
-                    const formattedValue = Array.isArray(value)
-                        ? value.join(', ')
-                        : (typeof value === 'object' ? JSON.stringify(value) : String(value));
-                    return `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(formattedValue)}</li>`;
-                }).join('');
+                const parts = Object.entries(payload.summary)
+                    .filter(([key]) => key !== 'creation_conflicts')
+                    .map(([key, value]) => {
+                        const formattedValue = Array.isArray(value)
+                            ? value.join(', ')
+                            : (typeof value === 'object' ? JSON.stringify(value) : String(value));
+                        return `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(formattedValue)}</li>`;
+                    }).join('');
                 summaryHtml = `<div><strong>Summary</strong><ul>${parts}</ul></div>`;
+            }
+
+            let conflictsHtml = '';
+            if (creationConflicts.length > 0) {
+                const conflictItems = creationConflicts.map((conflict) => {
+                    const field = conflict.field === 'name_short' ? 'name_short' : 'name';
+                    const existingStudy = conflict.existing_study_name_short
+                        ? ` is already used by study <code>${escapeHtml(conflict.existing_study_name_short)}</code>`
+                        : ' already exists';
+                    const existingStudyName = conflict.existing_study_name
+                        ? ` (study name: ${escapeHtml(conflict.existing_study_name)})`
+                        : '';
+                    return `<li><strong>${escapeHtml(field)}</strong> '${escapeHtml(conflict.value)}'${existingStudy}${existingStudyName}</li>`;
+                }).join('');
+                conflictsHtml = `<div><strong>Uniqueness conflicts</strong><ul>${conflictItems}</ul></div>`;
             }
 
             let errorsHtml = '';
@@ -357,6 +378,7 @@
                 <div class="result-title ${titleClass}">${titleText}</div>
                 <p class="subtle">Mode: <code>${escapeHtml(mode)}</code></p>
                 ${summaryHtml}
+                ${conflictsHtml}
                 ${errorsHtml}
             `;
 
@@ -393,6 +415,22 @@
             if (creationEligible) {
                 createStudyHint.textContent =
                     'Validation passed and no conflicts found. You can create this study now.';
+                return;
+            }
+
+            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
+                ? payload.summary.creation_conflicts
+                : [];
+            if (creationConflicts.length > 0) {
+                const details = creationConflicts
+                    .map((conflict) => {
+                        const field = conflict.field === 'name_short' ? 'name_short' : 'name';
+                        return `${field} '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`;
+                    })
+                    .join('; ');
+                createStudyHint.textContent =
+                    `Validation passed, but creation is blocked: ${details}. ` +
+                    'Look up that study by its name_short on the overview page.';
                 return;
             }
 
@@ -759,6 +797,22 @@
             if (creationEligible) {
                 createEmbeddedStudyHint.textContent =
                     'Validation passed and no conflicts found. You can create this study now.';
+                return;
+            }
+
+            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
+                ? payload.summary.creation_conflicts
+                : [];
+            if (creationConflicts.length > 0) {
+                const details = creationConflicts
+                    .map((conflict) => {
+                        const field = conflict.field === 'name_short' ? 'name_short' : 'name';
+                        return `${field} '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`;
+                    })
+                    .join('; ');
+                createEmbeddedStudyHint.textContent =
+                    `Validation passed, but creation is blocked: ${details}. ` +
+                    'Look up that study by its name_short on the overview page.';
                 return;
             }
 

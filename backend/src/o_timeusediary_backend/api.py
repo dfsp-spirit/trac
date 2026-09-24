@@ -3256,6 +3256,38 @@ def _format_exception_for_client(error: Exception) -> List[Dict[str, Any]]:
     ]
 
 
+def _study_creation_conflict_message(
+    field: str, value: str, existing_study: "Study"
+) -> str:
+    """Explain why a study cannot be created because of a uniqueness conflict.
+
+    Study creation enforces two unique keys: ``name_short`` (the technical id) and
+    ``name`` (the long display name). The message states which of the two clashed
+    and names the existing study by both ``name_short`` and ``name``: the admin
+    overview and the study URLs use ``name_short``, so without it the conflicting
+    study is hard to find.
+
+    @param field Either "name_short" or "name".
+    @param value The conflicting value from the uploaded study config.
+    @param existing_study The study that already uses that value.
+    @returns A single-sentence message for the admin UI.
+    """
+    existing_reference = (
+        f"existing study: name_short '{existing_study.name_short}', "
+        f"name '{existing_study.name}'"
+    )
+    if field == "name_short":
+        return (
+            f"Study creation blocked: the name_short '{value}' already exists "
+            f"({existing_reference}). Choose a different name_short."
+        )
+    return (
+        f"Study creation blocked: the study name '{value}' already exists "
+        f"({existing_reference}). Study names must be unique; choose a different "
+        "name, for example by adding a version suffix."
+    )
+
+
 async def _parse_json_upload(upload: UploadFile, label: str) -> Dict[str, Any]:
     raw_bytes = await upload.read()
     try:
@@ -4242,7 +4274,10 @@ async def rename_study(
         if existing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Study already exists with short name '{new_name_short}'",
+                detail=(
+                    f"Study already exists with short name '{new_name_short}' "
+                    f"(study name: '{existing.name}')"
+                ),
             )
 
     previous_name = study.name
@@ -6182,13 +6217,15 @@ async def validate_files_in_memory(
                     "field": "name_short",
                     "value": import_study_payload.name_short,
                     "existing_study_name_short": existing_name_short_study.name_short,
+                    "existing_study_name": existing_name_short_study.name,
                 }
             )
             validation_notices.append(
                 {
-                    "message": (
-                        "Study creation blocked: a study with the same name_short "
-                        f"'{import_study_payload.name_short}' already exists."
+                    "message": _study_creation_conflict_message(
+                        "name_short",
+                        import_study_payload.name_short,
+                        existing_name_short_study,
                     ),
                     "path": "studies[0].name_short",
                     "type": "conflict_notice",
@@ -6201,13 +6238,15 @@ async def validate_files_in_memory(
                     "field": "name",
                     "value": import_study_payload.name,
                     "existing_study_name_short": existing_name_study.name_short,
+                    "existing_study_name": existing_name_study.name,
                 }
             )
             validation_notices.append(
                 {
-                    "message": (
-                        "Study creation blocked: a study with the same name "
-                        f"'{import_study_payload.name}' already exists."
+                    "message": _study_creation_conflict_message(
+                        "name",
+                        import_study_payload.name,
+                        existing_name_study,
                     ),
                     "path": "studies[0].name",
                     "type": "conflict_notice",
@@ -6332,8 +6371,11 @@ async def create_study_from_validated_uploads(
         ).first()
         if existing_by_name_short:
             raise ValueError(
-                "Study creation blocked: a study with the same name_short "
-                f"'{import_study_payload.name_short}' already exists"
+                _study_creation_conflict_message(
+                    "name_short",
+                    import_study_payload.name_short,
+                    existing_by_name_short,
+                )
             )
 
         existing_by_name = session.exec(
@@ -6341,8 +6383,11 @@ async def create_study_from_validated_uploads(
         ).first()
         if existing_by_name:
             raise ValueError(
-                "Study creation blocked: a study with the same name "
-                f"'{import_study_payload.name}' already exists"
+                _study_creation_conflict_message(
+                    "name",
+                    import_study_payload.name,
+                    existing_by_name,
+                )
             )
 
         new_study_owner_usernames = (

@@ -231,10 +231,100 @@ async def test_create_from_files_blocks_existing_study_name_short(db_session):
     assert response_payload["transaction_mode"] == "all_or_nothing"
     assert response_payload["summary"]["created"] == 0
     assert response_payload["summary"]["failed"] == 1
+    messages = [
+        error.get("message") or "" for error in response_payload.get("errors", [])
+    ]
+    # The message must name the clashing field and the existing study (name_short
+    # is what the admin overview shows, so the admin can actually find it).
     assert any(
-        "same name_short" in (error.get("message") or "")
-        for error in response_payload.get("errors", [])
+        "name_short 'default' already exists" in message
+        and "name_short 'default'" in message
+        and "Default Weekly Study for Adults" in message
+        for message in messages
+    ), messages
+    assert not any("study name" in message for message in messages), messages
+
+
+@pytest.mark.asyncio
+async def test_create_from_files_blocks_existing_study_name(db_session):
+    """A duplicate long study name blocks creation even when name_short is free.
+
+    Regression guard: the message used to say "a study with the same name
+    already exists", which admins read as a name_short clash while the overview
+    (scoped, and listing name_short) showed no such study.
+    """
+    _insert_existing_default_study(db_session)
+
+    studies_config_payload = _load_studies_config_payload()
+    random_suffix = uuid.uuid4().hex[:8]
+    selected_study_name_short = f"default_copy_{random_suffix}"
+    default_study = _get_study_by_name_short(studies_config_payload, "default")
+    # Keep the existing long name, change only the short name -> long-name clash.
+    default_study["name_short"] = selected_study_name_short
+
+    studies_config_upload, activities_uploads = _build_full_study_uploads(
+        studies_config_payload,
+        selected_study_name_short,
     )
+
+    validation_payload = await validate_files_in_memory(
+        mode="full_study",
+        default_language=None,
+        supported_languages_csv=None,
+        activities_language_map=None,
+        full_study_name_short=selected_study_name_short,
+        activities_file=None,
+        activities_files=activities_uploads,
+        studies_config_file=studies_config_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert validation_payload["ok"] is True
+    assert validation_payload["summary"]["creation_eligible"] is False
+    conflicts = validation_payload["summary"]["creation_conflicts"]
+    assert [conflict["field"] for conflict in conflicts] == ["name"]
+    assert conflicts[0]["value"] == "Default Weekly Study for Adults"
+    assert conflicts[0]["existing_study_name_short"] == "default"
+    assert conflicts[0]["existing_study_name"] == "Default Weekly Study for Adults"
+
+    notice_messages = [
+        error.get("message") or ""
+        for error in validation_payload.get("errors", [])
+        if error.get("type") == "conflict_notice"
+    ]
+    assert any(
+        "study name 'Default Weekly Study for Adults' already exists" in message
+        and "name_short 'default'" in message
+        for message in notice_messages
+    ), notice_messages
+
+    # Rebuild uploads because UploadFile streams are consumed by the first call.
+    studies_config_upload, activities_uploads = _build_full_study_uploads(
+        studies_config_payload,
+        selected_study_name_short,
+    )
+
+    create_payload = await create_study_from_validated_uploads(
+        full_study_name_short=selected_study_name_short,
+        activities_language_map=None,
+        activities_files=activities_uploads,
+        studies_config_file=studies_config_upload,
+        identity=SUPER_ADMIN_IDENTITY,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert create_payload["ok"] is False
+    create_messages = [
+        error.get("message") or "" for error in create_payload.get("errors", [])
+    ]
+    assert any(
+        "study name 'Default Weekly Study for Adults' already exists" in message
+        and "name_short 'default'" in message
+        and "must be unique" in message
+        for message in create_messages
+    ), create_messages
 
 
 @pytest.mark.asyncio
