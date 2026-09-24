@@ -19,6 +19,11 @@
       "vertical": "Ziehen Sie die Ränder vertikal, um die Dauer festzulegen."
     },
     "step3": {
+      "title": "Einen Tag kopieren",
+      "horizontal": "Wenn ein anderer Tag ähnlich aussieht, können Sie die Aktivitäten dieses Tages kopieren: Klicken Sie neben dem Tagestitel auf \"Tag kopieren\" und wählen Sie den Zieltag aus. Die kopierten Einträge können Sie anschließend noch anpassen.",
+      "vertical": "Wenn ein anderer Tag ähnlich aussieht, können Sie die Aktivitäten dieses Tages kopieren: Tippen Sie neben dem Tagestitel auf \"Tag kopieren\" und wählen Sie den Zieltag aus. Die kopierten Einträge können Sie anschließend noch anpassen."
+    },
+    "step4": {
       "title": "Tagebuch speichern und absenden",
       "description": "Nachdem Sie Ihre Aktivitäten für einen Tag erfasst haben, klicken Sie auf die Schaltfläche \"Tag speichern\", um sie zu speichern. Sie können diesen Tag später weiterhin bearbeiten. Wenn alle Tage der Studie vollständig sind, klicken Sie auf \"Studie absenden\", um Ihr Tagebuch zu senden und die Studie abzuschließen.",
       "saveHelp": "Klicken Sie, um die Aktivitäten des Tages zu speichern, an dem Sie gerade arbeiten",

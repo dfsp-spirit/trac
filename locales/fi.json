@@ -19,6 +19,11 @@
       "vertical": "Vedä reunoja pystysuunnassa asettaaksesi keston."
     },
     "step3": {
+      "title": "Kopioi päivä",
+      "horizontal": "Jos jokin toinen päivä on samankaltainen, voit kopioida tämän päivän toiminnot: klikkaa päivän otsikon vieressä \"Kopioi tämä päivä\" ja valitse kohdepäivä. Voit silti muokata kopioituja merkintöjä jälkeenpäin.",
+      "vertical": "Jos jokin toinen päivä on samankaltainen, voit kopioida tämän päivän toiminnot: napauta päivän otsikon vieressä \"Kopioi tämä päivä\" ja valitse kohdepäivä. Voit silti muokata kopioituja merkintöjä jälkeenpäin."
+    },
+    "step4": {
       "title": "Tallenna ja lähetä päiväkirja",
       "description": "Kun olet kirjannut päivän toiminnot, klikkaa \"Tallenna päivä\" -painiketta tallentaaksesi ne. Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
       "saveHelp": "Klikkaa tallentaaksesi sen päivän toiminnot, jota parhaillaan muokkaat",

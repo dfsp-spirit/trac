@@ -169,6 +169,12 @@ li {
   }
 }
 
+/* Steps can be hidden at runtime (e.g. "Copy a Day" in single-day studies).
+   The display:flex above would win over the user-agent [hidden] rule. */
+.instruction-step[hidden] {
+  display: none;
+}
+
 .step-number {
   display: flex;
   align-items: center;

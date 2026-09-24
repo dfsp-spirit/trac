@@ -19,6 +19,11 @@
       "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania."
     },
     "step3": {
+      "title": "Kopiuj dzień",
+      "horizontal": "Jeśli inny dzień jest podobny, możesz skopiować aktywności z tego dnia: kliknij \"Skopiuj ten dzień\" obok tytułu dnia i wybierz dzień docelowy. Skopiowane wpisy możesz później poprawić.",
+      "vertical": "Jeśli inny dzień jest podobny, możesz skopiować aktywności z tego dnia: dotknij \"Skopiuj ten dzień\" obok tytułu dnia i wybierz dzień docelowy. Skopiowane wpisy możesz później poprawić."
+    },
+    "step4": {
       "title": "Zapisz i wyślij dziennik",
       "description": "Po zapisaniu aktywności z danego dnia kliknij przycisk \"Zapisz dzień\", aby je zapisać. Nadal możesz później edytować ten dzień. Gdy wszystkie dni badania będą kompletne, kliknij \"Wyślij badanie\", aby wysłać dziennik i zakończyć badanie.",
       "saveHelp": "Kliknij, aby zapisać aktywności z dnia, nad którym pracujesz",

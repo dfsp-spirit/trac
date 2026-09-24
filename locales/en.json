@@ -19,6 +19,11 @@
       "vertical": "Drag the edges vertically to set the duration."
     },
     "step3": {
+      "title": "Copy a Day",
+      "horizontal": "If another day looks similar, you can copy this day's activities: click \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.",
+      "vertical": "If another day looks similar, you can copy this day's activities: tap \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards."
+    },
+    "step4": {
       "title": "Save and Submit Your Diary",
       "description": "Once you have recorded your activities for a day, click the \"Save Day\" button to store them. You can still edit that day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
       "saveHelp": "Click to save the activities of the day you are working on",

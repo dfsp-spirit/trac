@@ -65,25 +65,44 @@
                 </div>
             </div>
 
-            <div class="instruction-step">
+            <div class="instruction-step" id="instruction-step-copy-day">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <h2 data-i18n="instructions.step3.title">Save and Submit Your Diary</h2>
-                    <p data-i18n="instructions.step3.description">Once you have recorded your activities for a day, click the "Save Day" button to store them. You can still edit that day later. When all days of the study are complete, click the "Submit Study" button to send your diary and finish the study.</p>
+                    <h2 data-i18n="instructions.step3.title">Copy a Day</h2>
+                    <div class="layout-specific horizontal-layout">
+                        <p data-i18n="instructions.step3.horizontal">If another day looks similar, you can copy this day's activities: click "Copy this day" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.</p>
+                        <div class="gif-container loading" data-src="../assets/copy_day_horizontal.gif">
+                            <img src="../assets/copy_day_horizontal.gif" alt="Copying the activities of a day to another day in horizontal layout" loading="lazy" onload="this.parentElement.classList.remove('loading')" />
+                        </div>
+                    </div>
+                    <div class="layout-specific vertical-layout">
+                        <p data-i18n="instructions.step3.vertical">If another day looks similar, you can copy this day's activities: tap "Copy this day" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.</p>
+                        <div class="gif-container loading" data-src="../assets/copy_day_vertical.gif">
+                            <img src="../assets/copy_day_vertical.gif" alt="Copying the activities of a day to another day in vertical layout" loading="lazy" onload="this.parentElement.classList.remove('loading')" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="instruction-step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h2 data-i18n="instructions.step4.title">Save and Submit Your Diary</h2>
+                    <p data-i18n="instructions.step4.description">Once you have recorded your activities for a day, click the "Save Day" button to store them. You can still edit that day later. When all days of the study are complete, click the "Submit Study" button to send your diary and finish the study.</p>
                     <div class="controls features-grid">
                         <div class="feature-item">
-                            <button class="btn save-btn instructions-demo-btn" data-i18n-aria-label="instructions.step3.saveHelp" disabled>
+                            <button class="btn save-btn instructions-demo-btn" data-i18n-aria-label="instructions.step4.saveHelp" disabled>
                                 <i class="fas fa-save" aria-hidden="true"></i>
                                 <span data-i18n="buttons.saveDay">Save Day</span>
                             </button>
-                            <p data-i18n="instructions.step3.saveHelp">Click to save the activities of the day you are working on</p>
+                            <p data-i18n="instructions.step4.saveHelp">Click to save the activities of the day you are working on</p>
                         </div>
                         <div class="feature-item">
-                            <button class="btn submit-study-btn instructions-demo-btn" data-i18n-aria-label="instructions.step3.submitStudyHelp" disabled>
+                            <button class="btn submit-study-btn instructions-demo-btn" data-i18n-aria-label="instructions.step4.submitStudyHelp" disabled>
                                 <i class="fas fa-check-double" aria-hidden="true"></i>
                                 <span data-i18n="buttons.submitStudy">Submit Study</span>
                             </button>
-                            <p data-i18n="instructions.step3.submitStudyHelp">Click to submit your diary when every day is complete</p>
+                            <p data-i18n="instructions.step4.submitStudyHelp">Click to submit your diary when every day is complete</p>
                         </div>
                     </div>
                 </div>

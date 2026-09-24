@@ -19,6 +19,11 @@
       "vertical": "Arrastra los bordes verticalmente para establecer la duración."
     },
     "step3": {
+      "title": "Copiar un día",
+      "horizontal": "Si otro día es similar, puedes copiar las actividades de este día: haz clic en \"Copiar este día\" junto al título del día y elige el día de destino. Después podrás ajustar los registros copiados.",
+      "vertical": "Si otro día es similar, puedes copiar las actividades de este día: toca \"Copiar este día\" junto al título del día y elige el día de destino. Después podrás ajustar los registros copiados."
+    },
+    "step4": {
       "title": "Guardar y enviar tu diario",
       "description": "Una vez que hayas registrado tus actividades de un día, haz clic en el botón \"Guardar día\" para guardarlas. Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
       "saveHelp": "Haz clic para guardar las actividades del día en el que estás trabajando",
