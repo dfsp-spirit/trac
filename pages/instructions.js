@@ -232,6 +232,64 @@ function applyStudyIntroText(studyConfig) {
   }
 }
 
+const DEFAULT_STUDY_TEXT_INSTRUCTIONS = {
+  en:
+    '#### How to fill out the diary\n\n' +
+    'You will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.\n\n' +
+    '- **Adjust duration:** Drag the left or right edge of a placed activity to set how long it lasted.\n' +
+    '- **Delete an activity:** Right-click an activity on desktop, or long-press it on mobile, and choose "Delete".\n\n' +
+    'Depending on the study, there may be more than one timeline for each day. These capture different aspects of your day or allow you to record activities you were doing in parallel.\n\n' +
+    '**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.',
+
+  de:
+    '#### So füllen Sie das Tagebuch aus\n\n' +
+    'Am unteren Bildschirmrand sehen Sie eine Liste von Aktivitäten. Klicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste, um anzugeben, was Sie im Laufe des Tages gemacht haben.\n\n' +
+    '- **Dauer anpassen:** Ziehen Sie den linken oder rechten Rand einer platzierten Aktivität, um die Dauer festzulegen.\n' +
+    '- **Aktivität löschen:** Klicken Sie auf dem Desktop mit der rechten Maustaste auf eine Aktivität oder drücken Sie auf dem Mobilgerät lange darauf und wählen Sie „Löschen".\n\n' +
+    'Je nach Studie kann es mehr als eine Zeitleiste pro Tag geben. Diese erfassen verschiedene Aspekte Ihres Tages oder ermöglichen es Ihnen, parallel ausgeführte Aktivitäten aufzuzeichnen.\n\n' +
+    '**Zeitsparfunktion:** Sie müssen nicht jeden Tag von vorne beginnen. Nachdem Sie den ersten Tag ausgefüllt haben, wird Ihr Zeitplan automatisch als Vorlage für den nächsten Tag übernommen. Bitte passen Sie diese Vorlage an, um Änderungen in Ihren Aktivitäten für diesen Tag widerzuspiegeln.',
+
+  sv:
+    '#### Så fyller du i dagboken\n\n' +
+    'Du ser en lista med aktiviteter längst ner på skärmen. Klicka på en aktivitet för att välja den, och klicka sedan på tidslinjen för att visa vad du gjorde under dagen.\n\n' +
+    '- **Justera varaktighet:** Dra i vänster eller höger kant av en placerad aktivitet för att ställa in hur länge den varade.\n' +
+    '- **Ta bort en aktivitet:** Högerklicka på en aktivitet på datorn, eller tryck länge på den på mobilen, och välj "Ta bort".\n\n' +
+    'Beroende på studien kan det finnas mer än en tidslinje för varje dag. Dessa fångar olika aspekter av din dag eller låter dig registrera aktiviteter du gjorde parallellt.\n\n' +
+    '**Tidsbesparande funktion:** Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.',
+
+  fi:
+    '#### Kuinka täyttää päiväkirja\n\n' +
+    'Näet näytön alareunassa listan toiminnoista. Klikkaa toimintoa valitaksesi sen ja klikkaa sitten aikajanaa osoittaaksesi, mitä teit päivän aikana.\n\n' +
+    '- **Säädä kestoa:** Vedä sijoitetun toiminnon vasenta tai oikeaa reunaa asettaaksesi sen keston.\n' +
+    '- **Poista toiminto:** Napsauta toimintoa hiiren oikealla painikkeella tietokoneella tai paina sitä pitkään mobiililaitteella ja valitse "Poista".\n\n' +
+    'Tutkimuksesta riippuen jokaiselle päivälle voi olla useampi kuin yksi aikajana. Ne kuvaavat päiväsi eri puolia tai mahdollistavat rinnakkaisten toimintojen kirjaamisen.\n\n' +
+    '**Aikaa säästävä ominaisuus:** Sinun ei tarvitse aloittaa alusta joka päivä. Kun olet täyttänyt ensimmäisen päivän, aikataulusi kopioidaan automaattisesti seuraavalle päivälle malliksi. Muokkaa tätä mallia vastaamaan kyseisen päivän muutoksia.',
+
+  pl:
+    '#### Jak wypełnić dziennik\n\n' +
+    'Na dole ekranu zobaczysz listę aktywności. Kliknij aktywność, aby ją wybrać, a następnie kliknij na osi czasu, aby wskazać, co robiłeś przez cały dzień.\n\n' +
+    '- **Dostosuj czas trwania:** Przeciągnij lewą lub prawą krawędź umieszczonej aktywności, aby ustawić jej czas trwania.\n' +
+    '- **Usuń aktywność:** Kliknij prawym przyciskiem myszy na aktywność na komputerze lub przytrzymaj ją dłużej na urządzeniu mobilnym i wybierz „Usuń".\n\n' +
+    'W zależności od badania, na każdy dzień może przypadać więcej niż jedna oś czasu. Umożliwiają one rejestrowanie różnych aspektów dnia lub aktywności wykonywanych równolegle.\n\n' +
+    '**Funkcja oszczędzania czasu:** Nie musisz zaczynać od zera każdego dnia. Po ukończeniu pierwszego dnia, Twój plan dnia automatycznie skopiuje się na następny dzień jako szablon. Proszę dostosować ten szablon do zmian w Twoich aktywnościach w danym dniu.',
+
+  fr:
+    '#### Comment remplir le journal\n\n' +
+    "Vous verrez une liste d'activités en bas de l'écran. Cliquez sur une activité pour la sélectionner, puis cliquez sur la chronologie pour indiquer ce que vous faisiez pendant la journée.\n\n" +
+    "- **Ajuster la durée :** Faites glisser le bord gauche ou droit d'une activité placée pour définir sa durée.\n" +
+    '- **Supprimer une activité :** Faites un clic droit sur une activité sur ordinateur, ou appuyez longuement dessus sur mobile, et choisissez « Supprimer ».\n\n' +
+    "Selon l'étude, il peut y avoir plus d'une chronologie par jour. Celles-ci capturent différents aspects de votre journée ou vous permettent d'enregistrer des activités réalisées en parallèle.\n\n" +
+    "**Fonction gain de temps :** Vous n'avez pas besoin de recommencer à zéro chaque jour. Après avoir rempli le premier jour, votre emploi du temps sera automatiquement copié au jour suivant comme modèle. Veuillez adapter ce modèle pour refléter les changements dans vos activités pour cette journée.",
+
+  es:
+    '#### Cómo completar el diario\n\n' +
+    'Verá una lista de actividades en la parte inferior de la pantalla. Haga clic en una actividad para seleccionarla, luego haga clic en la línea de tiempo para indicar lo que estuvo haciendo durante el día.\n\n' +
+    '- **Ajustar duración:** Arrastre el borde izquierdo o derecho de una actividad colocada para establecer su duración.\n' +
+    '- **Eliminar una actividad:** Haga clic derecho en una actividad en el escritorio, o manténgala presionada en el móvil, y elija "Eliminar".\n\n' +
+    'Dependiendo del estudio, puede haber más de una línea de tiempo para cada día. Estas capturan diferentes aspectos de su día o le permiten registrar actividades que realizó en paralelo.\n\n' +
+    '**Función de ahorro de tiempo:** No necesita empezar desde cero cada día. Después de completar el primer día, su horario se copiará automáticamente al día siguiente como plantilla. Adapte esta plantilla para reflejar los cambios en sus actividades de ese día.',
+};
+
 function applyStudyInstructionsText(studyConfig) {
   const selectedLanguage =
     studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
@@ -254,14 +312,15 @@ function applyStudyInstructionsText(studyConfig) {
     return;
   }
 
-  // Fallback: the built-in default text, which lives in the locale files
-  // (instructions.instructionsDefault) like the intro default above.
-  // i18n.t() returns the key itself when it is missing.
-  const fallbackKey = 'instructions.instructionsDefault';
-  const fallbackText = i18n.t(fallbackKey);
-  instructionsElement.innerHTML = renderMarkdown(
-    fallbackText === fallbackKey ? '' : fallbackText
+  // Fallback: use the built-in default text for studies that don't provide study_text_instructions
+  const fallbackText = resolveLocalizedStudyText(
+    DEFAULT_STUDY_TEXT_INSTRUCTIONS,
+    selectedLanguage,
+    defaultLanguage
   );
+  if (fallbackText) {
+    instructionsElement.innerHTML = renderMarkdown(fallbackText);
+  }
 }
 
 function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {

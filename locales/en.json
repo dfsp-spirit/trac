@@ -5,9 +5,9 @@
     "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
     "generalInfoTitle": "General Information on the Study",
     "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
-    "instructionsDefault": "#### How to fill out the diary\n\nYou will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.\n\n- **Adjust duration:** Drag the left or right edge of a placed activity to set how long it lasted.\n- **Delete an activity:** Right-click an activity on desktop, or long-press it on mobile, and choose \"Delete\".\n\nDepending on the study, there may be more than one timeline for each day. These capture different aspects of your day or allow you to record activities you were doing in parallel.\n\n**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.",
     "visualGuideTitle": "Visual Illustrations of how to use the Interface",
     "startPrompt": "Please click the blue Start button to begin your diary entry.",
+    "mainInstruction": "Think about the activities you did <span class=\"emphasis\">yesterday</span>. Then, fill in the full timeline with the activities you did.",
     "step1": {
       "title": "Select and Place an Activity",
       "horizontal": "Choose an activity from the menu at the bottom of the screen, then place it on the timeline.",
@@ -19,10 +19,9 @@
       "vertical": "Drag the edges vertically to set the duration."
     },
     "step3": {
-      "title": "Save and Submit Your Diary",
-      "description": "Once you have recorded your activities for a day, click the \"Save Day\" button to store them. You can still edit that day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
-      "saveHelp": "Click to save the activities of the day you are working on",
-      "submitStudyHelp": "Click to submit your diary when every day is complete"
+      "title": "Submit Your Diary",
+      "description": "Once you've recorded all your activities for the day, click the Submit button to complete your diary.",
+      "submitHelp": "Click to submit your completed diary"
     },
     "helpfulTools": "Helpful tools",
     "removeLastHelp": "Remove the last placed activity",
@@ -51,18 +50,25 @@
     "day": "Day"
   },
   "buttons": {
+    "submit": "Submit Day",
     "saveDay": "Save Day",
-    "submitStudy": "Submit Study",
+    "finishStudy": "Submit Day and Finish Study",
     "start": "Start",
     "removeLast": "Remove Last",
     "cleanRow": "Clean Row",
+    "next": "Next Timeline",
     "skipReporting": "Skip time reporting",
     "previousTimeline": "Previous timeline",
+    "backToInstructions": "Back to Instructions",
     "giveConsent": "Give consent and continue",
     "declineConsent": "Decline consent",
     "ok": "OK",
     "cancel": "Cancel",
-    "close": "Close"
+    "save": "Save",
+    "close": "Close",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No"
   },
   "modals": {
     "customActivity": {
@@ -79,6 +85,15 @@
       "title": "Select an option",
       "titleFor": "Select an option for \"{activityName}\""
     },
+    "confirmSubmit": {
+      "title": "Submit data for {{dayLabel}} (day {{currentDay}} of {{totalDays}})?",
+      "message": "You will not be able to change your responses for day {{dayLabel}}.",
+      "infoOnTemplate": "For the next day, you will see the data you entered for today as a template to help you report more easily. Please adapt it as needed.<br /><br /> Remember that you can delete data by long-pressing or hovering over the activity in the timeline with the mouse cursor and pressing 'd' or DEL.",
+      "studyEnd": "This submission concludes the study.",
+      "submitDay": "Submit Day {{dayLabel}}",
+      "submitDayAndFinish": "Submit Day {{dayLabel}} and Finish Study",
+      "submitDayNoDay": "Submit Day"
+    },
     "confirmSkip": {
       "title": "Do you really want to skip all time reporting?",
       "message": "You will be taken directly to the thank-you page."
@@ -86,6 +101,10 @@
     "confirmCleanRow": {
       "title": "Clear current timeline row?",
       "message": "Are you sure you want to delete all activities in the current timeline row?"
+    },
+    "loading": {
+      "title": "Submitting your diary...",
+      "message": "Please wait while we save your responses."
     },
     "activityContext": {
       "copy": "Copy",
@@ -105,6 +124,13 @@
     "selectStudy": "Please select a study to continue",
     "noStudiesAvailable": "No studies available on server.",
     "studyNotFound": "The requested study does not exist.",
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "saved": "Saved successfully",
+    "error": "An error occurred",
+    "noActivities": "No activities found",
+    "fillRequired": "Please fill in all required activities",
+    "submitSuccess": "Diary submitted successfully",
     "submitError": "Error submitting diary",
     "sending_retry": "Retrying to save your diary (attempt {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -119,6 +145,7 @@
     "timelineValidationError": "Timeline validation error: {{message}}",
     "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
     "templateCopiedBanner": "We pre-filled your diary with activities from a template participant. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below.",
+    "reportingForDay": "Reporting for day:",
     "studyDayOf": "Day {{current}} of {{total}}",
     "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
     "goBackToEditPreviousDays": "Switch to day:",
@@ -127,12 +154,15 @@
     "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
     "copyError": "Failed to copy: {{message}}",
     "copyEmptySource": "Source day has no activities to copy.",
+    "completeMinimumActivitiesBeforeSwitching": "Complete minimum activities before switching days.",
+    "completeMinimumActivitiesBeforeCopying": "Complete minimum activities before copying current day.",
     "completeOtherDaysFirst": "Complete {{days}} first to finish the study.",
     "daySavedStayOnPage": "Day saved.",
     "copyDayEmpty": "empty",
     "copyDayHasData": "has data",
     "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}"
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudySuccess": "Study submitted successfully!"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
@@ -142,10 +172,14 @@
   "banner": {
     "dayOneInstructions": "Instructions: Select activity below, then click on timeline to place, and drag borders to extend. To delete an activity long-press it on mobile, or use the right-click menu on desktop."
   },
+  "activities": {
+    "otherNotListed": "Other not listed (enter)"
+  },
   "thankYou": {
     "title": "Thank You - TRAC",
     "heading": "Thank You!",
     "subtitle": "Your submission has been completed successfully.",
+    "message": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research.",
     "continueLink": "Click here to continue."
   },
   "taskPage": {
@@ -173,6 +207,7 @@
   "openStudies": {
     "pageTitle": "Open Studies | TRAC",
     "heading": "TRAC -- Open Studies",
-    "noStudies": "No open studies available."
+    "noStudies": "No open studies available.",
+    "accessLink": "Access study"
   }
 }

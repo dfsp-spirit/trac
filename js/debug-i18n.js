@@ -13,7 +13,7 @@ if (window.i18n) {
   // Test some translations
   console.log('Test translations:');
   console.log('  instructions.title:', window.i18n.t('instructions.title'));
-  console.log('  buttons.saveDay:', window.i18n.t('buttons.saveDay'));
+  console.log('  buttons.submit:', window.i18n.t('buttons.submit'));
   console.log('  buttons.removeLast:', window.i18n.t('buttons.removeLast'));
 
   // Check what elements have data-i18n attributes

@@ -1,13 +1,13 @@
 {
   "instructions": {
-    "pageTitle": "Consignes | Journal d'utilisation du temps",
-    "title": "Consignes",
-    "welcomeTitle": "Bienvenue dans votre journal de temps hebdomadaire. Merci de participer !",
-    "generalInfoTitle": "Informations générales sur l'étude",
-    "studyIntroDefault": "Ceci est notre étude sur l'utilisation du temps.<br><br>Nous vous demandons de <b>reconstituer une semaine typique</b> de vos activités quotidiennes à l'aide de notre outil d'utilisation du temps.<br><br>Quelle semaine dois-je choisir ? Pensez à votre dernière semaine (les 7 derniers jours).<br>Exception : si vous avez été malade ou en vacances la semaine dernière, choisissez une autre semaine récente qui représente mieux votre routine habituelle.",
-    "instructionsDefault": "#### Comment remplir le journal\n\nVous verrez une liste d'activités en bas de l'écran. Cliquez sur une activité pour la sélectionner, puis cliquez sur la chronologie pour indiquer ce que vous faisiez pendant la journée.\n\n- **Ajuster la durée :** Faites glisser le bord gauche ou droit d'une activité placée pour définir sa durée.\n- **Supprimer une activité :** Faites un clic droit sur une activité sur ordinateur, ou appuyez longuement dessus sur mobile, et choisissez « Supprimer ».\n\nSelon l'étude, il peut y avoir plus d'une chronologie par jour. Celles-ci capturent différents aspects de votre journée ou vous permettent d'enregistrer des activités réalisées en parallèle.\n\n**Fonction gain de temps :** Vous n'avez pas besoin de recommencer à zéro chaque jour. Après avoir rempli le premier jour, votre emploi du temps sera automatiquement copié au jour suivant comme modèle. Veuillez adapter ce modèle pour refléter les changements dans vos activités pour cette journée.",
-    "visualGuideTitle": "Illustrations visuelles de l'utilisation de l'interface",
-    "startPrompt": "Veuillez cliquer sur le bouton bleu Démarrer pour commencer votre saisie.",
+    "pageTitle": "Instructions | Time Use Diary",
+    "title": "Instructions",
+    "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
+    "generalInfoTitle": "General Information on the Study",
+    "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
+    "visualGuideTitle": "Visual Illustrations of how to use the Interface",
+    "startPrompt": "Please click the blue Start button to begin your diary entry.",
+    "mainInstruction": "Pensez aux activités que vous avez faites <span class=\"emphasis\">hier</span>. Ensuite, remplissez la chronologie complète avec les activités que vous avez réalisées.",
     "step1": {
       "title": "Sélectionner et Placer une Activité",
       "horizontal": "Choisissez une activité dans le menu en bas de l'écran, puis placez-la sur la chronologie.",
@@ -19,10 +19,9 @@
       "vertical": "Faites glisser les bords verticalement pour définir la durée."
     },
     "step3": {
-      "title": "Enregistrer et soumettre votre journal",
-      "description": "Une fois vos activités d'une journée enregistrées, cliquez sur le bouton \"Enregistrer le jour\" pour les sauvegarder. Vous pourrez encore modifier cette journée plus tard. Lorsque tous les jours de l'étude sont complets, cliquez sur \"Soumettre l'étude\" pour envoyer votre journal et terminer l'étude.",
-      "saveHelp": "Cliquez pour enregistrer les activités du jour en cours",
-      "submitStudyHelp": "Cliquez pour soumettre votre journal lorsque tous les jours sont complets"
+      "title": "Soumettre votre Journal",
+      "description": "Une fois que vous avez enregistré toutes vos activités de la journée, cliquez sur le bouton Soumettre pour terminer votre journal.",
+      "submitHelp": "Cliquez pour soumettre votre journal terminé"
     },
     "helpfulTools": "Outils utiles",
     "removeLastHelp": "Supprimer la dernière activité placée",
@@ -46,23 +45,30 @@
     "studyNotFound": "L'étude demandée n'existe pas."
   },
   "common": {
-    "language": "Langue",
-    "chooseLanguage": "Choisir la langue",
-    "day": "Jour"
+    "language": "Language",
+    "chooseLanguage": "Choose language",
+    "day": "Day"
   },
   "buttons": {
+    "submit": "Soumettre",
     "saveDay": "Enregistrer le jour",
-    "submitStudy": "Soumettre l'étude",
+    "finishStudy": "Soumettre le jour et terminer l'étude",
     "start": "Commencer",
     "removeLast": "Supprimer dernière",
     "cleanRow": "Nettoyer la Ligne",
+    "next": "Suivant",
     "skipReporting": "Ignorer le rapport de temps",
     "previousTimeline": "Ligne de temps précédente",
+    "backToInstructions": "Retour aux Instructions",
     "giveConsent": "Je consens et je continue",
     "declineConsent": "Je refuse de consentir",
     "ok": "OK",
     "cancel": "Annuler",
-    "close": "Fermer"
+    "save": "Sauvegarder",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "yes": "Oui",
+    "no": "Non"
   },
   "modals": {
     "customActivity": {
@@ -79,6 +85,15 @@
       "title": "Sélectionnez une option",
       "titleFor": "Sélectionnez une option pour \"{activityName}\""
     },
+    "confirmSubmit": {
+      "title": "Envoyer les données pour {{dayLabel}} (jour {{currentDay}} sur {{totalDays}}) ?",
+      "message": "Vous ne pourrez pas modifier vos réponses pour le jour {{dayLabel}}.",
+      "infoOnTemplate": "Pour le jour suivant, vous verrez les données saisies aujourd'hui comme modèle pour faciliter votre rapport. Adaptez-les selon vos besoins.<br /><br /> N'oubliez pas que vous pouvez supprimer des données en appuyant longuement ou en survolant l'activité dans la chronologie avec la souris et en appuyant sur 'd' ou SUPPR.",
+      "studyEnd": "Cette soumission conclut l'étude.",
+      "submitDay": "Envoyer le jour {{dayLabel}}",
+      "submitDayAndFinish": "Envoyer le jour {{dayLabel}} et terminer l'étude",
+      "submitDayNoDay": "Envoyer le jour"
+    },
     "confirmSkip": {
       "title": "Voulez-vous vraiment ignorer tout le rapport de temps ?",
       "message": "Vous serez redirigé directement vers la page de remerciement."
@@ -86,6 +101,10 @@
     "confirmCleanRow": {
       "title": "Effacer la ligne de chronologie actuelle ?",
       "message": "Êtes-vous sûr de vouloir supprimer toutes les activités de la ligne de chronologie actuelle ?"
+    },
+    "loading": {
+      "title": "Soumission de votre journal...",
+      "message": "Veuillez patienter pendant que nous sauvegardons vos réponses."
     },
     "activityContext": {
       "copy": "Copier",
@@ -105,6 +124,13 @@
     "selectStudy": "Veuillez sélectionner une étude pour continuer",
     "noStudiesAvailable": "Aucune étude disponible sur le serveur.",
     "studyNotFound": "L'étude demandée n'existe pas.",
+    "loading": "Chargement...",
+    "saving": "Sauvegarde...",
+    "saved": "Sauvegardé avec succès",
+    "error": "Une erreur s'est produite",
+    "noActivities": "Aucune activité trouvée",
+    "fillRequired": "Veuillez remplir toutes les activités requises",
+    "submitSuccess": "Journal soumis avec succès",
     "submitError": "Erreur lors de la soumission du journal",
     "sending_retry": "Nouvelle tentative d'enregistrement du journal (essai {{attempt}}/{{maxRetries}})...",
     "timelineCoverageMet": "✓",
@@ -115,10 +141,11 @@
     "timelineHoverInactive": "Cliquez pour passer à cette chronologie",
     "timelineHoverActiveNoSelection": "Sélectionnez une activité ci-dessous, puis placez-la ici.",
     "timelineHoverActiveWithSelection": "Cliquez pour placer l'activité sélectionnée ici.",
-    "invalidPlacement": "Impossible de placer l'activité ici en raison d'une position invalide.",
-    "timelineValidationError": "Erreur de validation de la chronologie : {{message}}",
+    "invalidPlacement": "Cannot place activity here due to invalid position.",
+    "timelineValidationError": "Timeline validation error: {{message}}",
     "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
     "templateCopiedBanner": "Nous avons pré-rempli votre journal avec les activités d'un participant modèle. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous.",
+    "reportingForDay": "Reporting for day:",
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
     "goBackToEditPreviousDays": "Aller au jour :",
@@ -127,25 +154,32 @@
     "copySuccess": "{{sourceDay}} copié vers {{targetDay}}",
     "copyError": "Échec de la copie : {{message}}",
     "copyEmptySource": "Le jour source n'a aucune activité à copier.",
+    "completeMinimumActivitiesBeforeSwitching": "Complétez les activités minimales avant de changer de jour.",
+    "completeMinimumActivitiesBeforeCopying": "Complétez les activités minimales avant de copier le jour actuel.",
     "completeOtherDaysFirst": "Complétez d'abord {{days}} pour terminer l'étude.",
-    "daySavedStayOnPage": "Journée enregistrée.",
-    "copyDayEmpty": "vide",
-    "copyDayHasData": "contient des données",
-    "copyOverwriteConfirm": "{{day}} contient déjà des données. Écraser ?",
-    "submitStudyIncomplete": "Jours incomplets : {{days}}"
+    "daySavedStayOnPage": "Day saved.",
+    "copyDayEmpty": "empty",
+    "copyDayHasData": "has data",
+    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudySuccess": "Study submitted successfully!"
   },
   "errors": {
-    "loadingActivitiesConfigurationTitle": "Erreur lors du chargement de la configuration des activités :",
-    "loadingActivitiesConfigurationHelp": "L'application nécessite une connexion valide au backend pour charger les activités appropriées pour votre étude.",
-    "loadingActivitiesShort": "Erreur lors du chargement des activités. Veuillez actualiser la page et réessayer. Erreur :"
+    "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
+    "loadingActivitiesConfigurationHelp": "The application requires a valid backend connection to load the appropriate activities for your study.",
+    "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
     "dayOneInstructions": "Instructions : Sélectionnez une activité ci-dessous, puis cliquez sur la chronologie pour la placer et faites glisser les bords pour l'étendre. Pour supprimer une activité, maintenez-la appuyée sur mobile ou utilisez le menu contextuel sur ordinateur."
+  },
+  "activities": {
+    "otherNotListed": "Autre non listé (entrer)"
   },
   "thankYou": {
     "title": "Merci - TRAC",
     "heading": "Merci !",
     "subtitle": "Votre soumission a été complétée avec succès.",
+    "message": "Merci de participer à notre étude <span class=\"app-name\">TRAC</span>. Vos réponses ont été enregistrées et contribueront à des recherches précieuses.",
     "continueLink": "Cliquez ici pour continuer."
   },
   "taskPage": {
@@ -173,6 +207,7 @@
   "openStudies": {
     "pageTitle": "Études ouvertes | TRAC",
     "heading": "TRAC -- Études ouvertes",
-    "noStudies": "Aucune étude ouverte disponible."
+    "noStudies": "Aucune étude ouverte disponible.",
+    "accessLink": "Accéder à l'étude"
   }
 }

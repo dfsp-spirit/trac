@@ -47,14 +47,19 @@
         </button>
 
         <button class="btn next-btn" id="nextBtn" data-is-active="false" disabled>
-            <i class="fas fa-save" aria-hidden="true"></i>
-            <span data-i18n="buttons.saveDay">Save Day</span>
+            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+            <span data-i18n="buttons.next">Next</span>
         </button>
 
         <button class="btn submit-study-btn" id="submitStudyBtn" data-is-active="false" disabled
                 title="Complete all days before submitting">
             <i class="fas fa-check-double" aria-hidden="true"></i>
-            <span data-i18n="buttons.submitStudy">Submit Study</span>
+            <span>Submit Study</span>
+        </button>
+
+        <button class="btn save-btn" id="saveBtn" data-is-active="true" style="display: none;">
+            <i class="fas fa-check" aria-hidden="true"></i>
+            <span data-i18n="buttons.submit">Submit</span>
         </button>
         </div>
 
@@ -119,8 +124,8 @@
                 <span data-i18n="buttons.skipReporting">Skip time reporting</span>
             </button>
             <button id="navSubmitBtn" class="nav-submit-btn">
-                <i class="fas fa-save" aria-hidden="true"></i>
-                <span data-i18n="buttons.saveDay">Save Day</span>
+                <i class="fas fa-check" aria-hidden="true"></i>
+                <span data-i18n="buttons.submit">Submit</span>
             </button>
         </div>
     </div>
