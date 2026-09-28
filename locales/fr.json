@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Information : une courte maintenance aura bientôt lieu. Veuillez enregistrer votre travail en cours."
+  },
   "instructions": {
     "pageTitle": "Consignes | Journal d'utilisation du temps",
     "title": "Consignes",

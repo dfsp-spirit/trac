@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Observera: vi utför snart ett kort underhåll. Spara ditt aktuella arbete."
+  },
   "instructions": {
     "pageTitle": "Instruktioner | Tidsdagbok",
     "title": "Instruktioner",

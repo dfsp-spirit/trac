@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Uwaga: wkrótce odbędzie się krótka przerwa techniczna. Zapisz swoją bieżącą pracę."
+  },
   "instructions": {
     "pageTitle": "Instrukcje | Dziennik Czasu Użycia",
     "title": "Instrukcje",

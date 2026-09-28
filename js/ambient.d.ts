@@ -9,6 +9,9 @@ declare var TUD_SETTINGS: {
   API_BASE_URL: string;
   DEFAULT_STUDY_NAME?: string;
   DEFAULT_STUDIES_FILE?: string;
+  // Maintenance notice (see js/maintenance.js)
+  IS_MAINTENANCE_MODE?: boolean;
+  MAINTENANCE_MESSAGE?: string | null;
   [key: string]: unknown;
 };
 

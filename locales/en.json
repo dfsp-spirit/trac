@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Heads-up: we will run brief maintenance soon. Please save your current work."
+  },
   "instructions": {
     "pageTitle": "Instructions | Time Use Diary",
     "title": "Instructions",

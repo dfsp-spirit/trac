@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Huomio: pian tehdään lyhyt huoltokatko. Tallenna nykyinen työsi."
+  },
   "instructions": {
     "pageTitle": "Ohjeet | Ajankäyttöpäiväkirja",
     "title": "Ohjeet",

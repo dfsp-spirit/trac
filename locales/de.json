@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Hinweis: In Kürze finden kurze Wartungsarbeiten statt. Bitte speichern Sie Ihre aktuelle Arbeit."
+  },
   "instructions": {
     "pageTitle": "Anleitung | Zeitnutzungstagebuch",
     "title": "Anleitung",

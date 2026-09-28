@@ -1,4 +1,7 @@
 {
+  "maintenance": {
+    "banner": "Aviso: en breve habrá un breve mantenimiento. Por favor, guarda tu trabajo actual."
+  },
   "instructions": {
     "pageTitle": "Instrucciones | Time Use Diary",
     "title": "Instrucciones",

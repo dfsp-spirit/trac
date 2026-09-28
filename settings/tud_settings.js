@@ -4,6 +4,12 @@ const TUD_SETTINGS = {
   API_BASE_URL: 'http://localhost:8000/tud_backend/api',
   DEFAULT_STUDY_NAME: 'default',
   DEFAULT_STUDIES_FILE: 'settings/studies_config.json',
+  // Maintenance notice: set to true before short server maintenance to warn
+  // participants on every page and ask them to save their current work.
+  // MAINTENANCE_MESSAGE overrides the localised default (locales: maintenance.banner),
+  // set it to null to use the translated default.
+  IS_MAINTENANCE_MODE: false,
+  MAINTENANCE_MESSAGE: null,
   TEMPLATE_ENABLED: false, // Copy Days: enable/disable template feature
   SHOW_COPY_FROM_BUTTON: false, // Copy Days: show "Copy from..." button (default off)
   IMPRINT_URL: 'https://www.aesthetics.mpg.de/en/imprint.html', // e.g. 'https://example.org/imprint', set to null to hide
