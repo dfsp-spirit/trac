@@ -2262,15 +2262,6 @@ body.carrying-activity .modal-close {
   background-color: #1d4ed8;
 }
 
-/* When nav submit button shows Submit text, use success color */
-.nav-submit-btn.submit-mode {
-  background-color: var(--success-color);
-}
-
-.nav-submit-btn.submit-mode:hover:not(:disabled) {
-  background-color: #047857;
-}
-
 .nav-submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;

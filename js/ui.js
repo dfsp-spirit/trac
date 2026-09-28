@@ -1023,7 +1023,10 @@ function updateButtonStates() {
     nextButtonInTopBar.title = '';
   }
 
-  // Update navSubmitBtn to mirror nextButton — always "Save Day"
+  // Update navSubmitBtn to mirror nextButton — always "Save Day", and it keeps
+  // the same primary colour as the button in the top bar. No submit-mode class
+  // here: the separate "Submit Study" button in the toolbar is the one that
+  // turns green when every day is complete.
   if (lowerNavSubmitBtn) {
     lowerNavSubmitBtn.disabled = !canProceed;
 
@@ -1036,7 +1039,6 @@ function updateButtonStates() {
     if (navSubmitIcon) {
       navSubmitIcon.className = 'fas fa-save';
     }
-    lowerNavSubmitBtn.classList.add('submit-mode');
     lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
     lowerNavSubmitBtn.title = '';
   }
