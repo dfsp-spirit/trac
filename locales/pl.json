@@ -14,17 +14,23 @@
     "step1": {
       "title": "Wybierz i umieść aktywność",
       "horizontal": "Wybierz aktywność z menu na dole ekranu, a następnie umieść ją na osi czasu.",
-      "vertical": "Kliknij przycisk (+) w prawym dolnym rogu, aby otworzyć menu aktywności, wybierz aktywność i kliknij miejsce na osi czasu, gdzie chcesz ją umieścić."
+      "imageAltHorizontal": "Wybieranie aktywności z dolnego menu",
+      "vertical": "Kliknij przycisk (+) w prawym dolnym rogu, aby otworzyć menu aktywności, wybierz aktywność i kliknij miejsce na osi czasu, gdzie chcesz ją umieścić.",
+      "imageAltVertical": "Wybieranie aktywności w widoku pionowym"
     },
     "step2": {
       "title": "Dostosuj czas trwania aktywności",
       "horizontal": "Kliknij i przeciągnij krawędzie poziomo, aby ustawić czas trwania. Na komputerze możesz też kliknąć aktywność prawym przyciskiem myszy i wybrać \"Pokaż informacje\" lub \"Usuń\".",
-      "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania."
+      "imageAltHorizontal": "Umieszczanie i dostosowywanie czasu trwania aktywności w poziomie",
+      "vertical": "Przeciągnij krawędzie pionowo, aby ustawić czas trwania.",
+      "imageAltVertical": "Umieszczanie i dostosowywanie czasu trwania aktywności w pionie"
     },
     "step3": {
       "title": "Kopiuj dzień",
       "horizontal": "Jeśli inny dzień jest podobny, możesz skopiować aktywności z tego dnia: kliknij \"Skopiuj ten dzień\" obok tytułu dnia i wybierz dzień docelowy. Skopiowane wpisy możesz później poprawić.",
-      "vertical": "Jeśli inny dzień jest podobny, możesz skopiować aktywności z tego dnia: dotknij \"Skopiuj ten dzień\" obok tytułu dnia i wybierz dzień docelowy. Skopiowane wpisy możesz później poprawić."
+      "imageAltHorizontal": "Kopiowanie aktywności z jednego dnia na inny w widoku poziomym",
+      "vertical": "Jeśli inny dzień jest podobny, możesz skopiować aktywności z tego dnia: dotknij \"Skopiuj ten dzień\" obok tytułu dnia i wybierz dzień docelowy. Skopiowane wpisy możesz później poprawić.",
+      "imageAltVertical": "Kopiowanie aktywności z jednego dnia na inny w widoku pionowym"
     },
     "step4": {
       "title": "Zapisz i wyślij dziennik",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Zgoda | Dziennik użycia czasu",
+    "pageTitleWithStudy": "{{study}} - Zgoda | Dziennik użycia czasu",
     "title": "Zgoda",
     "eyebrow": "Zgoda na udział w badaniu",
     "subtitle": "Przeczytaj poniższe informacje o zgodzie, zanim rozpoczniesz badanie.",
     "studyName": "Nazwa badania",
     "checkboxLabel": "Przeczytałem/Przeczytałam i zrozumiałem/zrozumiałam informacje na tej stronie.",
     "checkboxTooltip": "Proszę zaznaczyć powyższe pole wyboru",
+    "reviewPrompt": "Zapoznaj się z informacjami przed kontynuowaniem.",
     "description": "Opis",
     "studyNameShort": "Skrócona nazwa badania",
     "saving": "Zapisywanie zgody...",
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
     "loadError": "Nie udało się wczytać informacji o zgodzie.",
+    "loadErrorReload": "Nie udało się załadować informacji o zgodzie. Odśwież stronę.",
     "studyNotFound": "Żądane badanie nie istnieje."
   },
   "common": {
     "language": "Język",
     "chooseLanguage": "Wybierz język",
-    "day": "Dzień"
+    "day": "Dzień",
+    "loading": "Ładowanie ..."
   },
   "buttons": {
     "saveDay": "Zapisz dzień",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Przełącz na dzień:",
     "copyDayLink": "Skopiuj ten dzień",
     "copyToDay": "Skopiuj na inny dzień",
+    "copyFromDay": "Skopiuj z innego dnia",
     "copySuccess": "Skopiowano {{sourceDay}} do {{targetDay}}",
     "copyError": "Nie udało się skopiować: {{message}}",
     "copyEmptySource": "Dzień źródłowy nie ma aktywności do skopiowania.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "pusty",
     "copyDayHasData": "ma dane",
     "copyOverwriteConfirm": "{{day}} ma już dane. Nadpisać?",
-    "submitStudyIncomplete": "Niekompletne dni: {{days}}"
+    "submitStudyIncomplete": "Niekompletne dni: {{days}}",
+    "submitStudyIncompleteHint": "Ukończ wszystkie dni przed wysłaniem"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Błąd przy ładowaniu konfiguracji aktywności:",
@@ -154,6 +166,7 @@
     "title": "Dziękujemy - O-ELIDDI",
     "heading": "Dziękujemy!",
     "subtitle": "Twoje zgłoszenie zostało pomyślnie zakończone.",
+    "defaultMessage": "Dziękujemy za udział w naszym badaniu <span class=\"app-name\">TRAC</span>. Twoje odpowiedzi zostały zapisane i przyczynią się do wartościowych badań.",
     "continueLink": "Kliknij tutaj, aby kontynuować."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Ukończono",
     "diaryTaskStatusNotCompleted": "Nie ukończono"
   },
+  "timeout": {
+    "title": "Sesja wygasła - Dziennik użycia czasu",
+    "heading": "Badanie TRAC dotyczące wykorzystania czasu - sesja wygasła",
+    "message": "Twoja sesja została zakończona z powodu braku aktywności. Użyj linku z zaproszeniem, aby wrócić do dziennika i kontynuować."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Łączenie z backendem...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Otwarte badania | TRAC",
     "heading": "TRAC -- Otwarte badania",
-    "noStudies": "Brak dostępnych otwartych badań."
+    "noStudies": "Brak dostępnych otwartych badań.",
+    "loadError": "Nie udało się załadować otwartych badań: {{message}}",
+    "accessStudy": "Przejdź do badania '{{study}}'"
   }
 }

@@ -14,17 +14,23 @@
     "step1": {
       "title": "Välj och placera en aktivitet",
       "horizontal": "Välj en aktivitet från menyn längst ner på skärmen och placera den på tidslinjen.",
-      "vertical": "Tryck på (+) knappen i det nedre högra hörnet för att öppna aktivitetsmenyn, välj sedan en aktivitet och tryck där du vill placera den på tidslinjen."
+      "imageAltHorizontal": "Välja en aktivitet från menyn längst ned",
+      "vertical": "Tryck på (+) knappen i det nedre högra hörnet för att öppna aktivitetsmenyn, välj sedan en aktivitet och tryck där du vill placera den på tidslinjen.",
+      "imageAltVertical": "Välja en aktivitet i vertikal vy"
     },
     "step2": {
       "title": "Justera aktivitetens längd",
       "horizontal": "Klicka och dra kanterna horisontellt för att ställa in längden. På dator kan du också högerklicka på en aktivitet och välja \"Visa info\" eller \"Ta bort\".",
-      "vertical": "Dra kanterna vertikalt för att ställa in längden."
+      "imageAltHorizontal": "Placera och justera aktivitetens varaktighet horisontellt",
+      "vertical": "Dra kanterna vertikalt för att ställa in längden.",
+      "imageAltVertical": "Placera och justera aktivitetens varaktighet vertikalt"
     },
     "step3": {
       "title": "Kopiera en dag",
       "horizontal": "Om en annan dag ser likadan ut kan du kopiera den här dagens aktiviteter: klicka på \"Kopiera denna dag\" bredvid dagens rubrik och välj måldagen. Du kan fortfarande justera de kopierade posterna efteråt.",
-      "vertical": "Om en annan dag ser likadan ut kan du kopiera den här dagens aktiviteter: tryck på \"Kopiera denna dag\" bredvid dagens rubrik och välj måldagen. Du kan fortfarande justera de kopierade posterna efteråt."
+      "imageAltHorizontal": "Kopiera en dags aktiviteter till en annan dag i horisontell vy",
+      "vertical": "Om en annan dag ser likadan ut kan du kopiera den här dagens aktiviteter: tryck på \"Kopiera denna dag\" bredvid dagens rubrik och välj måldagen. Du kan fortfarande justera de kopierade posterna efteråt.",
+      "imageAltVertical": "Kopiera en dags aktiviteter till en annan dag i vertikal vy"
     },
     "step4": {
       "title": "Spara och skicka in din dagbok",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Samtycke | Tidsdagbok",
+    "pageTitleWithStudy": "{{study}} - Samtycke | Tidsdagbok",
     "title": "Samtycke",
     "eyebrow": "Samtycke till studien",
     "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
     "studyName": "Studiets namn",
     "checkboxLabel": "Jag har läst och förstått informationen på denna sida.",
     "checkboxTooltip": "Vänligen bocka i rutan ovan",
+    "reviewPrompt": "Läs igenom informationen innan du fortsätter.",
     "description": "Beskrivning",
     "studyNameShort": "Studiets kortnamn",
     "saving": "Sparar samtycke...",
     "saveError": "Kunde inte spara samtycket. Försök igen.",
     "loadError": "Kunde inte läsa in samtyckesinformationen.",
+    "loadErrorReload": "Kunde inte ladda samtyckesinformationen. Ladda om sidan.",
     "studyNotFound": "Den begärda studien finns inte."
   },
   "common": {
     "language": "Språk",
     "chooseLanguage": "Välj språk",
-    "day": "Dag"
+    "day": "Dag",
+    "loading": "Laddar ..."
   },
   "buttons": {
     "saveDay": "Spara dagen",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Byt till dag:",
     "copyDayLink": "Kopiera denna dag",
     "copyToDay": "Kopiera till en annan dag",
+    "copyFromDay": "Kopiera från en annan dag",
     "copySuccess": "Kopierade {{sourceDay}} till {{targetDay}}",
     "copyError": "Kunde inte kopiera: {{message}}",
     "copyEmptySource": "Källdagen har inga aktiviteter att kopiera.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "tom",
     "copyDayHasData": "har data",
     "copyOverwriteConfirm": "{{day}} har redan data. Skriva över?",
-    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}"
+    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}",
+    "submitStudyIncompleteHint": "Slutför alla dagar innan du skickar in"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",
@@ -154,6 +166,7 @@
     "title": "Tack - TRAC",
     "heading": "Tack!",
     "subtitle": "Din inskickning har slutförts framgångsrikt.",
+    "defaultMessage": "Tack för att du deltar i vår studie <span class=\"app-name\">TRAC</span>. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
     "continueLink": "Klicka här för att fortsätta."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Slutförd",
     "diaryTaskStatusNotCompleted": "Inte slutförd"
   },
+  "timeout": {
+    "title": "Sessionen har gått ut - Tidsdagbok",
+    "heading": "TRAC tidsanvändningsstudie - sessionen har gått ut",
+    "message": "Din session avslutades på grund av inaktivitet. Använd din inbjudningslänk för att återgå till dagboken och fortsätta."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Ansluter till backend...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Öppna studier | TRAC",
     "heading": "TRAC -- Öppna studier",
-    "noStudies": "Inga öppna studier tillgängliga."
+    "noStudies": "Inga öppna studier tillgängliga.",
+    "loadError": "Kunde inte ladda öppna studier: {{message}}",
+    "accessStudy": "Öppna studien '{{study}}'"
   }
 }

@@ -217,7 +217,7 @@
 
         <p class="subtitle" data-i18n="thankYou.subtitle">Your submission has been saved successfully.</p>
 
-        <p id="study-custom-message-end" class="message">
+        <p id="study-custom-message-end" class="message" data-i18n-html="thankYou.defaultMessage">
             Thank you for participating in our <span class="app-name">TRAC</span> study.
             Your responses have been recorded and will contribute to valuable research.
         </p>
@@ -280,6 +280,10 @@
             const customText = studyConfig?.[selectedField];
             if (typeof customText === 'string' && customText.trim() !== '') {
                 customEndElement.innerHTML = customText;
+                // The study text replaces the built-in default, so drop the
+                // i18n hook – otherwise a later applyTranslations() (language
+                // change, stale-locale repair) would overwrite it again.
+                customEndElement.removeAttribute('data-i18n-html');
             }
 
             document.documentElement.lang = language;

@@ -225,7 +225,7 @@
                 linkEl.href = `../index.html?study_name=${encodeURIComponent(study.name_short)}`;
                 linkEl.innerHTML = '<i class="fas fa-external-link-alt"></i> ';
                 const linkText = document.createElement('span');
-                linkText.textContent = `Access study '${study.name_short}'`;
+                linkText.textContent = i18n.t('openStudies.accessStudy', { study: study.name_short });
                 linkEl.appendChild(linkText);
 
                 li.appendChild(nameEl);
@@ -250,7 +250,7 @@
                 studiesListEl.style.display = 'none';
                 noStudiesEl.style.display = 'none';
                 errorEl.style.display = 'block';
-                errorEl.textContent = `Could not load open studies: ${err.message}`;
+                errorEl.textContent = i18n.t('openStudies.loadError', { message: err.message });
             }
         }
 

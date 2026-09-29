@@ -495,8 +495,16 @@ li {
   animation: spin 1s linear infinite;
 }
 
-.gif-container.loading::after {
-  content: 'Loading...';
+/*
+ * Loading label. It is a real element (not a ::after content string) so it goes
+ * through the regular i18n flow: `data-i18n="common.loading"` on the span.
+ */
+.gif-container .gif-loading-label {
+  display: none;
+}
+
+.gif-container.loading .gif-loading-label {
+  display: block;
   position: absolute;
   bottom: var(--space-md);
   left: 50%;

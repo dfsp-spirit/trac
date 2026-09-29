@@ -10,8 +10,15 @@ class I18n {
     /** @type {Record<string, any>} */
     this.translations = {};
     this.isLoaded = false;
-    /** @type {Promise<void> | null} */
+    /** @type {Promise<Record<string, any>> | null} */
     this.loadPromise = null; // Track ongoing load operations
+    /**
+     * Keys that were requested through t() but are missing from the loaded
+     * locale. Used to detect a stale/incomplete locale file and repair it.
+     * @type {Set<string>}
+     */
+    this.missingKeys = new Set();
+    this.isRepairing = false;
   }
 
   /**
@@ -42,11 +49,12 @@ class I18n {
     }
 
     this.currentLanguage = language;
+    this.missingKeys.clear();
 
     try {
       // Store the promise to track completion
       this.loadPromise = this.loadTranslations(language);
-      await this.loadPromise;
+      this.translations = await this.loadPromise;
 
       this.updateHtmlLang(language);
       this.isLoaded = true;
@@ -60,6 +68,11 @@ class I18n {
           detail: { language, translations: this.translations },
         })
       );
+
+      // A stale (browser-cached) locale file renders a half-translated page:
+      // missing keys silently keep the built-in English markup. Detect that and
+      // re-fetch the locale file once with a cache-buster.
+      await this.repairMissingTranslations();
     } catch (error) {
       console.error(`Failed to set language to ${language}:`, error);
 
@@ -79,24 +92,101 @@ class I18n {
   /**
    * Load translation file for the specified language
    * @param {string} language - Language code, like 'en', 'sv', 'fr'
-   * @returns {Promise<void>}
+   * @param {{ bustCache?: boolean }} [options] - bustCache appends a query
+   *   parameter so a stale copy cannot be served from the browser or a proxy
+   *   cache (used by repairMissingTranslations()).
+   * @returns {Promise<Record<string, any>>}
    */
-  async loadTranslations(language) {
+  async loadTranslations(language, options = {}) {
+    const { bustCache = false } = options;
     try {
       // Determine the correct path based on current location
       const isInSubfolder = window.location.pathname.includes('/pages/');
       const localesPath = isInSubfolder ? '../locales' : './locales';
 
-      const response = await fetch(`${localesPath}/${language}.json`);
+      // Locale files change with every release, but they are requested from a
+      // stable URL. Revalidate instead of trusting a cached copy: a stale file
+      // renders a page that mixes the requested language with the built-in
+      // English fallback markup (missing keys keep their markup text).
+      const url = `${localesPath}/${language}.json${
+        bustCache ? `?v=${Date.now()}` : ''
+      }`;
+      const response = await fetch(url, { cache: 'no-cache' });
       if (!response.ok) {
         throw new Error(
           `Failed to load ${language} translations: ${response.status}`
         );
       }
-      this.translations = await response.json();
+      return await response.json();
     } catch (error) {
       console.error(`Error loading translations for ${language}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Re-fetch the current locale when the loaded file was missing keys that the
+   * page asked for, and report keys that are still missing afterwards (those
+   * are a real translation gap, not a stale cache).
+   * @returns {Promise<boolean>} true when a fresher locale file was applied
+   */
+  async repairMissingTranslations() {
+    if (!this.isLoaded || this.isRepairing || this.missingKeys.size === 0) {
+      return false;
+    }
+
+    const language = this.currentLanguage;
+    const requested = [...this.missingKeys];
+    // Clear before re-applying so the second pass reports what is really gone.
+    this.missingKeys.clear();
+    this.isRepairing = true;
+
+    try {
+      const fresh = await this.loadTranslations(language, { bustCache: true });
+      const changed =
+        JSON.stringify(fresh) !== JSON.stringify(this.translations);
+      // Keys that are still absent in the freshly fetched file are a real
+      // translation gap (not a stale cache), so check them explicitly instead
+      // of relying on the DOM re-application below.
+      const stillMissing = requested.filter(
+        (key) => this._resolve(key, fresh) === undefined
+      );
+
+      this.translations = fresh;
+      this.applyTranslations();
+
+      if (changed) {
+        console.info(
+          `i18n: reloaded locale '${language}' because ${requested.length} key(s) were missing ` +
+            `(stale cached copy): ${requested.join(', ')}`
+        );
+        window.dispatchEvent(
+          new CustomEvent('i18n:languageChanged', {
+            detail: { language, translations: this.translations },
+          })
+        );
+      }
+
+      if (stillMissing.length > 0) {
+        console.error(
+          `i18n: locale '${language}' (${language}.json) is missing ${stillMissing.length} key(s) ` +
+            `used by this page: ${stillMissing.join(', ')}. ` +
+            'The affected text stays in its built-in English wording.'
+        );
+        return false;
+      }
+
+      return changed;
+    } catch (error) {
+      console.warn(
+        `i18n: could not reload locale '${language}' after missing keys ${requested.join(
+          ', '
+        )}:`,
+        error
+      );
+      return false;
+    } finally {
+      this.isRepairing = false;
     }
   }
 
@@ -120,11 +210,64 @@ class I18n {
       return keyPath;
     }
 
-    const keys = keyPath.split('.');
-    /** @type {any} */
-    let translation = this.translations;
+    const translation = this._resolve(keyPath);
+    if (translation === undefined) {
+      // Remember the miss: a stale cached locale file silently leaves the
+      // markup's built-in English text in place, so the miss is also the
+      // signal that repairMissingTranslations() should re-fetch the file.
+      this.missingKeys.add(keyPath);
+      console.warn(`Translation not found for key: ${keyPath}`);
+      return keyPath;
+    }
 
-    // Navigate through the nested object
+    // Handle string interpolation if parameters are provided
+    if (typeof translation === 'string' && Object.keys(params).length > 0) {
+      return this.interpolate(translation, params);
+    }
+
+    return translation;
+  }
+
+  /**
+   * Look up a translation without logging and without reporting a miss.
+   * Use this for optional keys whose absence is expected (e.g. labels that may
+   * be overridden by deployment settings).
+   * @param {string} keyPath - Dot-separated path to translation key
+   * @param {Object} [params] - Optional parameters for string interpolation
+   * @returns {string | null} the translation, or null when it does not exist
+   */
+  tOptional(keyPath, params = {}) {
+    const translation = this._resolve(keyPath);
+    if (typeof translation !== 'string') {
+      return null;
+    }
+    if (Object.keys(params).length > 0) {
+      return this.interpolate(translation, params);
+    }
+    return translation;
+  }
+
+  /**
+   * Is a translation key available in the loaded locale?
+   * @param {string} keyPath - Dot-separated path to translation key
+   * @returns {boolean}
+   */
+  has(keyPath) {
+    return this._resolve(keyPath) !== undefined;
+  }
+
+  /**
+   * Navigate the translation object without side effects.
+   * @param {string} keyPath - Dot-separated path to translation key
+   * @param {Record<string, any>} [source] - Translation tree to look in,
+   *   defaults to the currently loaded translations
+   * @returns {any} the value, or undefined when the key does not exist
+   */
+  _resolve(keyPath, source = this.translations) {
+    const keys = String(keyPath).split('.');
+    /** @type {any} */
+    let translation = source;
+
     for (const key of keys) {
       if (
         translation &&
@@ -133,14 +276,8 @@ class I18n {
       ) {
         translation = translation[key];
       } else {
-        console.warn(`Translation not found for key: ${keyPath}`);
-        return keyPath;
+        return undefined;
       }
-    }
-
-    // Handle string interpolation if parameters are provided
-    if (typeof translation === 'string' && Object.keys(params).length > 0) {
-      return this.interpolate(translation, params);
     }
 
     return translation;
@@ -229,6 +366,16 @@ class I18n {
       const translation = this.t(key);
       if (translation !== key) {
         element.setAttribute('aria-label', translation);
+      }
+    });
+
+    // Handle elements with data-i18n-alt attribute for image alt text
+    const altElements = container.querySelectorAll('[data-i18n-alt]');
+    altElements.forEach((element) => {
+      const key = element.getAttribute('data-i18n-alt');
+      const translation = this.t(key);
+      if (translation !== key) {
+        /** @type {HTMLImageElement} */ (element).alt = translation;
       }
     });
   }

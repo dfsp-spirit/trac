@@ -14,17 +14,23 @@
     "step1": {
       "title": "Seleccionar y Colocar una Actividad",
       "horizontal": "Elige una actividad del menú en la parte inferior de la pantalla, luego colócala en la línea de tiempo.",
-      "vertical": "Toca el botón (+) en la esquina inferior derecha para abrir el menú de actividades, luego selecciona una actividad y toca donde quieres colocarla en la línea de tiempo."
+      "imageAltHorizontal": "Seleccionar una actividad del menú inferior",
+      "vertical": "Toca el botón (+) en la esquina inferior derecha para abrir el menú de actividades, luego selecciona una actividad y toca donde quieres colocarla en la línea de tiempo.",
+      "imageAltVertical": "Seleccionar una actividad en vista vertical"
     },
     "step2": {
       "title": "Ajustar la Duración de la Actividad",
       "horizontal": "Haz clic y arrastra los bordes horizontalmente para establecer la duración. En escritorio también puedes hacer clic derecho sobre una actividad y elegir \"Mostrar información\" o \"Eliminar\".",
-      "vertical": "Arrastra los bordes verticalmente para establecer la duración."
+      "imageAltHorizontal": "Colocar y ajustar la duración de la actividad en horizontal",
+      "vertical": "Arrastra los bordes verticalmente para establecer la duración.",
+      "imageAltVertical": "Colocar y ajustar la duración de la actividad en vertical"
     },
     "step3": {
       "title": "Copiar un día",
       "horizontal": "Si otro día es similar, puedes copiar las actividades de este día: haz clic en \"Copiar este día\" junto al título del día y elige el día de destino. Después podrás ajustar los registros copiados.",
-      "vertical": "Si otro día es similar, puedes copiar las actividades de este día: toca \"Copiar este día\" junto al título del día y elige el día de destino. Después podrás ajustar los registros copiados."
+      "imageAltHorizontal": "Copiar las actividades de un día a otro en vista horizontal",
+      "vertical": "Si otro día es similar, puedes copiar las actividades de este día: toca \"Copiar este día\" junto al título del día y elige el día de destino. Después podrás ajustar los registros copiados.",
+      "imageAltVertical": "Copiar las actividades de un día a otro en vista vertical"
     },
     "step4": {
       "title": "Guardar y enviar tu diario",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Consentimiento | Diario de uso del tiempo",
+    "pageTitleWithStudy": "{{study}} - Consentimiento | Diario de uso del tiempo",
     "title": "Consentimiento",
     "eyebrow": "Consentimiento del estudio",
     "subtitle": "Lea la información de consentimiento a continuación antes de comenzar el estudio.",
     "studyName": "Nombre del estudio",
     "checkboxLabel": "He leído y comprendido la información en esta página.",
     "checkboxTooltip": "Por favor marque la casilla de arriba",
+    "reviewPrompt": "Revisa la información antes de continuar.",
     "description": "Descripción",
     "studyNameShort": "Nombre corto del estudio",
     "saving": "Guardando consentimiento...",
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
     "loadError": "No se pudo cargar la información de consentimiento.",
+    "loadErrorReload": "No se pudo cargar la información de consentimiento. Recarga la página.",
     "studyNotFound": "El estudio solicitado no existe."
   },
   "common": {
     "language": "Idioma",
     "chooseLanguage": "Elegir idioma",
-    "day": "Día"
+    "day": "Día",
+    "loading": "Cargando ..."
   },
   "buttons": {
     "saveDay": "Guardar día",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Cambiar al día:",
     "copyDayLink": "Copiar este día",
     "copyToDay": "Copiar a otro día",
+    "copyFromDay": "Copiar desde otro día",
     "copySuccess": "Se copió {{sourceDay}} a {{targetDay}}",
     "copyError": "Error al copiar: {{message}}",
     "copyEmptySource": "El día de origen no tiene actividades para copiar.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "vacío",
     "copyDayHasData": "tiene datos",
     "copyOverwriteConfirm": "{{day}} ya tiene datos. ¿Sobrescribir?",
-    "submitStudyIncomplete": "Días incompletos: {{days}}"
+    "submitStudyIncomplete": "Días incompletos: {{days}}",
+    "submitStudyIncompleteHint": "Completa todos los días antes de enviar"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error al cargar la configuración de actividades:",
@@ -154,6 +166,7 @@
     "title": "Gracias - TRAC",
     "heading": "¡Gracias!",
     "subtitle": "Tu envío se ha completado exitosamente.",
+    "defaultMessage": "Gracias por participar en nuestro estudio <span class=\"app-name\">TRAC</span>. Tus respuestas se han registrado y contribuirán a una investigación valiosa.",
     "continueLink": "Haz clic aquí para continuar."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Completado",
     "diaryTaskStatusNotCompleted": "No completado"
   },
+  "timeout": {
+    "title": "Sesión finalizada - Diario de uso del tiempo",
+    "heading": "Estudio de uso del tiempo TRAC: sesión finalizada",
+    "message": "Tu sesión ha finalizado por inactividad. Usa tu enlace de invitación para volver al diario y continuar."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Conectando al backend...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Estudios abiertos | TRAC",
     "heading": "TRAC -- Estudios abiertos",
-    "noStudies": "No hay estudios abiertos disponibles."
+    "noStudies": "No hay estudios abiertos disponibles.",
+    "loadError": "No se pudieron cargar los estudios abiertos: {{message}}",
+    "accessStudy": "Acceder al estudio '{{study}}'"
   }
 }

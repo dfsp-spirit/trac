@@ -14,17 +14,23 @@
     "step1": {
       "title": "Sélectionner et Placer une Activité",
       "horizontal": "Choisissez une activité dans le menu en bas de l'écran, puis placez-la sur la chronologie.",
-      "vertical": "Appuyez sur le bouton (+) dans le coin inférieur droit pour ouvrir le menu des activités, puis sélectionnez une activité et appuyez où vous voulez la placer sur la chronologie."
+      "imageAltHorizontal": "Sélection d'une activité dans le menu inférieur",
+      "vertical": "Appuyez sur le bouton (+) dans le coin inférieur droit pour ouvrir le menu des activités, puis sélectionnez une activité et appuyez où vous voulez la placer sur la chronologie.",
+      "imageAltVertical": "Sélection d'une activité en affichage vertical"
     },
     "step2": {
       "title": "Ajuster la Durée de l'Activité",
       "horizontal": "Cliquez et faites glisser les bords horizontalement pour définir la durée. Sur ordinateur, vous pouvez aussi faire un clic droit sur une activité et choisir \"Afficher les infos\" ou \"Supprimer\".",
-      "vertical": "Faites glisser les bords verticalement pour définir la durée."
+      "imageAltHorizontal": "Placer et ajuster la durée de l'activité à l'horizontale",
+      "vertical": "Faites glisser les bords verticalement pour définir la durée.",
+      "imageAltVertical": "Placer et ajuster la durée de l'activité à la verticale"
     },
     "step3": {
       "title": "Copier un jour",
       "horizontal": "Si un autre jour est similaire, vous pouvez copier les activités de ce jour : cliquez sur \"Copier ce jour\" à côté du titre du jour et choisissez le jour de destination. Vous pourrez encore ajuster les entrées copiées ensuite.",
-      "vertical": "Si un autre jour est similaire, vous pouvez copier les activités de ce jour : appuyez sur \"Copier ce jour\" à côté du titre du jour et choisissez le jour de destination. Vous pourrez encore ajuster les entrées copiées ensuite."
+      "imageAltHorizontal": "Copier les activités d'un jour vers un autre en affichage horizontal",
+      "vertical": "Si un autre jour est similaire, vous pouvez copier les activités de ce jour : appuyez sur \"Copier ce jour\" à côté du titre du jour et choisissez le jour de destination. Vous pourrez encore ajuster les entrées copiées ensuite.",
+      "imageAltVertical": "Copier les activités d'un jour vers un autre en affichage vertical"
     },
     "step4": {
       "title": "Enregistrer et soumettre votre journal",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Consentement | Journal d'utilisation du temps",
+    "pageTitleWithStudy": "{{study}} - Consentement | Journal d'utilisation du temps",
     "title": "Consentement",
     "eyebrow": "Consentement à l'étude",
     "subtitle": "Veuillez lire les informations de consentement ci-dessous avant de commencer l'étude.",
     "studyName": "Nom de l'étude",
     "checkboxLabel": "J'ai lu et compris les informations de cette page.",
     "checkboxTooltip": "Veuillez cocher la case ci-dessus",
+    "reviewPrompt": "Veuillez lire les informations avant de continuer.",
     "description": "Description",
     "studyNameShort": "Nom court de l'étude",
     "saving": "Enregistrement du consentement...",
     "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
     "loadError": "Impossible de charger les informations de consentement.",
+    "loadErrorReload": "Impossible de charger les informations de consentement. Veuillez recharger la page.",
     "studyNotFound": "L'étude demandée n'existe pas."
   },
   "common": {
     "language": "Langue",
     "chooseLanguage": "Choisir la langue",
-    "day": "Jour"
+    "day": "Jour",
+    "loading": "Chargement ..."
   },
   "buttons": {
     "saveDay": "Enregistrer le jour",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Aller au jour :",
     "copyDayLink": "Copier ce jour",
     "copyToDay": "Copier vers un autre jour",
+    "copyFromDay": "Copier depuis un autre jour",
     "copySuccess": "{{sourceDay}} copié vers {{targetDay}}",
     "copyError": "Échec de la copie : {{message}}",
     "copyEmptySource": "Le jour source n'a aucune activité à copier.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "vide",
     "copyDayHasData": "contient des données",
     "copyOverwriteConfirm": "{{day}} contient déjà des données. Écraser ?",
-    "submitStudyIncomplete": "Jours incomplets : {{days}}"
+    "submitStudyIncomplete": "Jours incomplets : {{days}}",
+    "submitStudyIncompleteHint": "Terminez tous les jours avant d’envoyer"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Erreur lors du chargement de la configuration des activités :",
@@ -154,6 +166,7 @@
     "title": "Merci - TRAC",
     "heading": "Merci !",
     "subtitle": "Votre soumission a été complétée avec succès.",
+    "defaultMessage": "Merci de participer à notre étude <span class=\"app-name\">TRAC</span>. Vos réponses ont été enregistrées et contribueront à une recherche précieuse.",
     "continueLink": "Cliquez ici pour continuer."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Terminé",
     "diaryTaskStatusNotCompleted": "Non terminé"
   },
+  "timeout": {
+    "title": "Session expirée - Journal d'utilisation du temps",
+    "heading": "Étude TRAC sur l'utilisation du temps - session expirée",
+    "message": "Votre session a pris fin pour cause d'inactivité. Utilisez votre lien d'invitation pour revenir au journal et continuer."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Connexion au backend...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Études ouvertes | TRAC",
     "heading": "TRAC -- Études ouvertes",
-    "noStudies": "Aucune étude ouverte disponible."
+    "noStudies": "Aucune étude ouverte disponible.",
+    "loadError": "Impossible de charger les études ouvertes : {{message}}",
+    "accessStudy": "Accéder à l'étude '{{study}}'"
   }
 }

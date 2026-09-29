@@ -21,19 +21,19 @@
 // Internal state
 // ---------------------------------------------------------------------------
 
-let _timerId = null;             // setTimeout handle for the current countdown
-let _displayIntervalId = null;   // setInterval handle for display updates
-let _started = false;            // true when timer is actively running
-let _pausedUntil = null;         // Date.now() value until which timer is paused (for temporary suspends)
+let _timerId = null; // setTimeout handle for the current countdown
+let _displayIntervalId = null; // setInterval handle for display updates
+let _started = false; // true when timer is actively running
+let _pausedUntil = null; // Date.now() value until which timer is paused (for temporary suspends)
 
 let _config = {
   timeoutMinutes: 0,
   stressTimeLeft: 5,
-  customText: null,              // Dict[str,str] or null
+  customText: null, // Dict[str,str] or null
   redirectUrl: 'pages/timeout.html',
 };
 
-let _deadline = null;            // Date.now() at which timeout fires (absolute timestamp)
+let _deadline = null; // Date.now() at which timeout fires (absolute timestamp)
 let _lastActivity = 0;
 
 // DOM elements
@@ -60,7 +60,8 @@ function _createTimerDOM() {
   _timerContainer.setAttribute('aria-label', 'Inactivity timer');
   _timerContainer.setAttribute('role', 'timer');
   _timerContainer.setAttribute('data-i18n-title', 'idleTimeout.tooltip');
-  _timerContainer.title = 'Idle Timeout. Click to confirm you are still here and reset the timer.';
+  _timerContainer.title =
+    'Idle Timeout. Click to confirm you are still here and reset the timer.';
 
   // Progress bar (shown only in stressed phase)
   _progressBar = document.createElement('div');
@@ -95,9 +96,15 @@ function _removeTimerDOM() {
 }
 
 function _localizeCustomText() {
-  if (!_config.customText || typeof _config.customText !== 'object') return null;
+  if (!_config.customText || typeof _config.customText !== 'object')
+    return null;
   const lang = _getCurrentLanguage();
-  return _config.customText[lang] || _config.customText.en || Object.values(_config.customText)[0] || null;
+  return (
+    _config.customText[lang] ||
+    _config.customText.en ||
+    Object.values(_config.customText)[0] ||
+    null
+  );
 }
 
 function _getCurrentLanguage() {
@@ -107,8 +114,10 @@ function _getCurrentLanguage() {
   if (urlLang) return urlLang.toLowerCase();
 
   const studyConfig = window.timelineManager?.studyConfig;
-  if (studyConfig?.selected_language) return studyConfig.selected_language.toLowerCase();
-  if (studyConfig?.default_language) return studyConfig.default_language.toLowerCase();
+  if (studyConfig?.selected_language)
+    return studyConfig.selected_language.toLowerCase();
+  if (studyConfig?.default_language)
+    return studyConfig.default_language.toLowerCase();
 
   return 'en';
 }
@@ -163,14 +172,35 @@ function _onTimeout() {
   if (customText) {
     try {
       sessionStorage.setItem('tud_timeout_custom_text', customText);
-    } catch (_e) { /* ignore storage errors */ }
+    } catch (_e) {
+      /* ignore storage errors */
+    }
   }
 
   // Brief delay so the user sees the final state, then redirect
   // Use replace() to avoid the diary page being in history
   setTimeout(() => {
-    window.location.replace(_config.redirectUrl);
+    window.location.replace(_buildTimeoutRedirectUrl());
   }, 1500);
+}
+
+/**
+ * Build the timeout-page URL. The timeout page is standalone and initialises
+ * i18n on its own, so the active language is passed along; without it the page
+ * can only guess from the browser language and would show English for
+ * participants whose diary was in another language.
+ * @returns {string}
+ */
+function _buildTimeoutRedirectUrl() {
+  try {
+    const url = new URL(_config.redirectUrl, window.location.href);
+    if (!url.searchParams.has('lang')) {
+      url.searchParams.set('lang', _getCurrentLanguage());
+    }
+    return url.toString();
+  } catch (_e) {
+    return _config.redirectUrl;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -263,14 +293,20 @@ function _startTimerInternal() {
   _resetCountdown();
 
   // Bind activity listeners
-  window.addEventListener('mousemove', _throttledRecordActivity, { passive: true });
+  window.addEventListener('mousemove', _throttledRecordActivity, {
+    passive: true,
+  });
   window.addEventListener('keydown', _resetActivity, { passive: true });
   window.addEventListener('click', _resetActivity, { passive: true });
   window.addEventListener('touchstart', _resetActivity, { passive: true });
-  window.addEventListener('scroll', _throttledRecordActivity, { passive: true });
+  window.addEventListener('scroll', _throttledRecordActivity, {
+    passive: true,
+  });
   document.addEventListener('visibilitychange', _onVisibilityChange);
 
-  console.log(`[idle_timeout] Started — ${_config.timeoutMinutes} min timeout, ${_config.stressTimeLeft} min stress threshold`);
+  console.log(
+    `[idle_timeout] Started — ${_config.timeoutMinutes} min timeout, ${_config.stressTimeLeft} min stress threshold`
+  );
 }
 
 function _stopTimerInternal() {
@@ -280,7 +316,10 @@ function _stopTimerInternal() {
   _deadline = null;
   _config.timeoutMinutes = 0;
 
-  if (_timerId) { clearTimeout(_timerId); _timerId = null; }
+  if (_timerId) {
+    clearTimeout(_timerId);
+    _timerId = null;
+  }
   _stopDisplayUpdates();
   _removeTimerDOM();
 
@@ -312,17 +351,20 @@ function _stopTimerInternal() {
  * }} [cfg] - timeoutMinutes = 0 disables the timer.
  */
 export function startIdleTimer(cfg = {}) {
-  const timeoutMinutes = cfg.inactivity_timeout_minutes ?? cfg.timeoutMinutes ?? 0;
+  const timeoutMinutes =
+    cfg.inactivity_timeout_minutes ?? cfg.timeoutMinutes ?? 0;
   if (timeoutMinutes <= 0) {
     _stopTimerInternal();
     return;
   }
 
   _config.timeoutMinutes = timeoutMinutes;
-  _config.stressTimeLeft = cfg.inactivity_timeout_stress_time_left
-    ?? cfg.stressTimeLeft
-    ?? Math.min(5, Math.floor(timeoutMinutes / 6));
-  _config.customText = cfg.inactivity_page_custom_text ?? cfg.customText ?? null;
+  _config.stressTimeLeft =
+    cfg.inactivity_timeout_stress_time_left ??
+    cfg.stressTimeLeft ??
+    Math.min(5, Math.floor(timeoutMinutes / 6));
+  _config.customText =
+    cfg.inactivity_page_custom_text ?? cfg.customText ?? null;
   _config.redirectUrl = cfg.redirectUrl || 'pages/timeout.html';
 
   _startTimerInternal();
@@ -344,7 +386,10 @@ export function pauseIdleTimer() {
   if (!_started) return;
   _pausedUntil = Date.now() + 3600000; // arbitrary far future; actual resume will reset
 
-  if (_timerId) { clearTimeout(_timerId); _timerId = null; }
+  if (_timerId) {
+    clearTimeout(_timerId);
+    _timerId = null;
+  }
   _stopDisplayUpdates();
 }
 

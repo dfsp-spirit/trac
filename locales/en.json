@@ -14,17 +14,23 @@
     "step1": {
       "title": "Select and Place an Activity",
       "horizontal": "Choose an activity from the menu at the bottom of the screen, then place it on the timeline.",
-      "vertical": "Tap the (+) button in the bottom right corner to open the activity menu, then select an activity and tap where you want to place it on the timeline."
+      "imageAltHorizontal": "Selecting an activity from the bottom menu",
+      "vertical": "Tap the (+) button in the bottom right corner to open the activity menu, then select an activity and tap where you want to place it on the timeline.",
+      "imageAltVertical": "Selecting an activity in vertical layout"
     },
     "step2": {
       "title": "Adjust Activity Duration",
       "horizontal": "Click and drag the edges horizontally to set the duration. On desktop, you can also right-click an activity and choose \"Show info\" or \"Delete\".",
-      "vertical": "Drag the edges vertically to set the duration."
+      "imageAltHorizontal": "Placing and adjusting activity duration horizontally",
+      "vertical": "Drag the edges vertically to set the duration.",
+      "imageAltVertical": "Placing and adjusting activity duration vertically"
     },
     "step3": {
       "title": "Copy a Day",
       "horizontal": "If another day looks similar, you can copy this day's activities: click \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.",
-      "vertical": "If another day looks similar, you can copy this day's activities: tap \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards."
+      "imageAltHorizontal": "Copying the activities of a day to another day in horizontal layout",
+      "vertical": "If another day looks similar, you can copy this day's activities: tap \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.",
+      "imageAltVertical": "Copying the activities of a day to another day in vertical layout"
     },
     "step4": {
       "title": "Save and Submit Your Diary",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Consent | Time Use Diary",
+    "pageTitleWithStudy": "{{study}} - Consent | Time Use Diary",
     "title": "Consent",
     "eyebrow": "Study consent",
     "subtitle": "Please read the consent information below before starting the study.",
     "studyName": "Study Name",
     "checkboxLabel": "I have read and understood the information on this page.",
     "checkboxTooltip": "Please tick the checkbox above",
+    "reviewPrompt": "Please review the information before continuing.",
     "description": "Description",
     "studyNameShort": "Study Short Name",
     "saving": "Saving consent...",
     "saveError": "Could not save consent. Please try again.",
     "loadError": "Could not load the consent information.",
+    "loadErrorReload": "Could not load the consent information. Please reload the page.",
     "studyNotFound": "The requested study does not exist."
   },
   "common": {
     "language": "Language",
     "chooseLanguage": "Choose language",
-    "day": "Day"
+    "day": "Day",
+    "loading": "Loading..."
   },
   "buttons": {
     "saveDay": "Save Day",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Switch to day:",
     "copyDayLink": "Copy this day",
     "copyToDay": "Copy to another day",
+    "copyFromDay": "Copy from another day",
     "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
     "copyError": "Failed to copy: {{message}}",
     "copyEmptySource": "Source day has no activities to copy.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "empty",
     "copyDayHasData": "has data",
     "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
-    "submitStudyIncomplete": "Incomplete days: {{days}}"
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudyIncompleteHint": "Complete all days before submitting"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
@@ -154,6 +166,7 @@
     "title": "Thank You - TRAC",
     "heading": "Thank You!",
     "subtitle": "Your submission has been completed successfully.",
+    "defaultMessage": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research.",
     "continueLink": "Click here to continue."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Completed",
     "diaryTaskStatusNotCompleted": "Not completed"
   },
+  "timeout": {
+    "title": "Session Timed Out - TRAC",
+    "heading": "TRAC Time Use Study -- Session Timed Out",
+    "message": "Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Connecting to backend...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Open Studies | TRAC",
     "heading": "TRAC -- Open Studies",
-    "noStudies": "No open studies available."
+    "noStudies": "No open studies available.",
+    "loadError": "Could not load open studies: {{message}}",
+    "accessStudy": "Access study '{{study}}'"
   }
 }

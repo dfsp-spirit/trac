@@ -252,8 +252,8 @@
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                 <div id="study-metadata" class="study-metadata" aria-live="polite"></div>
                 <div id="consent-language-selector-container" style="margin-left:auto">
-                    <label for="consentLanguageSelector" style="font-size:0.95rem;color:var(--secondary-color);margin-right:0.5rem;">Language</label>
-                    <select id="consentLanguageSelector" aria-label="Select language"></select>
+                    <label for="consentLanguageSelector" data-i18n="common.language" style="font-size:0.95rem;color:var(--secondary-color);margin-right:0.5rem;">Language</label>
+                    <select id="consentLanguageSelector" data-i18n-aria-label="common.chooseLanguage" aria-label="Select language"></select>
                 </div>
             </div>
             <br />
@@ -421,8 +421,8 @@
                     acceptBtn.title = disabled ? tip : '';
                     declineBtn.title = disabled ? tip : '';
                 } catch (e) {
-                    acceptBtn.title = disabled ? 'Please tick the checkbox above' : '';
-                    declineBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                    acceptBtn.title = disabled ? tip : '';
+                    declineBtn.title = disabled ? tip : '';
                 }
             };
 
@@ -448,8 +448,8 @@
                     acceptBtn.title = disabled ? tip : '';
                     declineBtn.title = disabled ? tip : '';
                 } catch (e) {
-                    acceptBtn.title = disabled ? 'Please tick the checkbox above' : '';
-                    declineBtn.title = disabled ? 'Please tick the checkbox above' : '';
+                    acceptBtn.title = disabled ? tip : '';
+                    declineBtn.title = disabled ? tip : '';
                 }
             };
 
@@ -497,12 +497,19 @@
                 await i18n.init(language);
                 i18n.applyTranslations();
                 document.documentElement.lang = language;
-                document.title = `${studyConfig.study_name || 'Study'} consent page | TRAC`;
+                // Prefer the study-specific title, fall back to the generic
+                // localized page title (never a hardcoded English string).
+                const studyName = studyConfig.study_name || '';
+                document.title = studyName
+                    ? i18n.t('consent.pageTitleWithStudy', { study: studyName })
+                    : i18n.t('consent.pageTitle');
 
                 const consentTextEl = document.getElementById('study-consent-text');
                 if (consentTextEl) {
                     const consentText = studyConfig?.study_text_consent || '';
-                    consentTextEl.innerHTML = consentText ? renderMarkdown(consentText) : '<p>Please review the information before continuing.</p>';
+                    consentTextEl.innerHTML = consentText
+                        ? renderMarkdown(consentText)
+                        : '<p>' + escapeHtml(i18n.t('consent.reviewPrompt')) + '</p>';
                 }
 
                 // Show study metadata (localized labels: Study Name, Description)
@@ -621,7 +628,7 @@
                 setStatus(i18n.t('consent.loadError') || 'Could not load consent information.', true);
                 const consentTextEl = document.getElementById('study-consent-text');
                 if (consentTextEl) {
-                    consentTextEl.innerHTML = '<p>Could not load the consent information. Please reload the page.</p>';
+                    consentTextEl.innerHTML = '<p>' + escapeHtml(i18n.t('consent.loadErrorReload')) + '</p>';
                 }
                 wireButtons();
             }

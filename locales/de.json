@@ -14,17 +14,23 @@
     "step1": {
       "title": "Aktivität auswählen und platzieren",
       "horizontal": "Wählen Sie eine Aktivität aus dem Menü am unteren Bildschirmrand und platzieren Sie sie auf der Zeitleiste.",
-      "vertical": "Tippen Sie auf die (+)-Schaltfläche unten rechts, um das Aktivitätsmenü zu öffnen, wählen Sie eine Aktivität aus und tippen Sie auf die gewünschte Stelle in der Zeitleiste."
+      "imageAltHorizontal": "Auswahl einer Aktivität aus dem unteren Menü",
+      "vertical": "Tippen Sie auf die (+)-Schaltfläche unten rechts, um das Aktivitätsmenü zu öffnen, wählen Sie eine Aktivität aus und tippen Sie auf die gewünschte Stelle in der Zeitleiste.",
+      "imageAltVertical": "Auswahl einer Aktivität in der vertikalen Ansicht"
     },
     "step2": {
       "title": "Dauer der Aktivität anpassen",
       "horizontal": "Klicken und ziehen Sie die Ränder horizontal, um die Dauer festzulegen. Auf dem Desktop können Sie außerdem mit der rechten Maustaste auf eine Aktivität klicken und \"Info anzeigen\" oder \"Löschen\" wählen.",
-      "vertical": "Ziehen Sie die Ränder vertikal, um die Dauer festzulegen."
+      "imageAltHorizontal": "Aktivität platzieren und Dauer horizontal anpassen",
+      "vertical": "Ziehen Sie die Ränder vertikal, um die Dauer festzulegen.",
+      "imageAltVertical": "Aktivität platzieren und Dauer vertikal anpassen"
     },
     "step3": {
       "title": "Einen Tag kopieren",
       "horizontal": "Wenn ein anderer Tag ähnlich aussieht, können Sie die Aktivitäten dieses Tages kopieren: Klicken Sie neben dem Tagestitel auf \"Tag kopieren\" und wählen Sie den Zieltag aus. Die kopierten Einträge können Sie anschließend noch anpassen.",
-      "vertical": "Wenn ein anderer Tag ähnlich aussieht, können Sie die Aktivitäten dieses Tages kopieren: Tippen Sie neben dem Tagestitel auf \"Tag kopieren\" und wählen Sie den Zieltag aus. Die kopierten Einträge können Sie anschließend noch anpassen."
+      "imageAltHorizontal": "Aktivitäten eines Tages in der horizontalen Ansicht auf einen anderen Tag kopieren",
+      "vertical": "Wenn ein anderer Tag ähnlich aussieht, können Sie die Aktivitäten dieses Tages kopieren: Tippen Sie neben dem Tagestitel auf \"Tag kopieren\" und wählen Sie den Zieltag aus. Die kopierten Einträge können Sie anschließend noch anpassen.",
+      "imageAltVertical": "Aktivitäten eines Tages in der vertikalen Ansicht auf einen anderen Tag kopieren"
     },
     "step4": {
       "title": "Tagebuch speichern und absenden",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Einwilligung | Zeitnutzungstagebuch",
+    "pageTitleWithStudy": "{{study}} - Einwilligung | Zeitnutzungstagebuch",
     "title": "Einwilligung",
     "eyebrow": "Studieneinwilligung",
     "subtitle": "Bitte lesen Sie die Einwilligungsinformationen unten, bevor Sie mit der Studie beginnen.",
     "studyName": "Studienname",
     "checkboxLabel": "Ich habe die Informationen auf dieser Seite gelesen und verstanden.",
     "checkboxTooltip": "Bitte aktivieren Sie das obige Kontrollkästchen",
+    "reviewPrompt": "Bitte lesen Sie die Informationen, bevor Sie fortfahren.",
     "description": "Beschreibung",
     "studyNameShort": "Studienkürzel",
     "saving": "Einwilligung wird gespeichert...",
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden.",
+    "loadErrorReload": "Die Einwilligungsinformationen konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "studyNotFound": "Die angeforderte Studie existiert nicht."
   },
   "common": {
     "language": "Sprache",
     "chooseLanguage": "Sprache wählen",
-    "day": "Tag"
+    "day": "Tag",
+    "loading": "Wird geladen ..."
   },
   "buttons": {
     "saveDay": "Tag speichern",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Zu Tag wechseln:",
     "copyDayLink": "Tag kopieren",
     "copyToDay": "Auf anderen Tag kopieren",
+    "copyFromDay": "Von anderem Tag kopieren",
     "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
     "copyError": "Fehler beim Kopieren: {{message}}",
     "copyEmptySource": "Der Quell-Tag hat keine Aktivitäten zum Kopieren.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "leer",
     "copyDayHasData": "hat Daten",
     "copyOverwriteConfirm": "{{day}} hat bereits Daten. Überschreiben?",
-    "submitStudyIncomplete": "Unvollständige Tage: {{days}}"
+    "submitStudyIncomplete": "Unvollständige Tage: {{days}}",
+    "submitStudyIncompleteHint": "Alle Tage abschließen, bevor Sie absenden"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Fehler beim Laden der Aktivitätskonfiguration:",
@@ -154,6 +166,7 @@
     "title": "Vielen Dank - TRAC",
     "heading": "Vielen Dank!",
     "subtitle": "Ihre Übermittlung wurde erfolgreich abgeschlossen.",
+    "defaultMessage": "Vielen Dank für Ihre Teilnahme an unserer Studie <span class=\"app-name\">TRAC</span>. Ihre Angaben wurden gespeichert und tragen zu wertvoller Forschung bei.",
     "continueLink": "Klicken Sie hier, um fortzufahren."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Abgeschlossen",
     "diaryTaskStatusNotCompleted": "Nicht abgeschlossen"
   },
+  "timeout": {
+    "title": "Sitzung abgelaufen - Zeitnutzungstagebuch",
+    "heading": "TRAC Zeitnutzungsstudie - Sitzung abgelaufen",
+    "message": "Ihre Sitzung wurde wegen Inaktivität beendet. Bitte verwenden Sie Ihren Einladungslink, um zum Tagebuch zurückzukehren und Ihre Eingabe fortzusetzen."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Verbindung zum Backend wird hergestellt...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Offene Studien | TRAC",
     "heading": "TRAC -- Offene Studien",
-    "noStudies": "Keine offenen Studien verfügbar."
+    "noStudies": "Keine offenen Studien verfügbar.",
+    "loadError": "Offene Studien konnten nicht geladen werden: {{message}}",
+    "accessStudy": "Studie „{{study}}“ aufrufen"
   }
 }

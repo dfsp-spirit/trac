@@ -14,17 +14,23 @@
     "step1": {
       "title": "Valitse ja sijoita toiminto",
       "horizontal": "Valitse toiminto näytön alareunan valikosta ja sijoita se aikajanalle.",
-      "vertical": "Napauta oikeassa alakulmassa olevaa (+)-painiketta avataksesi toimintovalikon, valitse toiminto ja napauta kohtaa aikajanalla, johon haluat sijoittaa sen."
+      "imageAltHorizontal": "Aktiviteetin valitseminen alavalikosta",
+      "vertical": "Napauta oikeassa alakulmassa olevaa (+)-painiketta avataksesi toimintovalikon, valitse toiminto ja napauta kohtaa aikajanalla, johon haluat sijoittaa sen.",
+      "imageAltVertical": "Aktiviteetin valitseminen pystyasettelussa"
     },
     "step2": {
       "title": "Säädä toiminnon kestoa",
       "horizontal": "Klikkaa ja vedä reunoja vaakasuunnassa asettaaksesi keston. Tietokoneella voit myös napsauttaa toimintoa hiiren oikealla ja valita \"Näytä tiedot\" tai \"Poista\".",
-      "vertical": "Vedä reunoja pystysuunnassa asettaaksesi keston."
+      "imageAltHorizontal": "Aktiviteetin sijoittaminen ja keston säätäminen vaakatasossa",
+      "vertical": "Vedä reunoja pystysuunnassa asettaaksesi keston.",
+      "imageAltVertical": "Aktiviteetin sijoittaminen ja keston säätäminen pystysuunnassa"
     },
     "step3": {
       "title": "Kopioi päivä",
       "horizontal": "Jos jokin toinen päivä on samankaltainen, voit kopioida tämän päivän toiminnot: klikkaa päivän otsikon vieressä \"Kopioi tämä päivä\" ja valitse kohdepäivä. Voit silti muokata kopioituja merkintöjä jälkeenpäin.",
-      "vertical": "Jos jokin toinen päivä on samankaltainen, voit kopioida tämän päivän toiminnot: napauta päivän otsikon vieressä \"Kopioi tämä päivä\" ja valitse kohdepäivä. Voit silti muokata kopioituja merkintöjä jälkeenpäin."
+      "imageAltHorizontal": "Päivän aktiviteettien kopioiminen toiselle päivälle vaaka-asettelussa",
+      "vertical": "Jos jokin toinen päivä on samankaltainen, voit kopioida tämän päivän toiminnot: napauta päivän otsikon vieressä \"Kopioi tämä päivä\" ja valitse kohdepäivä. Voit silti muokata kopioituja merkintöjä jälkeenpäin.",
+      "imageAltVertical": "Päivän aktiviteettien kopioiminen toiselle päivälle pystyasettelussa"
     },
     "step4": {
       "title": "Tallenna ja lähetä päiväkirja",
@@ -40,23 +46,27 @@
   },
   "consent": {
     "pageTitle": "Suostumus | Ajankäyttöpäiväkirja",
+    "pageTitleWithStudy": "{{study}} - Suostumus | Ajankäyttöpäiväkirja",
     "title": "Suostumus",
     "eyebrow": "Tutkimuksen suostumus",
     "subtitle": "Lue alla olevat suostumustiedot ennen kuin aloitat tutkimuksen.",
     "studyName": "Tutkimuksen nimi",
     "checkboxLabel": "Olen lukenut ja ymmärtänyt tällä sivulla esitetyt tiedot.",
     "checkboxTooltip": "Valitse yllä oleva valintaruutu",
+    "reviewPrompt": "Tutustu tietoihin ennen jatkamista.",
     "description": "Kuvaus",
     "studyNameShort": "Tutkimuksen lyhytnimi",
     "saving": "Tallennetaan suostumusta...",
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
     "loadError": "Suostumustietojen lataaminen epäonnistui.",
+    "loadErrorReload": "Suostumustietojen lataaminen ei onnistunut. Lataa sivu uudelleen.",
     "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa."
   },
   "common": {
     "language": "Kieli",
     "chooseLanguage": "Valitse kieli",
-    "day": "Päivä"
+    "day": "Päivä",
+    "loading": "Ladataan ..."
   },
   "buttons": {
     "saveDay": "Tallenna päivä",
@@ -132,6 +142,7 @@
     "goBackToEditPreviousDays": "Vaihda päivään:",
     "copyDayLink": "Kopioi tämä päivä",
     "copyToDay": "Kopioi toiselle päivälle",
+    "copyFromDay": "Kopioi toiselta päivältä",
     "copySuccess": "Kopioitu {{sourceDay}} päivälle {{targetDay}}",
     "copyError": "Kopiointi epäonnistui: {{message}}",
     "copyEmptySource": "Lähdepäivällä ei ole toimintoja kopioitavaksi.",
@@ -140,7 +151,8 @@
     "copyDayEmpty": "tyhjä",
     "copyDayHasData": "sisältää dataa",
     "copyOverwriteConfirm": "{{day}} sisältää jo dataa. Ylikirjoitetaanko?",
-    "submitStudyIncomplete": "Puutteelliset päivät: {{days}}"
+    "submitStudyIncomplete": "Puutteelliset päivät: {{days}}",
+    "submitStudyIncompleteHint": "Täytä kaikki päivät ennen lähettämistä"
   },
   "errors": {
     "loadingActivitiesConfigurationTitle": "Virhe toimintojen konfiguraation latauksessa:",
@@ -154,6 +166,7 @@
     "title": "Kiitos - TRAC",
     "heading": "Kiitos!",
     "subtitle": "Lähetys on suoritettu onnistuneesti.",
+    "defaultMessage": "Kiitos osallistumisesta <span class=\"app-name\">TRAC</span>-tutkimukseemme. Vastauksesi on tallennettu ja ne edistävät arvokasta tutkimusta.",
     "continueLink": "Jatka napsauttamalla tästä."
   },
   "taskPage": {
@@ -169,6 +182,11 @@
     "diaryTaskStatusCompleted": "Suoritettu",
     "diaryTaskStatusNotCompleted": "Ei suoritettu"
   },
+  "timeout": {
+    "title": "Istunto päättyi - Ajankäyttöpäiväkirja",
+    "heading": "TRAC-ajankäyttötutkimus - istunto päättyi",
+    "message": "Istuntosi päättyi toimettomuuden vuoksi. Käytä kutsulinkkiäsi palataksesi päiväkirjaan ja jatkaaksesi."
+  },
   "footer": {
     "title": "TRAC",
     "backend_status_connecting": "Yhdistetään taustajärjestelmään...",
@@ -181,6 +199,8 @@
   "openStudies": {
     "pageTitle": "Avoimet tutkimukset | TRAC",
     "heading": "TRAC -- Avoimet tutkimukset",
-    "noStudies": "Ei avoimia tutkimuksia saatavilla."
+    "noStudies": "Ei avoimia tutkimuksia saatavilla.",
+    "loadError": "Avoimien tutkimusten lataaminen ei onnistunut: {{message}}",
+    "accessStudy": "Siirry tutkimukseen '{{study}}'"
   }
 }

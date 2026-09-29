@@ -101,8 +101,8 @@
         <div class="timeout-icon">
             <i class="fas fa-clock"></i>
         </div>
-        <h1 class="timeout-title" id="timeoutTitle">TRAC Time Use Study -- Session Timed Out</h1>
-        <p class="timeout-message" id="timeoutMessage">
+        <h1 class="timeout-title" id="timeoutTitle" data-i18n="timeout.heading">TRAC Time Use Study -- Session Timed Out</h1>
+        <p class="timeout-message" id="timeoutMessage" data-i18n="timeout.message">
             Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work.
         </p>
         <div class="timeout-custom-text" id="timeoutCustomText" style="display: none;"></div>
@@ -113,6 +113,36 @@
 
     <script src="../settings/tud_settings.js"></script>
     <script src="../js/maintenance.js" type="module"></script>
+    <script type="module">
+        // This page is standalone (the diary redirects here), so it has to
+        // initialise i18n itself. The language comes from the ?lang= parameter
+        // appended by the inactivity redirect, otherwise the browser language.
+        import i18n from '../js/i18n.js';
+
+        (async () => {
+            const supported = ['de', 'en', 'es', 'fi', 'fr', 'pl', 'sv'];
+            const urlLang = new URLSearchParams(window.location.search).get('lang');
+            const candidates = urlLang
+                ? [urlLang]
+                : (navigator.languages && navigator.languages.length
+                    ? navigator.languages
+                    : [navigator.language || 'en']);
+
+            let language = 'en';
+            for (const candidate of candidates) {
+                const code = String(candidate || '').trim().toLowerCase().split('-')[0];
+                if (supported.includes(code)) {
+                    language = code;
+                    break;
+                }
+            }
+
+            await i18n.init(language);
+            i18n.applyTranslations();
+        })().catch((error) => {
+            console.warn('Could not initialize i18n on the timeout page:', error);
+        });
+    </script>
     <script>
         (function () {
             // Try to read custom text from sessionStorage
