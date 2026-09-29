@@ -957,9 +957,9 @@ function initMobileSwipeNavigation() {
           nextBtn.click();
         }
       } else {
-        const backBtn = document.getElementById('backBtn');
-        if (backBtn && backBtn.style.display !== 'none') {
-          backBtn.click();
+        const switchTimelineBtn = document.getElementById('switchTimelineBtn');
+        if (switchTimelineBtn && !switchTimelineBtn.hidden) {
+          switchTimelineBtn.click();
         }
       }
     }
@@ -1931,11 +1931,6 @@ async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
       updateButtonStates();
       scrollToActiveTimeline();
 
-      const backButton = document.getElementById('backBtn');
-      if (backButton) {
-        backButton.disabled = false;
-      }
-
       const activitiesContainerElement = document.querySelector(
         '#activitiesContainer'
       );
@@ -2008,12 +2003,6 @@ async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
           )
         )
       );
-    }
-
-    // Update Back button state
-    const backButton = document.getElementById('backBtn');
-    if (backButton) {
-      backButton.disabled = false;
     }
 
     // Update activities container data-mode
@@ -2191,11 +2180,6 @@ async function addNextTimeline() {
       updateButtonStates();
       scrollToActiveTimeline();
 
-      const backButton = document.getElementById('backBtn');
-      if (backButton) {
-        backButton.disabled = false;
-      }
-
       const activitiesContainerElement = document.querySelector(
         '#activitiesContainer'
       );
@@ -2306,12 +2290,6 @@ async function addNextTimeline() {
           )
         )
       );
-    }
-
-    // Update Back button state
-    const backButton = document.getElementById('backBtn');
-    if (backButton) {
-      backButton.disabled = false;
     }
 
     // Update activities container data-mode
@@ -7335,11 +7313,12 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Export addNextTimeline, goToPreviousTimeline, renderActivities and
-// getCurrentDayIndex for ui.js
+// Export addNextTimeline, goToPreviousTimeline, navigateToTimelineByKey,
+// renderActivities and getCurrentDayIndex for ui.js
 export {
   addNextTimeline,
   goToPreviousTimeline,
+  navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
 };

@@ -8,7 +8,7 @@ import {
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
 import {
-  goToPreviousTimeline,
+  navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
 } from './script.js';
@@ -935,7 +935,6 @@ function updateButtonStates() {
   const removeLastButton = document.getElementById('removeLastBtn');
   const cleanRowButton = document.getElementById('cleanRowBtn');
   const nextButtonInTopBar = document.getElementById('nextBtn');
-  const backButton = document.getElementById('backBtn');
 
   const currentData = getCurrentTimelineData();
   const isEmpty = currentData.length === 0;
@@ -953,14 +952,9 @@ function updateButtonStates() {
   if (removeLastButton) removeLastButton.disabled = isEmpty;
   if (cleanRowButton) cleanRowButton.disabled = !hasActivities;
 
-  // Update Back button state - only show when there are multiple timelines
-  if (backButton) {
-    const hasMultipleTimelines = window.timelineManager.keys.length > 1;
-    backButton.style.display = hasMultipleTimelines ? '' : 'none';
-    if (hasMultipleTimelines) {
-      backButton.disabled = window.timelineManager.currentIndex <= 0;
-    }
-  }
+  // Update the timeline switcher: shown whenever the study has more than one
+  // timeline, and on narrow viewports the only way to reach the others.
+  updateTimelineSwitchButton();
 
   // Get current timeline coverage
   const currentKey = getCurrentTimelineKey();
@@ -1040,6 +1034,56 @@ function updateButtonStates() {
 
   // Copy Days: update the Submit Study button state
   updateSubmitStudyButton();
+}
+
+/**
+ * Point the timeline switch button at the next timeline in the cycle.
+ *
+ * Shown whenever the study has more than one timeline, at every width. On
+ * narrow viewports it is the only way to reach the others: `styles.css` hides
+ * inactive `.timeline-container`s and the whole past-timeline wrapper, and that
+ * wrapper is not horizontally scrollable. On desktop the inactive timelines are
+ * visible and clickable, but the labelled button is still what makes a second
+ * timeline noticeable at all - an inactive timeline is dimmed to 0.6 opacity
+ * and does not advertise itself as a click target.
+ *
+ * It replaces an earlier one-way "Previous timeline" button, which only went
+ * backwards and was disabled at the first timeline - so every day began with a
+ * dead control on desktop, and phone users could not reach the other timelines
+ * at all.
+ *
+ * The label names the timeline the button switches *to*, so it also tells the
+ * participant that a second timeline exists and what it is called.
+ */
+function updateTimelineSwitchButton() {
+  const button = document.getElementById('switchTimelineBtn');
+  if (!button) return;
+
+  const keys = window.timelineManager?.keys || [];
+
+  if (keys.length < 2) {
+    button.hidden = true;
+    return;
+  }
+
+  button.hidden = false;
+
+  const currentIndex = Number.isInteger(window.timelineManager.currentIndex)
+    ? window.timelineManager.currentIndex
+    : 0;
+  const nextKey = keys[(currentIndex + 1) % keys.length];
+  const nextName = window.timelineManager?.metadata?.[nextKey]?.name || nextKey;
+
+  const label = document.getElementById('switchTimelineLabel');
+  if (label) label.textContent = nextName;
+
+  const hint =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('buttons.switchTimeline')
+      : 'Switch timeline';
+  const accessibleName = `${hint}: ${nextName}`;
+  button.title = accessibleName;
+  button.setAttribute('aria-label', accessibleName);
 }
 
 /**
@@ -1224,9 +1268,9 @@ function updateFooterVisibility() {
 let nextButtonLastClick = 0;
 const NEXT_BUTTON_COOLDOWN = 500; // 1 second cooldown
 
-// Debounce variables for Back button
-let backButtonLastClick = 0;
-const BACK_BUTTON_COOLDOWN = 500; // 1 second cooldown (shorter than Next)
+// Debounce variables for the timeline switch button
+let switchTimelineLastClick = 0;
+const SWITCH_TIMELINE_COOLDOWN = 500;
 
 // Debounce variables for Remove Last button
 let removeLastButtonLastClick = 0;
@@ -1289,17 +1333,36 @@ const handleNextButtonAction = async () => {
   }
 };
 
-// Shared function to handle Back button logic with debounce
-const handleBackButtonAction = () => {
+// Shared function to handle the timeline switch button with debounce.
+// Cycles to the next timeline; the label always names the destination.
+const handleSwitchTimelineAction = async () => {
   const currentTime = Date.now();
-  if (currentTime - backButtonLastClick < BACK_BUTTON_COOLDOWN) {
-    console.log('Back button on cooldown');
+  if (currentTime - switchTimelineLastClick < SWITCH_TIMELINE_COOLDOWN) {
+    console.log('Timeline switch button on cooldown');
     return;
   }
-  backButtonLastClick = currentTime;
+  switchTimelineLastClick = currentTime;
 
-  if (window.timelineManager.currentIndex > 0) {
-    goToPreviousTimeline();
+  const keys = window.timelineManager?.keys || [];
+  if (keys.length < 2) {
+    return;
+  }
+
+  const currentIndex = Number.isInteger(window.timelineManager.currentIndex)
+    ? window.timelineManager.currentIndex
+    : 0;
+  const nextKey = keys[(currentIndex + 1) % keys.length];
+
+  const switchButton = document.getElementById('switchTimelineBtn');
+  if (switchButton) switchButton.disabled = true;
+
+  try {
+    await navigateToTimelineByKey(nextKey);
+  } catch (error) {
+    console.error('Failed to switch timeline:', error);
+  } finally {
+    if (switchButton) switchButton.disabled = false;
+    updateButtonStates();
   }
 };
 
@@ -1478,10 +1541,10 @@ function initButtons() {
     handleNextButtonAction();
   });
 
-  // Add click handler for Back button using shared debounced function
-  const backButton = document.getElementById('backBtn');
-  if (backButton) {
-    backButton.addEventListener('click', handleBackButtonAction);
+  // Timeline switcher: cycles through the study's timelines.
+  const switchTimelineButton = document.getElementById('switchTimelineBtn');
+  if (switchTimelineButton) {
+    switchTimelineButton.addEventListener('click', handleSwitchTimelineAction);
   }
 
   // Copy Days: Submit Study button — save the current day first, then POST to

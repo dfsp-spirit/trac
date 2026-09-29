@@ -1509,13 +1509,27 @@ body.carrying-activity .modal-close {
   }
 }
 
+/* `hidden` has to beat `.btn { display: flex }`: an author rule outranks the
+   user-agent `[hidden] { display: none }`, so `hidden` alone does nothing on
+   our buttons. */
+.btn[hidden] {
+  display: none !important;
+}
+
 /* Navigation buttons */
-.back-btn {
+.switch-timeline-btn {
   background-color: var(--secondary-color);
 }
 
-.back-btn:hover:not(:disabled) {
+.switch-timeline-btn:hover:not(:disabled) {
   background-color: #334155;
+}
+
+.switch-timeline-btn #switchTimelineLabel {
+  max-width: 16ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .next-btn {
