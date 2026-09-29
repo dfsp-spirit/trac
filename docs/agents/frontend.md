@@ -15,6 +15,11 @@
 - Nothing in that module may throw: `safeGetItem`/`safeSetItem`/`safeRemoveItem` swallow unavailable/quota-exceeded storage (Safari private mode, blocked cookies). Drafts are validated on read (`normalizeTimelineState`) and unusable payloads are deleted instead of restored.
 - A draft is only restored when `matchesTimelineContext()` agrees on `pid`, `study_name` and `day_label_index` - participants share browsers (family tablet, lab PC). Covered by `frontend/tests/unit/draft_storage.test.js` and E2E `draft_restore.spec.js`; the context rule itself is unit-tested because the browser flow for switching participant goes through consent/instructions, which drop the pending state first.
 
+## Time handling
+- Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.
+- Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.
+- `frontend/tests/unit/timeline_validation.test.js` covers `Timeline.validate()`: overlaps throw, and the drag/resize/undo handlers depend on that throw to revert an invalid change. CI runs an extra chromium E2E leg with `TZ=Europe/Berlin` (`.github/workflows/e2e_tests.yml`) so timezone/DST assumptions fail in CI rather than on a participant's phone.
+
 ## Localization
 - Locale resources are in `frontend/src/locales/`.
 - Language fallback order: URL `lang` -> browser language -> study default.

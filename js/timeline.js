@@ -1,4 +1,6 @@
 // @ts-check
+import { getActivityTimeRangeMinutes } from './utils.js';
+
 export class Timeline {
   /**
    * @param {string} key
@@ -43,56 +45,31 @@ export class Timeline {
   }
 
   validate() {
-    // console.log('Starting timeline validation');
-    // Get activities from timelineManager using this timeline's key
+    // Compare absolute minutes-of-day, never Date objects: activities carry
+    // display strings like "07:30" or "00:30(+1)", and `new Date("07:30")` is an
+    // Invalid Date (NaN) in every engine - so the overlap check below could
+    // never fire and the callers' "revert the drag" path was dead code.
     const activities = window.timelineManager.activities[this.key] || [];
-    // console.log('Current activities:', activities);
 
-    // Check for overlaps in activities
-    const sortedActivities = [...activities].sort((a, b) => {
-      const aStart = new Date(a.startTime);
-      const bStart = new Date(b.startTime);
-      // console.log('Comparing start times:', {
-      //     activity1: a.activity,
-      //     time1: a.startTime,
-      //     activity2: b.activity,
-      //     time2: b.startTime
-      // });
-      return aStart.getTime() - bStart.getTime();
-    });
+    const ranges = activities
+      .map((activity) => ({
+        activity,
+        range: getActivityTimeRangeMinutes(activity),
+      }))
+      .filter((entry) => entry.range !== null)
+      .sort((a, b) => a.range.startMinutes - b.range.startMinutes);
 
-    // console.log('Sorted activities:', sortedActivities);
+    for (let i = 0; i < ranges.length - 1; i++) {
+      const current = ranges[i];
+      const next = ranges[i + 1];
 
-    for (let i = 0; i < sortedActivities.length - 1; i++) {
-      const current = sortedActivities[i];
-      const next = sortedActivities[i + 1];
-
-      const currentEnd = new Date(current.endTime);
-      const nextStart = new Date(next.startTime);
-
-      // console.log('Checking overlap:', {
-      //     currentActivity: current.activity,
-      //     currentStart: current.startTime,
-      //     currentEnd: current.endTime,
-      //     nextActivity: next.activity,
-      //     nextStart: next.startTime,
-      //     nextEnd: next.endTime,
-      //     isOverlapping: currentEnd > nextStart
-      // });
-
-      if (currentEnd > nextStart) {
-        // console.error('Overlap detected:', {
-        //     current: current,
-        //     next: next,
-        //     currentEndTime: currentEnd,
-        //     nextStartTime: nextStart
-        // });
+      if (current.range.endMinutes > next.range.startMinutes) {
         throw new Error(
-          `Timeline validation failed: Overlap detected between activities "${current.activity}" and "${next.activity}"`
+          `Timeline validation failed: Overlap detected between activities "${current.activity.activity}" and "${next.activity.activity}"`
         );
       }
     }
-    // console.log('Timeline validation successful');
+
     return true;
   }
 }

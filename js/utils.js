@@ -260,52 +260,6 @@ export function generateUniqueId() {
   return Math.random().toString(36).substr(2, 9);
 }
 
-export function formatTimeDDMMYYYYHHMM(startTime, endTime) {
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-
-  // Remove (+1) notation for date processing
-  const startTimeOnly = startTime.replace('(+1)', '').trim();
-  const endTimeOnly = endTime.replace('(+1)', '').trim();
-
-  const [startHour, startMin] = startTimeOnly.split(':').map(Number);
-  const [endHour, endMin] = endTimeOnly.split(':').map(Number);
-
-  // Create base dates - everything starts on yesterday by default
-  // since our timeline starts at 4:00 AM yesterday
-  const startDate = new Date(yesterday);
-  const endDate = new Date(yesterday);
-
-  // If time has (+1) or is between 00:00-03:59, it's next day
-  if (startTime.includes('(+1)') || (startHour >= 0 && startHour < 4)) {
-    startDate.setDate(today.getDate());
-  }
-
-  if (endTime.includes('(+1)') || (endHour >= 0 && endHour < 4)) {
-    endDate.setDate(today.getDate());
-  }
-
-  // Set hours and minutes
-  startDate.setHours(startHour, startMin, 0);
-  endDate.setHours(endHour, endMin, 0);
-
-  // Format dates to YYYY-MM-DD HH:MM
-  const formatDate = (d) => {
-    return `${d.getFullYear()}-${(d.getMonth() + 1)
-      .toString()
-      .padStart(2, '0')}-${d.getDate().toString().padStart(2, '0')} ${d
-      .getHours()
-      .toString()
-      .padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-  };
-
-  return {
-    startTime: formatDate(startDate),
-    endTime: formatDate(endDate),
-  };
-}
-
 /**
  * Formats absolute minutes into HH:MM format with (+1) notation for next day times.
  * Uses absolute minutes scale where:
