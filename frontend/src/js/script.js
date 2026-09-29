@@ -957,9 +957,9 @@ function initMobileSwipeNavigation() {
           nextBtn.click();
         }
       } else {
-        const backBtn = document.getElementById('backBtn');
-        if (backBtn && backBtn.style.display !== 'none') {
-          backBtn.click();
+        const switchTimelineBtn = document.getElementById('switchTimelineBtn');
+        if (switchTimelineBtn && !switchTimelineBtn.hidden) {
+          switchTimelineBtn.click();
         }
       }
     }
@@ -7335,11 +7335,12 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// Export addNextTimeline, goToPreviousTimeline, renderActivities and
-// getCurrentDayIndex for ui.js
+// Export addNextTimeline, goToPreviousTimeline, navigateToTimelineByKey,
+// renderActivities and getCurrentDayIndex for ui.js
 export {
   addNextTimeline,
   goToPreviousTimeline,
+  navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
 };

@@ -31,9 +31,22 @@
     <div class="header-section">
         <div class="controls" style="padding-top: 4px; padding-left: 4px; padding-bottom: 4px; padding-right: 4px;">
 
+        <!-- Desktop keeps the one-way "Previous timeline" button: there all
+             timelines are rendered side by side and can be clicked directly. -->
         <button class="btn back-btn" id="backBtn" data-is-active="false" style="display: none;">
             <i class="fas fa-arrow-left" aria-hidden="true"></i>
             <span data-i18n="buttons.previousTimeline">Previous timeline</span>
+        </button>
+
+        <!-- Mobile-only replacement for the button above: cycles through the
+             study's timelines. The label always names the timeline this button
+             switches to, so it doubles as the hint that more than one timeline
+             exists - on narrow viewports only the active timeline is rendered,
+             and this button is the only way to the others. Never disabled: it
+             has to work in both directions. -->
+        <button class="btn switch-timeline-btn" id="switchTimelineBtn" data-is-active="false" hidden>
+            <i class="fas fa-right-left" aria-hidden="true"></i>
+            <span id="switchTimelineLabel" data-i18n="buttons.switchTimeline">Switch timeline</span>
         </button>
 
         <button class="btn remove-last-btn" id="removeLastBtn" data-is-active="false" disabled>

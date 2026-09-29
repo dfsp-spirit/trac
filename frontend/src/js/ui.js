@@ -9,6 +9,7 @@ import {
 import { getIsMobile, updateIsMobile } from './globals.js';
 import {
   goToPreviousTimeline,
+  navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
 } from './script.js';
@@ -953,7 +954,8 @@ function updateButtonStates() {
   if (removeLastButton) removeLastButton.disabled = isEmpty;
   if (cleanRowButton) cleanRowButton.disabled = !hasActivities;
 
-  // Update Back button state - only show when there are multiple timelines
+  // Update Back button state - only show when there are multiple timelines.
+  // Desktop only: narrow viewports use the switch button below instead.
   if (backButton) {
     const hasMultipleTimelines = window.timelineManager.keys.length > 1;
     backButton.style.display = hasMultipleTimelines ? '' : 'none';
@@ -961,6 +963,10 @@ function updateButtonStates() {
       backButton.disabled = window.timelineManager.currentIndex <= 0;
     }
   }
+
+  // Narrow viewports render only the active timeline, so a one-way button that
+  // is disabled at the first timeline would strand participants there.
+  updateTimelineSwitchButton();
 
   // Get current timeline coverage
   const currentKey = getCurrentTimelineKey();
@@ -1040,6 +1046,52 @@ function updateButtonStates() {
 
   // Copy Days: update the Submit Study button state
   updateSubmitStudyButton();
+}
+
+/**
+ * Point the timeline switch button at the next timeline in the cycle.
+ *
+ * Narrow viewports render only the active timeline: `styles.css` hides
+ * inactive `.timeline-container`s and the whole past-timeline wrapper, and the
+ * wrapper is not horizontally scrollable. That makes this button the only way
+ * to reach the other timelines on a phone, so it must always be usable - the
+ * previous "Previous timeline" button went backwards only and was disabled at
+ * the first timeline, which stranded phone users on the primary timeline.
+ *
+ * The label names the timeline the button switches *to*, so it also tells the
+ * participant that a second timeline exists and what it is called.
+ */
+function updateTimelineSwitchButton() {
+  const button = document.getElementById('switchTimelineBtn');
+  if (!button) return;
+
+  const keys = window.timelineManager?.keys || [];
+
+  // Desktop keeps the "Previous timeline" button (all timelines are rendered
+  // side by side and can be clicked directly), so the switcher is mobile-only.
+  if (!getIsMobile() || keys.length < 2) {
+    button.hidden = true;
+    return;
+  }
+
+  button.hidden = false;
+
+  const currentIndex = Number.isInteger(window.timelineManager.currentIndex)
+    ? window.timelineManager.currentIndex
+    : 0;
+  const nextKey = keys[(currentIndex + 1) % keys.length];
+  const nextName = window.timelineManager?.metadata?.[nextKey]?.name || nextKey;
+
+  const label = document.getElementById('switchTimelineLabel');
+  if (label) label.textContent = nextName;
+
+  const hint =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('buttons.switchTimeline')
+      : 'Switch timeline';
+  const accessibleName = `${hint}: ${nextName}`;
+  button.title = accessibleName;
+  button.setAttribute('aria-label', accessibleName);
 }
 
 /**
@@ -1228,6 +1280,10 @@ const NEXT_BUTTON_COOLDOWN = 500; // 1 second cooldown
 let backButtonLastClick = 0;
 const BACK_BUTTON_COOLDOWN = 500; // 1 second cooldown (shorter than Next)
 
+// Debounce variables for the timeline switch button
+let switchTimelineLastClick = 0;
+const SWITCH_TIMELINE_COOLDOWN = 500;
+
 // Debounce variables for Remove Last button
 let removeLastButtonLastClick = 0;
 const REMOVE_LAST_BUTTON_COOLDOWN = 300; // 300ms cooldown
@@ -1300,6 +1356,39 @@ const handleBackButtonAction = () => {
 
   if (window.timelineManager.currentIndex > 0) {
     goToPreviousTimeline();
+  }
+};
+
+// Shared function to handle the timeline switch button with debounce.
+// Cycles to the next timeline; the label always names the destination.
+const handleSwitchTimelineAction = async () => {
+  const currentTime = Date.now();
+  if (currentTime - switchTimelineLastClick < SWITCH_TIMELINE_COOLDOWN) {
+    console.log('Timeline switch button on cooldown');
+    return;
+  }
+  switchTimelineLastClick = currentTime;
+
+  const keys = window.timelineManager?.keys || [];
+  if (keys.length < 2) {
+    return;
+  }
+
+  const currentIndex = Number.isInteger(window.timelineManager.currentIndex)
+    ? window.timelineManager.currentIndex
+    : 0;
+  const nextKey = keys[(currentIndex + 1) % keys.length];
+
+  const switchButton = document.getElementById('switchTimelineBtn');
+  if (switchButton) switchButton.disabled = true;
+
+  try {
+    await navigateToTimelineByKey(nextKey);
+  } catch (error) {
+    console.error('Failed to switch timeline:', error);
+  } finally {
+    if (switchButton) switchButton.disabled = false;
+    updateButtonStates();
   }
 };
 
@@ -1482,6 +1571,12 @@ function initButtons() {
   const backButton = document.getElementById('backBtn');
   if (backButton) {
     backButton.addEventListener('click', handleBackButtonAction);
+  }
+
+  // Timeline switcher: cycles through the study's timelines (narrow layouts).
+  const switchTimelineButton = document.getElementById('switchTimelineBtn');
+  if (switchTimelineButton) {
+    switchTimelineButton.addEventListener('click', handleSwitchTimelineAction);
   }
 
   // Copy Days: Submit Study button — save the current day first, then POST to
