@@ -107,19 +107,13 @@ function createDisabledButtonOverlay(buttonId) {
 
 // Function to update overlay visibility based on button state
 function updateDisabledButtonOverlays() {
-  const nextBtn = document.getElementById('nextBtn');
-  const navBtn = document.getElementById('navSubmitBtn');
+  const button = document.getElementById('nextBtn');
+  if (!button) return;
 
-  [nextBtn, navBtn].forEach((button) => {
-    if (button) {
-      const overlay = document.getElementById(`${button.id}-overlay`);
-      if (button.disabled && overlay) {
-        overlay.style.display = 'block';
-      } else if (overlay) {
-        overlay.style.display = 'none';
-      }
-    }
-  });
+  const overlay = document.getElementById(`${button.id}-overlay`);
+  if (!overlay) return;
+
+  overlay.style.display = button.disabled ? 'block' : 'none';
 }
 
 // Initialize overlays immediately and with intervals
@@ -129,9 +123,8 @@ function initializeOverlays() {
   overlaysInitialized = true;
   console.log('Initializing overlays...');
 
-  // Create overlays for disabled buttons
+  // Create overlay for the disabled button
   createDisabledButtonOverlay('nextBtn');
-  createDisabledButtonOverlay('navSubmitBtn');
 
   // Update overlay visibility initially
   updateDisabledButtonOverlays();
@@ -148,18 +141,11 @@ function initializeOverlays() {
     });
   });
 
-  // Observe both buttons for disabled attribute changes
+  // Observe the button for disabled attribute changes
   const nextBtn = document.getElementById('nextBtn');
-  const navBtn = document.getElementById('navSubmitBtn');
 
   if (nextBtn) {
     observer.observe(nextBtn, {
-      attributes: true,
-      attributeFilter: ['disabled'],
-    });
-  }
-  if (navBtn) {
-    observer.observe(navBtn, {
       attributes: true,
       attributeFilter: ['disabled'],
     });
@@ -180,12 +166,9 @@ if (document.readyState === 'loading') {
 setInterval(() => {
   updateDisabledButtonOverlays();
 
-  // Re-create overlays if they don't exist
+  // Re-create the overlay if it does not exist
   if (!document.getElementById('nextBtn-overlay')) {
     createDisabledButtonOverlay('nextBtn');
-  }
-  if (!document.getElementById('navSubmitBtn-overlay')) {
-    createDisabledButtonOverlay('navSubmitBtn');
   }
 }, 2000);
 
@@ -953,7 +936,6 @@ function updateButtonStates() {
   const cleanRowButton = document.getElementById('cleanRowBtn');
   const nextButtonInTopBar = document.getElementById('nextBtn');
   const backButton = document.getElementById('backBtn');
-  const lowerNavSubmitBtn = document.getElementById('navSubmitBtn');
 
   const currentData = getCurrentTimelineData();
   const isEmpty = currentData.length === 0;
@@ -1034,26 +1016,6 @@ function updateButtonStates() {
     nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
     nextButtonInTopBar.setAttribute('data-mode', 'save-day');
     nextButtonInTopBar.title = '';
-  }
-
-  // Update navSubmitBtn to mirror nextButton — always "Save Day", and it keeps
-  // the same primary colour as the button in the top bar. No submit-mode class
-  // here: the separate "Submit Study" button in the toolbar is the one that
-  // turns green when every day is complete.
-  if (lowerNavSubmitBtn) {
-    lowerNavSubmitBtn.disabled = !canProceed;
-
-    const navSubmitIcon = lowerNavSubmitBtn.querySelector('i');
-    const navSubmitSpan = lowerNavSubmitBtn.querySelector('span');
-
-    if (navSubmitSpan) {
-      navSubmitSpan.textContent = saveDayText;
-    }
-    if (navSubmitIcon) {
-      navSubmitIcon.className = 'fas fa-save';
-    }
-    lowerNavSubmitBtn.setAttribute('data-mode', 'save-day');
-    lowerNavSubmitBtn.title = '';
   }
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
@@ -1228,6 +1190,7 @@ function initSkipReportingButton() {
     skipReportingBtn.style.display = 'none';
     skipReportingBtn.setAttribute('aria-hidden', 'true');
     skipReportingButtonInitialized = true;
+    updateFooterVisibility();
     return;
   }
 
@@ -1236,6 +1199,25 @@ function initSkipReportingButton() {
 
   skipReportingBtn.addEventListener('click', showSkipConfirmationModal);
   skipReportingButtonInitialized = true;
+  updateFooterVisibility();
+}
+
+/**
+ * Reveal the footer only while it holds a visible action. Studies can switch
+ * "Skip time reporting" off, which leaves the footer empty - a row of dead
+ * vertical space that is worth reclaiming on phones. The footer starts
+ * `hidden` in the markup so it never flashes before the study config lands.
+ */
+function updateFooterVisibility() {
+  const footer = document.getElementById('instructionsFooter');
+  if (!footer) return;
+
+  const skipReportingBtn = document.getElementById('skipReportingBtn');
+  const hasVisibleAction =
+    !!skipReportingBtn && skipReportingBtn.style.display !== 'none';
+
+  footer.hidden = !hasVisibleAction;
+  updateFooterHeight();
 }
 
 // Shared debounce variables for both Next button and navigation submit button
@@ -1261,10 +1243,8 @@ const handleNextButtonAction = async () => {
   nextButtonLastClick = currentTime;
 
   const nextButton = document.getElementById('nextBtn');
-  const navSubmitButton = document.getElementById('navSubmitBtn');
 
   if (nextButton) nextButton.disabled = true;
-  if (navSubmitButton) navSubmitButton.disabled = true;
 
   const urlParams = new URLSearchParams(window.location.search);
   const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
@@ -1407,14 +1387,6 @@ function initButtons() {
   initSkipReportingButton();
 
   const cleanRowBtn = document.getElementById('cleanRowBtn');
-  const navSubmitBtn = document.getElementById('navSubmitBtn');
-
-  // Initialize the navigation submit button — Copy Days: always call save action
-  if (navSubmitBtn) {
-    navSubmitBtn.addEventListener('click', () => {
-      handleNextButtonAction();
-    });
-  }
 
   const performCleanRow = () => {
     const currentKey = getCurrentTimelineKey();

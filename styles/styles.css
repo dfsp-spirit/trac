@@ -2232,52 +2232,18 @@ body.carrying-activity .modal-close {
   margin-top: 20px;
 }
 
+/* The footer holds at most one action ("Skip time reporting", which studies can
+   disable). It is hidden by ui.js whenever it would be empty, so `hidden` is
+   authoritative here even if another rule sets a display on the footer. */
+.instructions-footer[hidden] {
+  display: none !important;
+}
+
 .footer-actions-row {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 16px;
-}
-
-.footer-actions-spacer {
-  min-width: 0;
-}
-
-.footer-skip-btn {
-  justify-self: center;
-}
-
-.nav-submit-btn {
-  padding: 12px 24px;
-  background-color: var(--primary-color);
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
-  justify-self: end;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.nav-submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  background-color: #1d4ed8;
-}
-
-.nav-submit-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.nav-submit-btn i {
-  font-size: 16px;
+  justify-content: center;
+  gap: 16px;
 }
 
 /* Mobile adjustments for the footer */
@@ -2287,27 +2253,7 @@ body.carrying-activity .modal-close {
   }
 
   .footer-actions-row {
-    grid-template-columns: 1fr;
-    justify-items: center;
     gap: 12px;
-  }
-
-  .footer-actions-spacer {
-    display: none;
-  }
-
-  .footer-skip-btn,
-  .nav-submit-btn {
-    justify-self: center;
-  }
-
-  .nav-submit-btn {
-    padding: 8px 16px;
-    font-size: 13px;
-  }
-
-  .nav-submit-btn i {
-    font-size: 14px;
   }
 }
 
@@ -2642,9 +2588,8 @@ body.carrying-activity .modal-close {
   letter-spacing: 0.5px;
 }
 
-/* Allow clicks on disabled Next/Submit buttons for toast messages */
-#nextBtn:disabled,
-#navSubmitBtn:disabled {
+/* Allow clicks on the disabled Save button for toast messages */
+#nextBtn:disabled {
   pointer-events: auto !important;
   cursor: not-allowed;
 }

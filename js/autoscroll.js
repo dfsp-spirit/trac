@@ -40,10 +40,14 @@ const autoScrollModule = (() => {
     );
     const headerHeight = headerSection ? headerSection.offsetHeight : 0;
 
-    // Retrieve footer element to prevent scrolling past it
-    const footer = document.querySelector('#instructionsFooter');
+    // Retrieve footer element to prevent scrolling past it. The footer is
+    // hidden entirely when it has no action to show, in which case its rect is
+    // all zeros - a zero limit would silently disable downward autoscroll.
+    const footer = /** @type {HTMLElement | null} */ (
+      document.querySelector('#instructionsFooter')
+    );
     let footerLimit = Infinity;
-    if (footer) {
+    if (footer && footer.offsetHeight > 0) {
       // Calculate the absolute top position of the footer
       footerLimit = footer.getBoundingClientRect().top + scrollTop;
     }

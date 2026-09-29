@@ -112,16 +112,15 @@
     <!-- Attribute Tracker Script -->
     <script src="js/attributeTracker.js"></script>
 
-    <div id="instructionsFooter" class="instructions-footer">
+    <!-- Footer with optional actions. It starts hidden and is only revealed by
+         ui.js when it actually contains a visible action ("Skip time reporting",
+         which studies can disable). An empty footer would otherwise waste a
+         full row of vertical space on phones. -->
+    <div id="instructionsFooter" class="instructions-footer" hidden>
         <div class="footer-actions-row">
-            <div class="footer-actions-spacer" aria-hidden="true"></div>
             <button class="btn skip-btn footer-skip-btn" id="skipReportingBtn" data-is-active="true">
                 <i class="fas fa-forward" aria-hidden="true"></i>
                 <span data-i18n="buttons.skipReporting">Skip time reporting</span>
-            </button>
-            <button id="navSubmitBtn" class="nav-submit-btn">
-                <i class="fas fa-save" aria-hidden="true"></i>
-                <span data-i18n="buttons.saveDay">Save Day</span>
             </button>
         </div>
     </div>
