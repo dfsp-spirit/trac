@@ -166,7 +166,7 @@
     "title": "Merci - TRAC",
     "heading": "Merci !",
     "subtitle": "Votre soumission a été complétée avec succès.",
-    "defaultMessage": "Merci de participer à notre étude <span class=\"app-name\">TRAC</span>. Vos réponses ont été enregistrées et contribueront à une recherche précieuse.",
+    "defaultMessage": "Merci de participer à notre étude. Vos réponses ont été enregistrées et contribueront à une recherche précieuse.",
     "continueLink": "Cliquez ici pour continuer."
   },
   "taskPage": {

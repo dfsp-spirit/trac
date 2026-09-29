@@ -166,7 +166,7 @@
     "title": "Thank You - TRAC",
     "heading": "Thank You!",
     "subtitle": "Your submission has been completed successfully.",
-    "defaultMessage": "Thank you for participating in our <span class=\"app-name\">TRAC</span> study. Your responses have been recorded and will contribute to valuable research.",
+    "defaultMessage": "Thank you for participating in our study. Your responses have been recorded and will contribute to valuable research.",
     "continueLink": "Click here to continue."
   },
   "taskPage": {

@@ -166,7 +166,7 @@
     "title": "Tack - TRAC",
     "heading": "Tack!",
     "subtitle": "Din inskickning har slutförts framgångsrikt.",
-    "defaultMessage": "Tack för att du deltar i vår studie <span class=\"app-name\">TRAC</span>. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
+    "defaultMessage": "Tack för att du deltar i vår studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
     "continueLink": "Klicka här för att fortsätta."
   },
   "taskPage": {
