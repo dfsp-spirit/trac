@@ -11,6 +11,8 @@
 - `accessibility.spec.js` runs axe-core via `@axe-core/playwright` (dev dependency) over each page plus the activity dialogs and fails on any WCAG A/AA violation; animations are frozen before analysis so colour is measured on a settled page.
 - `keyboard_accessibility.spec.js` and `mobile_layout.spec.js` cover Tab/Escape focus behaviour and the 390x844 phone layout (no sideways scrolling, >= 24x24 targets, touch placement).
 - When adding such a guard, prove it fails with the fix reverted before trusting it.
+- Install/refresh browsers with the repo-local binary and from `frontend/` (`npx playwright install firefox webkit`): running `npx playwright ...` from the repo root resolves to an unrelated `playwright` release and stops at an interactive "Ok to proceed?" prompt, which looks like a stalled download.
+- Playwright renders differently per engine, so a layout-dependent tap/click point can pass on chromium and fail elsewhere: ask the page which element is on top at a candidate point (`document.elementFromPoint`, see `findTimelinePoint()` in `e2e_helpers.js`) instead of computing a point from a bounding box alone.
 
 ## Preferred Entry Commands
 - `./test_backend_unit.sh`

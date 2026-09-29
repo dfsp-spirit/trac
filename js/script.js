@@ -1038,8 +1038,16 @@ function ensureActivityInfoModal() {
   modalOverlay = document.createElement('div');
   modalOverlay.id = 'activityInfoModal';
   modalOverlay.className = 'modal-overlay';
+  // The role belongs to the element that is shown and hidden (the overlay), not
+  // to an inner wrapper: ui.js detects open/close by watching the style of the
+  // [role="dialog"] element, so a role buried inside the overlay meant the
+  // dialog was treated as "always open" and focus was never given back (WebKit
+  // then left focus on a control the user can no longer see).
+  modalOverlay.setAttribute('role', 'dialog');
+  modalOverlay.setAttribute('aria-modal', 'true');
+  modalOverlay.setAttribute('aria-labelledby', 'activityInfoModalTitle');
   modalOverlay.innerHTML = `
-        <div class="modal activity-info-modal" role="dialog" aria-modal="true" aria-labelledby="activityInfoModalTitle">
+        <div class="modal activity-info-modal">
             <div class="modal-header">
                 <h3 id="activityInfoModalTitle">${translateOrFallback(
                   'modals.activityContext.infoTitle',

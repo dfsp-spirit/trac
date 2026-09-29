@@ -214,7 +214,12 @@ function isDialogVisible(dialog) {
   return (
     dialog &&
     dialog.getAttribute('role') === 'dialog' &&
-    getComputedStyle(dialog).display !== 'none'
+    getComputedStyle(dialog).display !== 'none' &&
+    // A dialog nested in a hidden overlay reports its own display value
+    // ('block') even while nothing of it is rendered, so check that it really
+    // has a box - otherwise it would be treated as open and the focus trap
+    // would fight the page.
+    dialog.getClientRects().length > 0
   );
 }
 
@@ -316,6 +321,14 @@ function initModalFocusManagement() {
         const entry = modalFocusStack.splice(stackIndex, 1)[0];
         if (entry.trigger && entry.trigger.isConnected) {
           entry.trigger.focus();
+        }
+        // The trigger is often the <body> (nothing was focused when the dialog
+        // opened), which cannot take focus, and WebKit keeps focus on a control
+        // that just became display:none - the user would be left on an element
+        // they cannot see. Blur it in that case; focus then falls back to the
+        // document.
+        if (dialog.contains(document.activeElement)) {
+          document.activeElement.blur();
         }
       }
     });
