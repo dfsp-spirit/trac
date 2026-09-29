@@ -17,6 +17,7 @@
 ## Preferred Entry Commands
 - `./test_backend_unit.sh`
 - `./test_backend_integration.sh`
+- `./test_backend_migrations.sh` (real migrations; starts a throwaway database or uses `TUD_MIGRATION_TEST_DATABASE_URL`)
 - `./test_e2e.sh`
 
 ## Environment Notes
