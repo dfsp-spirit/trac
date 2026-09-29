@@ -3773,6 +3773,9 @@ function initTimelineInteraction(timeline) {
     const timelineName =
       window.timelineManager?.metadata?.[timelineElement.id]?.name ||
       'Timeline';
+    // A bare div cannot carry aria-label (axe: aria-prohibited-attr), so the
+    // timeline is exposed as a named group - the blocks inside stay operable.
+    timelineElement.setAttribute('role', 'group');
     timelineElement.setAttribute('aria-label', timelineName);
 
     if (!timelineElement.dataset.spaceKeyActivationBound) {

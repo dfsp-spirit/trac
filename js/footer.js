@@ -84,6 +84,9 @@
     a.style.margin = '0 6px';
     a.style.color = 'inherit';
     a.style.textDecoration = 'none';
+    // 13px text alone is a 16px-tall hit area; WCAG 2.2 SC 2.5.8 wants 24x24.
+    a.style.display = 'inline-block';
+    a.style.padding = '4px 2px';
     a.setAttribute('aria-label', text);
     if (openInNew) {
       a.target = '_blank';
@@ -167,24 +170,38 @@
       targetFooter.style.borderTop =
         targetFooter.style.borderTop || '1px solid #e5e7eb';
       targetFooter.style.fontSize = targetFooter.style.fontSize || '0.85rem';
-      targetFooter.style.color = targetFooter.style.color || '#6b7280';
+      // Keep in step with the inline colour of the static #footer in index.html:
+      // #ccc failed the axe color-contrast check (1.53:1) and #6b7280 only just
+      // passed (4.78:1) on the #f8fafc page background.
+      targetFooter.style.color = targetFooter.style.color || '#475569';
       targetFooter.style.textAlign = targetFooter.style.textAlign || 'center';
       targetFooter.style.marginTop = targetFooter.style.marginTop || '12px';
 
       // Clear and append
       targetFooter.innerHTML = '';
       const inner = document.createElement('div');
-      inner.style.display = 'inline-block';
-      inner.style.gap = '8px';
+      // Wrapping row: links were inline elements with no whitespace between them,
+      // so the browser had no place to break and the German row
+      // ("Impressum · Datenschutz · Studieninformation") grew to 415px and was
+      // clipped on phones. Each link now keeps its separator and may wrap.
+      inner.style.display = 'flex';
+      inner.style.flexWrap = 'wrap';
+      inner.style.justifyContent = 'center';
+      inner.style.alignItems = 'center';
+      inner.style.gap = '0 0.5rem';
+      inner.style.maxWidth = '100%';
       links.forEach((el, idx) => {
-        inner.appendChild(el);
+        const item = document.createElement('span');
+        item.style.whiteSpace = 'nowrap';
+        item.appendChild(el);
         if (idx < links.length - 1) {
           const sep = document.createElement('span');
           sep.textContent = '·';
-          sep.style.margin = '0 6px';
+          sep.style.margin = '0 0 0 0.5rem';
           sep.style.color = 'inherit';
-          inner.appendChild(sep);
+          item.appendChild(sep);
         }
+        inner.appendChild(item);
       });
       targetFooter.appendChild(inner);
 

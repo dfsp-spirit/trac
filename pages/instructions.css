@@ -69,6 +69,10 @@ body {
 .content {
   grid-column: 2;
   width: 100%;
+  /* Grid items default to min-width:auto; without this a wide child (the
+     German language row, a step image) stretched the column past the phone
+     viewport, and body's overflow-x:hidden then clipped the content. */
+  min-width: 0;
   margin: 0;
   background: white;
   padding: var(--space-lg);
@@ -742,7 +746,7 @@ li {
 
 @media (max-width: 640px) {
   body {
-    grid-template-columns: 12px 1fr 12px;
+    grid-template-columns: 12px minmax(0, 1fr) 12px;
   }
 
   .content {

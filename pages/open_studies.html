@@ -34,9 +34,15 @@
 
         main {
             grid-column: 2;
+            /* Grid items default to min-width:auto, so a wide child (long study
+               name / link) used to stretch its track past the phone viewport. */
+            min-width: 0;
         }
 
         .open-studies-container {
+            /* border-box: these pages do not load styles.css, so width:100% +
+               padding used to run ~77px past a 390px phone viewport. */
+            box-sizing: border-box;
             width: 100%;
             margin: 0;
             padding: 36px 28px;
@@ -64,6 +70,7 @@
         }
 
         .studies-list li {
+            box-sizing: border-box;
             padding: 20px 24px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -121,11 +128,17 @@
 
         @media (max-width: 480px) {
             body {
-                grid-template-columns: 12px 1fr 12px;
+                grid-template-columns: 12px minmax(0, 1fr) 12px;
             }
 
             .open-studies-container {
                 padding: 28px 20px;
+                min-width: 0;
+            }
+
+            .study-name,
+            .study-link {
+                overflow-wrap: anywhere;
             }
 
             h1 {

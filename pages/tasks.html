@@ -36,6 +36,8 @@
         }
 
         .tasks-container {
+            /* border-box: width:100% + padding otherwise overflows phones. */
+            box-sizing: border-box;
             grid-column: 2;
             width: 100%;
             margin: 0;
@@ -155,7 +157,8 @@
             border-radius: 10px;
             text-decoration: none;
             color: white;
-            background: var(--success-color);
+            /* #059669 (--success-color) gives white text only 3.76:1. */
+            background: #047857;
             font-weight: 600;
         }
 

@@ -20,6 +20,16 @@
 - Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.
 - `frontend/tests/unit/timeline_validation.test.js` covers `Timeline.validate()`: overlaps throw, and the drag/resize/undo handlers depend on that throw to revert an invalid change. CI runs an extra chromium E2E leg with `TZ=Europe/Berlin` (`.github/workflows/e2e_tests.yml`) so timezone/DST assumptions fail in CI rather than on a participant's phone.
 
+## Accessibility & mobile
+- Participants answer on phones and include older adults, so both are treated as first-class: `frontend/tests/e2e/accessibility.spec.js` runs axe-core (WCAG 2.0/2.1/2.2 A + AA) over every participant page and over the activity picker / activity info dialogs, and `frontend/tests/e2e/mobile_layout.spec.js` checks a 390x844 phone (no sideways scrolling, >= 24x24 primary controls, placement by touch). `frontend/tests/e2e/participant_pages.js` is the shared page list - add a participant page there and all guards sweep it.
+- Never put `aria-label` on an element without a role: a bare `div` drops it (`timeline` containers are `role="group"`).
+- Colours: text must reach 4.5:1 (3:1 for large text) on the background it actually sits on - the timeline descriptions sit on `#eaeaea` when the timeline is active, not on white. Greys that pass: `#475569`, `#6b7280` on white; `#ccc` (1.53:1) and `#808080` on `#eaeaea` (3.28:1) do not.
+- `.skip-btn` shows why style order matters: the later `.btn { color: white }` rule silently won over the single-class `.skip-btn` colour, rendering the label invisible. State the colour with at least the same specificity (`.btn.skip-btn`) or after the base rule.
+- Do not disable zoom in the viewport meta (`user-scalable=no`, `maximum-scale=1.0`).
+- Pages that do not load `styles/styles.css` (`consent`, `instructions`, `open_studies`, `tasks`, `thank-you`, `timeout`) have no box-sizing reset, and their `body` is a grid with `1fr` tracks: use `box-sizing: border-box` on full-width containers, `minmax(0, 1fr)` for the content track and `min-width: 0` on the grid item, or a wide child (a long German label, a long study name) stretches the column past the viewport while `overflow-x: hidden` silently clips it.
+- Interactive targets need 24x24 CSS px (WCAG 2.2 SC 2.5.8). Inline links in a wrapping row need padding, and a row of links must offer a break opportunity (flex-wrap with each link+separator kept together) - inline links with no whitespace between them cannot wrap at all.
+- `frontend/tests/e2e/keyboard_accessibility.spec.js` guards the dialog focus trap in `js/ui.js` (Tab/Shift+Tab stay inside, Escape closes and restores focus) and the timeline containers; a change to the MutationObserver, `MODAL_CLOSE_SELECTOR` or the focus restore has to keep those tests green.
+
 ## Localization
 - Locale resources are in `frontend/src/locales/`.
 - Language fallback order: URL `lang` -> browser language -> study default.

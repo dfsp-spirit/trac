@@ -34,6 +34,8 @@
         }
 
         .timeout-container {
+            /* border-box: width:100% + padding otherwise overflows phones. */
+            box-sizing: border-box;
             width: 100%;
             margin: 0;
             padding: 36px 28px;

@@ -5,7 +5,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="common.loading">Loading...</title>
 
     <!-- Favicons -->
@@ -125,7 +125,9 @@
             </button>
         </div>
     </div>
-    <div id="footer" style="padding: 20px; border-top: 1px solid #ddd; text-align: center; margin-top: 20px; font-size: small; color: #ccc;">
+    <!-- The footer is re-used by js/footer.js, which keeps this colour for the legal links.
+         #ccc on the page background was 1.53:1 (axe: color-contrast) - unreadable. -->
+    <div id="footer" style="padding: 20px; border-top: 1px solid #ddd; text-align: center; margin-top: 20px; font-size: small; color: #475569;">
         <span id="footer_app_title" data-i18n="footer.title">TRAC</span>
         <span id="footer_app_version" style="margin-left: 4px;"></span>
         <br />
