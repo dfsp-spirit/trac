@@ -4,6 +4,12 @@ TRAC MPIAE Changes
 
 Version 0.20.1 -- i18n hardening
 --------------------------------
+- CHG: drop the duplicate "Save Day" button from the diary footer. Both it and
+  the button in the toolbar above the timeline called the very same save
+  routine, and the toolbar one is the one users reach (it is sticky on phones).
+  The footer now collapses entirely while it has no visible action, which is the
+  case for every study with `allow_skip_timeuse: false`: an empty action row was
+  costing a full row of vertical space on phones.
 - NEW: the database schema is documented as forward-only, and that policy now has
   tests. `backend/tests/migrations/` (run with the new `./test_backend_migrations.sh`,
   which starts a throwaway database) executes the real migrations, which no other

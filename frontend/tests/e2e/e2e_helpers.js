@@ -259,7 +259,7 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
  * @param {import('@playwright/test').Page} page
  */
 async function saveCurrentDay(page, { reenter = true } = {}) {
-  const saveBtn = page.locator('#navSubmitBtn');
+  const saveBtn = page.locator('#nextBtn');
   await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
   await expect(saveBtn).toBeEnabled({ timeout: 3000 });
 

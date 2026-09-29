@@ -95,4 +95,8 @@ test('adult_pilot_de hides skip reporting button when allow_skip_timeuse is fals
   await enterStudyIfNeeded(page);
   await expect(page.locator('#currentDayDisplay')).toBeVisible();
   await expect(page.locator('#skipReportingBtn')).toBeHidden();
+  // The whole footer collapses with it: "Skip time reporting" is the only
+  // action it holds, so leaving the row in place would just be dead vertical
+  // space (especially on phones).
+  await expect(page.locator('#instructionsFooter')).toBeHidden();
 });
