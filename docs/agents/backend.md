@@ -13,6 +13,7 @@
 - Admin portal templates are under `backend/src/o_timeusediary_backend/templates/`.
 - Admin routes rely on HTTP Basic Auth and environment-driven credentials.
 - Request validation and constrained response models are required.
+- **HTML escaping:** admin pages are opened by authenticated administrators, so anything request- or store-controlled that reaches an HTML response must be escaped. Render a Jinja template (autoescaping is on) or escape explicitly with `html.escape()` - never interpolate values into HTML with an f-string (`HTMLResponse(content=f"...")`), and never add `|safe` to a template. `tests/unit/test_html_escaping_guards.py` fails on both shapes; `tests/integration/test_admin_html_escaping.py` verifies the behaviour of the admin study pages.
 
 ### Admin roles and study scope
 - Two roles exist: **super admins** (`TUD_API_ADMIN_USERNAME`/`TUD_API_ADMIN_PASSWORD`, all studies) and **scientists** (`TUD_API_SCIENTISTS`, only studies they own plus env-granted ones).

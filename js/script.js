@@ -19,6 +19,18 @@ import {
 } from './utils.js';
 import { updateIsMobile, getIsMobile } from './globals.js';
 import {
+  PENDING_TIMELINE_STATE_KEY,
+  DRAFT_TIMELINE_STATE_KEY,
+  clearTimelineState,
+  readStoredTimelineState,
+  storeTimelineState,
+  isStoredTimelineStateFresh,
+  matchesTimelineContext,
+  safeGetItem,
+  safeSetItem,
+  safeRemoveItem,
+} from './draft_storage.js';
+import {
   createModal,
   createFloatingAddButton,
   updateFloatingButtonPosition,
@@ -100,13 +112,17 @@ function _daySavedKey(study, pid, dayIndex) {
 function markDaySaved(study, pid, dayIndex) {
   try {
     sessionStorage.setItem(_daySavedKey(study, pid, dayIndex), '1');
-  } catch (_) { /* storage full or unavailable — best effort */ }
+  } catch (_) {
+    /* storage full or unavailable — best effort */
+  }
 }
 
 function wasDaySaved(study, pid, dayIndex) {
   try {
     return sessionStorage.getItem(_daySavedKey(study, pid, dayIndex)) === '1';
-  } catch (_) { return false; }
+  } catch (_) {
+    return false;
+  }
 }
 
 window.markDaySaved = markDaySaved;
@@ -514,8 +530,9 @@ function initInstructionBanner() {
     return;
   }
 
-  // Check if user has already closed the banner (using localStorage)
-  const bannerClosed = localStorage.getItem(bannerStorageKey);
+  // Check if user has already closed the banner (using localStorage). Storage
+  // access itself can throw (blocked cookies, private mode), so it is guarded.
+  const bannerClosed = safeGetItem(localStorage, bannerStorageKey);
   if (bannerClosed === 'true') {
     banner.remove();
     return;
@@ -528,7 +545,7 @@ function initInstructionBanner() {
   if (closeBtn) {
     closeBtn.addEventListener('click', () => {
       banner.style.display = 'none';
-      localStorage.setItem(bannerStorageKey, 'true');
+      safeSetItem(localStorage, bannerStorageKey, 'true');
     });
   }
 }
@@ -5368,10 +5385,6 @@ function getPreferredLanguage(
   );
 }
 
-const PENDING_TIMELINE_STATE_KEY = 'trac.pendingTimelineState.v1';
-const DRAFT_TIMELINE_STATE_KEY = 'trac.timelineDraftState.v1';
-const DRAFT_TIMELINE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-
 function getPendingTimelineContext() {
   const urlParams = new URLSearchParams(window.location.search);
   return {
@@ -5393,45 +5406,7 @@ function hasAnyLocalActivities() {
 }
 
 function clearStoredTimelineState() {
-  sessionStorage.removeItem(PENDING_TIMELINE_STATE_KEY);
-  localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
-}
-
-function storeTimelineState(storage, key, payload) {
-  try {
-    storage.setItem(key, JSON.stringify(payload));
-    return true;
-  } catch (error) {
-    console.warn(`Failed to store timeline state in ${key}:`, error);
-    return false;
-  }
-}
-
-function readStoredTimelineState(storage, key) {
-  const raw = storage.getItem(key);
-  if (!raw) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    console.warn(
-      `Invalid stored timeline state payload for ${key}, clearing it:`,
-      error
-    );
-    storage.removeItem(key);
-    return null;
-  }
-}
-
-function isStoredTimelineStateFresh(payload) {
-  const savedAt = Number(payload?.savedAt);
-  if (!Number.isFinite(savedAt)) {
-    return false;
-  }
-
-  return Date.now() - savedAt <= DRAFT_TIMELINE_MAX_AGE_MS;
+  clearTimelineState({ sessionStorage, localStorage });
 }
 
 window.__TRAC_CAPTURE_PENDING_STATE = function capturePendingTimelineState() {
@@ -5508,25 +5483,20 @@ async function tryRestorePendingTimelineState(
 
   if (!payload) {
     if (localPayload && !isStoredTimelineStateFresh(localPayload)) {
-      localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
+      safeRemoveItem(localStorage, DRAFT_TIMELINE_STATE_KEY);
     }
     return false;
   }
 
-  const expected = {
+  const sameContext = matchesTimelineContext(payload, {
     pid: participantId || '',
     study_name: studyName || '',
     day_label_index: String(dayIndex),
-  };
-
-  const sameContext =
-    payload?.pid === expected.pid &&
-    payload?.study_name === expected.study_name &&
-    payload?.day_label_index === expected.day_label_index;
+  });
 
   if (!sameContext) {
     if (localPayload && payload === localPayload) {
-      localStorage.removeItem(DRAFT_TIMELINE_STATE_KEY);
+      safeRemoveItem(localStorage, DRAFT_TIMELINE_STATE_KEY);
     }
     return false;
   }
@@ -5716,7 +5686,8 @@ async function saveAndSwitchToDay(targetDayIndex) {
   // Copy Days: mark the source day as saved so templates aren't re-loaded
   // if the user intentionally saved an empty day.
   const urlParams = new URLSearchParams(window.location.search);
-  const studyName = urlParams.get('study_name') ||
+  const studyName =
+    urlParams.get('study_name') ||
     window.studyConfigManager?.getCurrentStudy?.()?.name_short;
   const pid = urlParams.get('pid');
   if (studyName && pid) {
@@ -6932,8 +6903,12 @@ function hasFrontendActivities() {
 // Keep old name as alias for backward compatibility with any remaining callers.
 function getEmptyTargetDayIndices() {
   return getAllTargetDayIndices()
-    .filter(function (t) { return !t.hasData; })
-    .map(function (t) { return t.index; });
+    .filter(function (t) {
+      return !t.hasData;
+    })
+    .map(function (t) {
+      return t.index;
+    });
 }
 
 function removeCopyDayContextMenu() {
@@ -7048,7 +7023,9 @@ function showCopySourcePicker(targetDayIndex, event) {
   const t =
     window.i18n && window.i18n.isReady()
       ? window.i18n.t.bind(window.i18n)
-      : function (key) { return key; };
+      : function (key) {
+          return key;
+        };
 
   const targetDayName =
     window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
@@ -7138,9 +7115,10 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
     ? window.timelineManager.dayIndicesWithData
     : [];
   const currentDayIndex = getCurrentDayIndex();
-  const targetHasData = (targetDayIndex === currentDayIndex)
-    ? hasFrontendActivities()
-    : dayIndicesWithData.includes(targetDayIndex);
+  const targetHasData =
+    targetDayIndex === currentDayIndex
+      ? hasFrontendActivities()
+      : dayIndicesWithData.includes(targetDayIndex);
 
   if (targetHasData) {
     const targetDayName =
