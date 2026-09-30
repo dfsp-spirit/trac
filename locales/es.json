@@ -155,6 +155,8 @@
     "daySavedStayOnPage": "Día guardado.",
     "copyDayEmpty": "vacío",
     "copyDayHasData": "tiene datos",
+    "copyOverwriteTitle": "¿Sobrescribir el día?",
+    "copyOverwriteYes": "Sobrescribir",
     "copyOverwriteConfirm": "{{day}} ya tiene datos. ¿Sobrescribir?",
     "submitStudyIncomplete": "Días incompletos: {{days}}",
     "submitStudyIncompleteHint": "Completa todos los días antes de enviar"

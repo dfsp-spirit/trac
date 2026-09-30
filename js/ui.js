@@ -213,7 +213,7 @@ window.updateDisabledButtonOverlays = updateDisabledButtonOverlays;
 const MODAL_FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const MODAL_CLOSE_SELECTOR =
-  '.modal-close, .close, #confirmSkipCancel, #confirmClearTimelineCancel';
+  '.modal-close, .close, #confirmSkipCancel, #confirmClearTimelineCancel, [data-modal-cancel]';
 
 // Stack of open dialogs: [{ dialog, trigger }]
 const modalFocusStack = [];
@@ -360,6 +360,99 @@ function initModalFocusManagement() {
 }
 
 window.initModalFocusManagement = initModalFocusManagement;
+
+// ── Reusable confirmation dialog ─────────────────────────────────────
+// A styled replacement for window.confirm(): the browser's native prompt is
+// unstyled and looks nothing like the rest of the app (it is also untestable -
+// Playwright has to intercept a real OS-level dialog). Callers get a promise
+// that resolves true on confirm and false on cancel / Escape / backdrop click.
+//
+// The overlay is built on first use and reused afterwards; the ids are the
+// caller's so the copy-overwrite dialog keeps #copyOverwriteConfirm /
+// #copyOverwriteYes, the ids the Copy Days plan and the E2E helpers use.
+// The cancel button carries data-modal-cancel, which is in
+// MODAL_CLOSE_SELECTOR, so the shared focus manager closes the dialog on Escape
+// and restores focus to the control that opened it.
+let pendingConfirmResolver = null;
+
+function showConfirmDialog({
+  overlayId,
+  confirmId,
+  cancelId,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+}) {
+  const translate = (key) =>
+    window.i18n && window.i18n.isReady() ? window.i18n.t(key) : key;
+
+  let overlay = document.getElementById(overlayId);
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = overlayId;
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-labelledby', `${overlayId}Title`);
+    overlay.innerHTML = `
+        <div class="modal">
+            <div class="modal-content">
+                <h3 id="${overlayId}Title"></h3>
+                <p class="confirm-dialog-message"></p>
+                <div class="button-container">
+                    <button type="button" class="btn btn-secondary" id="${cancelId}" data-modal-cancel></button>
+                    <button type="button" class="btn save-btn" id="${confirmId}"></button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+  }
+
+  overlay.querySelector(`#${overlayId}Title`).textContent = title;
+  overlay.querySelector('.confirm-dialog-message').textContent = message;
+  const cancelBtn = overlay.querySelector(`#${cancelId}`);
+  const confirmBtn = overlay.querySelector(`#${confirmId}`);
+  cancelBtn.textContent = cancelLabel || translate('buttons.cancel');
+  confirmBtn.textContent = confirmLabel;
+
+  // A promise settles once; opening the dialog again gets fresh listeners. Any
+  // earlier dialog still waiting is answered "no" rather than left hanging.
+  if (pendingConfirmResolver) {
+    const stale = pendingConfirmResolver;
+    pendingConfirmResolver = null;
+    stale(false);
+  }
+
+  return new Promise((resolve) => {
+    const settle = (value) => {
+      cancelBtn.removeEventListener('click', onCancel);
+      confirmBtn.removeEventListener('click', onConfirm);
+      overlay.removeEventListener('click', onBackdropClick);
+      overlay.style.display = 'none';
+      pendingConfirmResolver = null;
+      resolve(value);
+    };
+    const onCancel = () => settle(false);
+    const onConfirm = () => settle(true);
+    const onBackdropClick = (event) => {
+      if (event.target === overlay) settle(false);
+    };
+
+    cancelBtn.addEventListener('click', onCancel);
+    confirmBtn.addEventListener('click', onConfirm);
+    overlay.addEventListener('click', onBackdropClick);
+    pendingConfirmResolver = settle;
+
+    // .modal-overlay is display:none until an inline display:block is set (the
+    // stylesheet turns that into flex) - same show/hide contract as the other
+    // dialogs, which is also what the focus manager observes.
+    overlay.style.display = 'block';
+  });
+}
+
+window.showConfirmDialog = showConfirmDialog;
 
 // Modal management
 function createModal() {

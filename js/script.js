@@ -7067,9 +7067,16 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
     const targetDayName =
       window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
       t('common.day') + ' ' + (targetDayIndex + 1);
-    const confirmed = window.confirm(
-      t('messages.copyOverwriteConfirm', { day: targetDayName })
-    );
+    // Styled dialog, not window.confirm() - the native prompt is unstyled and
+    // has to be intercepted in tests. See showConfirmDialog in ui.js.
+    const confirmed = await window.showConfirmDialog({
+      overlayId: 'copyOverwriteConfirm',
+      confirmId: 'copyOverwriteYes',
+      cancelId: 'copyOverwriteNo',
+      title: t('messages.copyOverwriteTitle'),
+      message: t('messages.copyOverwriteConfirm', { day: targetDayName }),
+      confirmLabel: t('messages.copyOverwriteYes'),
+    });
     if (!confirmed) {
       return;
     }

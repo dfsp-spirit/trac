@@ -155,6 +155,8 @@
     "daySavedStayOnPage": "Journée enregistrée.",
     "copyDayEmpty": "vide",
     "copyDayHasData": "contient des données",
+    "copyOverwriteTitle": "Écraser le jour ?",
+    "copyOverwriteYes": "Écraser",
     "copyOverwriteConfirm": "{{day}} contient déjà des données. Écraser ?",
     "submitStudyIncomplete": "Jours incomplets : {{days}}",
     "submitStudyIncompleteHint": "Terminez tous les jours avant d’envoyer"
