@@ -5612,7 +5612,9 @@ function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
     return;
   }
 
-  const controlsContainer = document.querySelector('.header-section .controls');
+  const controlsContainer =
+    document.querySelector('.header-section .controls-group') ||
+    document.querySelector('.header-section .controls');
   if (!controlsContainer) {
     return;
   }

@@ -92,12 +92,17 @@ function uiText(key, fallback) {
   return window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
 }
 
-/** Build the chip on first use, as the last item of the diary toolbar. */
+/** Build the chip on first use, inside the diary toolbar's button group. */
 function ensureSyncStatusChip() {
   const existing = document.getElementById('syncStatus');
   if (existing) return existing;
 
-  const toolbar = document.querySelector('.header-section .controls');
+  // Inside .controls-group: on desktop the chip is positioned against that group
+  // (so the buttons never move), on phones it floats. Falls back to the toolbar
+  // itself if the group is ever missing.
+  const toolbar =
+    document.querySelector('.header-section .controls-group') ||
+    document.querySelector('.header-section .controls');
   if (!toolbar) return null;
 
   const chip = document.createElement('span');
@@ -127,8 +132,8 @@ function ensureSyncStatusChip() {
   });
 
   chip.append(icon, text, retry);
-  // Inside the toolbar, not next to it: as a sibling of .controls the chip gets
-  // a line of its own and moves the timeline while the participant is editing.
+  // Out of the flex flow in both layouts (absolute on desktop, fixed on phones),
+  // so appearing and disappearing never moves the buttons.
   toolbar.appendChild(chip);
   return chip;
 }

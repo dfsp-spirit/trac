@@ -238,8 +238,16 @@ body {
   display: none;
 }
 
+/* The day title and its copy button sit on one line: as a block, the button was
+   baseline-aligned with the 24 px title text and hung ~5 px below it (and below
+   the title's own box, eating the gap to the timeline). Centring it in a flex row
+   puts it level with the day text and restores the space underneath. */
 .timeline-title {
-  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 4px 0 6px 0;
   font-size: clamp(18px, 2.5vw, 24px);
   color: var(--text-color);
   font-weight: 400;
@@ -1034,6 +1042,18 @@ body {
   flex-wrap: wrap;
 }
 
+/* The toolbar buttons, grouped so the autosave status chip can hang beside them
+   without joining the row that gets centred. Wrapping happens here rather than on
+   .controls, which now has a single in-flow child. */
+.controls-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .previous-days-switch-row {
   display: flex;
   flex-wrap: wrap;
@@ -1324,33 +1344,37 @@ body {
   margin-left: 0.5rem;
 }
 
-/* The ⋮ trigger only exists below the desktop breakpoint, so desktop keeps the
-   individual buttons it replaces. Id selectors so no later `.btn` rule wins. */
+/* The ⋮ trigger exists at every width now: it holds the two actions that should
+   not compete with the day's own controls - "Skip time reporting" (a last resort,
+   not something to offer all day) and the language picker (touched about once).
+   Id selectors so no later `.btn` rule wins. */
 #moreMenuBtn {
-  display: none;
+  display: inline-flex;
   /* Icon-only: the shared `.btn` min-width of 120px would swallow a third of the
      toolbar row and force the very wrap the menu exists to avoid. */
   min-width: auto;
   padding: 0 clamp(10px, 2vw, 14px);
 }
 
+/* Actions that live in the ⋮ menu at every width. They stay in the DOM and keep
+   their handlers - the menu proxies .click() to them - and hiding
+   #skipReportingBtn collapses its footer row (updateFooterVisibility), which is
+   what reclaims the space. */
+#skipReportingBtn,
+.language-select-wrapper {
+  display: none;
+}
+
 @media (max-width: 1439.98px) {
-  #moreMenuBtn {
-    display: inline-flex;
-  }
-
-  /* Actions that move into the ⋮ menu on phones. They stay in the DOM and keep
-     their handlers - the menu proxies .click() to them - and hiding
-     #skipReportingBtn collapses the footer (updateFooterVisibility). */
-  #clearTimelineBtn,
-  .language-select-wrapper,
-  #skipReportingBtn {
-    display: none;
-  }
-
   /* The cycling switcher is replaced by the context bar's timeline picker,
      which names the current timeline and lists them all with their coverage. */
   #switchTimelineBtn {
+    display: none;
+  }
+
+  /* Clear timeline has a menu entry of its own in the context bar's timeline
+     menu. */
+  #clearTimelineBtn {
     display: none;
   }
 }
@@ -1361,6 +1385,8 @@ body {
 .btn.copy-day-link {
   display: inline-flex;
   align-items: center;
+  /* The title is a flex row now, so a gap would also separate the day name from
+     "(Day 1 of 7)" - keep the spacing here instead. */
   margin-left: 10px;
   min-width: auto;
   min-height: 28px;
@@ -1811,6 +1837,18 @@ body.carrying-activity .modal-close {
 
 .btn.sync-status-retry[hidden] {
   display: none;
+}
+
+/* The chip hangs to the right of the button group, out of flow, so the buttons
+   never move when it appears or disappears. */
+@media (min-width: 1440px) {
+  .sync-status {
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
