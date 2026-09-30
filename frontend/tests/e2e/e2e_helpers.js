@@ -119,12 +119,25 @@ async function enterStudyIfNeeded(page) {
     if (isConsentUrl(currentUrl)) {
       const consentAcceptBtn = page.locator('#consentAcceptBtn');
       const consentCheckbox = page.locator('#consentCheckbox');
+      // Both waits are bounded on purpose. The page can navigate away from
+      // consent while they resolve, and an unbounded isChecked() then sits on
+      // its 30s action timeout waiting for a checkbox that never comes back -
+      // that burned a whole 40s test budget on CI (page_titles.spec.js "Test
+      // timeout of 40000ms exceeded", trace parked on "waiting for
+      // locator('#consentCheckbox')" while the instructions page was already
+      // loading). Failing fast hands control back to the loop, which re-reads
+      // the URL and follows the redirect.
+      let mustCheck = false;
       try {
-        if ((await consentCheckbox.count()) > 0 && !(await consentCheckbox.isChecked())) {
-          await consentCheckbox.check({ timeout: 2000 }).catch(() => undefined);
+        if ((await consentCheckbox.count()) > 0) {
+          mustCheck = !(await consentCheckbox.isChecked({ timeout: 2000 }));
         }
       } catch (e) {
-        // ignore
+        // Element gone, or never became checkable: the accept click below
+        // decides, and the next iteration re-reads the URL.
+      }
+      if (mustCheck) {
+        await consentCheckbox.check({ timeout: 2000 }).catch(() => undefined);
       }
       await consentAcceptBtn
         .click({ timeout: 5000 })
