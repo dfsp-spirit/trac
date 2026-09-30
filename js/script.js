@@ -61,6 +61,17 @@ import {
 import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
 import { checkAndRequestPID } from './utils.js';
 
+// Colours for the footer's backend status line. It is 13px text on the page
+// background (#f8fafc), which needs 4.5:1 (WCAG AA) - the #ccc / 'red' /
+// 'orange' it shipped with were 1.53:1, 3.82:1 and 1.89:1, i.e. unreadable, and
+// are caught by the accessibility spec as soon as the status leaves its
+// initial "Connecting..." state.
+const FOOTER_STATUS_COLOR = {
+  ok: '#047857', // 5.2:1 - "Connected to backend"
+  warning: '#a16207', // 4.7:1 - no study / study not found
+  error: '#b91c1c', // 6.2:1 - backend unreachable
+};
+
 // Make window.selectedActivity a global property that persists across DOM changes.
 // Using a property setter so the body cursor updates automatically whenever an
 // activity is selected (→ crosshair to indicate "carrying" it) or cleared.
@@ -5888,7 +5899,7 @@ async function init() {
             window.i18n && window.i18n.isReady()
               ? i18n.t('messages.noStudiesAvailable')
               : 'No studies available on server.';
-          footerStatus.style.color = 'orange';
+          footerStatus.style.color = FOOTER_STATUS_COLOR.warning;
         }
         // Hide footer action buttons (Submit, Skip) since no study is active
         const footerActions = document.getElementById('instructionsFooter');
@@ -5927,7 +5938,7 @@ async function init() {
         const footerStatus = document.getElementById('footer_backend_status');
         if (footerStatus) {
           footerStatus.textContent = msgText;
-          footerStatus.style.color = 'orange';
+          footerStatus.style.color = FOOTER_STATUS_COLOR.warning;
         }
         // Hide footer action buttons (Submit, Skip) since no study is active
         const footerActions = document.getElementById('instructionsFooter');
@@ -6205,7 +6216,7 @@ async function init() {
       if (footerStatus) {
         updateFooterBackendStatus(
           'footer.backend_status_error',
-          'red',
+          FOOTER_STATUS_COLOR.error,
           'Backend error'
         );
       } else {
@@ -6270,13 +6281,13 @@ async function init() {
       if (configLoadBackendSuccess) {
         updateFooterBackendStatus(
           'footer.backend_status_connected',
-          '#ccc',
+          FOOTER_STATUS_COLOR.ok,
           'Connected to backend'
         );
       } else {
         updateFooterBackendStatus(
           'footer.backend_status_error',
-          'red',
+          FOOTER_STATUS_COLOR.error,
           'Backend error'
         );
       }
@@ -7207,7 +7218,8 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       // The save persisted the current frontend state to the DB for the
       // current day label, so mark it clean and record it as a day with data.
       if (window.timelineManager) {
-        window.timelineManager._unsavedChanges = false;        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
+        window.timelineManager._unsavedChanges = false;
+        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
           if (
             !window.timelineManager.dayIndicesWithData.includes(sourceDayIndex)
           ) {
