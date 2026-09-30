@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Enregistrement automatique et envoi de votre journal",
-      "description": "Vous n'avez plus besoin d'enregistrer votre journée : vos saisies sont enregistrées automatiquement peu de temps après, et l'état affiché pendant votre saisie indique si la journée est enregistrée. Si un problème est signalé, utilisez \"Réessayer\". Vous pourrez encore modifier cette journée plus tard. Lorsque tous les jours de l'étude sont complets, cliquez sur \"Soumettre l'étude\" pour envoyer votre journal et terminer l'étude.",
+      "description": "Vous n'avez pas besoin d'enregistrer votre journée : vos saisies sont enregistrées automatiquement au fur et à mesure. Vous pourrez encore modifier cette journée plus tard. Lorsque tous les jours de l'étude sont complets, cliquez sur \"Soumettre l'étude\" pour envoyer votre journal et terminer l'étude.",
       "submitStudyHelp": "Cliquez pour soumettre votre journal lorsque tous les jours sont complets"
     },
     "helpfulTools": "Outils utiles",

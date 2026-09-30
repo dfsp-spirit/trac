@@ -904,8 +904,10 @@ went with it:
   cover the entire timeline.") already tells the participant what is missing.
 
 Step 4 of the instructions page no longer shows a Save Day demo button; its text
-now describes the status chip and the retry (`instructions.step4.title` and
-`.description` rewritten in all 7 locales).
+now says the day saves itself while you edit, that you can still edit it later, and
+that Submit Study ends the study (`instructions.step4.title` kept, `.description`
+rewritten in all 7 locales - and shortened again in §19: the status-chip/Retry
+sentence was dropped as too much detail for a page nobody re-reads).
 
 ### Clear timeline needed an undo (the one thing Save Day was still protecting)
 

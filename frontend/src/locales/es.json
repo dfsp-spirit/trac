@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Guardar automáticamente y enviar tu diario",
-      "description": "Ya no necesitas guardar tu día: tus entradas se almacenan automáticamente poco después de que las hagas, y el estado que se muestra mientras editas indica si el día está guardado. Si se informa de un problema, usa \"Reintentar\". Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
+      "description": "No necesitas guardar tu día: tus entradas se guardan automáticamente mientras editas. Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
       "submitStudyHelp": "Haz clic para enviar tu diario cuando todos los días estén completos"
     },
     "helpfulTools": "Herramientas útiles",
