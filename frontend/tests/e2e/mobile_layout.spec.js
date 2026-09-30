@@ -3,7 +3,7 @@ const {
   PARTICIPANT_PAGES,
   MOBILE_VIEWPORT,
 } = require('./participant_pages.js');
-const { enterStudyIfNeeded, findTimelinePoint } = require('./e2e_helpers.js');
+const { enterStudyIfNeeded, findTimelinePoint, openParticipantPage } = require('./e2e_helpers.js');
 
 // Phone layout checks. Every other spec runs at a desktop window size (or sets a
 // narrow viewport only to reach the mobile *controls*), so a page that pushes
@@ -23,8 +23,7 @@ test.use({ viewport: MOBILE_VIEWPORT, hasTouch: true });
 
 for (const target of PARTICIPANT_PAGES) {
   test(`no sideways scrolling on a phone: ${target.name}`, async ({ page }) => {
-    await page.goto(target.url, { waitUntil: 'load' });
-    await page.locator(target.ready).first().waitFor({ state: 'attached' });
+    await openParticipantPage(page, target);
     await page.waitForTimeout(300);
 
     const { scrollWidth, clientWidth } = await page.evaluate(() => ({

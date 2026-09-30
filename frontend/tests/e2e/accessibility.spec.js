@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 const { AxeBuilder } = require('@axe-core/playwright');
 const { PARTICIPANT_PAGES, MOBILE_VIEWPORT } = require('./participant_pages.js');
-const { enterStudyIfNeeded } = require('./e2e_helpers.js');
+const { enterStudyIfNeeded, openParticipantPage } = require('./e2e_helpers.js');
 
 // Automated accessibility check (axe-core) over every participant page and over
 // the diary's dialogs.
@@ -72,8 +72,7 @@ async function expectNoA11yViolations(page, label) {
 
 for (const target of PARTICIPANT_PAGES) {
   test(`no accessibility violations: ${target.name}`, async ({ page }) => {
-    await page.goto(target.url, { waitUntil: 'load' });
-    await page.locator(target.ready).first().waitFor({ state: 'attached' });
+    await openParticipantPage(page, target);
     await settle(page);
 
     await expectNoA11yViolations(page, target.name);

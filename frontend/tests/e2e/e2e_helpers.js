@@ -170,6 +170,28 @@ async function enterStudyIfNeeded(page) {
   });
 }
 
+/**
+ * Open one of the swept participant pages (see participant_pages.js) and wait
+ * until its real content is on screen.
+ *
+ * Diary entries are driven to the diary UI rather than waited on where the
+ * redirect happened to land: their `ready` (`#currentDayDisplay`) does not exist
+ * on the consent/instructions pages, and `#mainContent` - which does - also
+ * matches on the instructions page, so waiting on it let the first assertion of
+ * a sweep run mid-navigation ("Execution context was destroyed, most likely
+ * because of a navigation").
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {{url: string, ready: string, enterStudy?: boolean}} target
+ */
+async function openParticipantPage(page, target) {
+  await page.goto(target.url, { waitUntil: 'load' });
+  if (target.enterStudy) {
+    await enterStudyIfNeeded(page);
+  }
+  await page.locator(target.ready).first().waitFor({ state: 'attached' });
+}
+
 // ── Pointer helpers ────────────────────────────────────────────────────────
 
 const ACTIVE_TIMELINE = '.timeline-container[data-active="true"] .timeline';
@@ -624,6 +646,7 @@ async function getDayButtonCount(page) {
 module.exports = {
   enterConsentAndInstructionsIfNeeded,
   enterStudyIfNeeded,
+  openParticipantPage,
   // Pointer helpers
   findTimelinePoint,
   // Copy Days helpers

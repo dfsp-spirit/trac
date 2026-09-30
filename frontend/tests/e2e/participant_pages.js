@@ -5,6 +5,13 @@
 // `url` is relative to the Playwright baseURL; `ready` is an element that only
 // exists once the page has rendered its real content, so the specs do not test a
 // half-built page.
+//
+// `enterStudy` marks the diary, which can bounce through consent/instructions
+// before it renders. The sweep specs then use openParticipantPage(), which
+// drives it with enterStudyIfNeeded(); waiting for `ready` where the redirect
+// happened to land was a race - `#mainContent` also exists on the instructions
+// page, so the first assertion could run mid-navigation and die with
+// "Execution context was destroyed, most likely because of a navigation".
 const PARTICIPANT_PAGES = [
   {
     name: 'instructions (en)',
@@ -24,12 +31,14 @@ const PARTICIPANT_PAGES = [
   {
     name: 'diary (en)',
     url: 'index.html?study_name=default&lang=en&instructions=completed',
-    ready: '#mainContent',
+    ready: '#currentDayDisplay',
+    enterStudy: true,
   },
   {
     name: 'diary (de)',
     url: 'index.html?study_name=adult_pilot_de&lang=de&instructions=completed',
-    ready: '#mainContent',
+    ready: '#currentDayDisplay',
+    enterStudy: true,
   },
   {
     name: 'open studies',
