@@ -618,6 +618,17 @@ function deleteActivityBlock(activityBlock) {
     }))
   );
 
+  // Keep what an undo needs: the removed row and the index it sat at.
+  const timelineActivitiesBeforeDelete =
+    window.timelineManager.activities[timelineKey];
+  const removedIndex = Array.isArray(timelineActivitiesBeforeDelete)
+    ? timelineActivitiesBeforeDelete.findIndex((activity) =>
+        activityIdsEqual(activity.id, activityId)
+      )
+    : -1;
+  const removedActivity =
+    removedIndex === -1 ? null : timelineActivitiesBeforeDelete[removedIndex];
+
   // Store reference to the timeline
   const timeline = activityBlock.closest('.timeline');
 
@@ -656,61 +667,8 @@ function deleteActivityBlock(activityBlock) {
         window.timelineManager.activities[timelineKey].length
       );
 
-      // Force a re-render of the timeline's activities container to ensure clean state
-      if (timeline) {
-        const activitiesContainer = timeline.querySelector('.activities');
-        if (activitiesContainer) {
-          console.log('Re-rendering all remaining activities...');
-
-          // Get remaining activities
-          const remainingActivities =
-            window.timelineManager.activities[timelineKey];
-          console.log(
-            'Remaining activities to render (',
-            remainingActivities.length,
-            '):',
-            remainingActivities.map((a) => ({ id: a.id, activity: a.activity }))
-          );
-
-          // Clear the container
-          activitiesContainer.innerHTML = '';
-          console.log('Activities container cleared');
-
-          // Recreate all remaining activity blocks
-          remainingActivities.forEach((activityData, idx) => {
-            console.log(
-              `Rendering activity ${idx + 1}/${remainingActivities.length}:`,
-              activityData.id,
-              activityData.activity
-            );
-
-            // Make sure the activityData has all required fields
-            if (!activityData.startMinutes || !activityData.endMinutes) {
-              console.error('Activity missing minutes:', activityData);
-              return;
-            }
-
-            // Use your existing function to recreate blocks
-            const result = recreateActivityBlockFromTemplate(activityData);
-            console.log(`Activity ${idx + 1} rendered, block:`, result.block);
-          });
-
-          console.log(
-            'All ',
-            remainingActivities.length,
-            ' activities re-rendered, container children:',
-            activitiesContainer.children.length
-          );
-
-          // Re-initialize interact.js for the new blocks
-          initTimelineInteraction(timeline);
-          console.log('Timeline interaction re-initialized');
-        } else {
-          console.error('Activities container not found in timeline');
-        }
-      } else {
-        console.error('Timeline element not found');
-      }
+      // Re-render the timeline from the manager state to ensure clean state
+      rerenderActivitiesInTimeline(timeline, timelineKey);
     } else {
       console.error('Activity not found in timelineActivities array');
     }
@@ -723,7 +681,81 @@ function deleteActivityBlock(activityBlock) {
   updateButtonStates();
   persistPendingTimelineStateSoon();
 
+  // Deleting is one tap in a menu, so offer the way back for a few seconds
+  // instead of keeping a "remove last" button in the toolbar.
+  if (removedActivity) {
+    showUndoDeleteToast(timelineKey, removedActivity, removedIndex);
+  }
+
   console.log(`=== DELETION COMPLETE ===`);
+}
+
+/**
+ * Re-render every block of a timeline from the manager state. Used by deletion
+ * and by undoing a deletion, so both paths render identically.
+ */
+function rerenderActivitiesInTimeline(timeline, timelineKey) {
+  if (!timeline) {
+    console.error('Timeline element not found');
+    return;
+  }
+
+  const activitiesContainer = timeline.querySelector('.activities');
+  if (!activitiesContainer) {
+    console.error('Activities container not found in timeline');
+    return;
+  }
+
+  const activities = window.timelineManager.activities[timelineKey] || [];
+  activitiesContainer.innerHTML = '';
+
+  activities.forEach((activityData) => {
+    if (!activityData.startMinutes || !activityData.endMinutes) {
+      console.error('Activity missing minutes:', activityData);
+      return;
+    }
+    recreateActivityBlockFromTemplate(activityData);
+  });
+
+  // Re-initialize interact.js for the new blocks
+  initTimelineInteraction(timeline);
+}
+
+/** Put a deleted activity back where it was and re-render its timeline. */
+function undoDeleteActivity(timelineKey, activityData, index) {
+  const activities = window.timelineManager.activities[timelineKey];
+  if (!Array.isArray(activities)) return;
+
+  const insertAt = Math.max(0, Math.min(index, activities.length));
+  activities.splice(insertAt, 0, activityData);
+  window.timelineManager.activities[timelineKey] = [...activities];
+
+  if (getCurrentTimelineKey() === timelineKey) {
+    rerenderActivitiesInTimeline(
+      window.timelineManager.activeTimeline,
+      timelineKey
+    );
+  }
+
+  updateButtonStates();
+  persistPendingTimelineStateSoon();
+}
+
+function showUndoDeleteToast(timelineKey, activityData, index) {
+  if (typeof window.showToast !== 'function') return;
+
+  const translate = (key, fallback) =>
+    window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
+
+  window.showToast(
+    translate('messages.activityRemoved', 'Activity removed'),
+    'info',
+    6000,
+    {
+      label: translate('buttons.undo', 'Undo'),
+      onClick: () => undoDeleteActivity(timelineKey, activityData, index),
+    }
+  );
 }
 
 window.deleteActivityBlock = deleteActivityBlock;
@@ -5124,7 +5156,13 @@ function showTemplateBanner(templateSourceDay, messageKey) {
     `;
 
   const text = document.createElement('span');
-  const effectiveMessageKey = messageKey || 'messages.templateLoadedBanner';
+  // The delete instructions differ per layout (long-press vs right-click), and a
+  // phone can only act on its own. Crossing the breakpoint reloads the page, so
+  // choosing once at render time is enough.
+  const defaultMessageKey = getIsMobile()
+    ? 'messages.templateLoadedBannerMobile'
+    : 'messages.templateLoadedBannerDesktop';
+  const effectiveMessageKey = messageKey || defaultMessageKey;
   text.innerHTML = i18n.t(
     effectiveMessageKey,
     templateSourceDay ? { day: templateSourceDay } : {}

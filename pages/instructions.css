@@ -383,14 +383,6 @@ li {
   background-color: #b91c1c;
 }
 
-.remove-last-btn {
-  background-color: #475569;
-}
-
-.remove-last-btn:hover:not(:disabled) {
-  background-color: #334155;
-}
-
 .save-day-btn {
   background-color: #2563eb;
 }

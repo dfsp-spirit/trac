@@ -39,7 +39,6 @@
       "submitStudyHelp": "Cliquez pour soumettre votre journal lorsque tous les jours sont complets"
     },
     "helpfulTools": "Outils utiles",
-    "removeLastHelp": "Supprimer la dernière activité placée",
     "clearTimelineHelp": "Vous voulez recommencer ? Effacez la chronologie",
     "customActivityHelp": "Activité non listée ? Ajoutez une activité personnalisée",
     "customActivityName": "Autre non listé (entrer)"
@@ -72,7 +71,7 @@
     "saveDay": "Enregistrer le jour",
     "submitStudy": "Soumettre l'étude",
     "start": "Commencer",
-    "removeLast": "Supprimer dernière",
+    "undo": "Annuler",
     "clearTimeline": "Effacer la chronologie",
     "moreActions": "Autres actions",
     "skipReporting": "Ignorer le rapport de temps",
@@ -121,6 +120,7 @@
     }
   },
   "messages": {
+    "activityRemoved": "Activité supprimée",
     "selectStudy": "Veuillez sélectionner une étude pour continuer",
     "noStudiesAvailable": "Aucune étude disponible sur le serveur.",
     "studyNotFound": "L'étude demandée n'existe pas.",
@@ -136,7 +136,8 @@
     "timelineHoverActiveWithSelection": "Cliquez pour placer l'activité sélectionnée ici.",
     "invalidPlacement": "Impossible de placer l'activité ici en raison d'une position invalide.",
     "timelineValidationError": "Erreur de validation de la chronologie : {{message}}",
-    "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
+    "templateLoadedBannerMobile": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Touchez <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez vos activités. Pour supprimer une activité, maintenez-la enfoncée et choisissez <strong>'Supprimer'</strong>.",
+    "templateLoadedBannerDesktop": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Pour supprimer une activité, faites un clic droit dessus et choisissez <strong>'Supprimer'</strong>.",
     "templateCopiedBanner": "Nous avons pré-rempli votre journal avec les activités d'un participant modèle. Cliquez sur <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez les activités ci-dessous.",
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
@@ -161,7 +162,8 @@
     "loadingActivitiesShort": "Erreur lors du chargement des activités. Veuillez actualiser la page et réessayer. Erreur :"
   },
   "banner": {
-    "dayOneInstructions": "Instructions : Sélectionnez une activité ci-dessous, puis cliquez sur la chronologie pour la placer et faites glisser les bords pour l'étendre. Pour supprimer une activité, maintenez-la appuyée sur mobile ou utilisez le menu contextuel sur ordinateur."
+    "dayOneInstructionsMobile": "Instructions : touchez le bouton + en bas à droite pour choisir une activité, puis touchez la chronologie pour la placer. Faites glisser ses bords pour l'étendre. Pour supprimer une activité, maintenez-la enfoncée et choisissez Supprimer.",
+    "dayOneInstructionsDesktop": "Instructions : sélectionnez une activité ci-dessous, puis cliquez sur la chronologie pour la placer. Faites glisser ses bords pour l'étendre. Pour supprimer une activité, faites un clic droit dessus et choisissez Supprimer."
   },
   "thankYou": {
     "title": "Merci - TRAC",

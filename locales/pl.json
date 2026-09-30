@@ -39,7 +39,6 @@
       "submitStudyHelp": "Kliknij, aby wysłać dziennik, gdy wszystkie dni będą kompletne"
     },
     "helpfulTools": "Pomocne narzędzia",
-    "removeLastHelp": "Usuń ostatnio umieszczoną aktywność",
     "clearTimelineHelp": "Chcesz zacząć od nowa? Wyczyść oś czasu",
     "customActivityHelp": "Brak aktywności na liście? Dodaj własną aktywność",
     "customActivityName": "Inne (wpisz)"
@@ -72,7 +71,7 @@
     "saveDay": "Zapisz dzień",
     "submitStudy": "Wyślij badanie",
     "start": "Rozpocznij",
-    "removeLast": "Usuń ostatnią",
+    "undo": "Cofnij",
     "clearTimeline": "Wyczyść oś czasu",
     "moreActions": "Więcej działań",
     "skipReporting": "Pomiń raportowanie czasu",
@@ -121,6 +120,7 @@
     }
   },
   "messages": {
+    "activityRemoved": "Aktywność usunięta",
     "selectStudy": "Wybierz badanie, aby kontynuować",
     "noStudiesAvailable": "Brak dostępnych badań na serwerze.",
     "studyNotFound": "Żądane badanie nie istnieje.",
@@ -136,7 +136,8 @@
     "timelineHoverActiveWithSelection": "Kliknij, aby umieścić tutaj wybraną aktywność.",
     "invalidPlacement": "Nie można umieścić aktywności w tym miejscu z powodu niewłaściwej pozycji.",
     "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
-    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
+    "templateLoadedBannerMobile": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Dotknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj swoje aktywności. Aby usunąć aktywność, przytrzymaj ją i wybierz <strong>'Usuń'</strong>.",
+    "templateLoadedBannerDesktop": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Aby usunąć aktywność, kliknij ją prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong>.",
     "templateCopiedBanner": "Wstępnie wypełniliśmy Twój dziennik aktywnościami uczestnika wzorcowego. Kliknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności.",
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
@@ -161,7 +162,8 @@
     "loadingActivitiesShort": "Błąd ładowania aktywności. Proszę odświeżyć stronę, aby spróbować ponownie. Błąd:"
   },
   "banner": {
-    "dayOneInstructions": "Instrukcje: Wybierz aktywność poniżej, potem kliknij na osi czasu, aby ją umieścić, i przeciągnij krawędzie, aby wydłużyć. Aby usunąć aktywność, przytrzymaj ją na telefonie lub użyj menu po kliknięciu prawym przyciskiem myszy na komputerze."
+    "dayOneInstructionsMobile": "Instrukcje: dotknij przycisku + w prawym dolnym rogu, aby wybrać aktywność, a następnie dotknij osi czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, przytrzymaj ją i wybierz Usuń.",
+    "dayOneInstructionsDesktop": "Instrukcje: wybierz aktywność poniżej, a następnie kliknij oś czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, kliknij ją prawym przyciskiem myszy i wybierz Usuń."
   },
   "thankYou": {
     "title": "Dziękujemy - O-ELIDDI",

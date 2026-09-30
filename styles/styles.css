@@ -1289,7 +1289,6 @@ body {
   /* Actions that move into the ⋮ menu on phones. They stay in the DOM and keep
      their handlers - the menu proxies .click() to them - and hiding
      #skipReportingBtn collapses the footer (updateFooterVisibility). */
-  #removeLastBtn,
   #clearTimelineBtn,
   .language-select-wrapper,
   #skipReportingBtn {
@@ -1403,14 +1402,6 @@ body {
 
 .clear-timeline-btn:hover:not(:disabled) {
   background-color: #b91c1c;
-}
-
-.remove-last-btn {
-  background-color: var(--secondary-color);
-}
-
-.remove-last-btn:hover:not(:disabled) {
-  background-color: #334155;
 }
 
 .save-btn {
@@ -2798,6 +2789,27 @@ body.carrying-activity .modal-close {
   pointer-events: auto;
 }
 
+/* Optional action inside a toast (currently only "Undo" after a delete). The
+   toast re-enables pointer events while shown, but the button keeps them for
+   itself so it stays tappable during the fade-out. */
+.toast-action {
+  pointer-events: auto;
+  margin-left: 12px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #93c5fd;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.toast-action:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
 .toast.warning {
   background: #f59e0b;
 }
@@ -3072,6 +3084,22 @@ body.carrying-activity .modal-close {
 .banner-text {
   font-size: 16px;
   font-weight: 500;
+}
+
+/* The banner explains a different entry point per layout, so index.html carries
+   one string for each and only one of them is rendered. */
+.banner-text-mobile {
+  display: none;
+}
+
+@media (max-width: 1439.98px) {
+  .banner-text-mobile {
+    display: inline;
+  }
+
+  .banner-text-desktop {
+    display: none;
+  }
 }
 
 .banner-close {

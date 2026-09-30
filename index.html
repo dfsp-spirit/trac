@@ -21,8 +21,12 @@
 <body>
     <div id="instructionBanner" class="instruction-banner">
         <div class="banner-content">
+            <!-- One string per layout: desktop selects from the inline activity
+                 list, a phone reaches the picker through the + button - and the
+                 verbs differ ("click" vs "tap"). styles.css shows one of them. -->
             <span class="banner-text">
-                <span data-i18n="banner.dayOneInstructions">Instructions: Select activity below, then click on timeline to place, and drag borders to extend. To delete an activity, long-press it on mobile or right-click it on desktop and choose Delete (or press 'd' / DEL on desktop).</span>
+                <span class="banner-text-mobile" data-i18n="banner.dayOneInstructionsMobile">Instructions: tap the + button in the bottom right corner to choose an activity, then tap the timeline to place it. Drag its edges to extend it. To delete an activity, long-press it and choose Delete.</span>
+                <span class="banner-text-desktop" data-i18n="banner.dayOneInstructionsDesktop">Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete.</span>
             </span>
             <button class="banner-close" type="button" data-i18n-aria-label="buttons.close" aria-label="Close">&times;</button>
         </div>
@@ -41,11 +45,6 @@
             <span id="switchTimelineLabel" data-i18n="buttons.switchTimeline">Switch timeline</span>
         </button>
 
-        <button class="btn remove-last-btn" id="removeLastBtn" data-is-active="false" disabled>
-            <i class="fas fa-undo" aria-hidden="true"></i>
-            <span data-i18n="buttons.removeLast">Remove Last</span>
-        </button>
-
         <button class="btn clear-timeline-btn" id="clearTimelineBtn" data-is-active="false" disabled>
             <i class="fas fa-trash-alt" aria-hidden="true"></i>
             <span data-i18n="buttons.clearTimeline">Clear timeline</span>
@@ -62,11 +61,11 @@
             <span data-i18n="buttons.submitStudy">Submit Study</span>
         </button>
 
-        <!-- Phone-only overflow menu. The actions it holds (Clear timeline,
-             Remove Last, Skip time reporting, language) are visible in the
-             toolbar or footer on desktop, so the trigger is hidden from
-             1440 px up. Each item proxies .click() to the real control, which
-             keeps one implementation of every action. -->
+        <!-- Phone-only overflow menu. The actions it holds (Skip time
+             reporting, language) are visible in the footer or toolbar on
+             desktop, so the trigger is hidden from 1440 px up. Each item proxies
+             .click() to the real control, which keeps one implementation of
+             every action. -->
         <button class="btn more-menu-btn" id="moreMenuBtn" type="button"
                 aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"
                 data-i18n-aria-label="buttons.moreActions" aria-label="More actions">

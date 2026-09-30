@@ -39,7 +39,6 @@
       "submitStudyHelp": "Klicka för att skicka in din dagbok när alla dagar är kompletta"
     },
     "helpfulTools": "Användbara verktyg",
-    "removeLastHelp": "Ta bort den senast placerade aktiviteten",
     "clearTimelineHelp": "Vill du börja om? Rensa tidslinjen",
     "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet",
     "customActivityName": "Annat som inte finns med (ange)"
@@ -72,7 +71,7 @@
     "saveDay": "Spara dagen",
     "submitStudy": "Skicka studien",
     "start": "Starta",
-    "removeLast": "Ta bort senaste",
+    "undo": "Ångra",
     "clearTimeline": "Rensa tidslinjen",
     "moreActions": "Fler åtgärder",
     "skipReporting": "Hoppa över tidsrapportering",
@@ -121,6 +120,7 @@
     }
   },
   "messages": {
+    "activityRemoved": "Aktivitet borttagen",
     "selectStudy": "Välj en studie för att fortsätta",
     "noStudiesAvailable": "Inga studier finns på servern.",
     "studyNotFound": "Den begärda studien finns inte.",
@@ -136,7 +136,8 @@
     "timelineHoverActiveWithSelection": "Klicka för att placera den valda aktiviteten här.",
     "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
-    "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
+    "templateLoadedBannerMobile": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Tryck på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera dina aktiviteter. För att ta bort en aktivitet, håll den intryckt och välj <strong>'Ta bort'</strong>.",
+    "templateLoadedBannerDesktop": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan. För att ta bort en aktivitet, högerklicka på den och välj <strong>'Ta bort'</strong>.",
     "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan.",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
@@ -161,7 +162,8 @@
     "loadingActivitiesShort": "Fel vid laddning av aktiviteter. Uppdatera sidan och försök igen. Fel:"
   },
   "banner": {
-    "dayOneInstructions": "Instruktioner: Välj en aktivitet nedan, klicka sedan på tidslinjen för att placera den och dra i kanterna för att justera längden. För att ta bort en aktivitet, håll den nedtryckt på mobil eller använd högerklicksmenyn på dator."
+    "dayOneInstructionsMobile": "Instruktioner: tryck på +-knappen längst ned till höger för att välja en aktivitet och tryck sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, håll den intryckt och välj Ta bort.",
+    "dayOneInstructionsDesktop": "Instruktioner: välj en aktivitet nedan och klicka sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, högerklicka på den och välj Ta bort."
   },
   "thankYou": {
     "title": "Tack - TRAC",
