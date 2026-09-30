@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Tagebuch automatisch speichern und absenden",
-      "description": "Sie müssen Ihren Tag nicht mehr speichern: Ihre Einträge werden kurz nach der Eingabe automatisch gespeichert, und der Status während der Bearbeitung zeigt an, ob der Tag gespeichert ist. Wird ein Problem gemeldet, verwenden Sie \"Erneut versuchen\". Sie können den Tag später weiterhin bearbeiten. Wenn alle Tage der Studie vollständig sind, klicken Sie auf \"Studie absenden\", um Ihr Tagebuch zu senden und die Studie abzuschließen.",
+      "description": "Sie müssen Ihren Tag nicht speichern: Ihre Einträge werden während der Bearbeitung automatisch gespeichert. Sie können den Tag später weiterhin bearbeiten. Wenn alle Tage der Studie vollständig sind, klicken Sie auf \"Studie absenden\", um Ihr Tagebuch zu senden und die Studie abzuschließen.",
       "submitStudyHelp": "Klicken Sie, um Ihr Tagebuch abzusenden, sobald alle Tage vollständig sind"
     },
     "helpfulTools": "Hilfreiche Werkzeuge",

@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Spara automatiskt och skicka in din dagbok",
-      "description": "Du behöver inte spara dagen själv: dina uppgifter sparas automatiskt en stund efter att du gjort dem, och statusen medan du redigerar visar om dagen är sparad. Om ett problem rapporteras använder du \"Försök igen\". Du kan fortfarande redigera dagen senare. När alla dagar i studien är kompletta klickar du på \"Skicka studien\" för att skicka in din dagbok och avsluta studien.",
+      "description": "Du behöver inte spara dagen: dina uppgifter sparas automatiskt medan du redigerar. Du kan fortfarande redigera dagen senare. När alla dagar i studien är kompletta klickar du på \"Skicka studien\" för att skicka in din dagbok och avsluta studien.",
       "submitStudyHelp": "Klicka för att skicka in din dagbok när alla dagar är kompletta"
     },
     "helpfulTools": "Användbara verktyg",

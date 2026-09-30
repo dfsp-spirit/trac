@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Tallenna automaattisesti ja lähetä päiväkirja",
-      "description": "Sinun ei tarvitse tallentaa päivää itse: merkintäsi tallennetaan automaattisesti hetken kuluttua, ja muokkauksen aikana näkyvä tila kertoo, onko päivä tallennettu. Jos ongelmasta ilmoitetaan, valitse \"Yritä uudelleen\". Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
+      "description": "Sinun ei tarvitse tallentaa päivää: merkintäsi tallennetaan automaattisesti muokkauksen aikana. Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
       "submitStudyHelp": "Klikkaa lähettääksesi päiväkirjasi, kun kaikki päivät ovat valmiit"
     },
     "helpfulTools": "Hyödylliset työkalut",

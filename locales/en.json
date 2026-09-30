@@ -34,7 +34,7 @@
     },
     "step4": {
       "title": "Saving and Submitting Your Diary",
-      "description": "You do not need to save your day: your entries are stored automatically a moment after you make them, and the status shown while you edit tells you whether the day is stored. If it reports a problem, use Retry. You can still edit a day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
+      "description": "You do not need to save your day: your entries are saved automatically while you edit. You can still edit a day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
       "submitStudyHelp": "Click to submit your diary when every day is complete"
     },
     "helpfulTools": "Helpful tools",
