@@ -1195,6 +1195,30 @@ body {
   font-size: 0.95em;
 }
 
+/* The copy row when the day has nothing in it yet: disabled and greyed, with the
+   reason shown on the row (`.context-menu-item-detail`). Never hidden - seeing
+   the row is how a participant learns that copying exists - and never needing a
+   tap to explain itself, which is the shape Save/Submit use too. */
+.context-menu-item.day-menu-copy:disabled {
+  color: var(--muted, #6b7280);
+  background-color: rgba(0, 0, 0, 0.03);
+  font-weight: 500;
+}
+
+/* Icon, label and reason on one row: the shared "item with a detail" rule turns
+   the row into a column, which would put the copy glyph on its own line. */
+.context-menu-item.day-menu-copy:has(.context-menu-item-detail) {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+
+.context-menu-item.day-menu-copy .context-menu-item-icon {
+  grid-row: 1 / span 2;
+}
+
 /* Language choices in the ⋮ menu: the same items, side by side. */
 .more-menu-languages {
   display: flex;

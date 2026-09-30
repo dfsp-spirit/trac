@@ -764,26 +764,6 @@ function addCopyDayLink(timelineTitle, dayIndex) {
     }
   });
   timelineTitle.appendChild(link);
-
-  // Copy Days: optional "Copy from..." button (pull direction, configurable)
-  if (TUD_SETTINGS.SHOW_COPY_FROM_BUTTON && getTargetDayCount() > 0) {
-    const fromLink = document.createElement('button');
-    fromLink.type = 'button';
-    fromLink.className = 'btn copy-day-link copy-from-link';
-    fromLink.textContent = t('messages.copyFromDay');
-    fromLink.addEventListener('click', function (event) {
-      event.preventDefault();
-      event.stopPropagation();
-      const pickerEvent = {
-        clientX: event.clientX,
-        clientY: event.clientY + 8,
-      };
-      if (typeof window.showCopySourcePicker === 'function') {
-        window.showCopySourcePicker(dayIndex, pickerEvent);
-      }
-    });
-    timelineTitle.appendChild(fromLink);
-  }
 }
 
 window.addCopyDayLink = addCopyDayLink;
@@ -1791,23 +1771,44 @@ function buildDayMenu(menu) {
   // an icon, an accent colour and the day it acts on spelled out. As the last
   // of eight rows it read as another day: people know their weekday names and
   // stopped reading after the first two.
-  addMenuItem(menu, {
-    label: moreMenuLabel(
+  //
+  // Only a study with another day gets the row at all: with a single day the
+  // concept cannot exist, and a permanently dead row teaches the opposite. On a
+  // day that merely has nothing in it yet the row stays visible but disabled and
+  // says why - seeing it is how a participant learns that copying exists, so it
+  // is never hidden, and the reason is on the row instead of behind a tap (the
+  // same "greyed out, but tell them why" shape Save/Submit use).
+  if (getTargetDayCount() > 0) {
+    const copyLabel = moreMenuLabel(
       'messages.copyDayToAnother',
       `Copy ${currentDayName} to another day`,
       { day: currentDayName }
-    ),
-    className: 'day-menu-copy',
-    icon: 'fa-copy',
-    onSelect: () => {
-      if (typeof window.showCopyTargetPicker === 'function') {
-        window.showCopyTargetPicker(currentDayIndex, {
-          clientX: window.innerWidth / 2,
-          clientY: window.innerHeight / 2,
-        });
-      }
-    },
-  });
+    );
+    // Undefined means script.js has not exposed the test (should not happen) -
+    // then keep the row active rather than disabling it wrongly.
+    const sourceHasActivities = window.hasFrontendActivities?.() !== false;
+
+    addMenuItem(menu, {
+      label: copyLabel,
+      detail: sourceHasActivities
+        ? undefined
+        : moreMenuLabel(
+            'messages.copyEmptySource',
+            'Source day has no activities to copy.'
+          ),
+      disabled: !sourceHasActivities,
+      className: 'day-menu-copy',
+      icon: 'fa-copy',
+      onSelect: () => {
+        if (typeof window.showCopyTargetPicker === 'function') {
+          window.showCopyTargetPicker(currentDayIndex, {
+            clientX: window.innerWidth / 2,
+            clientY: window.innerHeight / 2,
+          });
+        }
+      },
+    });
+  }
 
   addMenuHeader(
     menu,

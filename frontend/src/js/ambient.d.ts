@@ -42,6 +42,7 @@ interface Window {
   addCopyDayLink?: (...args: any[]) => any;
   setStudyPageTitle?: (...args: any[]) => any;
   getIsMobile?: () => boolean;
+  hasFrontendActivities?: () => boolean;
   getCurrentTimelineData?: (...args: any[]) => any;
   getEmptyTargetDayCount?: (...args: any[]) => any;
   getEmptyTargetDayIndices?: (...args: any[]) => any;

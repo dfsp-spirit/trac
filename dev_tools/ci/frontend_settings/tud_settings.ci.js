@@ -12,7 +12,6 @@ const TUD_SETTINGS = {
     IS_MAINTENANCE_MODE: false,
     MAINTENANCE_MESSAGE: null,
     TEMPLATE_ENABLED: false,            // Copy Days: enable/disable template feature
-    SHOW_COPY_FROM_BUTTON: false,       // Copy Days: show "Copy from..." button (default off)
     IMPRINT_URL: "https://www.aesthetics.mpg.de/en/imprint.html",
     PRIVACY_URL: "https://www.aesthetics.mpg.de/en/data-protection-information.html",
     OPEN_LEGAL_LINKS_IN_NEW_TAB: true,

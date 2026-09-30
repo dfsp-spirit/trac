@@ -472,9 +472,8 @@ already on.
 - Desktop is untouched: `#dayPickerBtn` does not exist ≥ 1440 px, and the
   timeline-title `.copy-day-link` button is unchanged (verified 1600×900).
 
-Known rough edge, deliberately not changed: on a day with no activities the row
-is still offered and only toasts `copyEmptySource`. Now that it is the most
-prominent row this is more visible - see the deferred idea below.
+Known rough edge, fixed in §11: on a day with no activities the row used to be
+fully active and only toast `copyEmptySource`.
 
 ### Long-term idea (user, 2026-09-30)
 
@@ -567,6 +566,63 @@ acronym in their tab, and the study config already carries a better identifier
   never the loading string (en + de), and consent/open-studies identify the study
   without the brand. Run with `--repeat-each=2` when touching the init order.
 
+## 11. Copy day: push-only, disabled when it cannot run, jump-to-target toast (2026-09-30)
+
+### Push-only is the design, not a limitation
+
+An earlier version had both directions ("Copy this day" and "Copy from..."). The
+user removed the pull direction as irritating, and argued the case better than the
+plan did: **the participant must see what they are copying, so they have to be on
+the source day.** Two more reasons it stays gone:
+
+- The pull direction is the *risky* one: overwriting a day from a source that is
+  not on screen. Push only ever overwrites a target the participant picked from a
+  list that labels each one `(empty)` / `(has data)`.
+- One row, one direction keeps the day sheet small - the reason pull was dropped.
+
+So: **do not re-add a reverse picker.** The dormant code was deleted rather than
+left behind a flag (`agents.md`: no backwards-compatibility bloat):
+`showCopySourcePicker()` and its `window` export, the `copy-from-link` branch in
+`addCopyDayLink()`, `SHOW_COPY_FROM_BUTTON` (main settings + the 4 dev settings
+templates), and `messages.copyFromDay` in all 7 locales. No test referenced any of
+it. The historical docs under `dev_tools/copy_days_plan/` stay as records.
+
+### The row is disabled with the reason on it - not hidden, not silent
+
+The row is now **always present** in the day sheet (only a single-day study, where
+copying cannot exist, omits it) and:
+
+- **day has activities** → active: accent blue, copy glyph, wraps to a second
+  line if needed;
+- **day is empty** → `disabled` + greyed, with `messages.copyEmptySource` shown as
+  a `.context-menu-item-detail` line: "Source day has no activities to copy."
+
+The user's rule: a greyed-out control teaches that the feature exists, a missing
+one hides it. So it is never hidden, and the reason is **on the row** rather than
+behind a tap - the same "greyed out, but tell them why" shape Save/Submit use.
+
+The first attempt used `aria-disabled="true"` + a click that toasted the reason.
+That was wrong twice over: Playwright's actionability check treats `aria-disabled`
+as disabled (so the click never even ran in the test - it timed out), and it made
+assistive tech announce a control as unavailable while it still acted. A real
+`disabled` property plus a visible reason is honest and needs no interaction.
+Layout note: the shared `.context-menu-item:has(.context-menu-item-detail)` rule
+stacks rows as a column, which put the copy glyph on its own line, so the copy row
+uses `display: grid` (`auto 1fr`) with the icon spanning both rows.
+
+### After a copy, offer the jump
+
+Copying persists the source day and **stays on it** (it never advances
+`day_label_index`), so the participant still has to walk to the day that was just
+filled. The success toast now carries an action: `messages.goToCopiedDay` =
+"Go to {{day}}" → `saveAndSwitchToDay(target)`. The toast gets 6 s instead of 4 s
+when it carries an action (a second line has to be read and chosen). No action
+when the target *is* the day being viewed - that case reloads after 3 s anyway.
+
+Guarded by `mobile_context_bar.spec.js`: the row is disabled with the reason on an
+empty day (and enabled, with the tooltip line gone, once the day has an activity),
+and the copy flow's toast action lands on the copied day with its activities.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,
@@ -637,29 +693,36 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green at the time of writing: `sh test_frontend_typecheck.sh`,
-`sh test_frontend_unit.sh` (62/62), and on chromium: `copy_days_flow`,
-`ensure_switching_desktop_mobile_keeps_activities_issue42`,
-`drag_move_activity_block`, `mobile_layout`, `accessibility`,
-`keyboard_accessibility`, `draft_restore`, `min_coverage_backend_used`,
-`no_broken_static_requests`, `study_footer_links`,
-`adult_pilot_skip_button_visibility`, `instructions_skip_to_thankyou`,
-`return_url_continue_link`, `submit_retry_after_failed_request`,
-`mobile_activity_gestures` (new in §3).
+Green 2026-09-30 after §11: `sh test_frontend_typecheck.sh`,
+`sh test_frontend_unit.sh` (69/69, incl. `locales_consistency` key-set +
+untranslated-value guards and the new `page_titles` guards), and on chromium
+**77/77** (`npx playwright test --project=chromium $(ls tests/e2e/*.spec.js |
+grep -v accessibility.spec.js)` - `accessibility.spec.js` needs
+`@axe-core/playwright`, which is not installed locally, so it cannot run here).
 
-Expected to need adapting after steps 4–6 (deliberately deferred):
+New specs added during this work: `mobile_activity_gestures` (§3),
+`mobile_context_bar` (§4, day/timeline sheets + the copy row),
+`page_titles` (§10).
 
-- `copy_days_flow.spec.js` runs at 1600×900, so it is unaffected by mobile-only
+Everything that had to be adapted for steps 4–6 has been adapted:
+
+- `e2e_helpers.js` — `switchToDay` (layout-aware: `#dayPickerBtn` / `#dayMenu`
+  below the breakpoint), `placeActivityMobile`, `openSkipConfirmation` (skip lives
+  in the ⋮ menu on phones, so specs must not click `#skipReportingBtn` directly).
+- `copy_days_flow.spec.js` runs at 1600×900 and is unaffected by mobile-only
   hiding; it is the only spec using `switchToDay` / `isDayButtonGreen` /
-  `getDayButtonCount`. `mobile_layout.spec.js` only measures `#saveDayBtn` and
-  `#skipReportingBtn`. `clearTimelineBtn` and `switchTimelineBtn` have no test
-  references.
-- `e2e_helpers.js` — `switchToDay`, `getDayButtonCount`, `isDayButtonGreen`,
-  and the new `openSkipConfirmation(page)` (skip lives in the ⋮ menu below
-  1440 px, so specs must not click `#skipReportingBtn` directly)
-- nothing references `#backBtn` or "Previous timeline" any more (checked)
-- There is still **no mobile test that fills both timelines** — add it with the
-  day-picker work (that gap is what let the §2 bug live).
+  `getDayButtonCount`.
+- The old "no mobile test fills both timelines" gap (the one that let the §2
+  reachability bug live) is **closed**: `mobile_context_bar.spec.js` fills both
+  timelines of a phone day and saves.
+
+## Known gaps, deliberately not asserted
+
+- Footer/legal links and the two language `<select>`s are 16–19 px high on a
+  phone, below the 24×24 WCAG 2.2 SC 2.5.8 minimum. Reachable, but small for a
+  thumb; `mobile_layout.spec.js` documents this rather than failing on it.
+- `accessibility.spec.js` cannot run locally without `@axe-core/playwright` (CI
+  does run it).
 
 ## Running things locally
 

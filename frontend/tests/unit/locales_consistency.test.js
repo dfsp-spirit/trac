@@ -76,6 +76,7 @@ test('all locales contain the banner and recently added keys', () => {
     'messages.completeOtherDaysFirst',
     'messages.daySavedStayOnPage',
     'messages.copyDayToAnother',
+    'messages.goToCopiedDay',
     'common.pageTitle',
     'common.pageTitleWithStudy',
     'common.error',
