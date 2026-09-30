@@ -150,54 +150,30 @@ li {
 }
 
 /* Read-only content: deliberately no :hover styling. A lift/shadow on hover
-   suggests the card is interactive, which it is not. */
+   suggests the card is interactive, which it is not.
+
+   Each step used to carry a numbered badge (a blue circle) to the left of the
+   content, or above it on narrow screens. Removed: the headings already name the
+   step, nothing in the copy refers to "step 2", and on a phone the badge cost a
+   row of vertical space per step. It also forced
+   applyCopyDayStepVisibility() to renumber the badges whenever it hid a step. */
 .instruction-step {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
   padding: var(--space-md);
   border-radius: var(--radius-md);
   background: var(--background-color);
   box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-lg);
 }
 
-@media (min-width: 768px) {
-  .instruction-step {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-}
-
-/* Steps can be hidden at runtime (e.g. "Copy a Day" in single-day studies).
-   The display:flex above would win over the user-agent [hidden] rule. */
+/* Steps can be hidden at runtime (e.g. "Copy a Day" in single-day studies). */
 .instruction-step[hidden] {
   display: none;
 }
 
-.step-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: clamp(32px, 8vw, 40px);
-  height: clamp(32px, 8vw, 40px);
-  background: var(--primary-color);
-  color: white;
-  border-radius: 50%;
-  font-weight: var(--font-weight-semibold);
-  font-size: clamp(16px, 4vw, 20px);
-  flex-shrink: 0;
-  margin: 0 auto;
-}
-
-@media (min-width: 768px) {
-  .step-number {
-    margin: 0;
-  }
-}
-
+/* The content wrapper also keeps wide content (the GIFs) from pushing the card
+   wider than its column. */
 .step-content {
-  flex: 1;
+  min-width: 0;
 }
 
 .additional-features {

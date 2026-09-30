@@ -342,10 +342,10 @@ function updateLayout() {
 }
 
 /**
- * The "Copy a Day" step only makes sense when there is another day to copy
- * to. The diary page shows the copy button under the same condition
- * (addCopyDayLink() in ui.js), so hide the step for single-day studies and
- * keep the visible steps numbered consecutively.
+ * The "Copy a Day" step only makes sense when there is another day to copy to.
+ * The diary page shows the copy button under the same condition
+ * (addCopyDayLink() in ui.js), so hide the step for single-day studies.
+ * (The steps carry no numbers any more, so hiding one leaves no gap to fix up.)
  */
 function applyCopyDayStepVisibility(studyConfig) {
   const copyDayStep = document.getElementById('instruction-step-copy-day');
@@ -361,18 +361,6 @@ function applyCopyDayStepVisibility(studyConfig) {
   if (copyDayStep && daysCount !== null) {
     copyDayStep.hidden = daysCount <= 1;
   }
-
-  // Number only the visible steps, so a hidden step does not leave a gap.
-  let visibleStepCount = 0;
-  document.querySelectorAll('.instruction-step').forEach((step) => {
-    if (!step.hidden) {
-      visibleStepCount += 1;
-    }
-    const badge = step.querySelector('.step-number');
-    if (badge) {
-      badge.textContent = String(visibleStepCount);
-    }
-  });
 }
 
 // Initialize i18n when the module loads
