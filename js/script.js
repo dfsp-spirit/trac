@@ -7019,81 +7019,12 @@ function showCopyTargetPicker(sourceDayIndex, event) {
   }, 0);
 }
 
-/**
- * Copy Days: "Copy from..." picker — reverse direction.
- * Shows all other days as SOURCE options; on selection copies FROM the
- * selected source INTO the current day.
- */
-function showCopySourcePicker(targetDayIndex, event) {
-  removeCopyDayContextMenu();
-
-  const targets = getAllTargetDayIndices(targetDayIndex);
-  if (!targets.length) {
-    return;
-  }
-
-  const t =
-    window.i18n && window.i18n.isReady()
-      ? window.i18n.t.bind(window.i18n)
-      : function (key) {
-          return key;
-        };
-
-  const targetDayName =
-    window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
-    t('common.day') + ' ' + (targetDayIndex + 1);
-
-  const menu = document.createElement('div');
-  menu.className = 'copy-day-context-menu context-menu';
-
-  const header = document.createElement('div');
-  header.className = 'copy-day-context-menu-header context-menu-header';
-  header.textContent = t('messages.copyFromDay') + ': ' + targetDayName;
-  menu.appendChild(header);
-
-  for (const source of targets) {
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'copy-day-context-menu-item context-menu-item';
-    const sourceDayName =
-      window.studyConfigManager?.getDayDisplayLabel(source.index) ||
-      t('common.day') + ' ' + (source.index + 1);
-    const status = source.hasData
-      ? ' (' + t('messages.copyDayHasData') + ')'
-      : ' (' + t('messages.copyDayEmpty') + ')';
-    item.textContent = sourceDayName + status;
-    item.addEventListener('click', async () => {
-      removeCopyDayContextMenu();
-      // Reverse: copy FROM selected source INTO current (target) day
-      await copyDayTo(source.index, targetDayIndex);
-    });
-    menu.appendChild(item);
-  }
-
-  // Position the menu at the cursor.  The CSS keeps the menu position:fixed,
-  // so this works both for the desktop right-click entry point and for the
-  // "Copy from..." button (which supplies clientX/clientY).
-  const menuX = Math.min(event.clientX, window.innerWidth - 210);
-  const menuY = Math.min(event.clientY, window.innerHeight - 200);
-  menu.style.position = 'fixed';
-  menu.style.left = menuX + 'px';
-  menu.style.top = menuY + 'px';
-
-  document.body.appendChild(menu);
-
-  const closeHandler = function (e) {
-    if (!menu.contains(e.target)) {
-      removeCopyDayContextMenu();
-      document.removeEventListener('click', closeHandler, true);
-    }
-  };
-  setTimeout(function () {
-    document.addEventListener('click', closeHandler, true);
-  }, 0);
-}
-
-window.showCopySourcePicker = showCopySourcePicker;
 window.showCopyTargetPicker = showCopyTargetPicker;
+
+// copyDayTo() and the day-menu copy row both need the same "does this day have
+// anything in it" test the picker uses for the day being viewed, so ui.js can
+// grey that row out instead of offering an action that cannot run yet.
+window.hasFrontendActivities = hasFrontendActivities;
 
 async function copyDayTo(sourceDayIndex, targetDayIndex) {
   const t =
@@ -7244,11 +7175,21 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
     const targetDayName =
       window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
       targetDayLabel;
+    // Offer the jump to the day that was just filled: the participant stays on
+    // the source day, and the target day is the one they still have to complete.
+    // Skipped when the target *is* the day being viewed - that case reloads.
     showCopyToast(
       t('messages.copySuccess', {
         sourceDay: sourceDayName,
         targetDay: targetDayName,
-      })
+      }),
+      false,
+      targetDayIndex === currentDayIndex
+        ? null
+        : {
+            label: t('messages.goToCopiedDay', { day: targetDayName }),
+            onClick: () => window.saveAndSwitchToDay?.(targetDayIndex),
+          }
     );
 
     if (
@@ -7311,9 +7252,16 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
   }
 }
 
-function showCopyToast(message, isError) {
+function showCopyToast(message, isError, action) {
   if (window.showToast) {
-    window.showToast(message, isError ? 'error' : 'success', 4000);
+    // An action needs longer on screen than a plain confirmation: the
+    // participant has to read the second line and decide to tap it.
+    window.showToast(
+      message,
+      isError ? 'error' : 'success',
+      action ? 6000 : 4000,
+      action
+    );
   } else {
     console.log(message);
   }
