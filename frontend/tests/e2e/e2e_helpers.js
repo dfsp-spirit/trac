@@ -51,6 +51,54 @@ async function gotoWithRetry(page, url, options = {}, maxAttempts = 5) {
   throw lastError;
 }
 
+/**
+ * Clear the consent page: tick the box and accept - or simply follow the page
+ * if it moves on by itself.
+ *
+ * The consent page does not always stay put: the flow can continue to the
+ * instructions while its controls are being read. A wait aimed at an element of
+ * the page we are leaving then blocks until its timeout on a page that is
+ * already gone - that is how a CI run became "Test timeout of 40000ms exceeded"
+ * with the trace parked on `waiting for locator('#consentCheckbox')` while the
+ * instructions page was loading. So the interaction is raced against the
+ * navigation: whichever settles first wins, and the caller's loop re-reads the
+ * URL and follows the redirect.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function acceptConsentOrFollowRedirect(page) {
+  const acceptBtn = page.locator('#consentAcceptBtn');
+  const checkbox = page.locator('#consentCheckbox');
+
+  const leftConsentPage = page
+    .waitForURL((url) => !isConsentUrl(url.toString()), { timeout: 15000 })
+    .then(() => 'left')
+    .catch(() => 'left');
+
+  const accepted = (async () => {
+    // Wait until the consent page is usable before touching it, so a redirect
+    // that is already under way is noticed before we start.
+    await acceptBtn.waitFor({ state: 'visible', timeout: 15000 });
+    if (!isConsentUrl(page.url())) {
+      return 'left';
+    }
+
+    if ((await checkbox.count()) > 0) {
+      const alreadyChecked = await checkbox
+        .isChecked({ timeout: 2000 })
+        .catch(() => true);
+      if (!alreadyChecked) {
+        await checkbox.check({ timeout: 2000 }).catch(() => undefined);
+      }
+    }
+
+    await acceptBtn.click({ timeout: 5000 }).catch(() => undefined);
+    return 'accepted';
+  })().catch(() => 'left');
+
+  await Promise.race([leftConsentPage, accepted]);
+}
+
 async function enterConsentAndInstructionsIfNeeded(page) {
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const currentUrl = page.url();
@@ -60,19 +108,7 @@ async function enterConsentAndInstructionsIfNeeded(page) {
     }
 
     if (isConsentUrl(currentUrl)) {
-      const consentAcceptBtn = page.locator('#consentAcceptBtn');
-      const consentCheckbox = page.locator('#consentCheckbox');
-      try {
-        if ((await consentCheckbox.count()) > 0 && !(await consentCheckbox.isChecked())) {
-          await consentCheckbox.check({ timeout: 2000 }).catch(() => undefined);
-        }
-      } catch (e) {
-        // ignore
-      }
-      await consentAcceptBtn
-        .click({ timeout: 5000 })
-        .then(() => page.waitForLoadState('domcontentloaded'))
-        .catch(() => undefined);
+      await acceptConsentOrFollowRedirect(page);
       continue;
     }
 
@@ -117,32 +153,7 @@ async function enterStudyIfNeeded(page) {
     }
 
     if (isConsentUrl(currentUrl)) {
-      const consentAcceptBtn = page.locator('#consentAcceptBtn');
-      const consentCheckbox = page.locator('#consentCheckbox');
-      // Both waits are bounded on purpose. The page can navigate away from
-      // consent while they resolve, and an unbounded isChecked() then sits on
-      // its 30s action timeout waiting for a checkbox that never comes back -
-      // that burned a whole 40s test budget on CI (page_titles.spec.js "Test
-      // timeout of 40000ms exceeded", trace parked on "waiting for
-      // locator('#consentCheckbox')" while the instructions page was already
-      // loading). Failing fast hands control back to the loop, which re-reads
-      // the URL and follows the redirect.
-      let mustCheck = false;
-      try {
-        if ((await consentCheckbox.count()) > 0) {
-          mustCheck = !(await consentCheckbox.isChecked({ timeout: 2000 }));
-        }
-      } catch (e) {
-        // Element gone, or never became checkable: the accept click below
-        // decides, and the next iteration re-reads the URL.
-      }
-      if (mustCheck) {
-        await consentCheckbox.check({ timeout: 2000 }).catch(() => undefined);
-      }
-      await consentAcceptBtn
-        .click({ timeout: 5000 })
-        .then(() => page.waitForLoadState('domcontentloaded'))
-        .catch(() => undefined);
+      await acceptConsentOrFollowRedirect(page);
       continue;
     }
 
