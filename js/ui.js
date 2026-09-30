@@ -1426,11 +1426,7 @@ const handleSaveDayAction = async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
 
-  const result = await sendData({
-    shouldRedirect: false,
-    isLastDay: false,
-    currentDayIndex,
-  });
+  const result = await sendData();
 
   if (result?.success) {
     // Copy Days: mark this day as saved so templates aren't re-loaded
@@ -1445,15 +1441,19 @@ const handleSaveDayAction = async () => {
       window.markDaySaved(studyName, pid, currentDayIndex);
     }
 
+    // Refresh the day status in place. The reload this replaces only re-fetched
+    // the day the participant is already looking at, and re-ran the whole init
+    // (config, banner, inactivity timer) at ~1.5 s per save; what it actually
+    // updated - the day buttons' green/grey state and the Submit gate - is
+    // computed locally from the coverage rules.
+    refreshDayStatusAfterSave();
+
     const daySavedMsg = window.i18n
       ? window.i18n.t('messages.daySavedStayOnPage')
       : 'Day saved.';
     if (typeof showToast === 'function') {
       showToast(daySavedMsg, 'success', 3000);
     }
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
   } else {
     const errMsg = window.i18n
       ? window.i18n.t('messages.submitError')
@@ -1465,6 +1465,63 @@ const handleSaveDayAction = async () => {
     updateButtonStates();
   }
 };
+
+/**
+ * Bring the day status in line with what a save just persisted - without
+ * reloading the page.
+ *
+ * Two arrays drive the day buttons and the Submit gate, and both are only
+ * otherwise fed by the backend day metadata on load:
+ *   - dayIndicesWithData: the day was just written, so it has data;
+ *   - dayIndicesMeetMinCoverage: getCurrentDayMeetsMinCoverage() mirrors the
+ *     backend rule (including the "no min_coverage -> any activity counts"
+ *     fallback), so a day that no longer meets coverage - activities deleted,
+ *     then saved - turns grey immediately instead of only after a reload.
+ */
+function refreshDayStatusAfterSave() {
+  const manager = window.timelineManager;
+  const dayIndex = getDayIndexFromUrl();
+  if (!manager || !Number.isInteger(dayIndex)) {
+    updateButtonStates();
+    return;
+  }
+
+  if (Array.isArray(manager.dayIndicesWithData)) {
+    // The saved day now holds exactly what is on screen, so "has data" is
+    // whatever the timelines hold - a cleared-then-saved day is empty again
+    // (the copy picker labels other days from this array).
+    const hasActivities = (manager.keys || []).some(
+      (key) => (manager.activities?.[key] || []).length > 0
+    );
+    const position = manager.dayIndicesWithData.indexOf(dayIndex);
+    if (hasActivities && position === -1) {
+      manager.dayIndicesWithData.push(dayIndex);
+      manager.dayIndicesWithData.sort((a, b) => a - b);
+    } else if (!hasActivities && position !== -1) {
+      manager.dayIndicesWithData.splice(position, 1);
+    }
+  }
+
+  if (Array.isArray(manager.dayIndicesMeetMinCoverage)) {
+    const meetsMinCoverage = getCurrentDayMeetsMinCoverage();
+    const position = manager.dayIndicesMeetMinCoverage.indexOf(dayIndex);
+    if (meetsMinCoverage && position === -1) {
+      manager.dayIndicesMeetMinCoverage.push(dayIndex);
+      manager.dayIndicesMeetMinCoverage.sort((a, b) => a - b);
+    } else if (!meetsMinCoverage && position !== -1) {
+      manager.dayIndicesMeetMinCoverage.splice(position, 1);
+    }
+  }
+
+  // The desktop day buttons render from those arrays; the phone context bar, the
+  // coverage indicators and the Submit gate come from updateButtonStates().
+  if (typeof window.renderPreviousDaysSwitchRow === 'function') {
+    window.renderPreviousDaysSwitchRow();
+  }
+  updateButtonStates();
+}
+
+window.refreshDayStatusAfterSave = refreshDayStatusAfterSave;
 
 // Shared function to handle the timeline switch button with debounce.
 // Cycles to the next timeline; the label always names the destination.
@@ -2208,12 +2265,7 @@ function initButtons() {
         // Persist the current day before submitting so the backend validates
         // the exact visible state.  Submit is a rare explicit action, so the
         // extra save round-trip is acceptable.
-        const currentDayIndex = getCurrentDayIndex();
-        const saveResult = await sendData({
-          shouldRedirect: false,
-          isLastDay: false,
-          currentDayIndex,
-        });
+        const saveResult = await sendData();
 
         if (!saveResult?.success) {
           const submitErrorMessage = window.i18n
