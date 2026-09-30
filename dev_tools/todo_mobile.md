@@ -664,6 +664,93 @@ still hand-roll the same markup in `createModal()`. They could call
 `showConfirmDialog` with their own ids and lose ~60 lines of duplication - worth
 it only if we touch them anyway.
 
+## 13. Autosave prerequisite work: slices 0 + 1 (2026-09-30)
+
+Approved direction for autosave: save on every **committed** edit, debounced, then
+drop Save Day last. The full assessment (backend, frontend, performance) is in the
+session report; the two slices below are the ones that pay off even if we stop
+before building the engine.
+
+### Slice 0 — backend: the write path is now cheap
+
+`submit_activities` used to do one `session.delete()` **per existing row**, then
+insert one by one, then `session.refresh()` **per new row** after the commit (N
+SELECTs) - and the response only reports counts. Now:
+
+- existence check is a `SELECT count(*)` (no N ORM objects materialised to be
+  deleted),
+- the delete is **one** `delete(Activity).where(...)` statement,
+- the refresh loop is gone (nothing downstream uses the generated ids; rows are
+  re-created on every save anyway).
+
+Measured on the dev stack (localhost, 2 timelines, one transaction per save):
+
+| day size | before | after |
+| --- | --- | --- |
+| 20 activities | mean 26 ms | mean 25 ms |
+| 60 activities | mean 53 ms | mean 43 ms |
+| empty payload (fixed overhead only) | - | **13 ms** |
+
+The gain is modest at small sizes because **half the per-save cost is fixed**
+(config validation, study/participant/day-label/timeline lookups, HTTP) - which is
+the number that matters for autosave: *request count*, not row count, is what to
+budget for. The next lever, if autosave volume ever hurts, is caching the
+per-request activity-config validation (it re-reads/re-parses the study's config
+on every save).
+
+**Do not make this an incremental write** (only changed rows) without revisiting
+`diary_completed_at`: it is `MAX(MIN(created_at) per day_label)` (api.py:758), and
+because every save re-creates the day's rows, a day's MIN is "last save". With
+incremental writes that becomes "when the first activity was added" and the
+completion timestamp silently shifts hours earlier. Snapshot semantics preserve it.
+
+### Slice 1 — frontend: Save Day no longer reloads the page
+
+`handleSaveDayAction()` used to toast and then `window.location.reload()` after
+1.5 s. That reload (i) re-fetched the day the participant was already looking at,
+(ii) re-ran the whole init (config fetch, banner, timers), and (iii) was the only
+reason a save took ~2 s. Removed; `refreshDayStatusAfterSave()` (ui.js) now does
+in place what the reload actually updated:
+
+- `dayIndicesWithData` / `dayIndicesMeetMinCoverage` for the current day, both
+directions - using `getCurrentDayMeetsMinCoverage()`, which already mirrors the
+backend rule including the "no min_coverage -> any activity counts" fallback, so a
+**cleared-then-saved day greys out immediately** instead of only after a reload;
+- `renderPreviousDaysSwitchRow()` + `updateButtonStates()` (day row, submit gate,
+  coverage indicators, context bar, menu items).
+
+**Two couplings the reload was hiding** (both fixed):
+
+1. **The inactivity timer.** `sendData()` stops it before submitting and nothing
+   restarted it - the post-save reload did. Without that, the timer stayed dead
+   for the rest of the session and a participant could leave the diary open
+   forever. `sendData()` now restarts it from the study settings
+   (`restartIdleTimerForStudy()`), verified live with `tudIdleTimeout.isActive()`.
+2. **The dead redirect path.** Every `sendData()` call passed
+   `shouldRedirect: false`, so `handleDayNavigation()` (whose whole body was
+   `window.location.reload()`) was unreachable. Deleted, and the four call sites
+   now just call `sendData()`.
+
+Also verified live (desktop 1600×900, no reload): the day flags update, the day
+button turns green, the Save button re-enables, the toast shows, the activity stays
+rendered, and the row is really in Postgres afterwards (checked with psql).
+
+Test impact: `e2e_helpers.saveCurrentDay()` now waits for the **2xx POST** instead
+of a reload (a save no longer navigates), and
+`mobile_context_bar`'s "both timelines survive a save" reloads explicitly, since
+that is what the test is actually about. Full chromium suite: **78/78, 4.0m ->
+3.0m**; individual saves went 7.5 s -> 2.0 s, 17.2 s -> 6.2 s in the specs.
+
+### What is left of autosave (slices 2-4)
+
+Slice 2 (engine: debounce ~2 s + single-flight queue per day + flush on day
+switch/`pagehide`/idle-timeout/Submit), slice 3 (sync state
+`Saving… / Saved / Not saved`, retry with backoff, i18n x 7, E2E), slice 4 (remove
+Save Day). Non-negotiables from the assessment: single-flight (two overlapping
+snapshots on one day can duplicate or blank rows - the only corruption risk),
+visible failure state, and extending undo to Clear timeline, which becomes
+instantly permanent once edits autosave.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,
@@ -680,6 +767,9 @@ and it is the only control that can silently save a day mid-drag. **Removed in
 ---
 
 ## Deferred — autosave instead of "Save Day" (decided 2026-09-30)
+
+**Slices 0 and 1 are done — see §13** (cheap write path, no reload after save).
+What follows is the original assessment, still valid for slices 2–4.
 
 Question: save after every action, so the reloads and the Save button disappear?
 Answer: **not now, and not as a prerequisite for the mobile work.**
@@ -734,12 +824,12 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green 2026-09-30 after §12: `sh test_frontend_typecheck.sh`,
+Green 2026-09-30 after §13: `sh test_frontend_typecheck.sh`,
 `sh test_frontend_unit.sh` (69/69, incl. `locales_consistency` key-set +
-untranslated-value guards and the `page_titles` guards), and on chromium
-**78/78** (`npx playwright test --project=chromium $(ls tests/e2e/*.spec.js |
-grep -v accessibility.spec.js)` - `accessibility.spec.js` needs
-`@axe-core/playwright`, which is not installed locally, so it cannot run here).
+untranslated-value guards and the `page_titles` guards), the backend suites
+(`test_backend_unit.sh` 156/156, `uv run pytest tests/integration` 126/126 against
+the running dev server), and on chromium **78/78** in **3.0 min** (the suite got
+27 % faster once saving stopped reloading the page).
 New specs added during this work: `mobile_activity_gestures` (§3),
 `mobile_context_bar` (§4, day/timeline sheets + the copy row),
 `page_titles` (§10).

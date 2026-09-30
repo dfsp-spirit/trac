@@ -188,9 +188,20 @@ test('both timelines of a phone day survive a save', async ({ page }) => {
     `every timeline must hold an activity, got ${JSON.stringify(beforeSave)}`
   ).toBe(true);
 
-  // Save Day stores the whole day, so both timelines must come back.
+  // Save Day stores the whole day, so both timelines must come back. Saving no
+  // longer reloads the page, so reload explicitly here: that is the point of this
+  // test (the day must come back from the backend, not from memory).
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/activities(\?|$)/.test(response.url()) &&
+      response.status() >= 200 &&
+      response.status() < 300,
+    { timeout: 30000 }
+  );
   await page.locator('#saveDayBtn').click();
-  await page.waitForTimeout(6000);
+  await saved;
+  await page.reload({ waitUntil: 'load' });
   await enterStudyIfNeeded(page);
   await expect(page.locator('#contextBar')).toBeVisible({ timeout: 30000 });
 

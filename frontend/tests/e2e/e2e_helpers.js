@@ -254,33 +254,30 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
 }
 
 /**
- * Click "Save Day" and wait for save to complete. Page stays on current day.
+ * Click "Save Day" and wait for the save to reach the backend. The page stays on
+ * the current day and is *not* reloaded (see dev_tools/todo_mobile.md slice 1),
+ * so this waits for the save request itself: a 2xx POST for the day's activities.
+ * sendData() retries 5xx up to twice, so a successful response is the signal that
+ * the day is really stored.
  *
  * @param {import('@playwright/test').Page} page
+ * @param {{reenter?: boolean}} [options]
  */
 async function saveCurrentDay(page, { reenter = true } = {}) {
   const saveBtn = page.locator('#saveDayBtn');
   await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
   await expect(saveBtn).toBeEnabled({ timeout: 3000 });
 
-  // handleSaveDayAction calls sendData() (with retry), then on success
-  // does setTimeout(() => window.location.reload(), 1500).
-  // The retry + reload can destroy the page context, so catch everything.
-  try {
-    await saveBtn.click();
-    // Wait for the reload to happen (up to 5s for retries + 1.5s delay)
-    await page.waitForTimeout(5000);
-  } catch {
-    // Page context destroyed by reload — that's expected.
-  }
-
-  // After the reload, wait for the page to settle.
-  try {
-    await page.waitForLoadState('domcontentloaded', { timeout: 10000 });
-    await page.waitForTimeout(500);
-  } catch {
-    // Page may not be ready yet.
-  }
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'POST' &&
+      /\/activities(\?|$)/.test(response.url()) &&
+      response.status() >= 200 &&
+      response.status() < 300,
+    { timeout: 30000 }
+  );
+  await saveBtn.click();
+  await saved;
 
   if (reenter) {
     await enterStudyIfNeeded(page);

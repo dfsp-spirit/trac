@@ -1831,15 +1831,17 @@ def submit_activities(
     #   if insufficient_timeline_coverage: raise HTTPException(400, ...)
 
     # PHASE 2: Check if activities already exist for this user-study-day_label
-    existing_activities = session.exec(
-        select(Activity).where(
+    # Counted, not loaded: the rows themselves are replaced wholesale below, so
+    # materialising N ORM objects only to delete them is wasted work.
+    existing_count = session.exec(
+        select(func.count())
+        .select_from(Activity)
+        .where(
             Activity.study_id == study.id,
             Activity.participant_id == participant_id,
             Activity.day_label_id == day_label.id,
         )
-    ).all()
-
-    existing_count = len(existing_activities)
+    ).one()
     operation = "updated" if existing_count > 0 else "created"
 
     # Delete existing activities if any (this implements the "edit/replace" logic)
@@ -1849,8 +1851,16 @@ def submit_activities(
             f"study '{study_name_short}', day label '{day_label_name}' before inserting new ones"
         )
 
-        for activity in existing_activities:
-            session.delete(activity)
+        # One statement, not one DELETE per row: every save rewrites the whole day
+        # (snapshot semantics), and that is exactly what autosave will do often -
+        # see dev_tools/todo_mobile.md, slices 0/2. The row count is the hot path.
+        session.exec(
+            delete(Activity).where(
+                Activity.study_id == study.id,
+                Activity.participant_id == participant_id,
+                Activity.day_label_id == day_label.id,
+            )
+        )
 
         # Flush to execute deletes before inserts
         session.flush()
@@ -1901,16 +1911,17 @@ def submit_activities(
     # Commit all changes (deletes and inserts)
     session.commit()
 
-    # Refresh to get IDs
-    for activity in created_activities:
-        session.refresh(activity)
+    # Deliberately no session.refresh() loop here: it emitted one SELECT per
+    # inserted row and the response only reports counts. Rows are re-created on
+    # every save anyway, so nothing downstream can rely on a stable id.
+    created_count = len(created_activities)
 
     return {
-        "message": f"Successfully {operation} {len(created_activities)} activities",
+        "message": f"Successfully {operation} {created_count} activities",
         "study": study_name_short,
         "participant": participant_id,
         "day_label": day_label_name,
-        "activity_count": len(created_activities),
+        "activity_count": created_count,
         "previous_activities_deleted": existing_count,
         "operation": operation,
         "validation": "All activity codes validated against study configuration",

@@ -5625,11 +5625,7 @@ async function saveAndSwitchToDay(targetDayIndex) {
     button.disabled = true;
   });
 
-  const result = await sendData({
-    shouldRedirect: false,
-    isLastDay: false,
-    currentDayIndex,
-  });
+  const result = await sendData();
 
   if (!result?.success) {
     if (window.showToast) {
@@ -7101,11 +7097,7 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
   // day — copying never advances day_label_index.
   if (sourceDayIndex === currentDayIndex) {
     try {
-      const saveResult = await sendData({
-        shouldRedirect: false,
-        isLastDay: false,
-        currentDayIndex,
-      });
+      const saveResult = await sendData();
 
       if (!saveResult?.success) {
         const submitErrorMessage = window.i18n

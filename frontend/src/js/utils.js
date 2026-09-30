@@ -1,6 +1,6 @@
 // @ts-check
 import { DEBUG_MODE, MINUTES_PER_DAY } from './constants.js';
-import { stopIdleTimer } from './idle_timeout.js';
+import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
 
 // ============================================================================
 // RETRY HELPER - Smart fetch with intelligent retry logic
@@ -862,13 +862,7 @@ export function validateTimeMarkers(startTime, endTime) {
 /**
  * Submit timeline data to the backend API.
  */
-export async function sendData(
-  options = {
-    shouldRedirect: false,
-    isLastDay: false,
-    currentDayIndex: 0,
-  }
-) {
+export async function sendData() {
   // Sync URL parameters before sending data
   syncURLParamsToStudy();
 
@@ -969,16 +963,11 @@ export async function sendData(
       window.__TRAC_CLEAR_PENDING_STATE();
     }
 
-    // Handle redirect if needed
-    if (options.shouldRedirect) {
-      console.log(
-        'Handling day navigation after successful data submission. isLastDay:',
-        options.isLastDay,
-        'currentDayIndex:',
-        options.currentDayIndex
-      );
-      await handleDayNavigation(options.isLastDay, options.currentDayIndex);
-    }
+    // This function stops the inactivity timer at the top, and the page reload
+    // that used to follow every save was what started it again. Nothing reloads
+    // any more (see dev_tools/todo_mobile.md), so restart it here.
+    restartIdleTimerForStudy();
+
     return { success: true, data: responseData };
   } catch (error) {
     console.error('Error sending data to backend API:', error);
@@ -1027,13 +1016,28 @@ export function getPostDiaryRedirectPath(completionStatus = 'completed') {
   );
 }
 
-// New function to handle day navigation
-async function handleDayNavigation(isLastDay, currentDayIndex) {
-  // Copy Days: after saving, always reload the current day to refresh
-  // day button states (green/gray) from the backend.  No auto-advance,
-  // no redirect to thank-you.  Submit Study is a separate action.
-  console.log('handleDayNavigation: reloading current day');
-  window.location.reload();
+/**
+ * Restart the inactivity timer after a save.
+ *
+ * sendData() stops the timer before submitting, and the page reload that used to
+ * follow every save was what started it again. Saving no longer reloads, so
+ * without this the timer would stay dead for the rest of the session and a
+ * participant could leave the diary open indefinitely. Same settings as the
+ * initial start in script.js.
+ */
+function restartIdleTimerForStudy() {
+  const study =
+    window.timelineManager?.studyConfig ||
+    window.studyConfigManager?.getCurrentStudy?.() ||
+    null;
+  if (!study) return;
+
+  startIdleTimer({
+    inactivity_timeout_minutes: study.inactivity_timeout_minutes ?? 0,
+    inactivity_timeout_stress_time_left:
+      study.inactivity_timeout_stress_time_left ?? 5,
+    inactivity_page_custom_text: study.inactivity_page_custom_text ?? null,
+  });
 }
 
 export function checkAndRequestPID() {

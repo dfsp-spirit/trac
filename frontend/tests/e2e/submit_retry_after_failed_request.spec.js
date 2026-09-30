@@ -43,13 +43,13 @@ test('failed save auto-retries and stays on current day', async ({ page }) => {
   // Place an activity on the primary timeline (always visible now)
   await placeActivity(page, { activityName: 'Sleeping', positionPercent: 70 });
 
-  // Save — first attempt fails (500), retry succeeds (200), then page reloads.
-  // Don't re-enter the study after reload (saveCurrentDay with reenter:false).
+  // Save — first attempt fails (500), the retry succeeds (200).
+  // Don't re-enter the study afterwards (saveCurrentDay with reenter:false).
   await saveCurrentDay(page, { reenter: false });
 
   // Verify the first attempt did fail (retry was triggered)
   expect(firstAttemptFailed).toBe(true);
 
-  // After reload, we should still be on the diary page (not advanced)
+  // The save never navigates: we stay on the diary day we were on.
   await expect(page.locator('#currentDayDisplay')).toBeVisible();
 });
