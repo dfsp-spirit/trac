@@ -143,6 +143,7 @@
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
     "goBackToEditPreviousDays": "Vaihda päivään:",
     "copyDayLink": "Kopioi tämä päivä",
+    "copyDayToAnother": "Kopioi {{day}} toiselle päivälle",
     "copyToDay": "Kopioi toiselle päivälle",
     "copyFromDay": "Kopioi toiselta päivältä",
     "copySuccess": "Kopioitu {{sourceDay}} päivälle {{targetDay}}",

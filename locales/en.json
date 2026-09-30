@@ -143,6 +143,7 @@
     "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
     "goBackToEditPreviousDays": "Switch to day:",
     "copyDayLink": "Copy this day",
+    "copyDayToAnother": "Copy {{day}} to another day",
     "copyToDay": "Copy to another day",
     "copyFromDay": "Copy from another day",
     "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",

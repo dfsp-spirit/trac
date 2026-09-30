@@ -1451,9 +1451,9 @@ const MORE_MENU_ACTIONS = [
 let openMenuState = null;
 let moreMenuInitialized = false;
 
-function moreMenuLabel(key, fallback) {
+function moreMenuLabel(key, fallback, params) {
   return window.i18n && window.i18n.isReady()
-    ? window.i18n.t(key)
+    ? window.i18n.t(key, params)
     : fallback;
 }
 
@@ -1654,13 +1654,20 @@ function initMoreMenu() {
  * refreshOpenMenuItems() can mirror the control's disabled state. */
 function addMenuItem(
   menu,
-  { label, detail, controlId, disabled = false, className = '', onSelect }
+  { label, detail, controlId, disabled = false, className = '', icon = '', onSelect }
 ) {
   const item = document.createElement('button');
   item.type = 'button';
   item.className = `context-menu-item ${className}`.trim();
   item.disabled = disabled;
   if (controlId) item.dataset.controlId = controlId;
+
+  if (icon) {
+    const iconEl = document.createElement('i');
+    iconEl.className = `fas ${icon} context-menu-item-icon`;
+    iconEl.setAttribute('aria-hidden', 'true');
+    item.appendChild(iconEl);
+  }
 
   const labelSpan = document.createElement('span');
   labelSpan.className = 'context-menu-item-label';
@@ -1770,6 +1777,7 @@ function ensureMobileContextBar() {
 function buildDayMenu(menu) {
   const currentDayIndex = getDayIndexFromUrl();
   const studyDaysCount = getStudyDaysCount();
+  const currentDayName = getDayDisplayName(currentDayIndex);
   const completeDays = Array.isArray(
     window.timelineManager?.dayIndicesMeetMinCoverage
   )
@@ -1777,6 +1785,29 @@ function buildDayMenu(menu) {
     : Array.isArray(window.timelineManager?.dayIndicesWithData)
       ? window.timelineManager.dayIndicesWithData
       : [];
+
+  // Copying is a day-pair operation and it acts on the day the participant is
+  // in, not on a day in the list - so it sits on top, above the day list, with
+  // an icon, an accent colour and the day it acts on spelled out. As the last
+  // of eight rows it read as another day: people know their weekday names and
+  // stopped reading after the first two.
+  addMenuItem(menu, {
+    label: moreMenuLabel(
+      'messages.copyDayToAnother',
+      `Copy ${currentDayName} to another day`,
+      { day: currentDayName }
+    ),
+    className: 'day-menu-copy',
+    icon: 'fa-copy',
+    onSelect: () => {
+      if (typeof window.showCopyTargetPicker === 'function') {
+        window.showCopyTargetPicker(currentDayIndex, {
+          clientX: window.innerWidth / 2,
+          clientY: window.innerHeight / 2,
+        });
+      }
+    },
+  });
 
   addMenuHeader(
     menu,
@@ -1806,20 +1837,6 @@ function buildDayMenu(menu) {
       item.setAttribute('aria-label', `${dayName}, ${completeHint}`);
     }
   }
-
-  // Copying is a day-pair operation, so it belongs where the target is picked.
-  addMenuItem(menu, {
-    label: moreMenuLabel('messages.copyDayLink', 'Copy this day'),
-    className: 'day-menu-copy',
-    onSelect: () => {
-      if (typeof window.showCopyTargetPicker === 'function') {
-        window.showCopyTargetPicker(currentDayIndex, {
-          clientX: window.innerWidth / 2,
-          clientY: window.innerHeight / 2,
-        });
-      }
-    },
-  });
 }
 
 function buildTimelineMenu(menu) {

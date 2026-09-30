@@ -143,6 +143,7 @@
     "currentDayTooltip": "{{dayName}} (Tag {{current}} von {{total}})",
     "goBackToEditPreviousDays": "Zu Tag wechseln:",
     "copyDayLink": "Tag kopieren",
+    "copyDayToAnother": "{{day}} auf einen anderen Tag kopieren",
     "copyToDay": "Auf anderen Tag kopieren",
     "copyFromDay": "Von anderem Tag kopieren",
     "copySuccess": "{{sourceDay}} nach {{targetDay}} kopiert",
@@ -162,18 +163,18 @@
     "loadingActivitiesShort": "Fehler beim Laden der Aktivitäten. Bitte laden Sie die Seite neu und versuchen Sie es erneut. Fehler:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Anleitung: Tippen Sie auf die +-Schaltfläche unten rechts, um eine Aktivität auszuwählen, und tippen Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, halten Sie sie gedrückt und wählen Sie Löschen.",
+    "dayOneInstructionsMobile": "Anleitung: Tippen Sie auf den + Button unten rechts, um eine neue Aktivität auszuwählen, und tippen Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, halten Sie sie gedrückt und wählen Sie Löschen.",
     "dayOneInstructionsDesktop": "Anleitung: Wählen Sie unten eine Aktivität aus und klicken Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, klicken Sie mit der rechten Maustaste darauf und wählen Sie Löschen."
   },
   "thankYou": {
-    "title": "Vielen Dank - TRAC",
+    "title": "Vielen Dank",
     "heading": "Vielen Dank!",
     "subtitle": "Ihre Übermittlung wurde erfolgreich abgeschlossen.",
     "defaultMessage": "Vielen Dank für Ihre Teilnahme an unserer Studie. Ihre Angaben wurden gespeichert und tragen zu wertvoller Forschung bei.",
     "continueLink": "Klicken Sie hier, um fortzufahren."
   },
   "taskPage": {
-    "title": "TRAC Aufgaben",
+    "title": "Aufgaben",
     "heading": "Abschließende Aufgaben",
     "subtitle": "Bitte führen Sie die folgenden Aufgaben aus, bevor Sie die Studie beenden.",
     "continueLink": "Weiter zur Abschlussseite",
@@ -187,11 +188,11 @@
   },
   "timeout": {
     "title": "Sitzung abgelaufen - Zeitnutzungstagebuch",
-    "heading": "TRAC Zeitnutzungsstudie - Sitzung abgelaufen",
+    "heading": "Zeitnutzungsstudie - Sitzung abgelaufen",
     "message": "Ihre Sitzung wurde wegen Inaktivität beendet. Bitte verwenden Sie Ihren Einladungslink, um zum Tagebuch zurückzukehren und Ihre Eingabe fortzusetzen."
   },
   "footer": {
-    "title": "TRAC",
+    "title": "",
     "backend_status_connecting": "Verbindung zum Backend wird hergestellt...",
     "backend_status_connected": "Mit Backend verbunden",
     "backend_status_error": "Fehler bei der Verbindung zum Backend"
@@ -200,8 +201,8 @@
     "tooltip": "Inaktivitäts-Zeitüberschreitung. Klicken Sie hier, um zu bestätigen, dass Sie noch da sind, und der Timer wird zurückgesetzt."
   },
   "openStudies": {
-    "pageTitle": "Offene Studien | TRAC",
-    "heading": "TRAC -- Offene Studien",
+    "pageTitle": "Offene Studien",
+    "heading": "Offene Studien",
     "noStudies": "Keine offenen Studien verfügbar.",
     "loadError": "Offene Studien konnten nicht geladen werden: {{message}}",
     "accessStudy": "Studie „{{study}}“ aufrufen"
