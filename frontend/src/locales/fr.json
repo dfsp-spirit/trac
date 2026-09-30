@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Outils utiles",
     "removeLastHelp": "Supprimer la dernière activité placée",
-    "cleanRowHelp": "Vous voulez recommencer ? Nettoyez la ligne",
+    "clearTimelineHelp": "Vous voulez recommencer ? Effacez la chronologie",
     "customActivityHelp": "Activité non listée ? Ajoutez une activité personnalisée",
     "customActivityName": "Autre non listé (entrer)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Soumettre l'étude",
     "start": "Commencer",
     "removeLast": "Supprimer dernière",
-    "cleanRow": "Nettoyer la Ligne",
+    "clearTimeline": "Effacer la chronologie",
+    "moreActions": "Autres actions",
     "skipReporting": "Ignorer le rapport de temps",
     "switchTimeline": "Changer de ligne de temps",
     "giveConsent": "Je consens et je continue",
@@ -101,9 +102,9 @@
       "title": "Voulez-vous vraiment ignorer tout le rapport de temps ?",
       "message": "Vous serez redirigé directement vers la page de remerciement."
     },
-    "confirmCleanRow": {
-      "title": "Effacer la ligne de chronologie actuelle ?",
-      "message": "Êtes-vous sûr de vouloir supprimer toutes les activités de la ligne de chronologie actuelle ?"
+    "confirmClearTimeline": {
+      "title": "Effacer cette chronologie ?",
+      "message": "Êtes-vous sûr de vouloir supprimer toutes les activités de cette chronologie ?"
     },
     "activityContext": {
       "copy": "Copier",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Cliquez pour placer l'activité sélectionnée ici.",
     "invalidPlacement": "Impossible de placer l'activité ici en raison d'une position invalide.",
     "timelineValidationError": "Erreur de validation de la chronologie : {{message}}",
-    "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
-    "templateCopiedBanner": "Nous avons pré-rempli votre journal avec les activités d'un participant modèle. Cliquez sur <strong>'Nettoyer la Ligne'</strong> pour repartir de zéro ou modifiez les activités ci-dessous.",
+    "templateLoadedBanner": "Nous avons chargé vos activités du <strong>{{day}}</strong> comme point de départ. Cliquez sur <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez les activités ci-dessous. Sur mobile, supprimez une activité par appui long. Sur ordinateur, faites un clic droit sur une activité et choisissez <strong>'Supprimer'</strong> (ou survolez-la et appuyez sur DEL ou 'd').",
+    "templateCopiedBanner": "Nous avons pré-rempli votre journal avec les activités d'un participant modèle. Cliquez sur <strong>'Effacer la chronologie'</strong> pour repartir de zéro ou modifiez les activités ci-dessous.",
     "studyDayOf": "Jour {{current}} sur {{total}}",
     "currentDayTooltip": "{{dayName}} (Jour {{current}} sur {{total}})",
     "goBackToEditPreviousDays": "Aller au jour :",

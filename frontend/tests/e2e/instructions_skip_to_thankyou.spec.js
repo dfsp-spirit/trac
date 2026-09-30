@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { openSkipConfirmation } = require('./e2e_helpers.js');
 
 test('instructions -> start -> skip reporting -> thank-you page', async ({
   page,
@@ -13,42 +14,11 @@ test('instructions -> start -> skip reporting -> thank-you page', async ({
   await page.locator('#continueBtn').click();
 
   await page.waitForURL(/index\.html/, { timeout: 15000 });
-  const skipReportingBtn = page.locator('#skipReportingBtn');
-  await expect(skipReportingBtn).toBeVisible();
 
-  // The skip button can render before its click handler is attached during
-  // late UI initialization. Wait until it is truly interactable to avoid
-  // flaky "modal stays hidden" failures in CI.
-  await expect
-    .poll(async () => {
-      const result = await page.evaluate(() => {
-        const button = document.getElementById('skipReportingBtn');
-        const modal = document.getElementById('skipConfirmationModal');
-        if (!button || !modal) {
-          return false;
-        }
-        if (button.offsetParent === null) {
-          return false;
-        }
-
-        // If clicking opens the modal, handler wiring is ready.
-        button.click();
-        const opened = modal.style.display === 'block';
-        if (opened) {
-          // Reset so test can execute the user-visible click path below.
-          modal.style.display = 'none';
-        }
-        return opened;
-      });
-      return result;
-    }, {
-      message: 'waiting for skip button handler to be attached',
-      timeout: 10000,
-    })
-    .toBe(true);
-
-  await skipReportingBtn.click();
-  await expect(page.locator('#skipConfirmationModal')).toBeVisible();
+  // Reaches the action wherever it is: its own button on desktop, the ⋮ menu on
+  // a phone. It also retries until the handler is wired, which used to surface
+  // as a flaky "modal stays hidden" failure in CI.
+  await openSkipConfirmation(page);
   await page.locator('#confirmSkipOk').click();
 
   await expect(page).toHaveURL(/pages\/thank-you\.html/);

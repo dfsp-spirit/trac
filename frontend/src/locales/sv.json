@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Användbara verktyg",
     "removeLastHelp": "Ta bort den senast placerade aktiviteten",
-    "cleanRowHelp": "Vill du börja om? Rensa raden",
+    "clearTimelineHelp": "Vill du börja om? Rensa tidslinjen",
     "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet",
     "customActivityName": "Annat som inte finns med (ange)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Skicka studien",
     "start": "Starta",
     "removeLast": "Ta bort senaste",
-    "cleanRow": "Rensa rad",
+    "clearTimeline": "Rensa tidslinjen",
+    "moreActions": "Fler åtgärder",
     "skipReporting": "Hoppa över tidsrapportering",
     "switchTimeline": "Byt tidslinje",
     "giveConsent": "Jag samtycker och fortsätter",
@@ -101,9 +102,9 @@
       "title": "Vill du verkligen hoppa över all tidsrapportering?",
       "message": "Du kommer att skickas direkt till tack-sidan."
     },
-    "confirmCleanRow": {
-      "title": "Rensa aktuell tidslinjerad?",
-      "message": "Är du säker på att du vill ta bort alla aktiviteter i den aktuella tidslinjeraden?"
+    "confirmClearTimeline": {
+      "title": "Rensa denna tidslinje?",
+      "message": "Är du säker på att du vill ta bort alla aktiviteter i denna tidslinje?"
     },
     "activityContext": {
       "copy": "Kopiera",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Klicka för att placera den valda aktiviteten här.",
     "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
     "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
-    "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
-    "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa rad'</strong> för att börja om eller redigera aktiviteterna nedan.",
+    "templateLoadedBanner": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan. På mobil tar du bort en enskild aktivitet genom att hålla länge på den. På dator högerklickar du på en aktivitet och väljer <strong>'Ta bort'</strong> (eller håller muspekaren över den och trycker på DEL eller 'd').",
+    "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan.",
     "studyDayOf": "Dag {{current}} av {{total}}",
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
     "goBackToEditPreviousDays": "Byt till dag:",

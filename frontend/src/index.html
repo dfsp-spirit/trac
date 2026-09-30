@@ -46,12 +46,12 @@
             <span data-i18n="buttons.removeLast">Remove Last</span>
         </button>
 
-        <button class="btn clean-row-btn" id="cleanRowBtn" data-is-active="false" disabled>
+        <button class="btn clear-timeline-btn" id="clearTimelineBtn" data-is-active="false" disabled>
             <i class="fas fa-trash-alt" aria-hidden="true"></i>
-            <span data-i18n="buttons.cleanRow">Clean Row</span>
+            <span data-i18n="buttons.clearTimeline">Clear timeline</span>
         </button>
 
-        <button class="btn next-btn" id="nextBtn" data-is-active="false" disabled>
+        <button class="btn save-day-btn" id="saveDayBtn" data-is-active="false" disabled>
             <i class="fas fa-save" aria-hidden="true"></i>
             <span data-i18n="buttons.saveDay">Save Day</span>
         </button>
@@ -60,6 +60,17 @@
                 data-i18n-title="messages.submitStudyIncompleteHint" title="Complete all days before submitting">
             <i class="fas fa-check-double" aria-hidden="true"></i>
             <span data-i18n="buttons.submitStudy">Submit Study</span>
+        </button>
+
+        <!-- Phone-only overflow menu. The actions it holds (Clear timeline,
+             Remove Last, Skip time reporting, language) are visible in the
+             toolbar or footer on desktop, so the trigger is hidden from
+             1440 px up. Each item proxies .click() to the real control, which
+             keeps one implementation of every action. -->
+        <button class="btn more-menu-btn" id="moreMenuBtn" type="button"
+                aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"
+                data-i18n-aria-label="buttons.moreActions" aria-label="More actions">
+            <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
         </button>
         </div>
 

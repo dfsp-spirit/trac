@@ -259,11 +259,11 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
  * @param {import('@playwright/test').Page} page
  */
 async function saveCurrentDay(page, { reenter = true } = {}) {
-  const saveBtn = page.locator('#nextBtn');
+  const saveBtn = page.locator('#saveDayBtn');
   await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
   await expect(saveBtn).toBeEnabled({ timeout: 3000 });
 
-  // handleNextButtonAction calls sendData() (with retry), then on success
+  // handleSaveDayAction calls sendData() (with retry), then on success
   // does setTimeout(() => window.location.reload(), 1500).
   // The retry + reload can destroy the page context, so catch everything.
   try {
@@ -285,6 +285,48 @@ async function saveCurrentDay(page, { reenter = true } = {}) {
   if (reenter) {
     await enterStudyIfNeeded(page);
   }
+}
+
+/**
+ * Trigger "Skip time reporting" and wait for its confirmation dialog.
+ *
+ * The action has a button of its own on desktop and lives in the ⋮ menu on a
+ * phone, so specs must not click `#skipReportingBtn` directly. Retries because
+ * the control can render before its click handler is attached - that used to be
+ * a flaky "modal stays hidden" CI failure.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [maxAttempts=5]
+ */
+async function openSkipConfirmation(page, maxAttempts = 5) {
+  const skipButton = page.locator('#skipReportingBtn');
+  const modal = page.locator('#skipConfirmationModal');
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (await skipButton.isVisible().catch(() => false)) {
+      await skipButton.click();
+    } else {
+      const menu = page.locator('#moreMenu');
+      if (!(await menu.isVisible().catch(() => false))) {
+        await page.locator('#moreMenuBtn').click();
+      }
+      await page
+        .locator('#moreMenu [data-control-id="skipReportingBtn"]')
+        .click();
+    }
+
+    const opened = await modal
+      .waitFor({ state: 'visible', timeout: 2000 })
+      .then(() => true)
+      .catch(() => false);
+    if (opened) {
+      return;
+    }
+  }
+
+  throw new Error(
+    'could not open the skip confirmation dialog (is its handler wired?)'
+  );
 }
 
 /**
@@ -480,6 +522,7 @@ module.exports = {
   placeActivity,
   saveCurrentDay,
   switchToDay,
+  openSkipConfirmation,
   getCurrentDayIndex,
   copyDayTo,
   rightClickCopyDay,

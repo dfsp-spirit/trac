@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { openSkipConfirmation } = require('./e2e_helpers.js');
 test('return_url is preserved and shown as continue link on thank-you page', async ({
   page,
 }) => {
@@ -21,26 +22,13 @@ test('return_url is preserved and shown as continue link on thank-you page', asy
     rawReturnUrl
   );
 
-  await expect(page.locator('#skipReportingBtn')).toBeVisible();
+  // The skip action is hidden at phone widths (it moves into the ⋮ menu there),
+  // but it must never be disabled.
   await expect(page.locator('#skipReportingBtn')).toBeEnabled();
 
-  const skipModal = page.locator('#skipConfirmationModal');
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await page.locator('#skipReportingBtn').click();
-
-    const modalVisible = await skipModal
-      .isVisible({ timeout: 1000 })
-      .catch(() => false);
-
-    if (modalVisible) {
-      await page.locator('#confirmSkipOk').click();
-      break;
-    }
-
-    const alreadyOnThankYou = /pages\/thank-you\.html/.test(page.url());
-    if (alreadyOnThankYou) {
-      break;
-    }
+  if (!/pages\/thank-you\.html/.test(page.url())) {
+    await openSkipConfirmation(page);
+    await page.locator('#confirmSkipOk').click();
   }
 
   await expect(page).toHaveURL(/pages\/thank-you\.html/);

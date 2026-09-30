@@ -45,13 +45,13 @@ test('the main diary controls are big enough to tap', async ({ page }) => {
     waitUntil: 'load',
   });
   await enterStudyIfNeeded(page);
-  await page.locator('#nextBtn').waitFor({ state: 'visible' });
+  await page.locator('#saveDayBtn').waitFor({ state: 'visible' });
 
   const measured = await page.evaluate(() =>
     [
       ['floating add button', '.floating-add-button'],
-      ['save day button', '#nextBtn'],
-      ['skip reporting button', '#skipReportingBtn'],
+      ['save day button', '#saveDayBtn'],
+      ['more menu button', '#moreMenuBtn'],
     ].map(([label, selector]) => {
       const element = document.querySelector(selector);
       const rect = element.getBoundingClientRect();
@@ -69,6 +69,52 @@ test('the main diary controls are big enough to tap', async ({ page }) => {
       `${control.label} is ${control.width}x${control.height}px - WCAG 2.2 SC 2.5.8 requires at least 24x24`
     ).toBeGreaterThanOrEqual(24);
   }
+});
+
+test('the secondary controls move into the ⋮ menu on a phone', async ({
+  page,
+}) => {
+  await page.goto('index.html?pid=mobile_more_menu&study_name=default&lang=en', {
+    waitUntil: 'load',
+  });
+  await enterStudyIfNeeded(page);
+  await expect(page.locator('#moreMenuBtn')).toBeVisible({ timeout: 30000 });
+
+  // On desktop each of these has a button of its own (or, for the language
+  // picker, a row); on a phone they are reached through the ⋮ menu instead.
+  await expect(page.locator('#removeLastBtn')).toBeHidden();
+  await expect(page.locator('#clearTimelineBtn')).toBeHidden();
+  await expect(page.locator('#skipReportingBtn')).toBeHidden();
+  await expect(page.locator('.language-select-wrapper')).toBeHidden();
+
+  // Moving the skip action off the page also reclaims the footer row it used to
+  // occupy - the whole point of hiding its button.
+  await expect(page.locator('#instructionsFooter')).toBeHidden();
+
+  const trigger = page.locator('#moreMenuBtn');
+  await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  await trigger.click();
+  await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+  const menu = page.locator('#moreMenu');
+  await expect(menu).toBeVisible();
+
+  // The day is empty, so both activity actions are offered but disabled -
+  // mirroring the real buttons they proxy.
+  await expect(menu.locator('[data-control-id="removeLastBtn"]')).toBeDisabled();
+  await expect(
+    menu.locator('[data-control-id="clearTimelineBtn"]')
+  ).toBeDisabled();
+
+  // The language picker moved in too, with the active language marked.
+  await expect(menu.locator('.more-menu-languages [aria-pressed="true"]')).toHaveText(
+    'EN'
+  );
+
+  // An item proxies the real handler: "Skip time reporting" opens its dialog.
+  await menu.locator('[data-control-id="skipReportingBtn"]').click();
+  await expect(page.locator('#skipConfirmationModal')).toBeVisible();
+  await expect(menu).toHaveCount(0);
 });
 
 test('an activity can be placed with touch alone', async ({ page }) => {

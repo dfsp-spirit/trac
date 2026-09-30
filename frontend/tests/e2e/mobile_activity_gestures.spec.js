@@ -10,8 +10,9 @@ const { enterStudyIfNeeded } = require('./e2e_helpers.js');
 // menu - and its document-level pointer handler was not gated on the mobile
 // breakpoint, so a motionless mouse press armed it on desktop as well.
 //
-// The same surface used to host a swipe: a left swipe clicked `#nextBtn`, which
-// has been "Save Day" since Copy Days, so an accidental horizontal drag saved the
+// The same surface used to host a swipe: a left swipe clicked `#nextBtn` (now
+// `#saveDayBtn`), which has been "Save Day" since Copy Days, so an accidental
+// horizontal drag saved the
 // day and triggered a 1.5 s `location.reload()`. That gesture is gone, and the
 // test below pins down that a horizontal drag stays inert - it must not save, and
 // it must not navigate away from unsaved work.

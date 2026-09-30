@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Hyödylliset työkalut",
     "removeLastHelp": "Poista viimeksi sijoitettu toiminto",
-    "cleanRowHelp": "Haluatko aloittaa alusta? Tyhjennä rivi",
+    "clearTimelineHelp": "Haluatko aloittaa alusta? Tyhjennä aikajana",
     "customActivityHelp": "Eikö toimintoa ole listalla? Lisää oma toiminto",
     "customActivityName": "Muu (kirjoita)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Lähetä tutkimus",
     "start": "Aloita",
     "removeLast": "Poista viimeisin",
-    "cleanRow": "Tyhjennä rivi",
+    "clearTimeline": "Tyhjennä aikajana",
+    "moreActions": "Lisää toimintoja",
     "skipReporting": "Ohita ajankäytön raportointi",
     "switchTimeline": "Vaihda aikajanaa",
     "giveConsent": "Annan suostumukseni ja jatkan",
@@ -101,9 +102,9 @@
       "title": "Haluatko varmasti ohittaa ajankäytön raportoinnin?",
       "message": "Sinut ohjataan suoraan kiitossivulle."
     },
-    "confirmCleanRow": {
-      "title": "Tyhjennetäänkö nykyinen aikajanarivi?",
-      "message": "Haluatko varmasti poistaa kaikki aktiviteetit nykyiseltä aikajanariviltä?"
+    "confirmClearTimeline": {
+      "title": "Tyhjennetäänkö tämä aikajana?",
+      "message": "Haluatko varmasti poistaa kaikki aktiviteetit tältä aikajanalta?"
     },
     "activityContext": {
       "copy": "Kopioi",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Napsauta sijoittaaksesi valitun toiminnon tähän.",
     "invalidPlacement": "Toimintoa ei voi sijoittaa tähän virheellisen sijainnin vuoksi.",
     "timelineValidationError": "Aikajanan validointivirhe: {{message}}",
-    "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
-    "templateCopiedBanner": "Olemme esitäyttäneet päiväkirjasi malliosallistujan toiminnoilla. Klikkaa <strong>'Tyhjennä rivi'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja.",
+    "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
+    "templateCopiedBanner": "Olemme esitäyttäneet päiväkirjasi malliosallistujan toiminnoilla. Klikkaa <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja.",
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
     "goBackToEditPreviousDays": "Vaihda päivään:",

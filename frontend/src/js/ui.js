@@ -107,7 +107,7 @@ function createDisabledButtonOverlay(buttonId) {
 
 // Function to update overlay visibility based on button state
 function updateDisabledButtonOverlays() {
-  const button = document.getElementById('nextBtn');
+  const button = document.getElementById('saveDayBtn');
   if (!button) return;
 
   const overlay = document.getElementById(`${button.id}-overlay`);
@@ -124,7 +124,7 @@ function initializeOverlays() {
   console.log('Initializing overlays...');
 
   // Create overlay for the disabled button
-  createDisabledButtonOverlay('nextBtn');
+  createDisabledButtonOverlay('saveDayBtn');
 
   // Update overlay visibility initially
   updateDisabledButtonOverlays();
@@ -142,10 +142,10 @@ function initializeOverlays() {
   });
 
   // Observe the button for disabled attribute changes
-  const nextBtn = document.getElementById('nextBtn');
+  const saveDayButton = document.getElementById('saveDayBtn');
 
-  if (nextBtn) {
-    observer.observe(nextBtn, {
+  if (saveDayButton) {
+    observer.observe(saveDayButton, {
       attributes: true,
       attributeFilter: ['disabled'],
     });
@@ -167,8 +167,8 @@ setInterval(() => {
   updateDisabledButtonOverlays();
 
   // Re-create the overlay if it does not exist
-  if (!document.getElementById('nextBtn-overlay')) {
-    createDisabledButtonOverlay('nextBtn');
+  if (!document.getElementById('saveDayBtn-overlay')) {
+    createDisabledButtonOverlay('saveDayBtn');
   }
 }, 2000);
 
@@ -188,7 +188,7 @@ window.updateDisabledButtonOverlays = updateDisabledButtonOverlays;
 const MODAL_FOCUSABLE_SELECTOR =
   'a[href], button:not([disabled]), textarea, input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const MODAL_CLOSE_SELECTOR =
-  '.modal-close, .close, #confirmSkipCancel, #confirmCleanRowCancel';
+  '.modal-close, .close, #confirmSkipCancel, #confirmClearTimelineCancel';
 
 // Stack of open dialogs: [{ dialog, trigger }]
 const modalFocusStack = [];
@@ -502,49 +502,49 @@ function createModal() {
     }
   });
 
-  const cleanRowConfirmationModal = document.createElement('div');
-  cleanRowConfirmationModal.className = 'modal-overlay';
-  cleanRowConfirmationModal.id = 'cleanRowConfirmationModal';
-  cleanRowConfirmationModal.setAttribute('role', 'dialog');
-  cleanRowConfirmationModal.setAttribute('aria-modal', 'true');
-  cleanRowConfirmationModal.setAttribute(
+  const clearTimelineConfirmModal = document.createElement('div');
+  clearTimelineConfirmModal.className = 'modal-overlay';
+  clearTimelineConfirmModal.id = 'clearTimelineConfirmModal';
+  clearTimelineConfirmModal.setAttribute('role', 'dialog');
+  clearTimelineConfirmModal.setAttribute('aria-modal', 'true');
+  clearTimelineConfirmModal.setAttribute(
     'aria-labelledby',
-    'cleanRowConfirmationModalTitle'
+    'clearTimelineConfirmModalTitle'
   );
-  cleanRowConfirmationModal.innerHTML = `
+  clearTimelineConfirmModal.innerHTML = `
         <div class="modal">
             <div class="modal-content">
-                <h3 id="cleanRowConfirmationModalTitle" data-i18n="modals.confirmCleanRow.title">Clear current timeline row?</h3>
-                <p data-i18n="modals.confirmCleanRow.message">Are you sure you want to delete all activities in the current timeline row?</p>
+                <h3 id="clearTimelineConfirmModalTitle" data-i18n="modals.confirmClearTimeline.title">Clear this timeline?</h3>
+                <p data-i18n="modals.confirmClearTimeline.message">Are you sure you want to delete all activities in this timeline?</p>
                 <div class="button-container">
-                    <button id="confirmCleanRowCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
-                    <button id="confirmCleanRowOk" class="btn save-btn" data-i18n="buttons.cleanRow">Clean Row</button>
+                    <button id="confirmClearTimelineCancel" class="btn btn-secondary" data-i18n="buttons.cancel">Cancel</button>
+                    <button id="confirmClearTimelineOk" class="btn save-btn" data-i18n="buttons.clearTimeline">Clear timeline</button>
                 </div>
             </div>
         </div>
     `;
 
-  cleanRowConfirmationModal
-    .querySelector('#confirmCleanRowCancel')
+  clearTimelineConfirmModal
+    .querySelector('#confirmClearTimelineCancel')
     .addEventListener('click', () => {
-      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+      clearTimelineConfirmModal.style.cssText = 'display: none !important';
     });
 
-  cleanRowConfirmationModal
-    .querySelector('#confirmCleanRowOk')
+  clearTimelineConfirmModal
+    .querySelector('#confirmClearTimelineOk')
     .addEventListener('click', () => {
-      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+      clearTimelineConfirmModal.style.cssText = 'display: none !important';
     });
 
-  cleanRowConfirmationModal.addEventListener('click', (e) => {
-    if (e.target === cleanRowConfirmationModal) {
-      cleanRowConfirmationModal.style.cssText = 'display: none !important';
+  clearTimelineConfirmModal.addEventListener('click', (e) => {
+    if (e.target === clearTimelineConfirmModal) {
+      clearTimelineConfirmModal.style.cssText = 'display: none !important';
     }
   });
 
   document.body.appendChild(activitiesModal);
   document.body.appendChild(skipConfirmationModal);
-  document.body.appendChild(cleanRowConfirmationModal);
+  document.body.appendChild(clearTimelineConfirmModal);
   document.body.appendChild(customActivityModal);
 
   // Tier 2: enable focus management for the dialogs just created (it also
@@ -933,8 +933,8 @@ function updateButtonStates() {
   updateCurrentDayDisplay();
 
   const removeLastButton = document.getElementById('removeLastBtn');
-  const cleanRowButton = document.getElementById('cleanRowBtn');
-  const nextButtonInTopBar = document.getElementById('nextBtn');
+  const clearTimelineButton = document.getElementById('clearTimelineBtn');
+  const saveDayButtonInTopBar = document.getElementById('saveDayBtn');
 
   const currentData = getCurrentTimelineData();
   const isEmpty = currentData.length === 0;
@@ -950,7 +950,7 @@ function updateButtonStates() {
   //console.log('Has activities DOM:', hasActivities);
 
   if (removeLastButton) removeLastButton.disabled = isEmpty;
-  if (cleanRowButton) cleanRowButton.disabled = !hasActivities;
+  if (clearTimelineButton) clearTimelineButton.disabled = !hasActivities;
 
   // Update the timeline switcher: shown whenever the study has more than one
   // timeline, and on narrow viewports the only way to reach the others.
@@ -1005,17 +1005,17 @@ function updateButtonStates() {
     ? window.i18n.t('buttons.saveDay')
     : 'Save Day';
 
-  if (nextButtonInTopBar) {
-    nextButtonInTopBar.disabled = !canProceed;
-    nextButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
-    nextButtonInTopBar.setAttribute('data-mode', 'save-day');
-    nextButtonInTopBar.title = '';
+  if (saveDayButtonInTopBar) {
+    saveDayButtonInTopBar.disabled = !canProceed;
+    saveDayButtonInTopBar.innerHTML = `<i class="fas fa-save"></i> ${saveDayText}`;
+    saveDayButtonInTopBar.setAttribute('data-mode', 'save-day');
+    saveDayButtonInTopBar.title = '';
   }
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
   // min_coverage check as the Next/Submit buttons above.  Every activity
   // mutation (create, delete, move, resize, arrow-key time edit,
-  // remove-last, clean-row, load) routes through this function, so
+  // remove-last, clear-timeline, load) routes through this function, so
   // re-rendering the row here keeps both button groups in sync without
   // touching each individual call site.
   if (typeof window.renderPreviousDaysSwitchRow === 'function') {
@@ -1034,6 +1034,9 @@ function updateButtonStates() {
 
   // Copy Days: update the Submit Study button state
   updateSubmitStudyButton();
+
+  // Keep the ⋮ menu's mirrored disabled states in sync (no-op when closed).
+  refreshMoreMenuItems();
 }
 
 /**
@@ -1257,8 +1260,11 @@ function updateFooterVisibility() {
   if (!footer) return;
 
   const skipReportingBtn = document.getElementById('skipReportingBtn');
+  // `style.display` alone would miss the breakpoint rule that hides the button on
+  // phones (styles.css), which would leave the footer as a dead row there.
   const hasVisibleAction =
-    !!skipReportingBtn && skipReportingBtn.style.display !== 'none';
+    !!skipReportingBtn &&
+    getComputedStyle(skipReportingBtn).display !== 'none';
 
   footer.hidden = !hasVisibleAction;
   updateFooterHeight();
@@ -1278,7 +1284,7 @@ const REMOVE_LAST_BUTTON_COOLDOWN = 300; // 300ms cooldown
 
 // Shared function to handle save button logic with debounce.
 // Copy Days: saving is a routine operation — no confirmation modal needed.
-const handleNextButtonAction = async () => {
+const handleSaveDayAction = async () => {
   const currentTime = Date.now();
   if (currentTime - nextButtonLastClick < NEXT_BUTTON_COOLDOWN) {
     console.log('Save button on cooldown');
@@ -1286,9 +1292,9 @@ const handleNextButtonAction = async () => {
   }
   nextButtonLastClick = currentTime;
 
-  const nextButton = document.getElementById('nextBtn');
+  const saveDayButton = document.getElementById('saveDayBtn');
 
-  if (nextButton) nextButton.disabled = true;
+  if (saveDayButton) saveDayButton.disabled = true;
 
   const urlParams = new URLSearchParams(window.location.search);
   const currentDayIndex = parseInt(urlParams.get('day_label_index')) || 0;
@@ -1443,15 +1449,231 @@ const handleRemoveLastButtonAction = () => {
 };
 
 let buttonsInitialized = false;
+
+// ── Phone ⋮ menu ──────────────────────────────────────────────────────────
+// On phones the toolbar only has room for the timeline switcher, Save Day and
+// Submit Study. Clear timeline, Remove Last, Skip time reporting and the
+// language picker move in here instead of taking a row each.
+//
+// Every item proxies .click() to the real control, so there is still exactly one
+// implementation of each action (including its confirmation dialog), and the
+// disabled state is mirrored from the control itself. Hidden controls still
+// receive .click() - a disabled one simply does nothing.
+const MORE_MENU_ID = 'moreMenu';
+const MORE_MENU_ACTIONS = [
+  {
+    controlId: 'clearTimelineBtn',
+    labelKey: 'buttons.clearTimeline',
+    fallback: 'Clear timeline',
+  },
+  {
+    controlId: 'removeLastBtn',
+    labelKey: 'buttons.removeLast',
+    fallback: 'Remove Last',
+  },
+  {
+    controlId: 'skipReportingBtn',
+    labelKey: 'buttons.skipReporting',
+    fallback: 'Skip time reporting',
+  },
+];
+
+let moreMenuOpen = false;
+let moreMenuInitialized = false;
+
+function moreMenuLabel(key, fallback) {
+  return window.i18n && window.i18n.isReady()
+    ? window.i18n.t(key)
+    : fallback;
+}
+
+/**
+ * A control counts as available unless its study-specific inline style turned it
+ * off (initSkipReportingButton hides the skip action for studies that forbid
+ * it). The mobile breakpoint hides controls with CSS, not inline styles, so a
+ * control hidden for layout reasons is still offered in the menu.
+ */
+function isMoreMenuActionAvailable(control) {
+  return !!control && control.style.display !== 'none';
+}
+
+function buildMoreMenu() {
+  const menu = document.createElement('div');
+  menu.className = 'more-menu';
+  menu.id = MORE_MENU_ID;
+
+  MORE_MENU_ACTIONS.forEach((action) => {
+    const control = document.getElementById(action.controlId);
+    if (!isMoreMenuActionAvailable(control)) return;
+
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'more-menu-item';
+    item.dataset.controlId = action.controlId;
+    item.textContent = moreMenuLabel(action.labelKey, action.fallback);
+    item.addEventListener('click', () => {
+      closeMoreMenu();
+      const target = document.getElementById(action.controlId);
+      if (target && !target.disabled) target.click();
+    });
+    menu.appendChild(item);
+  });
+
+  // Language: enumerate the selector the study config already built, and switch
+  // by setting its value and firing `change` - the same path the <select> uses.
+  const languageSelect = document.getElementById('languageSelectMain');
+  if (languageSelect && languageSelect.options.length > 1) {
+    const header = document.createElement('div');
+    header.className = 'more-menu-header';
+    header.textContent = moreMenuLabel('common.language', 'Language');
+    menu.appendChild(header);
+
+    const languages = document.createElement('div');
+    languages.className = 'more-menu-languages';
+    Array.from(languageSelect.options).forEach((option) => {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'more-menu-item';
+      item.textContent = option.textContent;
+      item.setAttribute(
+        'aria-pressed',
+        String(option.value === languageSelect.value)
+      );
+      item.addEventListener('click', () => {
+        closeMoreMenu();
+        if (option.value === languageSelect.value) return;
+        languageSelect.value = option.value;
+        languageSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      languages.appendChild(item);
+    });
+    menu.appendChild(languages);
+  }
+
+  return menu;
+}
+
+/** Mirror each proxied control's disabled state (called on open and on any
+ * activity mutation, which is what disables Clear timeline / Remove Last). */
+function refreshMoreMenuItems() {
+  const menu = document.getElementById(MORE_MENU_ID);
+  if (!menu) return;
+
+  menu.querySelectorAll('.more-menu-item[data-control-id]').forEach((item) => {
+    const control = document.getElementById(item.dataset.controlId);
+    item.disabled = !!control && control.disabled;
+  });
+}
+
+function positionMoreMenu(menu, trigger) {
+  const triggerRect = trigger.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const margin = 8;
+
+  // Right-aligned to the trigger, below it - and above it when there is no
+  // room underneath. The phone stylesheet overrides this to a bottom sheet.
+  let top = triggerRect.bottom + margin;
+  if (top + menuRect.height + margin > window.innerHeight) {
+    top = Math.max(margin, triggerRect.top - menuRect.height - margin);
+  }
+  const left = Math.max(
+    margin,
+    Math.min(triggerRect.right - menuRect.width, window.innerWidth - menuRect.width - margin)
+  );
+
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+}
+
+function closeMoreMenu() {
+  const menu = document.getElementById(MORE_MENU_ID);
+  const trigger = document.getElementById('moreMenuBtn');
+
+  if (trigger) trigger.setAttribute('aria-expanded', 'false');
+
+  document.removeEventListener('click', handleMoreMenuOutsideClick, true);
+  document.removeEventListener('keydown', handleMoreMenuKeydown);
+  document.removeEventListener('scroll', handleMoreMenuScroll, true);
+  window.removeEventListener('resize', closeMoreMenu);
+
+  if (moreMenuOpen && trigger && menu && menu.contains(document.activeElement)) {
+    trigger.focus();
+  }
+  moreMenuOpen = false;
+
+  if (menu) menu.remove();
+}
+
+function handleMoreMenuOutsideClick(event) {
+  const menu = document.getElementById(MORE_MENU_ID);
+  const trigger = document.getElementById('moreMenuBtn');
+  if (menu && event.target instanceof Node && menu.contains(event.target)) return;
+  if (trigger && trigger.contains(event.target)) return;
+  closeMoreMenu();
+}
+
+function handleMoreMenuKeydown(event) {
+  if (event.key !== 'Escape') return;
+  event.stopPropagation();
+  closeMoreMenu();
+}
+
+function handleMoreMenuScroll(event) {
+  const menu = document.getElementById(MORE_MENU_ID);
+  // Scrolling the menu itself (a bottom sheet can overflow) must not close it.
+  if (menu && event.target instanceof Node && menu.contains(event.target)) return;
+  closeMoreMenu();
+}
+
+function openMoreMenu() {
+  const trigger = document.getElementById('moreMenuBtn');
+  if (!trigger) return;
+
+  closeMoreMenu();
+
+  const menu = buildMoreMenu();
+  document.body.appendChild(menu);
+  refreshMoreMenuItems();
+  positionMoreMenu(menu, trigger);
+
+  trigger.setAttribute('aria-expanded', 'true');
+  moreMenuOpen = true;
+
+  const firstItem = menu.querySelector('.more-menu-item:not(:disabled)');
+  if (firstItem) firstItem.focus();
+
+  document.addEventListener('click', handleMoreMenuOutsideClick, true);
+  document.addEventListener('keydown', handleMoreMenuKeydown);
+  document.addEventListener('scroll', handleMoreMenuScroll, true);
+  window.addEventListener('resize', closeMoreMenu);
+}
+
+function initMoreMenu() {
+  if (moreMenuInitialized) return;
+
+  const trigger = document.getElementById('moreMenuBtn');
+  if (!trigger) return;
+
+  moreMenuInitialized = true;
+  trigger.addEventListener('click', () => {
+    if (moreMenuOpen) {
+      closeMoreMenu();
+    } else {
+      openMoreMenu();
+    }
+  });
+}
+
 function initButtons() {
   if (buttonsInitialized) return;
   buttonsInitialized = true;
 
   initSkipReportingButton();
+  initMoreMenu();
 
-  const cleanRowBtn = document.getElementById('cleanRowBtn');
+  const clearTimelineBtn = document.getElementById('clearTimelineBtn');
 
-  const performCleanRow = () => {
+  const performClearTimeline = () => {
     const currentKey = getCurrentTimelineKey();
     const currentData = getCurrentTimelineData();
     if (currentData.length > 0) {
@@ -1486,31 +1708,33 @@ function initButtons() {
 
       if (DEBUG_MODE) {
         console.log(
-          'Timeline data after clean:',
+          'Timeline data after clear:',
           window.timelineManager.activities
         );
       }
     }
   };
 
-  cleanRowBtn.addEventListener('click', () => {
+  clearTimelineBtn.addEventListener('click', () => {
     createModal();
-    const cleanRowConfirmationModal = document.getElementById(
-      'cleanRowConfirmationModal'
+    const clearTimelineConfirmModal = document.getElementById(
+      'clearTimelineConfirmModal'
     );
 
-    if (cleanRowConfirmationModal) {
-      cleanRowConfirmationModal.style.display = 'block';
+    if (clearTimelineConfirmModal) {
+      clearTimelineConfirmModal.style.display = 'block';
       return;
     }
 
     // Fallback if modal is unavailable for any reason.
-    performCleanRow();
+    performClearTimeline();
   });
 
-  const confirmCleanRowOk = document.getElementById('confirmCleanRowOk');
-  if (confirmCleanRowOk) {
-    confirmCleanRowOk.addEventListener('click', performCleanRow);
+  const confirmClearTimelineOk = document.getElementById(
+    'confirmClearTimelineOk'
+  );
+  if (confirmClearTimelineOk) {
+    confirmClearTimelineOk.addEventListener('click', performClearTimeline);
   }
 
   // Add click handler for Remove Last button using debounced function
@@ -1518,15 +1742,15 @@ function initButtons() {
     .getElementById('removeLastBtn')
     .addEventListener('click', handleRemoveLastButtonAction);
 
-  // Add click handler for Next button
-  const nextBtn = document.getElementById('nextBtn');
+  // Add click handler for the Save Day button
+  const saveDayBtn = document.getElementById('saveDayBtn');
 
   // Allow pointer events on disabled button to show toast
-  nextBtn.style.pointerEvents = 'auto';
+  saveDayBtn.style.pointerEvents = 'auto';
 
-  nextBtn.addEventListener('click', function (e) {
+  saveDayBtn.addEventListener('click', function (e) {
     // Check if button is disabled
-    if (nextBtn.disabled) {
+    if (saveDayBtn.disabled) {
       e.preventDefault();
       e.stopPropagation();
       // Show toast message when disabled button is clicked
@@ -1538,7 +1762,7 @@ function initButtons() {
     }
 
     // Otherwise proceed with normal action
-    handleNextButtonAction();
+    handleSaveDayAction();
   });
 
   // Timeline switcher: cycles through the study's timelines.

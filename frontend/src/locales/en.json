@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Helpful tools",
     "removeLastHelp": "Remove the last placed activity",
-    "cleanRowHelp": "Want to start over? Clean the row",
+    "clearTimelineHelp": "Want to start over? Clear the timeline",
     "customActivityHelp": "Activity not listed? Add a custom activity",
     "customActivityName": "Other not listed (enter)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Submit Study",
     "start": "Start",
     "removeLast": "Remove Last",
-    "cleanRow": "Clean Row",
+    "clearTimeline": "Clear timeline",
+    "moreActions": "More actions",
     "skipReporting": "Skip time reporting",
     "switchTimeline": "Switch timeline",
     "giveConsent": "Give consent and continue",
@@ -101,9 +102,9 @@
       "title": "Do you really want to skip all time reporting?",
       "message": "You will be taken directly to the thank-you page."
     },
-    "confirmCleanRow": {
-      "title": "Clear current timeline row?",
-      "message": "Are you sure you want to delete all activities in the current timeline row?"
+    "confirmClearTimeline": {
+      "title": "Clear this timeline?",
+      "message": "Are you sure you want to delete all activities in this timeline?"
     },
     "activityContext": {
       "copy": "Copy",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Click to place the selected activity here.",
     "invalidPlacement": "Cannot place activity here due to invalid position.",
     "timelineValidationError": "Timeline validation error: {{message}}",
-    "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
-    "templateCopiedBanner": "We pre-filled your diary with activities from a template participant. Click <strong>'Clean Row'</strong> to start fresh or edit the activities below.",
+    "templateLoadedBanner": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clear timeline'</strong> to start fresh or edit the activities below. On mobile, delete a single activity by long-pressing it. On desktop, right-click an activity and choose <strong>'Delete'</strong> (or hover and press the DEL or 'd' key).",
+    "templateCopiedBanner": "We pre-filled your diary with activities from a template participant. Click <strong>'Clear timeline'</strong> to start fresh or edit the activities below.",
     "studyDayOf": "Day {{current}} of {{total}}",
     "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
     "goBackToEditPreviousDays": "Switch to day:",

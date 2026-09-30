@@ -37,8 +37,8 @@ The third toolbar row is the language `<select>` that
 `.header-section` is `position: sticky` at *every* width: the toolbar **and** the
 day row never leave the screen while the timeline scrolls.
 
-Nothing from §4–§6 has been started; §1–§3 are confirmed in the live page and in
-chromium E2E runs.
+Nothing from §4 and §6 has been started; §1–§3 and §5 are confirmed in the live
+page and in chromium E2E runs.
 
 ---
 
@@ -61,14 +61,17 @@ hidden: the study's goal (Submit Study) and the *existence* of a second timeline
 | Timeline | Switch timeline, Clear timeline | Named in the context row; both actions in the timeline sheet |
 | Activity | pick, delete, remove last | `+` stays floating; long-press menu; "Remove last" becomes an Undo toast |
 
-Target mobile header (~80 px instead of 235 px, so the timeline grows
-602 → ~812 px; the 63 px footer reservation is reclaimed by moving Skip into the
-menu):
+Target mobile header (~80 px instead of 235 px):
 
 ```
 ‹  Monday ▾ · Day 1 of 7      Primary ▾     context row  ~36px
 [ Save Day ] [ Submit Study ] [ ⋮ ]         action row   ~40px
 ```
+
+Measured progress after §5: 235 → **212 px** (toolbar 99 → 76 px, i.e. 3 → 2 rows)
+and the timeline 602 → **688 px**, because moving Skip into the menu also
+reclaimed the 63 px footer. The remaining win depends on §4, which is what frees
+the 155 px timeline-switcher label and the 76 px day row.
 
 ### Decisions
 
@@ -76,9 +79,14 @@ menu):
 2. Quick day stepping: `‹` `›` arrows next to the day name.
 3. Language picker: on mobile into the `⋮` menu. Desktop styling is a later,
    separate discussion.
-4. "Clean Row" is renamed **everywhere**, desktop included — the confirmation
-   modal already says "Clear current timeline row?", and the mobile layout is a
-   column, not a row.
+4. **Done 2026-09-30** — "Clean Row" is renamed everywhere, desktop included. The
+   confirmation modal used to say "Clear current timeline row?" and the mobile
+   layout is a column, not a row, so the action is now **"Clear timeline"** in
+   all 7 locales. The keys went with the labels: `buttons.cleanRow` →
+   `buttons.clearTimeline`, `instructions.cleanRowHelp` →
+   `instructions.clearTimelineHelp`, `modals.confirmCleanRow.*` →
+   `modals.confirmClearTimeline.*`. The two template banners that quoted the
+   button name were updated in every locale as well.
 5. Order: (a) remove the swipe gesture, (b) long-press → context menu, (c) context
    and action rows + sheets + `⋮`, (d) Undo toast. Both (c)'s menu and (d) depend
    on (b) landing first.
@@ -87,9 +95,10 @@ menu):
 
 - Renames touch all 7 locales (`de, en, es, fi, fr, pl, sv`):
   `locales_consistency.test.js` requires identical key sets.
-- `buttons.cleanRow` → "Clear timeline" (plus `messages.cleanRowHelp`). German
-  "Zeitleiste leeren" and the Finnish/Polish forms are long — fine on a
-  full-width sheet row, not in a toolbar chip.
+- `buttons.cleanRow` → `buttons.clearTimeline` (**done**: "Clear timeline",
+  "Zeitleiste leeren", "Vaciar línea de tiempo", "Tyhjennä aikajana",
+  "Effacer la chronologie", "Wyczyść oś czasu", "Rensa tidslinjen"). The long
+  forms are fine on a full-width sheet row, but not in a toolbar chip.
 - `buttons.switchTimeline` is only a fallback label: the visible switcher text is
   the *destination timeline name* from the study config (155 px measured for
   "Secondary Activity"). That is why it moves out of the action row.
@@ -103,16 +112,26 @@ desktop variant** (two keys, or two spans toggled in CSS) — and once split, bo
 can be much shorter than today's three-sentence block (124 px = 14 % of a 900 px
 phone screen on day 1). New keys → all 7 locales.
 
-### Id hygiene (so the next rename does not touch tests)
+### Id hygiene — done (2026-09-30)
 
-- `#nextBtn` → `#saveDayBtn`: the id is actively misleading now (it *is* Save Day).
-  3 test references plus `e2e_helpers.saveCurrentDay()`.
-- `#cleanRowBtn` → `#clearTimelineBtn` (no test references today).
-- Keep `#currentDayDisplay` (11 test references) as the day picker's trigger id,
-  and keep `#skipReportingBtn`, `#submitStudyBtn`, `#removeLastBtn`.
-- `#previousDaysSwitchRow` (7 references) only moves together with
-  `switchToDay` / `isDayButtonGreen` / `getDayButtonCount` in `e2e_helpers.js`.
-- Tests select by id, never by visible label.
+- `#nextBtn` → `#saveDayBtn`, class `.next-btn` → `.save-day-btn`,
+  `handleNextButtonAction()` → `handleSaveDayAction()`.
+- `#cleanRowBtn` → `#clearTimelineBtn`, class `.clean-row-btn` →
+  `.clear-timeline-btn`. The confirm dialog followed: `#clearTimelineConfirmModal`,
+  `#clearTimelineConfirmModalTitle`, `#confirmClearTimelineOk` /
+  `#confirmClearTimelineCancel`, and `performCleanRow()` →
+  `performClearTimeline()`.
+- Deleted as dead: the two `.next-btn:has(i.fa-check)` rules — nothing has put an
+  `fa-check` icon in that button since it became Save Day.
+- Deliberately unchanged: `#currentDayDisplay` (11 test references) stays the day
+  picker's trigger id; `#skipReportingBtn`, `#submitStudyBtn` and `#removeLastBtn`
+  keep their ids; `#previousDaysSwitchRow` (7 references) only moves together with
+  the `e2e_helpers.js` day helpers.
+- Tests updated to the new ids: `mobile_layout.spec.js` and
+  `e2e_helpers.js` (`saveCurrentDay`). Tests select by id, never by visible label.
+- Verified: typecheck, 62/62 unit tests (the locale key-set guard and
+  "every requested key exists in every locale" cover the rename), 25/25 E2E on
+  chromium, and live in en + de (diary toolbar, instructions page, confirm modal).
 
 ---
 
@@ -197,7 +216,7 @@ Not yet committed; working tree on `develop`. Net −46 lines in `script.js`.
 - Verified live at 408×900 and on chromium: 18/18 in the
   context-menu/mobile/drag/keyboard subset, plus `frequency_activity_flows_mobile`
   and `ensure_switching_desktop_mobile_keeps_activities_issue42`.
-- Still open: `#removeLastBtn` and `#cleanRowBtn` are untouched — see §6.
+- Still open: `#removeLastBtn` and `#clearTimelineBtn` are untouched — see §6.
 ## 4. Next — collapse the day row into a title picker (mobile only)
 
 > Superseded by "Agreed direction" above; kept for the reasoning and the
@@ -226,26 +245,57 @@ Plan:
 
 Expected win: one whole row + its label (~76 px on a 408 px screen).
 
-## 5. Next — mobile overflow menu (`⋮`)
+## 5. Done — mobile overflow menu (`⋮`) (2026-09-30)
 
-> Superseded by "Agreed direction" above, except the Submit Study question,
-> which is settled: Submit stays **visible** (its grey→green transition is the
-> study's progress meter; hiding it makes "I saved all my days" look like the
-> finish line).
+Not yet committed. `#moreMenuBtn` (icon-only, 36×32) sits at the end of the
+`.controls` row, `display: none` from 1440 px up so desktop keeps every button.
+Below 1440 px it appears and `#removeLastBtn`, `#clearTimelineBtn`,
+`.language-select-wrapper` and `#skipReportingBtn` are hidden instead.
 
-Target toolbar on mobile: `[⇄ <other timeline>] [Save day] [⋮]`.
+- Items: Clear timeline, Remove Last, Skip time reporting (only when the study
+  allows it), then a **Language** group built from the options of
+  `#languageSelectMain`. Each item **proxies `.click()`** to the real control and
+  mirrors its `disabled` state (`refreshMoreMenuItems()`, called from
+  `updateButtonStates()`), so every action keeps one implementation - including
+  its confirmation dialog. The language items set the `<select>` and dispatch
+  `change`, which is the same path the picker itself uses.
+- Reuses the Copy Days popup look: the `.copy-day-context-menu*` rules were
+  extended to also match `.more-menu*`, so both stay one bottom sheet on phones
+  (48 px tall, full-width items).
+- Behaviour: `aria-expanded` on the trigger, focus moves to the first *enabled*
+  item, Escape / outside click / resize / scroll-away close it, and focus returns
+  to the trigger. Scrolling *inside* the sheet does not close it.
+- `updateFooterVisibility()` now checks `getComputedStyle(...).display` instead of
+  the inline style, otherwise the CSS-hidden skip button would have kept the
+  empty footer row alive. Hiding skip also collapses the footer as designed.
+- `ensureLanguageSelector()` no longer writes inline styles on its wrapper (they
+  would have beaten any stylesheet rule); the wrapper has a class now.
 
-Cheapest implementation: keep the existing buttons in the DOM, hide the
-secondary ones on mobile via CSS, and let the `⋮` menu **proxy `.click()`** to
-them (`#cleanRowBtn`, `#removeLastBtn`, `#submitStudyBtn`,
-`#skipReportingBtn`), mirroring their `disabled` state. That reuses the tested
-handlers and keeps desktop byte-identical (hidden elements still receive
-`.click()`; a disabled one does nothing).
+Measured at 408×900 (`default` study):
 
-Open decision: `Submit Study` — keep it in the menu always (disabled with the
-existing incomplete-days tooltip) and additionally show it as a prominent green
-button when all days are complete, or only render it in the menu. Leaning to
-"appears in the toolbar when it becomes actionable".
+| | Before | After |
+| --- | --- | --- |
+| `.controls` | 99 px / 3 rows | **76 px / 2 rows** |
+| `.header-section` | 235 px | **212 px** |
+| `#instructionsFooter` | 63 px | **0** (skip moved into the menu) |
+| `.timeline-canvas` | 602 px | **688 px** (+14 %) |
+
+Desktop 1600×900 verified unchanged: `.controls` 48 px / 1 row, day row 40 px,
+footer 81 px, and Remove Last / Clear timeline / Skip / Language all still
+visible with `#moreMenuBtn` hidden.
+
+**Two specs had to be adapted** - and they revealed something worth knowing:
+Playwright's default project viewport is `devices['Desktop Chrome']` = 1280×720,
+which is *below* this app's 1440 px breakpoint. Specs without an explicit
+`test.use({ viewport })` therefore exercise the **mobile** layout.
+`instructions_skip_to_thankyou` and `return_url_continue_link` clicked
+`#skipReportingBtn` directly, so both now use the new shared helper
+`openSkipConfirmation(page)` (e2e_helpers) that finds the action wherever it is
+and retries until its handler is wired.
+
+`mobile_layout.spec.js` gained "the secondary controls move into the ⋮ menu on a
+phone" and its tap-target list now measures `#moreMenuBtn` instead of the hidden
+skip button.
 
 ## 6. Next — Remove Last becomes an Undo toast, Clear timeline moves into its menu
 
@@ -253,8 +303,8 @@ button when all days are complete, or only render it in the menu. Leaning to
 
 - `#removeLastBtn` is now redundant: its only unique value is a fast undo, which
   an "Activity removed — Undo" toast does better.
-- `#cleanRowBtn` is destructive but *per-timeline* (not per-day), so it belongs
-  in the timeline-scoped menu ("Clear this timeline"), together with the
+- `#clearTimelineBtn` is destructive but *per-timeline* (not per-day), so it
+  belongs in the timeline-scoped menu ("Clear this timeline"), together with the
   timeline switcher.
 - Instruction banner and `pages/instructions.html` step 2 were updated in §3 and
   describe the menu now; revisit them when these two buttons move.
@@ -343,10 +393,12 @@ Expected to need adapting after steps 4–6 (deliberately deferred):
 
 - `copy_days_flow.spec.js` runs at 1600×900, so it is unaffected by mobile-only
   hiding; it is the only spec using `switchToDay` / `isDayButtonGreen` /
-  `getDayButtonCount`. `mobile_layout.spec.js` only measures `#nextBtn` and
-  `#skipReportingBtn`. `cleanRowBtn` and `switchTimelineBtn` have no test
+  `getDayButtonCount`. `mobile_layout.spec.js` only measures `#saveDayBtn` and
+  `#skipReportingBtn`. `clearTimelineBtn` and `switchTimelineBtn` have no test
   references.
-- `e2e_helpers.js` — `switchToDay`, `getDayButtonCount`, `isDayButtonGreen`
+- `e2e_helpers.js` — `switchToDay`, `getDayButtonCount`, `isDayButtonGreen`,
+  and the new `openSkipConfirmation(page)` (skip lives in the ⋮ menu below
+  1440 px, so specs must not click `#skipReportingBtn` directly)
 - nothing references `#backBtn` or "Previous timeline" any more (checked)
 - There is still **no mobile test that fills both timelines** — add it with the
   day-picker work (that gap is what let the §2 bug live).
