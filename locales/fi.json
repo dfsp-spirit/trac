@@ -3,7 +3,7 @@
     "banner": "Huomio: pian tehdään lyhyt huoltokatko. Tallenna nykyinen työsi."
   },
   "instructions": {
-    "pageTitle": "Ohjeet | Ajankäyttöpäiväkirja",
+    "pageTitle": "Ohjeet",
     "title": "Ohjeet",
     "welcomeTitle": "Tervetuloa viikoittaiseen ajankäyttöpäiväkirjaasi. Kiitos osallistumisestasi!",
     "generalInfoTitle": "Yleistä tietoa tutkimuksesta",
@@ -44,8 +44,7 @@
     "customActivityName": "Muu (kirjoita)"
   },
   "consent": {
-    "pageTitle": "Suostumus | Ajankäyttöpäiväkirja",
-    "pageTitleWithStudy": "{{study}} - Suostumus | Ajankäyttöpäiväkirja",
+    "pageTitle": "Suostumus",
     "title": "Suostumus",
     "eyebrow": "Tutkimuksen suostumus",
     "subtitle": "Lue alla olevat suostumustiedot ennen kuin aloitat tutkimuksen.",
@@ -65,7 +64,10 @@
     "language": "Kieli",
     "chooseLanguage": "Valitse kieli",
     "day": "Päivä",
-    "loading": "Ladataan ..."
+    "loading": "Ladataan ...",
+    "pageTitle": "Ajankäyttöpäiväkirja",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Virhe"
   },
   "buttons": {
     "saveDay": "Tallenna päivä",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Ohjeet: valitse toiminto alta ja napsauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto napsauttamalla sitä hiiren oikealla painikkeella ja valitsemalla Poista."
   },
   "thankYou": {
-    "title": "Kiitos - TRAC",
+    "title": "Kiitos",
     "heading": "Kiitos!",
     "subtitle": "Lähetys on suoritettu onnistuneesti.",
     "defaultMessage": "Kiitos osallistumisesta tutkimukseemme. Vastauksesi on tallennettu ja ne edistävät arvokasta tutkimusta.",
     "continueLink": "Jatka napsauttamalla tästä."
   },
   "taskPage": {
-    "title": "TRAC Tehtävät",
+    "title": "Tehtävät",
     "heading": "Lopulliset tehtävät",
     "subtitle": "Täytä seuraavat tehtävät ennen kuin lopetat tutkimuksen.",
     "continueLink": "Jatka lopulliselle sivulle",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Ei suoritettu"
   },
   "timeout": {
-    "title": "Istunto päättyi - Ajankäyttöpäiväkirja",
-    "heading": "TRAC-ajankäyttötutkimus - istunto päättyi",
+    "title": "Istunto päättyi",
+    "heading": "Istunto päättyi",
     "message": "Istuntosi päättyi toimettomuuden vuoksi. Käytä kutsulinkkiäsi palataksesi päiväkirjaan ja jatkaaksesi."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Yhdistetään taustajärjestelmään...",
     "backend_status_connected": "Yhdistetty taustajärjestelmään",
     "backend_status_error": "Virhe yhdistettäessä taustajärjestelmään"
@@ -201,8 +202,8 @@
     "tooltip": "Passiivisuuden aikakatkaisu. Napsauta vahvistaaksesi, että olet vielä paikalla, ja nollaa ajastin."
   },
   "openStudies": {
-    "pageTitle": "Avoimet tutkimukset | TRAC",
-    "heading": "TRAC -- Avoimet tutkimukset",
+    "pageTitle": "Avoimet tutkimukset",
+    "heading": "Avoimet tutkimukset",
     "noStudies": "Ei avoimia tutkimuksia saatavilla.",
     "loadError": "Avoimien tutkimusten lataaminen ei onnistunut: {{message}}",
     "accessStudy": "Siirry tutkimukseen '{{study}}'"

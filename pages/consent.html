@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="consent.pageTitle">Consent | TRAC</title>
+    <!-- Filled by setStudyPageTitle() in js/footer.js - "<study name> - Consent".
+         Deliberately NOT data-i18n: applyTranslations() rewrites the text of
+         every element carrying that attribute, <title> included, so a later i18n
+         pass silently reverted the study name. "Consent" below is only the
+         fallback for the moment before the study config arrives. -->
+    <title>Consent</title>
     <link href="../assets/fonts/inter/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css">
     <style>
@@ -499,10 +504,10 @@
                 document.documentElement.lang = language;
                 // Prefer the study-specific title, fall back to the generic
                 // localized page title (never a hardcoded English string).
-                const studyName = studyConfig.study_name || '';
-                document.title = studyName
-                    ? i18n.t('consent.pageTitleWithStudy', { study: studyName })
-                    : i18n.t('consent.pageTitle');
+                // After applyTranslations(): "<study name> - Consent". The
+                // helper lives in js/footer.js so every study page does this
+                // the same way, and after the i18n pass.
+                window.setStudyPageTitle(studyConfig, 'consent.pageTitle');
 
                 const consentTextEl = document.getElementById('study-consent-text');
                 if (consentTextEl) {

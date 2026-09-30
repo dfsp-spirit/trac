@@ -3,7 +3,7 @@
     "banner": "Observera: vi utför snart ett kort underhåll. Spara ditt aktuella arbete."
   },
   "instructions": {
-    "pageTitle": "Instruktioner | Tidsdagbok",
+    "pageTitle": "Instruktioner",
     "title": "Instruktioner",
     "welcomeTitle": "Välkommen till din veckovisa tidsdagbok. Tack för att du deltar!",
     "generalInfoTitle": "Allmän information om studien",
@@ -44,8 +44,7 @@
     "customActivityName": "Annat som inte finns med (ange)"
   },
   "consent": {
-    "pageTitle": "Samtycke | Tidsdagbok",
-    "pageTitleWithStudy": "{{study}} - Samtycke | Tidsdagbok",
+    "pageTitle": "Samtycke",
     "title": "Samtycke",
     "eyebrow": "Samtycke till studien",
     "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
@@ -65,7 +64,10 @@
     "language": "Språk",
     "chooseLanguage": "Välj språk",
     "day": "Dag",
-    "loading": "Laddar ..."
+    "loading": "Laddar ...",
+    "pageTitle": "Tidsdagbok",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Fel"
   },
   "buttons": {
     "saveDay": "Spara dagen",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Instruktioner: välj en aktivitet nedan och klicka sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, högerklicka på den och välj Ta bort."
   },
   "thankYou": {
-    "title": "Tack - TRAC",
+    "title": "Tack",
     "heading": "Tack!",
     "subtitle": "Din inskickning har slutförts framgångsrikt.",
     "defaultMessage": "Tack för att du deltar i vår studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
     "continueLink": "Klicka här för att fortsätta."
   },
   "taskPage": {
-    "title": "TRAC Uppgifter",
+    "title": "Uppgifter",
     "heading": "Slutliga uppgifter",
     "subtitle": "Vänligen genomför följande uppgifter innan du avslutar studien.",
     "continueLink": "Fortsätt till slutsidan",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Inte slutförd"
   },
   "timeout": {
-    "title": "Sessionen har gått ut - Tidsdagbok",
-    "heading": "TRAC tidsanvändningsstudie - sessionen har gått ut",
+    "title": "Sessionen har gått ut",
+    "heading": "Sessionen har gått ut",
     "message": "Din session avslutades på grund av inaktivitet. Använd din inbjudningslänk för att återgå till dagboken och fortsätta."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Ansluter till backend...",
     "backend_status_connected": "Ansluten till backend",
     "backend_status_error": "Fel vid anslutning till backend"
@@ -201,8 +202,8 @@
     "tooltip": "Inaktivitetstimeout. Klicka för att bekräfta att du fortfarande är här och återställ timern."
   },
   "openStudies": {
-    "pageTitle": "Öppna studier | TRAC",
-    "heading": "TRAC -- Öppna studier",
+    "pageTitle": "Öppna studier",
+    "heading": "Öppna studier",
     "noStudies": "Inga öppna studier tillgängliga.",
     "loadError": "Kunde inte ladda öppna studier: {{message}}",
     "accessStudy": "Öppna studien '{{study}}'"

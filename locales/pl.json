@@ -3,7 +3,7 @@
     "banner": "Uwaga: wkrótce odbędzie się krótka przerwa techniczna. Zapisz swoją bieżącą pracę."
   },
   "instructions": {
-    "pageTitle": "Instrukcje | Dziennik Czasu Użycia",
+    "pageTitle": "Instrukcje",
     "title": "Instrukcje",
     "welcomeTitle": "Witaj w Twoim cotygodniowym dzienniku czasu. Dziękujemy za udział!",
     "generalInfoTitle": "Ogólne informacje o badaniu",
@@ -44,8 +44,7 @@
     "customActivityName": "Inne (wpisz)"
   },
   "consent": {
-    "pageTitle": "Zgoda | Dziennik użycia czasu",
-    "pageTitleWithStudy": "{{study}} - Zgoda | Dziennik użycia czasu",
+    "pageTitle": "Zgoda",
     "title": "Zgoda",
     "eyebrow": "Zgoda na udział w badaniu",
     "subtitle": "Przeczytaj poniższe informacje o zgodzie, zanim rozpoczniesz badanie.",
@@ -65,7 +64,10 @@
     "language": "Język",
     "chooseLanguage": "Wybierz język",
     "day": "Dzień",
-    "loading": "Ładowanie ..."
+    "loading": "Ładowanie ...",
+    "pageTitle": "Dziennik użycia czasu",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Błąd"
   },
   "buttons": {
     "saveDay": "Zapisz dzień",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Instrukcje: wybierz aktywność poniżej, a następnie kliknij oś czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, kliknij ją prawym przyciskiem myszy i wybierz Usuń."
   },
   "thankYou": {
-    "title": "Dziękujemy - O-ELIDDI",
+    "title": "Dziękujemy",
     "heading": "Dziękujemy!",
     "subtitle": "Twoje zgłoszenie zostało pomyślnie zakończone.",
     "defaultMessage": "Dziękujemy za udział w naszym badaniu. Twoje odpowiedzi zostały zapisane i przyczynią się do wartościowych badań.",
     "continueLink": "Kliknij tutaj, aby kontynuować."
   },
   "taskPage": {
-    "title": "TRAC Zadania",
+    "title": "Zadania",
     "heading": "Zadania końcowe",
     "subtitle": "Proszę wykonać następujące zadania przed zakończeniem badania.",
     "continueLink": "Przejdź do strony końcowej",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Nie ukończono"
   },
   "timeout": {
-    "title": "Sesja wygasła - Dziennik użycia czasu",
-    "heading": "Badanie TRAC dotyczące wykorzystania czasu - sesja wygasła",
+    "title": "Sesja wygasła",
+    "heading": "Sesja wygasła",
     "message": "Twoja sesja została zakończona z powodu braku aktywności. Użyj linku z zaproszeniem, aby wrócić do dziennika i kontynuować."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Łączenie z backendem...",
     "backend_status_connected": "Połączono z backendem",
     "backend_status_error": "Błąd przy łączeniu z backendem"
@@ -201,8 +202,8 @@
     "tooltip": "Limit czasu bezczynności. Kliknij, aby potwierdzić, że wciąż tu jesteś i zresetować licznik czasu."
   },
   "openStudies": {
-    "pageTitle": "Otwarte badania | TRAC",
-    "heading": "TRAC -- Otwarte badania",
+    "pageTitle": "Otwarte badania",
+    "heading": "Otwarte badania",
     "noStudies": "Brak dostępnych otwartych badań.",
     "loadError": "Nie udało się załadować otwartych badań: {{message}}",
     "accessStudy": "Przejdź do badania '{{study}}'"

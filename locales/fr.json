@@ -3,7 +3,7 @@
     "banner": "Information : une courte maintenance aura bientôt lieu. Veuillez enregistrer votre travail en cours."
   },
   "instructions": {
-    "pageTitle": "Consignes | Journal d'utilisation du temps",
+    "pageTitle": "Consignes",
     "title": "Consignes",
     "welcomeTitle": "Bienvenue dans votre journal de temps hebdomadaire. Merci de participer !",
     "generalInfoTitle": "Informations générales sur l'étude",
@@ -44,8 +44,7 @@
     "customActivityName": "Autre non listé (entrer)"
   },
   "consent": {
-    "pageTitle": "Consentement | Journal d'utilisation du temps",
-    "pageTitleWithStudy": "{{study}} - Consentement | Journal d'utilisation du temps",
+    "pageTitle": "Consentement",
     "title": "Consentement",
     "eyebrow": "Consentement à l'étude",
     "subtitle": "Veuillez lire les informations de consentement ci-dessous avant de commencer l'étude.",
@@ -65,7 +64,10 @@
     "language": "Langue",
     "chooseLanguage": "Choisir la langue",
     "day": "Jour",
-    "loading": "Chargement ..."
+    "loading": "Chargement ...",
+    "pageTitle": "Journal d'utilisation du temps",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Erreur"
   },
   "buttons": {
     "saveDay": "Enregistrer le jour",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Instructions : sélectionnez une activité ci-dessous, puis cliquez sur la chronologie pour la placer. Faites glisser ses bords pour l'étendre. Pour supprimer une activité, faites un clic droit dessus et choisissez Supprimer."
   },
   "thankYou": {
-    "title": "Merci - TRAC",
+    "title": "Merci",
     "heading": "Merci !",
     "subtitle": "Votre soumission a été complétée avec succès.",
     "defaultMessage": "Merci de participer à notre étude. Vos réponses ont été enregistrées et contribueront à une recherche précieuse.",
     "continueLink": "Cliquez ici pour continuer."
   },
   "taskPage": {
-    "title": "TRAC Tâches",
+    "title": "Tâches",
     "heading": "Tâches finales",
     "subtitle": "Veuillez effectuer les tâches suivantes avant de terminer l'étude.",
     "continueLink": "Continuer vers la page finale",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Non terminé"
   },
   "timeout": {
-    "title": "Session expirée - Journal d'utilisation du temps",
-    "heading": "Étude TRAC sur l'utilisation du temps - session expirée",
+    "title": "Session expirée",
+    "heading": "Session expirée",
     "message": "Votre session a pris fin pour cause d'inactivité. Utilisez votre lien d'invitation pour revenir au journal et continuer."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Connexion au backend...",
     "backend_status_connected": "Connecté au backend",
     "backend_status_error": "Erreur de connexion au backend"
@@ -201,8 +202,8 @@
     "tooltip": "Délai d'inactivité. Cliquez pour confirmer votre présence et réinitialiser le minuteur."
   },
   "openStudies": {
-    "pageTitle": "Études ouvertes | TRAC",
-    "heading": "TRAC -- Études ouvertes",
+    "pageTitle": "Études ouvertes",
+    "heading": "Études ouvertes",
     "noStudies": "Aucune étude ouverte disponible.",
     "loadError": "Impossible de charger les études ouvertes : {{message}}",
     "accessStudy": "Accéder à l'étude '{{study}}'"

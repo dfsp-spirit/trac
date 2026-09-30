@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="taskPage.title">TRAC Tasks</title>
+    <!-- Filled by setStudyPageTitle() in js/footer.js - "<study name> - Tasks".
+         Not data-i18n, for the same reason as the consent page. -->
+    <title>Tasks</title>
     <link href="../assets/fonts/inter/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css">
     <style>
@@ -587,7 +589,8 @@
                 console.warn('Could not confirm callback external task:', error.message);
             }
 
-            document.title = getLocalizedText('taskPage.title', 'TRAC Tasks');
+            // After applyTranslations(), same as the consent page.
+            window.setStudyPageTitle(studyConfig, 'taskPage.title');
             renderTaskList(studyConfig);
         });
     </script>

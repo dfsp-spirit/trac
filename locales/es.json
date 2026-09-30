@@ -3,7 +3,7 @@
     "banner": "Aviso: en breve habrá un breve mantenimiento. Por favor, guarda tu trabajo actual."
   },
   "instructions": {
-    "pageTitle": "Instrucciones | Time Use Diary",
+    "pageTitle": "Instrucciones",
     "title": "Instrucciones",
     "welcomeTitle": "Bienvenido a su diario de tiempo semanal. ¡Gracias por participar!",
     "generalInfoTitle": "Información General sobre el Estudio",
@@ -44,8 +44,7 @@
     "customActivityName": "Otra no listada (ingresar)"
   },
   "consent": {
-    "pageTitle": "Consentimiento | Diario de uso del tiempo",
-    "pageTitleWithStudy": "{{study}} - Consentimiento | Diario de uso del tiempo",
+    "pageTitle": "Consentimiento",
     "title": "Consentimiento",
     "eyebrow": "Consentimiento del estudio",
     "subtitle": "Lea la información de consentimiento a continuación antes de comenzar el estudio.",
@@ -65,7 +64,10 @@
     "language": "Idioma",
     "chooseLanguage": "Elegir idioma",
     "day": "Día",
-    "loading": "Cargando ..."
+    "loading": "Cargando ...",
+    "pageTitle": "Diario de uso del tiempo",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Error"
   },
   "buttons": {
     "saveDay": "Guardar día",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Instrucciones: selecciona una actividad abajo y luego haz clic en la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, haz clic derecho sobre ella y elige Eliminar."
   },
   "thankYou": {
-    "title": "Gracias - TRAC",
+    "title": "Gracias",
     "heading": "¡Gracias!",
     "subtitle": "Tu envío se ha completado exitosamente.",
     "defaultMessage": "Gracias por participar en nuestro estudio. Tus respuestas se han registrado y contribuirán a una investigación valiosa.",
     "continueLink": "Haz clic aquí para continuar."
   },
   "taskPage": {
-    "title": "TRAC Tareas",
+    "title": "Tareas",
     "heading": "Tareas finales",
     "subtitle": "Por favor, complete las siguientes tareas antes de finalizar el estudio.",
     "continueLink": "Continuar a la página final",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "No completado"
   },
   "timeout": {
-    "title": "Sesión finalizada - Diario de uso del tiempo",
-    "heading": "Estudio de uso del tiempo TRAC: sesión finalizada",
+    "title": "Sesión finalizada",
+    "heading": "Sesión finalizada",
     "message": "Tu sesión ha finalizado por inactividad. Usa tu enlace de invitación para volver al diario y continuar."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Conectando al backend...",
     "backend_status_connected": "Conectado al backend",
     "backend_status_error": "Error al conectar con el backend"
@@ -201,8 +202,8 @@
     "tooltip": "Tiempo de inactividad agotado. Haga clic para confirmar que sigue aquí y reiniciar el temporizador."
   },
   "openStudies": {
-    "pageTitle": "Estudios abiertos | TRAC",
-    "heading": "TRAC -- Estudios abiertos",
+    "pageTitle": "Estudios abiertos",
+    "heading": "Estudios abiertos",
     "noStudies": "No hay estudios abiertos disponibles.",
     "loadError": "No se pudieron cargar los estudios abiertos: {{message}}",
     "accessStudy": "Acceder al estudio '{{study}}'"

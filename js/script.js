@@ -6114,7 +6114,6 @@ async function init() {
         useCache: true,
       });
       console.log('Successfully loaded activities config from backend');
-      document.title = configData.general.app_name || 'Time Use Diary';
       configLoadBackendSuccess = true;
     } catch (error) {
       console.error('Failed to load activities config from backend:', error);
@@ -6130,7 +6129,6 @@ async function init() {
           'Footer status element not found, cannot display backend error status'
         );
       }
-      document.title = 'Time Use Diary';
       throw new Error(
         `Cannot load activities configuration: ${error.message}. The application requires backend configuration to run.`
       );
@@ -6151,6 +6149,9 @@ async function init() {
 
     await i18n.init(language);
     i18n.applyTranslations();
+    // Deliberately after the i18n pass: it rewrites the text of every element
+    // with a data-i18n attribute, <title> included. See applyPageTitle().
+    applyPageTitle();
     renderPreviousDaysSwitchRow();
 
     const studyConsentRequired = currentStudy?.require_consent === true;
@@ -6746,6 +6747,32 @@ async function init() {
   updateButtonStates();
 }
 
+/**
+ * The diary's tab title and footer line: the study's own name (`app_name` from
+ * the study config), because a participant knows the study they joined, not the
+ * software behind it. Falls back to the localized generic page name.
+ *
+ * Must run AFTER i18n.applyTranslations(): that pass rewrites the text of every
+ * element carrying a data-i18n attribute - <title> and the footer span included -
+ * so a title set before it is silently reverted. That is what left the tab stuck
+ * on "Loading..." while the <title> was wired to the common.loading key.
+ */
+function applyPageTitle() {
+  const localizedPageTitle =
+    window.i18n && window.i18n.isReady()
+      ? i18n.t('common.pageTitle')
+      : 'Time Use Diary';
+  const appName =
+    window.timelineManager?.general?.app_name || localizedPageTitle;
+
+  document.title = appName;
+
+  const footerAppTitle = document.getElementById('footer_app_title');
+  if (footerAppTitle) {
+    footerAppTitle.textContent = appName;
+  }
+}
+
 function renderFatalInitializationError({
   title,
   message,
@@ -6753,7 +6780,18 @@ function renderFatalInitializationError({
   hideInteractiveUi = false,
 }) {
   if (hideInteractiveUi) {
-    document.title = 'TRAC -- ERROR';
+    // No software brand here either: a participant who just hit an error should
+    // not be introduced to a name they have never seen. The study's own name if
+    // we got far enough to know it, plus the localized "Error".
+    const appName =
+      window.timelineManager?.general?.app_name ||
+      (window.i18n && window.i18n.isReady() ? i18n.t('common.pageTitle') : '');
+    const errorLabel =
+      window.i18n && window.i18n.isReady() ? i18n.t('common.error') : '';
+    const parts = [appName, errorLabel].filter(Boolean);
+    if (parts.length) {
+      document.title = parts.join(' - ');
+    }
   }
 
   const activitiesContainer = document.getElementById('activitiesContainer');
