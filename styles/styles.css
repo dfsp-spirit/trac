@@ -2889,40 +2889,60 @@ body.carrying-activity .modal-close {
   display: none;
 }
 
-/* Desktop hover tooltip for activity blocks */
-@media (min-width: 1440px) {
+/* Activity context menu: the desktop right-click entry point and the phone
+   long-press one. The base look must NOT be width-gated: it used to live only
+   inside the `min-width: 1440px` block below, which left the menu with
+   `position: static` on every smaller width - the JS positions it with left/top,
+   those did nothing, and the menu rendered as an unstyled block at the end of
+   the document, off screen, instead of at the point that was pressed. */
+.activity-context-menu {
+  position: fixed;
+  display: none;
+  min-width: 150px;
+  background: #fff;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  z-index: 3000;
+  padding: 4px;
+}
+
+.activity-context-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.activity-context-menu-item:hover {
+  background: var(--background-color);
+}
+
+.activity-context-menu-item.danger {
+  color: var(--danger-color);
+}
+
+@media (max-width: 1439.98px) {
+  /* The long-press entry point is a thumb, so give the items a target that size
+     and the sheet-like look the other phone menus have. */
   .activity-context-menu {
-    position: fixed;
-    display: none;
-    min-width: 150px;
-    background: #fff;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
-    z-index: 3000;
-    padding: 4px;
+    min-width: 200px;
   }
 
   .activity-context-menu-item {
-    width: 100%;
-    border: none;
-    background: transparent;
-    text-align: left;
-    padding: 8px 10px;
-    font-size: 14px;
-    color: var(--text-color);
-    border-radius: 4px;
-    cursor: pointer;
+    padding: 12px 14px;
+    min-height: 44px;
+    font-size: 1rem;
   }
+}
 
-  .activity-context-menu-item:hover {
-    background: var(--background-color);
-  }
-
-  .activity-context-menu-item.danger {
-    color: var(--danger-color);
-  }
-
+/* Desktop hover tooltip for activity blocks */
+@media (min-width: 1440px) {
   .activity-block:hover::before {
     content: attr(data-tooltip-text);
     position: absolute;
