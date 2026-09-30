@@ -411,6 +411,44 @@ meant a phone was told to "click".
 Still platform-mixed by design, because they are study/admin content rather than
 UI chrome: `messages.instructionsDefault` and `messages.templateCopiedBanner`.
 
+## 8. Bug fix — the activity menu was invisible below 1440 px (2026-09-30)
+
+Reported by the user: "I long-press with the mouse, the blue circle animation
+plays after a delay, but in the end nothing happens (no menu)".
+
+Root cause: the whole `.activity-context-menu` / `.activity-context-menu-item`
+rule set lived **inside `@media (min-width: 1440px)`**. Below 1440 px the menu
+therefore had **no** styling — in particular no `position: fixed` — so the
+`left`/`top` that `showMenu()` sets resolved to nothing and the element laid out
+as a plain block in normal flow at the end of `<body>`: measured
+`rect {x: 0, y: 824, w: 1265, h: 22}` at a 720 px-tall viewport, i.e. **below the
+fold**, with `display: block` and all three items present in the DOM.
+
+Why it appeared only now: before §3 the `contextmenu` handler bailed out with
+`if (getIsMobile()) return`, so the menu could only ever open at ≥ 1440 px, where
+the media query applies. §3 removed that guard (deliberately — it is the phone
+long-press entry point), which exposed the width gate. So it was broken on
+**every phone**, not just in a narrow desktop window.
+
+Fix: the base look (position/background/border/shadow/z-index/padding and the
+items) moved out of the media query to top level, so it applies at all widths;
+the 1440 px block keeps only its width-specific extras, which is what makes the
+desktop rendering unchanged. Added a `max-width: 1439.98px` tweak giving the
+items a 44 px thumb target and the sheet-like `min-width: 200px` (desktop items
+stay 32 px tall / 214 px wide). Verified live with a real long-press at three
+widths — 1280×720, 408×900, 1600×900 — all `position: fixed`, on screen, and
+opening at the pressed block.
+
+**Testing lesson (the reason §3's tests passed while the feature was broken):**
+`expect(locator).toBeVisible()` only checks display/visibility/non-zero size — an
+element rendered at `y: 824` in a 720 px viewport is "visible", and Playwright
+clicks auto-scroll a target into view, so *clicking* the menu items proves
+nothing about position. The long-press test now asserts `boundingBox()` is
+inside the viewport and near the pressed block. Confirmed effective by
+re-injecting `position: static`: the test fails with
+"Expected ≤ 844, Received 1149.84". Use geometry assertions for every popup, not
+visibility.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,

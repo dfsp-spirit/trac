@@ -73,6 +73,24 @@ test('a long press opens the activity menu instead of deleting', async ({
     'Delete',
   ]);
 
+  // It has to land on screen at the point that was pressed. Asserting only
+  // "visible" hid a real bug: the menu's styling used to be gated behind
+  // `min-width: 1440px`, so below that it had `position: static` and rendered as
+  // a block at the end of the document - rendered, therefore "visible", but
+  // nowhere near the finger.
+  const viewport = page.viewportSize();
+  const menuBox = await menu.boundingBox();
+  expect(menuBox, 'the menu must have a box').not.toBeNull();
+  expect(menuBox.x).toBeGreaterThanOrEqual(0);
+  expect(menuBox.y).toBeGreaterThanOrEqual(0);
+  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(viewport.height);
+  const blockBox = await block.boundingBox();
+  expect(
+    Math.abs(menuBox.y - blockBox.y),
+    'the menu should open at the block that was long-pressed'
+  ).toBeLessThan(viewport.height / 2);
+
   // Opening the menu must not have deleted anything by itself.
   await expect(block).toHaveCount(1);
 });
