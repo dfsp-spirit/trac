@@ -1276,12 +1276,12 @@ body {
   animation: shake 0.4s linear;
 }
 
-.activity-block.long-press-delete-armed {
+.activity-block.long-press-armed {
   transform: scale(0.98);
-  box-shadow: 0 0 0 2px var(--danger-color);
+  box-shadow: 0 0 0 2px var(--primary-color);
 }
 
-.long-press-delete-indicator {
+.long-press-indicator {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -1294,12 +1294,12 @@ body {
   z-index: 20;
   --long-press-progress: 0;
   background: conic-gradient(
-    var(--danger-color) calc(var(--long-press-progress) * 1turn),
+    var(--primary-color) calc(var(--long-press-progress) * 1turn),
     var(--border-color) 0
   );
 }
 
-.long-press-delete-indicator::after {
+.long-press-indicator::after {
   content: '';
   position: absolute;
   inset: 4px;
