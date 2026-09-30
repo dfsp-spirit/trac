@@ -10,12 +10,11 @@ const { enterStudyIfNeeded, placeActivityMobile } = require('./e2e_helpers.js');
 // menu - and its document-level pointer handler was not gated on the mobile
 // breakpoint, so a motionless mouse press armed it on desktop as well.
 //
-// The same surface used to host a swipe: a left swipe clicked `#nextBtn` (now
-// `#saveDayBtn`), which has been "Save Day" since Copy Days, so an accidental
-// horizontal drag saved the
-// day and triggered a 1.5 s `location.reload()`. That gesture is gone, and the
-// test below pins down that a horizontal drag stays inert - it must not write the
-// day itself, and it must not navigate away from it.
+// The same surface used to host a swipe: a left swipe clicked the toolbar's
+// primary button ("Save Day" at the time), so an accidental horizontal drag
+// saved the day and triggered a 1.5 s `location.reload()`. That gesture is gone,
+// and the test below pins down that a horizontal drag stays inert - it must not
+// write the day itself, and it must not navigate away from it.
 test.use({ viewport: MOBILE_VIEWPORT, hasTouch: true });
 
 const ADD_BUTTON = '.floating-add-button';

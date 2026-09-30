@@ -3,6 +3,7 @@ const { MOBILE_VIEWPORT } = require('./participant_pages.js');
 const {
   enterStudyIfNeeded,
   placeActivityMobile,
+  saveCurrentDay,
 } = require('./e2e_helpers.js');
 
 // The phone context bar replaced two rows of navigation: the row of day buttons
@@ -51,7 +52,7 @@ test('the context bar replaces the day row and the timeline button', async ({
   // What the context bar replaced is gone at this width.
   await expect(page.locator('#previousDaysSwitchRow')).toHaveCount(0);
   await expect(page.locator('#switchTimelineBtn')).toBeHidden();
-  await expect(page.locator('#saveDayBtn')).toBeVisible();
+  await expect(page.locator('#submitStudyBtn')).toBeVisible();
 
   // It shows where the participant is, and the arrows name the day they reach.
   await expect(page.locator('#currentDayDisplay')).toBeVisible();
@@ -188,19 +189,11 @@ test('both timelines of a phone day survive a save', async ({ page }) => {
     `every timeline must hold an activity, got ${JSON.stringify(beforeSave)}`
   ).toBe(true);
 
-  // Save Day stores the whole day, so both timelines must come back. Saving no
-  // longer reloads the page, so reload explicitly here: that is the point of this
-  // test (the day must come back from the backend, not from memory).
-  const saved = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      /\/activities(\?|$)/.test(response.url()) &&
-      response.status() >= 200 &&
-      response.status() < 300,
-    { timeout: 30000 }
-  );
-  await page.locator('#saveDayBtn').click();
-  await saved;
+  // Saving stores the whole day, so both timelines must come back. Nothing
+  // navigates or reloads when the day is stored, so this flushes the engine (what
+  // leaving the day does) and then reloads explicitly: the point of the test is
+  // that the day comes back from the backend, not from memory.
+  await saveCurrentDay(page, { reenter: false });
   await page.reload({ waitUntil: 'load' });
   await enterStudyIfNeeded(page);
   await expect(page.locator('#contextBar')).toBeVisible({ timeout: 30000 });

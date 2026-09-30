@@ -45,12 +45,12 @@ test('the main diary controls are big enough to tap', async ({ page }) => {
     waitUntil: 'load',
   });
   await enterStudyIfNeeded(page);
-  await page.locator('#saveDayBtn').waitFor({ state: 'visible' });
+  await page.locator('#submitStudyBtn').waitFor({ state: 'visible' });
 
   const measured = await page.evaluate(() =>
     [
       ['floating add button', '.floating-add-button'],
-      ['save day button', '#saveDayBtn'],
+      ['submit study button', '#submitStudyBtn'],
       ['more menu button', '#moreMenuBtn'],
     ].map(([label, selector]) => {
       const element = document.querySelector(selector);

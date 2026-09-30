@@ -33,9 +33,8 @@
       "imageAltVertical": "Copiar las actividades de un día a otro en vista vertical"
     },
     "step4": {
-      "title": "Guardar y enviar tu diario",
-      "description": "Una vez que hayas registrado tus actividades de un día, haz clic en el botón \"Guardar día\" para guardarlas. Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
-      "saveHelp": "Haz clic para guardar las actividades del día en el que estás trabajando",
+      "title": "Guardar automáticamente y enviar tu diario",
+      "description": "Ya no necesitas guardar tu día: tus entradas se almacenan automáticamente poco después de que las hagas, y el estado que se muestra mientras editas indica si el día está guardado. Si se informa de un problema, usa \"Reintentar\". Aún podrás editar ese día más tarde. Cuando todos los días del estudio estén completos, haz clic en \"Enviar estudio\" para enviar tu diario y finalizar el estudio.",
       "submitStudyHelp": "Haz clic para enviar tu diario cuando todos los días estén completos"
     },
     "helpfulTools": "Herramientas útiles",
@@ -70,7 +69,6 @@
     "error": "Error"
   },
   "buttons": {
-    "saveDay": "Guardar día",
     "submitStudy": "Enviar estudio",
     "start": "Comenzar",
     "undo": "Deshacer",
@@ -123,6 +121,7 @@
   },
   "messages": {
     "activityRemoved": "Actividad eliminada",
+    "timelineCleared": "Línea de tiempo borrada",
     "selectStudy": "Seleccione un estudio para continuar",
     "noStudiesAvailable": "No hay estudios disponibles en el servidor.",
     "studyNotFound": "El estudio solicitado no existe.",
@@ -136,7 +135,6 @@
     "timelineCoverageMetAria": "Cobertura mínima cumplida",
     "dayCompleteAria": "Día completado (cobertura mínima alcanzada)",
     "timelineCoverageMissing": "{{covered}} de {{required}} minutos requeridos cubiertos",
-    "timelineMissing": "Falta información en esta línea de tiempo. ¿Te gustaría añadir algo?",
     "timelineHoverInactive": "Haz clic para cambiar a esta línea de tiempo",
     "timelineHoverActiveNoSelection": "Selecciona una actividad abajo y luego colócala aquí.",
     "timelineHoverActiveWithSelection": "Haz clic para colocar aquí la actividad seleccionada.",
@@ -156,7 +154,6 @@
     "copyError": "Error al copiar: {{message}}",
     "copyEmptySource": "El día de origen no tiene actividades para copiar.",
     "completeOtherDaysFirst": "Completa primero {{days}} para finalizar el estudio.",
-    "daySavedStayOnPage": "Día guardado.",
     "copyDayEmpty": "vacío",
     "copyDayHasData": "tiene datos",
     "copyOverwriteTitle": "¿Sobrescribir el día?",

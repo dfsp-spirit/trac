@@ -278,7 +278,7 @@ test('markSaved records an explicit save so it is not written again', async () =
   harness.setDay('v2');
   harness.autosave.notePossibleChange();
 
-  // The Save Day button wrote this content itself.
+  // Someone else stored this content (a day copy saves its source day itself).
   harness.autosave.markSaved();
   await harness.timers.advance(AUTOSAVE_MAX_WAIT_MS * 2);
 

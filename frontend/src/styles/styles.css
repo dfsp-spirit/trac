@@ -1748,18 +1748,10 @@ body.carrying-activity .modal-close {
   white-space: nowrap;
 }
 
-.save-day-btn {
-  background-color: var(--primary-color);
-}
-
-.save-day-btn:hover:not(:disabled) {
-  background-color: #1d4ed8;
-}
-
 /* Autosave status chip (ui.js renderSyncStatus). Deliberately quiet - it sits in
-   the toolbar next to Save Day, where it answers "is my day stored?" without
-   competing with the actions. Only the failure state takes the danger colour,
-   because that is the one that asks for something. */
+   the toolbar and answers "is my day stored?" without competing with the actions.
+   Only the failure state takes the danger colour, because that is the one that
+   asks for something. */
 .sync-status {
   display: inline-flex;
   align-items: center;
@@ -1827,8 +1819,8 @@ body.carrying-activity .modal-close {
   }
 }
 
-/* On a phone the toolbar has no spare row: inline, the chip pushes Save Day onto
-   a second line and grows the header by 38 px every time an edit is saved
+/* On a phone the toolbar has no spare row: inline, the chip pushes the buttons
+   onto a second line and grows the header by 38 px every time an edit is saved
    (measured 99 -> 137 px), i.e. the working area would jump while the
    participant is editing. It floats instead, mirroring the "+" button on the
    other side, which also keeps it visible while the timeline is scrolled. */
@@ -2894,12 +2886,6 @@ body.carrying-activity .modal-close {
 .activity-block[data-length^='14'] .activity-block-text-vertical-mobile span {
   font-size: 10px;
   letter-spacing: 0.5px;
-}
-
-/* Allow clicks on the disabled Save button for toast messages */
-#saveDayBtn:disabled {
-  pointer-events: auto !important;
-  cursor: not-allowed;
 }
 
 /* Toast Notifications */

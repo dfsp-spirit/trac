@@ -254,30 +254,32 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
 }
 
 /**
- * Click "Save Day" and wait for the save to reach the backend. The page stays on
- * the current day and is *not* reloaded (see dev_tools/todo_mobile.md slice 1),
- * so this waits for the save request itself: a 2xx POST for the day's activities.
- * sendData() retries 5xx up to twice, so a successful response is the signal that
- * the day is really stored.
+ * Make sure the day on screen is stored before the spec continues.
+ *
+ * There is no Save Day button any more: the day is written by autosave shortly
+ * after the last edit. This flushes the engine (what leaving the day does) and
+ * waits until it is neither sending nor pending, so the caller can rely on the
+ * backend holding what is on screen.
  *
  * @param {import('@playwright/test').Page} page
  * @param {{reenter?: boolean}} [options]
  */
 async function saveCurrentDay(page, { reenter = true } = {}) {
-  const saveBtn = page.locator('#saveDayBtn');
-  await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
-  await expect(saveBtn).toBeEnabled({ timeout: 3000 });
+  await page.evaluate(() => window.autosave?.flush?.());
 
-  const saved = page.waitForResponse(
-    (response) =>
-      response.request().method() === 'POST' &&
-      /\/activities(\?|$)/.test(response.url()) &&
-      response.status() >= 200 &&
-      response.status() < 300,
-    { timeout: 30000 }
-  );
-  await saveBtn.click();
-  await saved;
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const engine = window.autosave;
+          if (!engine) return false;
+          if (engine.isSaving() || engine.hasPendingChanges()) return false;
+          // 'saved' means a request landed, 'idle' that there was nothing to send.
+          return engine.state() === 'saved' || engine.state() === 'idle';
+        }),
+      { timeout: 30000, message: 'waiting for the day to be stored' }
+    )
+    .toBe(true);
 
   if (reenter) {
     await enterStudyIfNeeded(page);

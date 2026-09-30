@@ -121,6 +121,44 @@ test('switching day persists pending edits first', async ({ page }) => {
     .toBeGreaterThan(0);
 });
 
+test('clearing a timeline can be undone, and the undo is stored too', async ({
+  page,
+}) => {
+  await openDiary(page, `e2e-autosave-clear-undo-${Date.now()}`);
+
+  await placeActivity(page, { activityName: 'Sleeping', positionPercent: 30 });
+  await expect
+    .poll(() => page.evaluate(() => window.autosave.state()), { timeout: 20000 })
+    .toBe('saved');
+
+  await page.locator('#clearTimelineBtn').click();
+  await expect(page.locator('#clearTimelineConfirmModal')).toBeVisible();
+  await page.locator('#confirmClearTimelineOk').click();
+  await expect(page.locator('.activity-block')).toHaveCount(0);
+
+  // Clearing used to be reversible by not pressing Save Day; now the empty
+  // timeline is on its way to the backend within a second, so the toast has to
+  // offer the way back.
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('Timeline cleared');
+  await toast.locator('.toast-action').click();
+  await expect(page.locator('.activity-block')).toHaveCount(1);
+
+  // The restored day must be stored as well - otherwise the undo would only last
+  // until the next reload.
+  await expect
+    .poll(() => page.evaluate(() => window.autosave.state()), { timeout: 20000 })
+    .toBe('saved');
+  await page.reload({ waitUntil: 'load' });
+  await enterStudyIfNeeded(page);
+  await expect
+    .poll(() => activityCount(page), {
+      timeout: 20000,
+      message: 'waiting for the restored activity to load from the backend',
+    })
+    .toBeGreaterThan(0);
+});
+
 // The day and timeline sheets live in the phone context bar, so this one runs
 // at the mobile breakpoint (the rest of the file is desktop).
 test.describe('on a phone', () => {
@@ -250,6 +288,31 @@ test('the toolbar reports what happened to the day', async ({ page }) => {
   await expect(chip).toBeVisible();
   await expect(chip).toContainText('Saving');
   await expect(chip.locator('.sync-status-retry')).toBeHidden();
+
+  // And it is part of the toolbar, not a block of its own below it: as a sibling
+  // of .controls it took a line of its own, which moved the timeline while the
+  // participant was editing (a burst of placements then missed).
+  await expect(page.locator('.header-section .controls #syncStatus')).toHaveCount(
+    1
+  );
+  const toolbarHeight = () =>
+    page.evaluate(() =>
+      Math.round(
+        document.querySelector('.header-section .controls').getBoundingClientRect()
+          .height
+      )
+    );
+  const withChip = await toolbarHeight();
+  await page.evaluate(() => {
+    document.getElementById('syncStatus').hidden = true;
+  });
+  expect(
+    await toolbarHeight(),
+    'showing the chip must not add a toolbar row'
+  ).toBe(withChip);
+  await page.evaluate(() => {
+    document.getElementById('syncStatus').hidden = false;
+  });
 
   await expect(chip).toContainText('Saved', { timeout: 20000 });
   expect(await page.evaluate(() => window.autosave.hasPendingChanges())).toBe(

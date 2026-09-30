@@ -780,6 +780,48 @@ function showUndoDeleteToast(timelineKey, activityData, index) {
 window.deleteActivityBlock = deleteActivityBlock;
 
 /**
+ * Clear timeline empties a whole timeline at once. Before autosave that was
+ * recoverable by simply not pressing Save Day; now the empty timeline reaches
+ * the backend a second later, so the action needs an undo of its own - the same
+ * one the single-activity delete has.
+ */
+function undoClearTimeline(timelineKey, activitiesSnapshot) {
+  window.timelineManager.activities[timelineKey] = [...activitiesSnapshot];
+
+  if (getCurrentTimelineKey() === timelineKey) {
+    rerenderActivitiesInTimeline(
+      window.timelineManager.activeTimeline,
+      timelineKey
+    );
+  }
+
+  // The day is different again, which is what makes autosave store it.
+  updateButtonStates();
+  persistPendingTimelineStateSoon();
+}
+
+function showUndoClearTimelineToast(timelineKey, activitiesSnapshot) {
+  if (typeof window.showToast !== 'function') return;
+
+  const translate = (key, fallback) =>
+    window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
+
+  // Longer than the single-activity undo: this one removed a whole timeline, and
+  // it is the participant's only way back.
+  window.showToast(
+    translate('messages.timelineCleared', 'Timeline cleared'),
+    'info',
+    8000,
+    {
+      label: translate('buttons.undo', 'Undo'),
+      onClick: () => undoClearTimeline(timelineKey, activitiesSnapshot),
+    }
+  );
+}
+
+window.showUndoClearTimelineToast = showUndoClearTimelineToast;
+
+/**
  * Mobile: long-pressing an activity opens the shared activity context menu
  * (Copy / Show info / Delete) instead of deleting it outright. The hold is the
  * mobile equivalent of the desktop right-click, and deleting is one explicit

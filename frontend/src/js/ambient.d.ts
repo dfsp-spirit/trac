@@ -56,9 +56,9 @@ interface Window {
   showConfirmDialog?: (...args: any[]) => any;
   showCopyTargetPicker?: (...args: any[]) => any;
   showToast?: (...args: any[]) => any;
+  showUndoClearTimelineToast?: (...args: any[]) => any;
   toggleDebugOverlay?: (...args: any[]) => any;
   tudClearCustomActivityText?: (...args: any[]) => any;
-  updateDisabledButtonOverlays?: (...args: any[]) => any;
   deleteActivityBlock?: (...args: any[]) => any;
   // legacy hacky globals
   i?: any;

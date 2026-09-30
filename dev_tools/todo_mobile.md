@@ -741,14 +741,16 @@ of a reload (a save no longer navigates), and
 that is what the test is actually about. Full chromium suite: **78/78, 4.0m ->
 3.0m**; individual saves went 7.5 s -> 2.0 s, 17.2 s -> 6.2 s in the specs.
 
-### What is left of autosave (slice 4)
+### What is left of autosave
 
-Slices 2 (the engine, §14) and 3 (the visible state, §15) are done. Slice 4:
-remove Save Day, which now only duplicates what autosave does - button, its strings
-(`buttons.saveDay`, `instructions.step4.description` x 7 locales, the instructions
-page), plus the specs and helper that press it. Two things it must not lose:
-**Clear timeline needs an undo** (with autosave its delete is permanent within a
-second) and no new reload may be introduced anywhere.
+All four slices are done: §13 (cheap write path, no reload after save), §14 (the
+engine), §15 (the visible state) and §16 (Save Day removed, Clear timeline undo).
+What is *not* covered anywhere yet, if the topic comes back:
+
+- **Undo for other day-wide actions.** Copy day can overwrite a target day; it
+  asks in a styled dialog first, but there is no undo afterwards either.
+- **Two tabs on the same day** are still last-write-wins with no merge; the draft
+  in local storage is per browser, not per tab.
 
 ## 14. Done — autosave engine, slice 2 (2026-09-30)
 
@@ -841,8 +843,7 @@ The mapping is `sync_status.js` (state -> kind / label key / icon / retry?), whi
 keeps it unit-testable; `renderSyncStatus()` in `ui.js` owns the DOM and is called
 from the engine's `onStateChange`. Three properties worth keeping:
 
-- the chip is built lazily, and its anchor falls back from `#saveDayBtn` to the
-toolbar itself, so **slice 4 removing Save Day does not take the status with it**;
+- the chip is built lazily and **appended to the toolbar** (`.header-section .controls`, see the trap in §16 - `insertAdjacentElement('afterend')` on the toolbar itself puts it *outside* it);
 - the retry calls `flush()`, which clears the scheduled backoff - it is *the*
 retry, not a second one racing the engine's own timer;
 - the text carries `data-i18n`, so a language switch re-translates it like any
@@ -852,14 +853,16 @@ spinner.
 
 ### The placement decision (the only interesting part)
 
-Inline next to Save Day costs nothing on desktop - measured `.header-section`
-**132 px with and without** the chip. On a phone the same inline chip pushed Save
-Day onto a second toolbar row: **99 -> 137 px**, on every save, right while the
-participant is dragging blocks. It was unacceptable for the reason this whole
+Inline in the toolbar costs nothing on desktop - measured `.header-section`
+**132 px with and without** the chip. On a phone the same inline chip pushed the
+buttons onto a second toolbar row: **99 -> 137 px**, on every save, right while
+the participant is dragging blocks. It was unacceptable for the reason this whole
 plan exists, so below 1440 px the chip is `position: fixed` at the bottom left,
 mirroring the `+` button on the right: header stays **99 px**, and the chip is
 visible even when the timeline is scrolled. Guarded by
-`autosave.spec.js > the status does not push the phone layout around`.
+`autosave.spec.js > the status does not push the phone layout around` and, for
+desktop, by the toolbar-height check in `the toolbar reports what happened to the
+day`.
 
 ### i18n
 
@@ -882,6 +885,61 @@ is provably what caused the request); and the phone layout guard above.
 (`#syncStatus` never appears), and removing the retry's click handler fails the
 retry test (`attempts` stays at 3 inside the poll window).
 
+## 16. Done — Save Day removed, Clear timeline gets an undo, slice 4 (2026-09-30)
+
+The button is gone: a day is stored by autosave, so a control that only duplicates
+that is a second thing to explain and to get wrong. Everything that surrounded it
+went with it:
+
+- `#saveDayBtn` and `.save-day-btn` (index + instructions page + both stylesheets);
+- `buttons.saveDay` and `messages.daySavedStayOnPage` x 7 locales;
+- `handleSaveDayAction()` and its debounce vars, the button's click handler, the
+  `saveDayBtn` branch in `updateButtonStates()` (with it the dead `canProceed`,
+  `isLastTimeline`/`totalTimelines`, `isLastStudyDay`/`totalStudyDays` locals);
+- **the whole disabled-button overlay mechanism** (`createDisabledButtonOverlay`,
+  `updateDisabledButtonOverlays`, `initializeOverlays`, its MutationObserver and
+  the 2 s `setInterval` fallback). It existed only to make the *disabled* Save Day
+  button explain itself with `messages.timelineMissing` - so it was also a
+  permanent 2 s timer. The coverage row ("0 of 10 required minutes covered", "Please
+  cover the entire timeline.") already tells the participant what is missing.
+
+Step 4 of the instructions page no longer shows a Save Day demo button; its text
+now describes the status chip and the retry (`instructions.step4.title` and
+`.description` rewritten in all 7 locales).
+
+### Clear timeline needed an undo (the one thing Save Day was still protecting)
+
+The old flow was forgiving by accident: nothing was in the database until Save Day
+was pressed, so a mis-clicked Clear timeline could be undone by reloading. With
+autosave the empty timeline is stored within a second, so the deletion is
+permanent - and the confirm dialog guards against a slip, not against regret. It
+now offers the same undo the single-activity delete does (`showUndoClearTimelineToast`
+-> `undoClearTimeline` in `script.js`, `performClearTimeline` snapshots before
+clearing): `messages.timelineCleared` + `buttons.undo`, 8 s instead of 6 s, and
+the restore goes through `updateButtonStates()` so the day is written again.
+
+### The trap: a chip *beside* the toolbar instead of in it
+
+With Save Day gone the chip's anchor became the toolbar, and
+`insertAdjacentElement('afterend', chip)` on `.controls` inserts as a *sibling* -
+so the chip got a line of its own inside `.header-section`. That moved the
+timeline up and down again at every save state change, and
+`autosave.spec.js > a burst of edits becomes a single request` (three placements
+in ~1 s, each reading its own `boundingBox()`) failed **deterministically** with
+two of three clicks missing. Fixed by appending *into* the toolbar, and pinned by
+two new assertions in `the toolbar reports what happened to the day`: the chip must
+be a descendant of `.controls`, and toggling its `hidden` must not change the
+toolbar's height. Verified live: toolbar 48 px and `.header-section` 132 px with
+and without the chip on desktop, header 99 px on a phone.
+
+### Test impact
+
+`e2e_helpers.saveCurrentDay()` no longer clicks anything: it flushes the engine and
+waits until it is neither sending nor pending. `mobile_context_bar` (which asserted
+the button was visible and clicked it) and `mobile_layout` (which measured it as a
+tap target, now `#clearTimelineBtn` is hidden on phones so it measures
+`#submitStudyBtn`) were adapted; the new clear-undo case lives in `autosave.spec.js`.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,
@@ -899,9 +957,11 @@ and it is the only control that can silently save a day mid-drag. **Removed in
 
 ## Deferred — autosave instead of "Save Day" (decided 2026-09-30)
 
-**Slices 0-3 are done — see §13** (cheap write path, no reload after save),
-**§14** (the autosave engine) **and §15** (the visible sync state). What follows is
-the original assessment, still valid for slice 4.
+**All four slices are done — see §13** (cheap write path, no reload after save),
+**§14** (the autosave engine), **§15** (the visible sync state) **and §16** (Save
+Day removed, Clear timeline undo). What follows is the original assessment, kept
+because it is where the non-negotiables (single-flight, visible failure state,
+undo for Clear timeline, no new reloads) were worked out.
 
 Question: save after every action, so the reloads and the Save button disappear?
 Answer: **not now, and not as a prerequisite for the mobile work.**
@@ -956,15 +1016,15 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green 2026-09-30 after §15: `sh test_frontend_typecheck.sh`,
+Green 2026-09-30 after §16: `sh test_frontend_typecheck.sh`,
 `sh test_frontend_unit.sh` (90/90, incl. `locales_consistency` key-set +
 untranslated-value guards, the `page_titles` guards, the 13 `autosave` and the 8
 `sync_status` tests), the backend suites (`test_backend_unit.sh` 156/156,
 `uv run pytest tests/integration` 126/126 against the running dev server), and on
-chromium **86/86** in **3.9 min**.
+chromium **87/87** in **4.0 min**.
 New specs added during this work: `mobile_activity_gestures` (§3),
 `mobile_context_bar` (§4, day/timeline sheets + the copy row),
-`page_titles` (§10), `autosave` (§14 engine, §15 status chip).
+`page_titles` (§10), `autosave` (§14 engine, §15 status chip, §16 clear undo).
 
 Everything that had to be adapted for steps 4–6 has been adapted:
 
