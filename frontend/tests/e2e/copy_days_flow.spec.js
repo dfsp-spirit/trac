@@ -214,9 +214,10 @@ test.describe('Copy Days — core flows', () => {
     await switchToDay(page, 3);
 
     // The copied day has exactly one activity; remove it (client state only).
-    const removeLastBtn = page.locator('#removeLastBtn');
-    await expect(removeLastBtn).toBeEnabled({ timeout: 3000 });
-    await removeLastBtn.click();
+    const block = page.locator('.activity-block').first();
+    await expect(block).toHaveCount(1, { timeout: 3000 });
+    await block.click({ button: 'right' });
+    await page.locator('#activityContextMenu [data-action="delete"]').click();
 
     // The current day's client coverage is now 0 < min_coverage, so the Submit
     // Study button must gray out immediately — before any save happens.

@@ -39,7 +39,6 @@
       "submitStudyHelp": "Klikkaa lähettääksesi päiväkirjasi, kun kaikki päivät ovat valmiit"
     },
     "helpfulTools": "Hyödylliset työkalut",
-    "removeLastHelp": "Poista viimeksi sijoitettu toiminto",
     "clearTimelineHelp": "Haluatko aloittaa alusta? Tyhjennä aikajana",
     "customActivityHelp": "Eikö toimintoa ole listalla? Lisää oma toiminto",
     "customActivityName": "Muu (kirjoita)"
@@ -72,7 +71,7 @@
     "saveDay": "Tallenna päivä",
     "submitStudy": "Lähetä tutkimus",
     "start": "Aloita",
-    "removeLast": "Poista viimeisin",
+    "undo": "Kumoa",
     "clearTimeline": "Tyhjennä aikajana",
     "moreActions": "Lisää toimintoja",
     "skipReporting": "Ohita ajankäytön raportointi",
@@ -121,6 +120,7 @@
     }
   },
   "messages": {
+    "activityRemoved": "Toiminto poistettu",
     "selectStudy": "Valitse tutkimus jatkaaksesi",
     "noStudiesAvailable": "Palvelimella ei ole saatavilla tutkimuksia.",
     "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
@@ -136,7 +136,8 @@
     "timelineHoverActiveWithSelection": "Napsauta sijoittaaksesi valitun toiminnon tähän.",
     "invalidPlacement": "Toimintoa ei voi sijoittaa tähän virheellisen sijainnin vuoksi.",
     "timelineValidationError": "Aikajanan validointivirhe: {{message}}",
-    "templateLoadedBanner": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Mobiilissa poistat yksittäisen toiminnon painamalla sitä pitkään. Tietokoneella napsauta toimintoa hiiren oikealla ja valitse <strong>'Poista'</strong> (tai pidä hiiren osoitin sen päällä ja paina DEL- tai 'd'-näppäintä).",
+    "templateLoadedBannerMobile": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Napauta <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa toimintojasi. Poista toiminto pitämällä sitä painettuna ja valitsemalla <strong>'Poista'</strong>.",
+    "templateLoadedBannerDesktop": "Latasimme toimintosi päivästä <strong>{{day}}</strong> lähtökohdaksi. Klikkaa <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja. Poista toiminto napsauttamalla sitä hiiren oikealla painikkeella ja valitsemalla <strong>'Poista'</strong>.",
     "templateCopiedBanner": "Olemme esitäyttäneet päiväkirjasi malliosallistujan toiminnoilla. Klikkaa <strong>'Tyhjennä aikajana'</strong> aloittaaksesi alusta tai muokkaa alla olevia toimintoja.",
     "studyDayOf": "Päivä {{current}} / {{total}}",
     "currentDayTooltip": "{{dayName}} (Päivä {{current}} / {{total}})",
@@ -161,7 +162,8 @@
     "loadingActivitiesShort": "Virhe toimintojen latauksessa. Päivitä sivu ja yritä uudelleen. Virhe:"
   },
   "banner": {
-    "dayOneInstructions": "Ohjeet: Valitse toiminto alta, napsauta sitten aikajanaa sijoittaaksesi sen ja vedä reunoista pidentääksesi. Poistaaksesi toiminnon, pidä sitä painettuna mobiilissa tai käytä tietokoneella hiiren oikean painikkeen valikkoa."
+    "dayOneInstructionsMobile": "Ohjeet: napauta oikeassa alakulmassa olevaa +-painiketta valitaksesi toiminnon ja napauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto pitämällä sitä painettuna ja valitsemalla Poista.",
+    "dayOneInstructionsDesktop": "Ohjeet: valitse toiminto alta ja napsauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto napsauttamalla sitä hiiren oikealla painikkeella ja valitsemalla Poista."
   },
   "thankYou": {
     "title": "Kiitos - TRAC",

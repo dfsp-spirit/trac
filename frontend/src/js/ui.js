@@ -15,7 +15,11 @@ import {
 import { DEBUG_MODE } from './constants.js';
 
 // Toast notification system
-function showToast(message, type = 'info', duration = 3000) {
+/**
+ * Transient notification. `action` optionally adds a button (label + onClick),
+ * which is how deleting an activity offers an undo.
+ */
+function showToast(message, type = 'info', duration = 3000, action = null) {
   // Remove any existing toasts
   const existingToasts = document.querySelectorAll('.toast');
   existingToasts.forEach((toast) => toast.remove());
@@ -23,7 +27,31 @@ function showToast(message, type = 'info', duration = 3000) {
   // Create new toast
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.textContent = message;
+
+  const text = document.createElement('span');
+  text.className = 'toast-message';
+  text.textContent = message;
+  toast.appendChild(text);
+
+  let removalTimer = null;
+  const dismissToast = () => {
+    clearTimeout(removalTimer);
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  };
+
+  if (action && typeof action.onClick === 'function') {
+    const actionButton = document.createElement('button');
+    actionButton.type = 'button';
+    actionButton.className = 'toast-action';
+    actionButton.textContent = action.label;
+    actionButton.addEventListener('click', () => {
+      dismissToast();
+      action.onClick();
+    });
+    toast.appendChild(actionButton);
+  }
+
   // Announce to screen readers: errors as alerts, other types as polite
   // status updates.  The toast is transient, so use aria-atomic.
   if (type === 'error') {
@@ -39,10 +67,7 @@ function showToast(message, type = 'info', duration = 3000) {
   setTimeout(() => toast.classList.add('show'), 10);
 
   // Remove after duration
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, duration);
+  removalTimer = setTimeout(dismissToast, duration);
 }
 
 // Make showToast globally available for debugging and accessibility
@@ -965,7 +990,6 @@ function updateButtonStates() {
 
   updateCurrentDayDisplay();
 
-  const removeLastButton = document.getElementById('removeLastBtn');
   const clearTimelineButton = document.getElementById('clearTimelineBtn');
   const saveDayButtonInTopBar = document.getElementById('saveDayBtn');
 
@@ -982,7 +1006,6 @@ function updateButtonStates() {
 
   //console.log('Has activities DOM:', hasActivities);
 
-  if (removeLastButton) removeLastButton.disabled = isEmpty;
   if (clearTimelineButton) clearTimelineButton.disabled = !hasActivities;
 
   // Update the timeline switcher: shown whenever the study has more than one
@@ -1047,8 +1070,8 @@ function updateButtonStates() {
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
   // min_coverage check as the Next/Submit buttons above.  Every activity
-  // mutation (create, delete, move, resize, arrow-key time edit,
-  // remove-last, clear-timeline, load) routes through this function, so
+  // mutation (create, delete, move, resize, arrow-key time edit, clear-timeline,
+  // load) routes through this function, so
   // re-rendering the row here keeps both button groups in sync without
   // touching each individual call site.
   if (typeof window.renderPreviousDaysSwitchRow === 'function') {
@@ -1313,10 +1336,6 @@ const NEXT_BUTTON_COOLDOWN = 500; // 1 second cooldown
 let switchTimelineLastClick = 0;
 const SWITCH_TIMELINE_COOLDOWN = 500;
 
-// Debounce variables for Remove Last button
-let removeLastButtonLastClick = 0;
-const REMOVE_LAST_BUTTON_COOLDOWN = 300; // 300ms cooldown
-
 // Shared function to handle save button logic with debounce.
 // Copy Days: saving is a routine operation — no confirmation modal needed.
 const handleSaveDayAction = async () => {
@@ -1407,88 +1426,14 @@ const handleSwitchTimelineAction = async () => {
   }
 };
 
-// Shared function to handle Remove Last button logic with debounce
-const handleRemoveLastButtonAction = () => {
-  const currentTime = Date.now();
-  if (currentTime - removeLastButtonLastClick < REMOVE_LAST_BUTTON_COOLDOWN) {
-    console.log('Remove Last button on cooldown');
-    return;
-  }
-  removeLastButtonLastClick = currentTime;
-
-  const currentKey = getCurrentTimelineKey();
-  const currentData = getCurrentTimelineData();
-  if (currentData.length > 0) {
-    if (DEBUG_MODE) {
-      console.log(
-        'Before remove last - timelineData:',
-        window.timelineManager.activities
-      );
-    }
-
-    // Work with a copy to avoid modifying the original array until validation passes
-    const currentDataCopy = [...currentData];
-    const lastActivity = currentDataCopy.pop();
-
-    // Update timeline manager activities and validate
-    window.timelineManager.activities[currentKey] = currentDataCopy;
-    try {
-      window.timelineManager.metadata[currentKey].validate();
-    } catch (error) {
-      console.error('Timeline validation failed:', error);
-      // Revert the change
-      window.timelineManager.activities[currentKey] = currentData;
-      const timeline = window.timelineManager.activeTimeline;
-      const lastBlock = timeline.querySelector(
-        `.activity-block[data-id="${lastActivity.id}"]`
-      );
-      if (lastBlock) {
-        lastBlock.classList.add('invalid');
-        setTimeout(() => lastBlock.classList.remove('invalid'), 400);
-      }
-      return;
-    }
-
-    if (DEBUG_MODE) {
-      console.log('Removing activity:', lastActivity);
-    }
-
-    const timeline = window.timelineManager.activeTimeline;
-    const blocks = timeline.querySelectorAll('.activity-block');
-
-    if (DEBUG_MODE) {
-      blocks.forEach((block) => {
-        console.log(
-          'Block id:',
-          block.dataset.id,
-          'Last activity id:',
-          lastActivity.id
-        );
-      });
-    }
-    blocks.forEach((block) => {
-      if (block.dataset.id === lastActivity.id) {
-        if (DEBUG_MODE) {
-          console.log('Removing block with id:', lastActivity.id);
-        }
-        block.remove();
-      }
-    });
-
-    updateButtonStates();
-
-    if (DEBUG_MODE) {
-      console.log('Final timelineData:', window.timelineManager.activities);
-    }
-  }
-};
-
 let buttonsInitialized = false;
 
 // ── Phone ⋮ menu ──────────────────────────────────────────────────────────
-// On phones the toolbar only has room for the timeline switcher, Save Day and
-// Submit Study. Clear timeline, Remove Last, Skip time reporting and the
-// language picker move in here instead of taking a row each.
+// On phones the toolbar only has room for Save Day and Submit Study. Skip time
+// reporting and the language picker move in here instead of taking rows of
+// their own. (Deleting an activity no longer needs an entry: the long-press
+// menu deletes and offers an undo toast, so there is no "remove last" button
+// on any platform.)
 //
 // Every item proxies .click() to the real control, so there is still exactly one
 // implementation of each action (including its confirmation dialog), and the
@@ -1496,11 +1441,6 @@ let buttonsInitialized = false;
 // receive .click() - a disabled one simply does nothing.
 const MORE_MENU_ID = 'moreMenu';
 const MORE_MENU_ACTIONS = [
-  {
-    controlId: 'removeLastBtn',
-    labelKey: 'buttons.removeLast',
-    fallback: 'Remove Last',
-  },
   {
     controlId: 'skipReportingBtn',
     labelKey: 'buttons.skipReporting',
@@ -2090,11 +2030,6 @@ function initButtons() {
   if (confirmClearTimelineOk) {
     confirmClearTimelineOk.addEventListener('click', performClearTimeline);
   }
-
-  // Add click handler for Remove Last button using debounced function
-  document
-    .getElementById('removeLastBtn')
-    .addEventListener('click', handleRemoveLastButtonAction);
 
   // Add click handler for the Save Day button
   const saveDayBtn = document.getElementById('saveDayBtn');

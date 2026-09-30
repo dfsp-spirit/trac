@@ -39,7 +39,6 @@
       "submitStudyHelp": "Haz clic para enviar tu diario cuando todos los días estén completos"
     },
     "helpfulTools": "Herramientas útiles",
-    "removeLastHelp": "Elimina la última actividad colocada",
     "clearTimelineHelp": "¿Quieres empezar de nuevo? Vacía la línea de tiempo",
     "customActivityHelp": "¿Actividad no listada? Añade una actividad personalizada",
     "customActivityName": "Otra no listada (ingresar)"
@@ -72,7 +71,7 @@
     "saveDay": "Guardar día",
     "submitStudy": "Enviar estudio",
     "start": "Comenzar",
-    "removeLast": "Eliminar última",
+    "undo": "Deshacer",
     "clearTimeline": "Vaciar línea de tiempo",
     "moreActions": "Más acciones",
     "skipReporting": "Omitir reporte de tiempo",
@@ -121,6 +120,7 @@
     }
   },
   "messages": {
+    "activityRemoved": "Actividad eliminada",
     "selectStudy": "Seleccione un estudio para continuar",
     "noStudiesAvailable": "No hay estudios disponibles en el servidor.",
     "studyNotFound": "El estudio solicitado no existe.",
@@ -136,7 +136,8 @@
     "timelineHoverActiveWithSelection": "Haz clic para colocar aquí la actividad seleccionada.",
     "invalidPlacement": "No se puede colocar la actividad aquí debido a una posición no válida.",
     "timelineValidationError": "Error de validación de la línea de tiempo: {{message}}",
-    "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
+    "templateLoadedBannerMobile": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Toca <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita tus actividades. Para eliminar una actividad, manténla pulsada y elige <strong>'Eliminar'</strong>.",
+    "templateLoadedBannerDesktop": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita las actividades a continuación. Para eliminar una actividad, haz clic derecho sobre ella y elige <strong>'Eliminar'</strong>.",
     "templateCopiedBanner": "Hemos precargado tu diario con las actividades de un participante de plantilla. Haz clic en <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita las actividades a continuación.",
     "studyDayOf": "Día {{current}} de {{total}}",
     "currentDayTooltip": "{{dayName}} (Día {{current}} de {{total}})",
@@ -161,7 +162,8 @@
     "loadingActivitiesShort": "Error al cargar las actividades. Actualice la página para intentarlo de nuevo. Error:"
   },
   "banner": {
-    "dayOneInstructions": "Instrucciones: Selecciona una actividad abajo, luego haz clic en la línea de tiempo para colocarla y arrastra los bordes para ampliar. Para eliminar una actividad, mantenla pulsada en móvil o usa el menú contextual en escritorio."
+    "dayOneInstructionsMobile": "Instrucciones: toca el botón + de la esquina inferior derecha para elegir una actividad y luego toca la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, manténla pulsada y elige Eliminar.",
+    "dayOneInstructionsDesktop": "Instrucciones: selecciona una actividad abajo y luego haz clic en la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, haz clic derecho sobre ella y elige Eliminar."
   },
   "thankYou": {
     "title": "Gracias - TRAC",

@@ -82,7 +82,6 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
 
   // On desktop each of these has a button of its own (or, for the language
   // picker, a row); on a phone they are reached through the ⋮ menu instead.
-  await expect(page.locator('#removeLastBtn')).toBeHidden();
   await expect(page.locator('#clearTimelineBtn')).toBeHidden();
   await expect(page.locator('#skipReportingBtn')).toBeHidden();
   await expect(page.locator('.language-select-wrapper')).toBeHidden();
@@ -99,10 +98,10 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
   const menu = page.locator('#moreMenu');
   await expect(menu).toBeVisible();
 
-  // The day is empty, so the activity action is offered but disabled - mirroring
-  // the real button it proxies. Clear timeline moved on to the timeline menu
-  // (covered by mobile_context_bar.spec.js).
-  await expect(menu.locator('[data-control-id="removeLastBtn"]')).toBeDisabled();
+  // Skip time reporting is the only proxied control left in this menu: Clear
+  // timeline moved to the timeline menu, and deleting an activity is offered by
+  // the long-press menu plus its undo toast.
+  await expect(menu.locator('[data-control-id="skipReportingBtn"]')).toBeEnabled();
 
   // The language picker moved in too, with the active language marked.
   await expect(menu.locator('.more-menu-languages [aria-pressed="true"]')).toHaveText(
@@ -113,6 +112,32 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
   await menu.locator('[data-control-id="skipReportingBtn"]').click();
   await expect(page.locator('#skipConfirmationModal')).toBeVisible();
   await expect(menu).toHaveCount(0);
+});
+
+test('the day-one banner explains the layout the participant is in', async ({
+  page,
+}) => {
+  const pid = `banner_${Date.now()}`;
+  await page.goto(`index.html?pid=${pid}&study_name=default&lang=en`, {
+    waitUntil: 'load',
+  });
+  await enterStudyIfNeeded(page);
+
+  // Phone: the picker is the + button and the finger taps, so the banner must
+  // not send anyone looking for an activity list that is not on screen.
+  const mobileText = page.locator('.banner-text-mobile');
+  await expect(mobileText).toBeVisible({ timeout: 20000 });
+  await expect(mobileText).toContainText('tap the + button');
+  await expect(page.locator('.banner-text-desktop')).toBeHidden();
+
+  // Desktop: the list is inline below and the mouse clicks.
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.reload({ waitUntil: 'load' });
+
+  const desktopText = page.locator('.banner-text-desktop');
+  await expect(desktopText).toBeVisible({ timeout: 20000 });
+  await expect(desktopText).toContainText('select an activity below');
+  await expect(page.locator('.banner-text-mobile')).toBeHidden();
 });
 
 test('an activity can be placed with touch alone', async ({ page }) => {

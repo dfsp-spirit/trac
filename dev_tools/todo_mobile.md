@@ -37,8 +37,8 @@ The third toolbar row is the language `<select>` that
 `.header-section` is `position: sticky` at *every* width: the toolbar **and** the
 day row never leave the screen while the timeline scrolls.
 
-Nothing from §4 and §6 has been started; §1–§3 and §5 are confirmed in the live
-page and in chromium E2E runs.
+Nothing is left of the agreed design: §1–§7 are all implemented, verified in the
+live page and covered by chromium E2E runs.
 
 ---
 
@@ -59,7 +59,7 @@ hidden: the study's goal (Submit Study) and the *existence* of a second timeline
 | Study | Submit Study, Skip time reporting, Language | Submit **visible**; Skip + Language in the `⋮` menu |
 | Day | Switch day, Save Day, Copy this day | Day control (`‹ Monday ▾ · Day 1 of 7 ›`) + Save Day visible; Copy inside the day sheet |
 | Timeline | Switch timeline, Clear timeline | Named in the context row; both actions in the timeline sheet |
-| Activity | pick, delete, remove last | `+` stays floating; long-press menu; "Remove last" becomes an Undo toast |
+| Activity | pick, delete, remove last | `+` stays floating; long-press menu; "Remove last" became an Undo toast (§6) |
 
 Target mobile header (~80 px instead of 235 px):
 
@@ -104,7 +104,7 @@ picker) and a one-row toolbar (40 px).
   "Secondary Activity"). That is why it moves out of the action row.
 - New keys for the `⋮` menu and the sheets must be added to all 7 files.
 
-### Instruction banner (noted, not scheduled)
+### Instruction banner — done, see §7
 
 `banner.dayOneInstructions` is one string for all widths and tells mobile users
 about the 1200 ms long-press that decision 5 removes. It needs a **mobile and a
@@ -216,7 +216,8 @@ Not yet committed; working tree on `develop`. Net −46 lines in `script.js`.
 - Verified live at 408×900 and on chromium: 18/18 in the
   context-menu/mobile/drag/keyboard subset, plus `frequency_activity_flows_mobile`
   and `ensure_switching_desktop_mobile_keeps_activities_issue42`.
-- Still open: `#removeLastBtn` and `#clearTimelineBtn` are untouched — see §6.
+- Both leftovers were handled: ownership of `#clearTimelineBtn` moved to the
+  timeline menu in this slice, and `#removeLastBtn` was removed in §6.
 ## 4. Done — phone context row: day picker + timeline picker (2026-09-30)
 
 Not yet committed. What shipped:
@@ -356,16 +357,59 @@ and retries until its handler is wired.
 phone" and its tap-target list now measures `#moreMenuBtn` instead of the hidden
 skip button.
 
-## 6. Next — Remove Last becomes an Undo toast
+## 6. Done — Remove Last replaced by a delete undo toast (2026-09-30)
 
-> The long-press half landed in §3 and Clear timeline moved to the timeline menu
-> in §4. What is left:
+Not yet committed. `#removeLastBtn` is gone from the diary, from the ⋮ menu, from
+"Helpful tools" on the instructions page and from all 7 locales
+(`buttons.removeLast` → `buttons.undo`, `instructions.removeLastHelp` deleted,
+`messages.activityRemoved` added).
 
-- `#removeLastBtn` is now redundant: its only unique value is a fast undo, which
-  an "Activity removed — Undo" toast does better. It is the last item in the ⋮
-  menu besides Skip and Language.
-- Instruction banner and `pages/instructions.html` step 2 were updated in §3 and
-  describe the menu now; revisit them when this button goes.
+- Deleting is one tap inside the activity menu, so the way back is a toast:
+  `deleteActivityBlock()` remembers the removed row and its index and offers
+  **"Activity removed — Undo"** for 6 s. `showToast(message, type, duration,
+  action)` gained the optional action button (`.toast-action`; the toast itself
+  is `pointer-events: none`, the button re-enables them).
+- The inline re-render block in `deleteActivityBlock()` was extracted into
+  `rerenderActivitiesInTimeline(timeline, timelineKey)`, so the undo path renders
+  identically (and several hundred lines of debug logging went with it).
+- Guarded by `mobile_activity_gestures.spec.js` ("deleting through the long-press
+  menu offers a working undo"); `copy_days_flow.spec.js` now deletes through the
+  right-click menu instead of the removed button.
+
+For the record: the button was once *called* an undo, but it deleted the last
+**placed** activity - not the same thing, and not what a toast undoes either. The
+toast is a real undo of the deletion.
+
+## 7. Done — instruction banner split by layout (2026-09-30)
+
+Not yet committed. The day-one banner and the template-loaded banner each mixed
+both platforms into one string ("...on mobile ... or on desktop ..."), which also
+meant a phone was told to "click".
+
+- **Day-one banner**: two keys, `banner.dayOneInstructionsMobile` /
+  `...Desktop`, rendered as two `<span>`s in `index.html` and toggled purely by
+  the 1439.98 px breakpoint in CSS (`.banner-text-mobile` / `.banner-text-desktop`)
+  — no JS, and `applyTranslations()` covers both.
+- **Template banner** (days 2–7, the one participants see most):
+  `messages.templateLoadedBannerMobile` / `...Desktop`, chosen in
+  `showTemplateBanner()` by `getIsMobile()` at render time (crossing the
+  breakpoint reloads the page anyway).
+- Wording decisions: full sentences instead of the old telegraphic style (that is
+  what made translations drift); **no colour** ("the + button in the bottom right
+  corner", matching `instructions.vertical`); "tap" on phones and "click" on
+  desktop; "drag its edges" instead of "drag borders"; deletion is always "then
+  choose Delete", since it opens a menu (§3).
+- **No keyboard-shortcut mentions in any banner** — deliberately dropped; the
+  `d`/DEL hint predates the context menu and serves a minority.
+- The undo toast is not advertised in the banner either; it announces itself.
+- Measured: mobile 124 px (en) / 164 px (de) — the same as the old mixed string,
+  so no day-1 regression — and 54 px (one line) on desktop.
+- `locales_consistency.test.js`'s required-keys list now names the four new keys.
+- Guarded by `mobile_layout.spec.js` ("the day-one banner explains the layout the
+  participant is in").
+
+Still platform-mixed by design, because they are study/admin content rather than
+UI chrome: `messages.instructionsDefault` and `messages.templateCopiedBanner`.
 
 ## Known landmine — done in §3 (the gesture was removed)
 

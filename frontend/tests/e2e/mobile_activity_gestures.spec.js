@@ -77,7 +77,7 @@ test('a long press opens the activity menu instead of deleting', async ({
   await expect(block).toHaveCount(1);
 });
 
-test('deleting through the long-press menu removes the activity', async ({
+test('deleting through the long-press menu offers a working undo', async ({
   page,
 }) => {
   await openDiary(page, `e2e-longpress-delete-${Date.now()}`);
@@ -89,12 +89,27 @@ test('deleting through the long-press menu removes the activity', async ({
   await expect(page.locator('.activity-block')).toHaveCount(0);
   await expect(page.locator(CONTEXT_MENU)).toBeHidden();
 
-  const remaining = await page.evaluate(() => {
-    const key =
-      window.timelineManager.keys[window.timelineManager.currentIndex];
-    return (window.timelineManager.activities[key] || []).length;
-  });
-  expect(remaining, 'the deleted activity must leave the timeline state').toBe(0);
+  const countActivities = () =>
+    page.evaluate(() => {
+      const key =
+        window.timelineManager.keys[window.timelineManager.currentIndex];
+      return (window.timelineManager.activities[key] || []).length;
+    });
+
+  expect(
+    await countActivities(),
+    'the deleted activity must leave the timeline state'
+  ).toBe(0);
+
+  // Deleting is one tap in a menu, so the way back is the toast - there is no
+  // "remove last" button on any platform any more.
+  const toast = page.locator('.toast');
+  await expect(toast).toContainText('Activity removed');
+  await toast.locator('.toast-action').click();
+
+  await expect(page.locator('.activity-block')).toHaveCount(1);
+  await expect(toast).toHaveCount(0);
+  expect(await countActivities(), 'undo must put the activity back').toBe(1);
 });
 
 test('a horizontal drag does not save the day or navigate', async ({ page }) => {

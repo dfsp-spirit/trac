@@ -63,7 +63,10 @@ test('every locale file is valid JSON and shares the same key set as en.json', (
 
 test('all locales contain the banner and recently added keys', () => {
   const requiredKeys = [
-    'messages.templateLoadedBanner',
+    'messages.templateLoadedBannerMobile',
+    'messages.templateLoadedBannerDesktop',
+    'banner.dayOneInstructionsMobile',
+    'banner.dayOneInstructionsDesktop',
     'messages.templateCopiedBanner',
     'buttons.saveDay',
     'messages.completeOtherDaysFirst',
