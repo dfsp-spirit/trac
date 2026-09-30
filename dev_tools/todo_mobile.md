@@ -484,6 +484,89 @@ button in the main controls instead of a row inside the day menu. Not now - it
 depends on autosave, and until then the day menu is where the copy target is
 picked anyway.
 
+## 10. Page titles and participant-facing naming (2026-09-30)
+
+Not mobile work, but found while testing the mobile layout.
+
+### The bug: the tab sat on "Loading..." forever
+
+The diary's `<title>` was wired to the **loading** key:
+`<title data-i18n="common.loading">Loading...</title>`. `i18n.applyTranslations()`
+rewrites the text of every `[data-i18n]` element - `<title>` included - so this
+happened, measured with a MutationObserver on the title:
+
+```
+  71ms  static markup   "Loading..."
+ 106ms  script.js       "KI Time Use Diary - Adults"   <- document.title = configData.general.app_name
+ 108ms  i18n pass       "Loading..."                   <- clobbered 2ms later
+```
+
+Reproduce on demand: set the title to anything and call
+`window.i18n.applyTranslations()` once - it comes back as the loading string (in
+German: "Wird geladen ..."). Nothing to do with the backend or caching, and it
+re-broke on every re-order of the init sequence, which is why it kept coming back.
+
+Two further late i18n passes made any `data-i18n` title unusable for the study
+name: `ui.js` (activities modal) and `maintenance.js` both call
+`applyTranslations()` **after** the diary is built.
+
+### Pre-existing bug found on the way
+
+`footer.js renderFooter()` did `targetFooter.innerHTML = ''` on `#footer`, which
+deleted `#footer_app_title`, `#footer_app_version` and `#footer_backend_status` on
+every page with footer links. So the version and the backend status the diary sets
+were never visible; the footer showed the links row only. It now replaces just its
+own `.trac-legal-footer-links` row.
+
+### The rule that now holds
+
+**Chrome that JS fills must not carry `data-i18n`**, because any i18n pass (init,
+language change, activities modal, maintenance banner) rewrites those elements:
+
+| element | owner | markup |
+| --- | --- | --- |
+| diary `<title>`, `#footer_app_title` | `applyPageTitle()` (`script.js`) | no `data-i18n`, English fallback |
+| consent / tasks `<title>` | `setStudyPageTitle()` (`footer.js`) | no `data-i18n`, page-name fallback |
+| instructions / open studies / thank-you / timeout `<title>` | i18n pass | `data-i18n` = the page name |
+
+`applyPageTitle()` runs after `applyTranslations()` for the same reason;
+`setStudyPageTitle()` (in `footer.js`, loaded on every page) is the shared helper
+for study pages and is called after the i18n pass on consent and tasks.
+
+### Naming decision: who sees which name
+
+Approved 2026-09-30: **participants see the study, not the software.** A
+participant knows the study their invitation named; "TRAC" is an unexplained
+acronym in their tab, and the study config already carries a better identifier
+(`general.app_name`: "KI Time Use Diary - Adults" in EN, "KI Zeitverwendungstagebuch
+- Erwachsene" in DE for the same study - it is even localized per study).
+
+- Diary tab + footer: `general.app_name`, fallback the localized `common.pageTitle`.
+- Study pages: `common.pageTitleWithStudy` = "{{study}} - {{page}}" (one shared
+  pattern; `consent.pageTitleWithStudy` was dropped).
+- Brand-free page names everywhere participant-facing: `Consent`, `Instructions`,
+  `Open Studies`, `Tasks`, `Thank You`, `Session Timed Out` (the SV/FR/ES/FI/PL
+  values kept "TRAC"/"O-ELIDDI", EN/ES instructions mixed "Time Use Diary").
+- The fatal-error tab title is no longer "TRAC -- ERROR": study name (or the
+  generic name) + localized "Error".
+- **TRAC stays** for operator/developer surfaces: admin portal, `dev.html`, repo
+  docs, logs, service names. Only participant chrome changed.
+- Deliberate deviation from the plan: **instructions.html keeps a plain
+  "Instructions" title** (no study prefix). That page does not load the study
+  config, and adding a config fetch purely for the tab title is not worth it.
+
+### Guards
+
+- `tests/unit/page_titles.test.js` - the diary title carries no `data-i18n`, the
+  JS-owned pages have brand-free fallbacks equal to their English locale value,
+  i18n-managed titles match their key, no `TRAC`/`O-ELIDDI` in any participant-facing
+  title/heading across all 7 locales, `common.pageTitleWithStudy` interpolates both
+  placeholders. **When you add a participant page, add it to `I18N_TITLED_PAGES` or
+  `JS_TITLED_PAGES` and to `PARTICIPANT_FACING_KEYS`.**
+- `tests/e2e/page_titles.spec.js` - the diary tab equals `general.app_name` and is
+  never the loading string (en + de), and consent/open-studies identify the study
+  without the brand. Run with `--repeat-each=2` when touching the init order.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,

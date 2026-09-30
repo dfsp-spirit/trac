@@ -3,7 +3,7 @@
     "banner": "Heads-up: we will run brief maintenance soon. Please save your current work."
   },
   "instructions": {
-    "pageTitle": "Instructions | Time Use Diary",
+    "pageTitle": "Instructions",
     "title": "Instructions",
     "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
     "generalInfoTitle": "General Information on the Study",
@@ -44,8 +44,7 @@
     "customActivityName": "Other not listed (enter)"
   },
   "consent": {
-    "pageTitle": "Consent | Time Use Diary",
-    "pageTitleWithStudy": "{{study}} - Consent | Time Use Diary",
+    "pageTitle": "Consent",
     "title": "Consent",
     "eyebrow": "Study consent",
     "subtitle": "Please read the consent information below before starting the study.",
@@ -65,7 +64,10 @@
     "language": "Language",
     "chooseLanguage": "Choose language",
     "day": "Day",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "pageTitle": "Time Use Diary",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Error"
   },
   "buttons": {
     "saveDay": "Save Day",
@@ -167,14 +169,14 @@
     "dayOneInstructionsDesktop": "Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete."
   },
   "thankYou": {
-    "title": "Thank You - TRAC",
+    "title": "Thank You",
     "heading": "Thank You!",
     "subtitle": "Your submission has been completed successfully.",
     "defaultMessage": "Thank you for participating in our study. Your responses have been recorded and will contribute to valuable research.",
     "continueLink": "Click here to continue."
   },
   "taskPage": {
-    "title": "TRAC Tasks",
+    "title": "Tasks",
     "heading": "Final Tasks",
     "subtitle": "Please complete the following tasks before finishing the study.",
     "continueLink": "Continue to final page",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Not completed"
   },
   "timeout": {
-    "title": "Session Timed Out - TRAC",
-    "heading": "TRAC Time Use Study -- Session Timed Out",
+    "title": "Session Timed Out",
+    "heading": "Session Timed Out",
     "message": "Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work."
   },
   "footer": {
-    "title": "TRAC",
     "backend_status_connecting": "Connecting to backend...",
     "backend_status_connected": "Connected to backend",
     "backend_status_error": "Error connecting to backend"
@@ -201,8 +202,8 @@
     "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
   },
   "openStudies": {
-    "pageTitle": "Open Studies | TRAC",
-    "heading": "TRAC -- Open Studies",
+    "pageTitle": "Open Studies",
+    "heading": "Open Studies",
     "noStudies": "No open studies available.",
     "loadError": "Could not load open studies: {{message}}",
     "accessStudy": "Access study '{{study}}'"

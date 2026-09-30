@@ -47,6 +47,10 @@ const LANGUAGE_NEUTRAL_VALUES = new Set([
   'Name', // de: German for "Name"
   'Code', // de/fr: "Code" is the same word
   'Description', // fr: French for "Description"
+  'Error', // es: Spanish for "Error"
+  // The shared "<study> - <page>" title pattern: pure placeholder glue, no
+  // words of its own, and every locale orders these two the same way.
+  '{{study}} - {{page}}',
 ]);
 
 test('every locale file is valid JSON and shares the same key set as en.json', () => {
@@ -72,6 +76,9 @@ test('all locales contain the banner and recently added keys', () => {
     'messages.completeOtherDaysFirst',
     'messages.daySavedStayOnPage',
     'messages.copyDayToAnother',
+    'common.pageTitle',
+    'common.pageTitleWithStudy',
+    'common.error',
   ];
   for (const file of localeFiles) {
     const keys = flattenKeys(parsed[file]);

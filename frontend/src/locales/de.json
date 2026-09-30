@@ -3,7 +3,7 @@
     "banner": "Hinweis: In Kürze finden kurze Wartungsarbeiten statt. Bitte speichern Sie Ihre aktuelle Arbeit."
   },
   "instructions": {
-    "pageTitle": "Anleitung | Zeitnutzungstagebuch",
+    "pageTitle": "Anleitung",
     "title": "Anleitung",
     "welcomeTitle": "Willkommen zu Ihrem wöchentlichen Zeit-Tagebuch. Vielen Dank für Ihre Teilnahme!",
     "generalInfoTitle": "Allgemeine Informationen zur Studie",
@@ -44,8 +44,7 @@
     "customActivityName": "Sonstiges (eingeben)"
   },
   "consent": {
-    "pageTitle": "Einwilligung | Zeitnutzungstagebuch",
-    "pageTitleWithStudy": "{{study}} - Einwilligung | Zeitnutzungstagebuch",
+    "pageTitle": "Einwilligung",
     "title": "Einwilligung",
     "eyebrow": "Studieneinwilligung",
     "subtitle": "Bitte lesen Sie die Einwilligungsinformationen unten, bevor Sie mit der Studie beginnen.",
@@ -65,7 +64,10 @@
     "language": "Sprache",
     "chooseLanguage": "Sprache wählen",
     "day": "Tag",
-    "loading": "Wird geladen ..."
+    "loading": "Wird geladen ...",
+    "pageTitle": "Zeitnutzungstagebuch",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Fehler"
   },
   "buttons": {
     "saveDay": "Tag speichern",
@@ -187,12 +189,11 @@
     "diaryTaskStatusNotCompleted": "Nicht abgeschlossen"
   },
   "timeout": {
-    "title": "Sitzung abgelaufen - Zeitnutzungstagebuch",
-    "heading": "Zeitnutzungsstudie - Sitzung abgelaufen",
+    "title": "Sitzung abgelaufen",
+    "heading": "Sitzung abgelaufen",
     "message": "Ihre Sitzung wurde wegen Inaktivität beendet. Bitte verwenden Sie Ihren Einladungslink, um zum Tagebuch zurückzukehren und Ihre Eingabe fortzusetzen."
   },
   "footer": {
-    "title": "",
     "backend_status_connecting": "Verbindung zum Backend wird hergestellt...",
     "backend_status_connected": "Mit Backend verbunden",
     "backend_status_error": "Fehler bei der Verbindung zum Backend"

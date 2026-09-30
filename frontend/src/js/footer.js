@@ -177,9 +177,19 @@
       targetFooter.style.textAlign = targetFooter.style.textAlign || 'center';
       targetFooter.style.marginTop = targetFooter.style.marginTop || '12px';
 
-      // Clear and append
-      targetFooter.innerHTML = '';
-      const inner = document.createElement('div');
+      // Replace only this script's own links row, never the whole footer: the
+      // diary's #footer also carries the app name, the frontend version and the
+      // backend status (filled by script.js), and clearing the container deleted
+      // all three on every page that has footer links.
+      let inner = /** @type {HTMLElement | null} */ (
+        targetFooter.querySelector('.trac-legal-footer-links')
+      );
+      if (!inner) {
+        inner = document.createElement('div');
+        inner.className = 'trac-legal-footer-links';
+        targetFooter.appendChild(inner);
+      }
+      inner.innerHTML = '';
       // Wrapping row: links were inline elements with no whitespace between them,
       // so the browser had no place to break and the German row
       // ("Impressum · Datenschutz · Studieninformation") grew to 415px and was
@@ -203,7 +213,6 @@
         }
         inner.appendChild(item);
       });
-      targetFooter.appendChild(inner);
 
       if (created) {
         container.appendChild(targetFooter);
@@ -217,6 +226,40 @@
       console.warn('footer.js render failed', err);
     }
   }
+
+  /**
+   * Set a study page's tab title as "<study name> - <localized page name>",
+   * falling back to the page name alone when the study name is unknown.
+   *
+   * Call it AFTER i18n.applyTranslations(): that pass rewrites the text of every
+   * element carrying a data-i18n attribute, <title> included, so a title set
+   * before it is silently overwritten. That is how the diary tab got stuck on
+   * "Loading..." - its <title> was wired to the common.loading key.
+   *
+   * @param {{study_name?: string}|null} studyConfig
+   * @param {string} pageTitleKey locale key holding the page name
+   */
+  function setStudyPageTitle(studyConfig, pageTitleKey) {
+    if (
+      !window.i18n ||
+      typeof window.i18n.t !== 'function' ||
+      !window.i18n.isReady()
+    ) {
+      // Leave the static <title> from the markup alone rather than a bare key.
+      return;
+    }
+
+    const pageTitle = window.i18n.t(pageTitleKey);
+    const studyName = (studyConfig && studyConfig.study_name) || '';
+    document.title = studyName
+      ? window.i18n.t('common.pageTitleWithStudy', {
+          study: studyName,
+          page: pageTitle,
+        })
+      : pageTitle;
+  }
+
+  window.setStudyPageTitle = setStudyPageTitle;
 
   // Initial render on DOM ready
   if (document.readyState === 'loading') {

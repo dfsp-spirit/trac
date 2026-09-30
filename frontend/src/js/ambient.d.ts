@@ -40,6 +40,7 @@ interface Window {
   __TRAC_PERSIST_DRAFT_TIMER?: any;
   // functions exposed for cross-module use
   addCopyDayLink?: (...args: any[]) => any;
+  setStudyPageTitle?: (...args: any[]) => any;
   getIsMobile?: () => boolean;
   getCurrentTimelineData?: (...args: any[]) => any;
   getEmptyTargetDayCount?: (...args: any[]) => any;
