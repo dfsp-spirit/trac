@@ -11,6 +11,7 @@ import {
   getCurrentTimelineData,
   getCurrentTimelineKey,
   sendData,
+  createTimelineJSON,
   getPostDiaryRedirectPath,
   validateMinCoverage,
   getTimelineCoverage,
@@ -18,6 +19,7 @@ import {
   syncURLParamsToStudy,
 } from './utils.js';
 import { updateIsMobile, getIsMobile } from './globals.js';
+import { createAutosave } from './autosave.js';
 import {
   PENDING_TIMELINE_STATE_KEY,
   DRAFT_TIMELINE_STATE_KEY,
@@ -126,6 +128,23 @@ function wasDaySaved(study, pid, dayIndex) {
 }
 
 window.markDaySaved = markDaySaved;
+
+/**
+ * Mark the day the participant is looking at as intentionally saved. Used after
+ * an explicit save and after every successful autosave: it stops the template
+ * from being applied again over a day the participant deliberately left empty.
+ */
+function markDaySavedForCurrentDay() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const studyName =
+    window.timelineManager?.study?.study_name_short ||
+    urlParams.get('study_name');
+  const pid = window.timelineManager?.study?.pid || urlParams.get('pid');
+  const dayIndex = getCurrentDayIndex();
+  if (studyName && pid && Number.isInteger(dayIndex)) {
+    markDaySaved(studyName, pid, dayIndex);
+  }
+}
 
 function clearSelectedActivityButtons() {
   document.querySelectorAll('.activity-button.selected').forEach((btn) => {
@@ -5625,7 +5644,13 @@ async function saveAndSwitchToDay(targetDayIndex) {
     button.disabled = true;
   });
 
-  const result = await sendData();
+  // Flush through the autosave engine instead of saving unconditionally: when
+  // nothing changed since the last save there is nothing to write, and a
+  // pointless write would re-date the day's rows (diary_completed_at is derived
+  // from the earliest created_at per day).
+  const result = window.autosave
+    ? await window.autosave.flush()
+    : await sendData();
 
   if (!result?.success) {
     if (window.showToast) {
@@ -5985,6 +6010,25 @@ async function init() {
         currentStudy.inactivity_timeout_stress_time_left ?? 5,
       inactivity_page_custom_text:
         currentStudy.inactivity_page_custom_text ?? null,
+    });
+
+    // Autosave: the day is written shortly after the last edit, and flushed
+    // before anything that leaves it (day switch, tab hidden, idle timeout,
+    // submit). See js/autosave.js for the rules - it compares the serialised day
+    // with the last stored one, so notePossibleChange() is safe to over-call.
+    window.autosave = createAutosave({
+      save: () => sendData(),
+      serialize: () => createTimelineJSON(true),
+      onSaved: () => {
+        // The same in-place refresh an explicit save does (day status, coverage,
+        // Submit gate) - see refreshDayStatusAfterSave in ui.js.
+        window.refreshDayStatusAfterSave?.();
+        markDaySavedForCurrentDay();
+      },
+      // Visible state (Saving... / Saved / Not saved + Retry) - see the sync
+      // status chip in ui.js. Silent autosave failure would be worse than a
+      // failed explicit save.
+      onStateChange: (state) => window.renderSyncStatus?.(state),
     });
 
     // Now sync URL parameters so they are stored in timelineManager.study
@@ -7113,11 +7157,13 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
         return;
       }
 
+      // Copying saved the current day itself, so this is the autosave baseline.
+      window.autosave?.markSaved?.();
+
       // The save persisted the current frontend state to the DB for the
       // current day label, so mark it clean and record it as a day with data.
       if (window.timelineManager) {
-        window.timelineManager._unsavedChanges = false;
-        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
+        window.timelineManager._unsavedChanges = false;        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
           if (
             !window.timelineManager.dayIndicesWithData.includes(sourceDayIndex)
           ) {
@@ -7275,12 +7321,20 @@ window.addEventListener('beforeunload', function () {
 });
 
 document.addEventListener('visibilitychange', () => {
-  if (
-    document.visibilityState === 'hidden' &&
-    typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function'
-  ) {
+  if (document.visibilityState !== 'hidden') return;
+
+  // Leaving the tab is a natural checkpoint: persist pending edits while the
+  // page is still alive (the draft capture below is only the last resort).
+  window.autosave?.flush?.();
+
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
     window.__TRAC_CAPTURE_PENDING_STATE();
   }
+});
+
+// Best effort on unload; the draft in local storage covers the rest.
+window.addEventListener('pagehide', () => {
+  window.autosave?.flush?.();
 });
 
 // Export addNextTimeline, goToPreviousTimeline, navigateToTimelineByKey,

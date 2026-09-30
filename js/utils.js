@@ -601,7 +601,7 @@ export function createTimelineJSON(stringify = false) {
     const activities = window.timelineManager.activities[timelineKey];
 
     activities.forEach((activity) => {
-      console.log('Processing activity for JSON:', activity);
+      if (DEBUG_MODE) console.log('Processing activity for JSON:', activity);
       const row = {
         // Basic fields
         timeline_key: timelineKey,
