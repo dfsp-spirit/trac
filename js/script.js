@@ -5624,9 +5624,19 @@ async function saveAndSwitchToDay(targetDayIndex) {
   window.location.href = url.toString();
 }
 
+// Used by the phone context bar and its day menu (ui.js).
+window.saveAndSwitchToDay = saveAndSwitchToDay;
+
 function renderPreviousDaysSwitchRow() {
   const controlsContainer = document.querySelector('.header-section .controls');
   if (!controlsContainer || !controlsContainer.parentElement) {
+    return;
+  }
+
+  // Phones use the context bar's day picker instead (initMobileContextBar);
+  // a row of seven day buttons is exactly the chrome this replaces.
+  if (getIsMobile()) {
+    document.getElementById('previousDaysSwitchRow')?.remove();
     return;
   }
 
@@ -6469,7 +6479,9 @@ async function init() {
             : window.timelineManager.dayIndicesWithData;
           renderPreviousDaysSwitchRow();
 
-          if (typeof window.addCopyDayLink === 'function') {
+          // Phones copy from the context bar's day menu and do not render the
+          // timeline title at all.
+          if (!getIsMobile() && typeof window.addCopyDayLink === 'function') {
             const timelineTitle = document.querySelector('.timeline-title');
             if (timelineTitle) {
               window.addCopyDayLink(timelineTitle, dayIndex);
@@ -6883,17 +6895,17 @@ function showCopyTargetPicker(sourceDayIndex, event) {
     t('common.day') + ' ' + (sourceDayIndex + 1);
 
   const menu = document.createElement('div');
-  menu.className = 'copy-day-context-menu';
+  menu.className = 'copy-day-context-menu context-menu';
 
   const header = document.createElement('div');
-  header.className = 'copy-day-context-menu-header';
+  header.className = 'copy-day-context-menu-header context-menu-header';
   header.textContent = t('messages.copyToDay') + ': ' + sourceDayName;
   menu.appendChild(header);
 
   for (const target of targets) {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'copy-day-context-menu-item';
+    item.className = 'copy-day-context-menu-item context-menu-item';
     const targetDayName =
       window.studyConfigManager?.getDayDisplayLabel(target.index) ||
       t('common.day') + ' ' + (target.index + 1);
@@ -6956,17 +6968,17 @@ function showCopySourcePicker(targetDayIndex, event) {
     t('common.day') + ' ' + (targetDayIndex + 1);
 
   const menu = document.createElement('div');
-  menu.className = 'copy-day-context-menu';
+  menu.className = 'copy-day-context-menu context-menu';
 
   const header = document.createElement('div');
-  header.className = 'copy-day-context-menu-header';
+  header.className = 'copy-day-context-menu-header context-menu-header';
   header.textContent = t('messages.copyFromDay') + ': ' + targetDayName;
   menu.appendChild(header);
 
   for (const source of targets) {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'copy-day-context-menu-item';
+    item.className = 'copy-day-context-menu-item context-menu-item';
     const sourceDayName =
       window.studyConfigManager?.getDayDisplayLabel(source.index) ||
       t('common.day') + ' ' + (source.index + 1);
@@ -7203,7 +7215,7 @@ async function copyDayTo(sourceDayIndex, targetDayIndex) {
       window.updateSubmitStudyButton();
     }
 
-    if (typeof window.addCopyDayLink === 'function') {
+    if (!getIsMobile() && typeof window.addCopyDayLink === 'function') {
       const timelineTitle = document.querySelector('.timeline-title');
       const currentDayIndex = getCurrentDayIndex();
       if (timelineTitle && typeof currentDayIndex === 'number') {
