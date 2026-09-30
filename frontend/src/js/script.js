@@ -728,9 +728,22 @@ function deleteActivityBlock(activityBlock) {
 
 window.deleteActivityBlock = deleteActivityBlock;
 
-function initMobileDelete() {
-  const LONG_PRESS_DURATION = 1200;
-  const LONG_PRESS_VISUAL_DELAY = 400;
+/**
+ * Mobile: long-pressing an activity opens the shared activity context menu
+ * (Copy / Show info / Delete) instead of deleting it outright. The hold is the
+ * mobile equivalent of the desktop right-click, and deleting is one explicit
+ * choice inside the menu - which is what pages/instructions.html describes.
+ *
+ * Bound on mobile only; the desktop entry point is the `contextmenu` event in
+ * initActivityContextMenu().
+ */
+function initMobileLongPressMenu() {
+  if (!getIsMobile()) return;
+
+  // Long enough not to fire while scrolling or tapping, short enough to feel
+  // like the platform long-press.
+  const LONG_PRESS_DURATION = 500;
+  const LONG_PRESS_VISUAL_DELAY = 120;
   const LONG_PRESS_MOVE_PX = 6;
 
   let pressedActivity = null;
@@ -740,7 +753,7 @@ function initMobileDelete() {
   let pressStartY = 0;
   let visualFrame = null;
   let pointerId = null;
-  let deleteTriggered = false;
+  let menuOpened = false;
 
   document.addEventListener('pointerdown', handlePressStart, {
     passive: false,
@@ -752,17 +765,17 @@ function initMobileDelete() {
   });
 
   function getOrCreateLongPressIndicator(activityBlock) {
-    let indicator = activityBlock.querySelector('.long-press-delete-indicator');
+    let indicator = activityBlock.querySelector('.long-press-indicator');
     if (!indicator) {
       indicator = document.createElement('div');
-      indicator.className = 'long-press-delete-indicator';
+      indicator.className = 'long-press-indicator';
       activityBlock.appendChild(indicator);
     }
     return indicator;
   }
 
   function updateVisualProgress() {
-    if (!pressedActivity || deleteTriggered) {
+    if (!pressedActivity || menuOpened) {
       visualFrame = null;
       return;
     }
@@ -805,10 +818,8 @@ function initMobileDelete() {
     clearVisualFrame();
 
     if (pressedActivity) {
-      pressedActivity.classList.remove('long-press-delete-armed');
-      const indicator = pressedActivity.querySelector(
-        '.long-press-delete-indicator'
-      );
+      pressedActivity.classList.remove('long-press-armed');
+      const indicator = pressedActivity.querySelector('.long-press-indicator');
       if (indicator) {
         indicator.style.opacity = '0';
         indicator.style.setProperty('--long-press-progress', '0');
@@ -817,7 +828,7 @@ function initMobileDelete() {
 
     pressedActivity = null;
     pointerId = null;
-    deleteTriggered = false;
+    menuOpened = false;
   }
 
   function handlePressStart(e) {
@@ -846,7 +857,7 @@ function initMobileDelete() {
     pressStartY = e.clientY;
     pointerId = e.pointerId;
 
-    pressedActivity.classList.add('long-press-delete-armed');
+    pressedActivity.classList.add('long-press-armed');
     const indicator = getOrCreateLongPressIndicator(pressedActivity);
     indicator.style.opacity = '0';
     indicator.style.setProperty('--long-press-progress', '0');
@@ -855,11 +866,13 @@ function initMobileDelete() {
       if (!pressedActivity) {
         return;
       }
-      deleteTriggered = true;
-      const blockToDelete = pressedActivity;
+      const blockToMenu = pressedActivity;
       cleanupPress();
-      if (blockToDelete.isConnected) {
-        deleteActivityBlock(blockToDelete);
+      if (
+        blockToMenu.isConnected &&
+        typeof window.showActivityContextMenu === 'function'
+      ) {
+        window.showActivityContextMenu(pressStartX, pressStartY, blockToMenu);
       }
     }, LONG_PRESS_DURATION);
 
@@ -890,81 +903,6 @@ function initMobileDelete() {
       return;
     }
     cleanupPress();
-  }
-}
-
-function initMobileSwipeNavigation() {
-  if (!getIsMobile()) return;
-
-  const SWIPE_THRESHOLD = 50;
-  const SWIPE_MAX_VERTICAL = 100;
-
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let touchStartTime = 0;
-  let isSwiping = false;
-
-  const timelineCanvas = document.querySelector('.timeline-canvas');
-  if (!timelineCanvas) return;
-
-  timelineCanvas.addEventListener('touchstart', handleTouchStart, {
-    passive: true,
-  });
-  timelineCanvas.addEventListener('touchmove', handleTouchMove, {
-    passive: true,
-  });
-  timelineCanvas.addEventListener('touchend', handleTouchEnd, {
-    passive: true,
-  });
-
-  function handleTouchStart(e) {
-    if (e.touches.length !== 1) return;
-
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    touchStartTime = Date.now();
-    isSwiping = false;
-  }
-
-  function handleTouchMove(e) {
-    if (e.touches.length !== 1) return;
-
-    const deltaX = Math.abs(e.touches[0].clientX - touchStartX);
-    const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
-
-    if (deltaX > 20 && deltaX > deltaY) {
-      isSwiping = true;
-    }
-  }
-
-  function handleTouchEnd(e) {
-    if (!isSwiping) return;
-
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = Math.abs(touchEndY - touchStartY);
-    const deltaTime = Date.now() - touchStartTime;
-
-    if (
-      Math.abs(deltaX) >= SWIPE_THRESHOLD &&
-      deltaY <= SWIPE_MAX_VERTICAL &&
-      deltaTime < 500
-    ) {
-      if (deltaX < 0) {
-        const nextBtn = document.getElementById('nextBtn');
-        if (nextBtn && !nextBtn.disabled) {
-          nextBtn.click();
-        }
-      } else {
-        const switchTimelineBtn = document.getElementById('switchTimelineBtn');
-        if (switchTimelineBtn && !switchTimelineBtn.hidden) {
-          switchTimelineBtn.click();
-        }
-      }
-    }
-
-    isSwiping = false;
   }
 }
 
@@ -1178,7 +1116,7 @@ function handleCopyActivity(activityBlock) {
   };
 }
 
-function initDesktopActivityContextMenu() {
+function initActivityContextMenu() {
   const MENU_ID = 'activityContextMenu';
   let targetBlock = null;
 
@@ -1268,12 +1206,13 @@ function initDesktopActivityContextMenu() {
     menu.style.top = `${top}px`;
   }
 
-  document.addEventListener('contextmenu', (event) => {
-    if (getIsMobile()) {
-      hideMenu();
-      return;
-    }
+  // Shared with the mobile long-press handler (initMobileLongPressMenu).
+  window.showActivityContextMenu = showMenu;
 
+  // Desktop right-click - and the native long-press menu on platforms that emit
+  // `contextmenu` for it (Android). iOS does not, which is why the mobile
+  // long-press runs its own timer.
+  document.addEventListener('contextmenu', (event) => {
     const activityBlock = event.target.closest('.activity-block');
     if (!activityBlock) {
       hideMenu();
@@ -6684,9 +6623,8 @@ async function init() {
     initButtons();
     initKeyboardShortcuts();
     initInstructionBanner();
-    initMobileDelete();
-    initMobileSwipeNavigation();
-    initDesktopActivityContextMenu();
+    initActivityContextMenu();
+    initMobileLongPressMenu();
 
     // Initialize header and footer heights early
     updateHeaderHeight();

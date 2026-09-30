@@ -48,6 +48,7 @@ interface Window {
   handleCustomActivityModalClose?: (...args: any[]) => any;
   initModalFocusManagement?: (...args: any[]) => any;
   renderPreviousDaysSwitchRow?: (...args: any[]) => any;
+  showActivityContextMenu?: (...args: any[]) => any;
   showCopyTargetPicker?: (...args: any[]) => any;
   showToast?: (...args: any[]) => any;
   toggleDebugOverlay?: (...args: any[]) => any;

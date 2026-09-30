@@ -160,7 +160,7 @@
     "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
-    "dayOneInstructions": "Instructions: Select activity below, then click on timeline to place, and drag borders to extend. To delete an activity long-press it on mobile, or use the right-click menu on desktop."
+    "dayOneInstructions": "Instructions: Select activity below, then click on timeline to place, and drag borders to extend. To delete an activity, long-press it on mobile or right-click it on desktop and choose Delete (or press 'd' / DEL on desktop)."
   },
   "thankYou": {
     "title": "Thank You - TRAC",
