@@ -383,22 +383,6 @@ li {
   background-color: #b91c1c;
 }
 
-.save-day-btn {
-  background-color: #2563eb;
-}
-
-.save-day-btn:hover:not(:disabled) {
-  background-color: #1d4ed8;
-}
-
-.save-btn {
-  background-color: #059669;
-}
-
-.save-btn:hover:not(:disabled) {
-  background-color: #047857;
-}
-
 /* Demo buttons in instructions — look like the real buttons but are
    non-interactive, so every state (including :disabled, which is the resting
    state here) must look identical. The opacity has to be pinned too: it ties
@@ -415,13 +399,8 @@ li {
   opacity: 0.6;
 }
 
-/* Colours mirror the real diary buttons (see styles/styles.css): the toolbar
-   "Save Day" button is primary blue, and "Submit Study" turns green when all
-   days are complete (.submit-study-btn.submit-ready). */
-.instructions-demo-btn.save-btn {
-  background-color: var(--primary-color);
-}
-
+/* Colours mirror the real diary buttons (see styles/styles.css): "Submit Study"
+   turns green when all days are complete (.submit-study-btn.submit-ready). */
 .instructions-demo-btn.submit-study-btn {
   background-color: #16a34a;
 }

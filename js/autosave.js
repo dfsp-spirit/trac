@@ -223,9 +223,9 @@ export function createAutosave({
     },
 
     /**
-     * Record that the current content is stored (after an explicit save, e.g. the
-     * Save Day button or the source-day save of a copy) so it is not written
-     * again by the next autosave.
+     * Record that the current content is stored (after a save the diary did not
+     * route through this engine, e.g. the source-day save of a day copy) so it is
+     * not written again by the next autosave.
      */
     markSaved() {
       baseline = serialize();

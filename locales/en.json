@@ -33,9 +33,8 @@
       "imageAltVertical": "Copying the activities of a day to another day in vertical layout"
     },
     "step4": {
-      "title": "Save and Submit Your Diary",
-      "description": "Once you have recorded your activities for a day, click the \"Save Day\" button to store them. You can still edit that day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
-      "saveHelp": "Click to save the activities of the day you are working on",
+      "title": "Saving and Submitting Your Diary",
+      "description": "You do not need to save your day: your entries are stored automatically a moment after you make them, and the status shown while you edit tells you whether the day is stored. If it reports a problem, use Retry. You can still edit a day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
       "submitStudyHelp": "Click to submit your diary when every day is complete"
     },
     "helpfulTools": "Helpful tools",
@@ -70,7 +69,6 @@
     "error": "Error"
   },
   "buttons": {
-    "saveDay": "Save Day",
     "submitStudy": "Submit Study",
     "start": "Start",
     "undo": "Undo",
@@ -123,6 +121,7 @@
   },
   "messages": {
     "activityRemoved": "Activity removed",
+    "timelineCleared": "Timeline cleared",
     "selectStudy": "Please select a study to continue",
     "noStudiesAvailable": "No studies available on server.",
     "studyNotFound": "The requested study does not exist.",
@@ -136,7 +135,6 @@
     "timelineCoverageMetAria": "Minimum coverage met",
     "dayCompleteAria": "Day complete (meets minimum coverage)",
     "timelineCoverageMissing": "{{covered}} of {{required}} required minutes covered",
-    "timelineMissing": "There is information missing from this timeline. Would you like to add anything?",
     "timelineHoverInactive": "Click to switch to this timeline",
     "timelineHoverActiveNoSelection": "Select an activity below, then place it here.",
     "timelineHoverActiveWithSelection": "Click to place the selected activity here.",
@@ -156,7 +154,6 @@
     "copyError": "Failed to copy: {{message}}",
     "copyEmptySource": "Source day has no activities to copy.",
     "completeOtherDaysFirst": "Complete {{days}} first to finish the study.",
-    "daySavedStayOnPage": "Day saved.",
     "copyDayEmpty": "empty",
     "copyDayHasData": "has data",
     "copyOverwriteTitle": "Overwrite day?",

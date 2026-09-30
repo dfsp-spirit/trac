@@ -33,9 +33,8 @@
       "imageAltVertical": "Päivän aktiviteettien kopioiminen toiselle päivälle pystyasettelussa"
     },
     "step4": {
-      "title": "Tallenna ja lähetä päiväkirja",
-      "description": "Kun olet kirjannut päivän toiminnot, klikkaa \"Tallenna päivä\" -painiketta tallentaaksesi ne. Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
-      "saveHelp": "Klikkaa tallentaaksesi sen päivän toiminnot, jota parhaillaan muokkaat",
+      "title": "Tallenna automaattisesti ja lähetä päiväkirja",
+      "description": "Sinun ei tarvitse tallentaa päivää itse: merkintäsi tallennetaan automaattisesti hetken kuluttua, ja muokkauksen aikana näkyvä tila kertoo, onko päivä tallennettu. Jos ongelmasta ilmoitetaan, valitse \"Yritä uudelleen\". Voit muokata päivää vielä myöhemmin. Kun kaikki tutkimuksen päivät ovat valmiit, klikkaa \"Lähetä tutkimus\" -painiketta lähettääksesi päiväkirjasi ja päättääksesi tutkimuksen.",
       "submitStudyHelp": "Klikkaa lähettääksesi päiväkirjasi, kun kaikki päivät ovat valmiit"
     },
     "helpfulTools": "Hyödylliset työkalut",
@@ -70,7 +69,6 @@
     "error": "Virhe"
   },
   "buttons": {
-    "saveDay": "Tallenna päivä",
     "submitStudy": "Lähetä tutkimus",
     "start": "Aloita",
     "undo": "Kumoa",
@@ -123,6 +121,7 @@
   },
   "messages": {
     "activityRemoved": "Toiminto poistettu",
+    "timelineCleared": "Aikajana tyhjennetty",
     "selectStudy": "Valitse tutkimus jatkaaksesi",
     "noStudiesAvailable": "Palvelimella ei ole saatavilla tutkimuksia.",
     "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
@@ -136,7 +135,6 @@
     "timelineCoverageMetAria": "Vähimmäiskattavuus täyttyi",
     "dayCompleteAria": "Päivä valmis (vähimmäiskattavuus täytetty)",
     "timelineCoverageMissing": "{{covered}} / {{required}} vaaditusta minuutista katettu",
-    "timelineMissing": "Aikajanalta puuttuu tietoja. Haluatko lisätä jotain?",
     "timelineHoverInactive": "Napsauta siirtyäksesi tähän aikajanaan",
     "timelineHoverActiveNoSelection": "Valitse toiminto alhaalta ja sijoita se sitten tähän.",
     "timelineHoverActiveWithSelection": "Napsauta sijoittaaksesi valitun toiminnon tähän.",
@@ -156,7 +154,6 @@
     "copyError": "Kopiointi epäonnistui: {{message}}",
     "copyEmptySource": "Lähdepäivällä ei ole toimintoja kopioitavaksi.",
     "completeOtherDaysFirst": "Täytä ensin {{days}} päättääksesi tutkimuksen.",
-    "daySavedStayOnPage": "Päivä tallennettu.",
     "copyDayEmpty": "tyhjä",
     "copyDayHasData": "sisältää dataa",
     "copyOverwriteTitle": "Korvataanko päivä?",
