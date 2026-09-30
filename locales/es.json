@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Herramientas útiles",
     "removeLastHelp": "Elimina la última actividad colocada",
-    "cleanRowHelp": "¿Quieres empezar de nuevo? Limpia la fila",
+    "clearTimelineHelp": "¿Quieres empezar de nuevo? Vacía la línea de tiempo",
     "customActivityHelp": "¿Actividad no listada? Añade una actividad personalizada",
     "customActivityName": "Otra no listada (ingresar)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Enviar estudio",
     "start": "Comenzar",
     "removeLast": "Eliminar última",
-    "cleanRow": "Limpiar Fila",
+    "clearTimeline": "Vaciar línea de tiempo",
+    "moreActions": "Más acciones",
     "skipReporting": "Omitir reporte de tiempo",
     "switchTimeline": "Cambiar línea de tiempo",
     "giveConsent": "Doy mi consentimiento y continúo",
@@ -101,9 +102,9 @@
       "title": "¿Realmente quieres omitir todo el reporte de tiempo?",
       "message": "Serás llevado directamente a la página de agradecimiento."
     },
-    "confirmCleanRow": {
-      "title": "¿Limpiar la fila actual de la línea de tiempo?",
-      "message": "¿Seguro que quieres eliminar todas las actividades de la fila actual de la línea de tiempo?"
+    "confirmClearTimeline": {
+      "title": "¿Vaciar esta línea de tiempo?",
+      "message": "¿Seguro que quieres eliminar todas las actividades de esta línea de tiempo?"
     },
     "activityContext": {
       "copy": "Copiar",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Haz clic para colocar aquí la actividad seleccionada.",
     "invalidPlacement": "No se puede colocar la actividad aquí debido a una posición no válida.",
     "timelineValidationError": "Error de validación de la línea de tiempo: {{message}}",
-    "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
-    "templateCopiedBanner": "Hemos precargado tu diario con las actividades de un participante de plantilla. Haz clic en <strong>'Limpiar Fila'</strong> para empezar de cero o edita las actividades a continuación.",
+    "templateLoadedBanner": "Hemos cargado tus actividades del <strong>{{day}}</strong> como punto de partida. Haz clic en <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita las actividades a continuación. En móvil, elimina una actividad con una pulsación larga. En escritorio, haz clic derecho sobre una actividad y elige <strong>'Eliminar'</strong> (o pasa el cursor por encima y pulsa la tecla DEL o 'd').",
+    "templateCopiedBanner": "Hemos precargado tu diario con las actividades de un participante de plantilla. Haz clic en <strong>'Vaciar línea de tiempo'</strong> para empezar de cero o edita las actividades a continuación.",
     "studyDayOf": "Día {{current}} de {{total}}",
     "currentDayTooltip": "{{dayName}} (Día {{current}} de {{total}})",
     "goBackToEditPreviousDays": "Cambiar al día:",

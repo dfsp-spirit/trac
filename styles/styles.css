@@ -1092,8 +1092,10 @@ body {
   font-weight: 700;
 }
 
-/* Copy day context menu */
-.copy-day-context-menu {
+/* Shared look for the "pick something" popups: the Copy Days picker and the
+   mobile ⋮ menu. Both become a bottom sheet on phones (see the 768 px block). */
+.copy-day-context-menu,
+.more-menu {
   position: fixed;
   background: var(--surface, #fff);
   border: 1px solid var(--border-strong, #d1d5db);
@@ -1106,7 +1108,8 @@ body {
   font-size: 0.88rem;
 }
 
-.copy-day-context-menu-item {
+.copy-day-context-menu-item,
+.more-menu-item {
   display: block;
   width: 100%;
   padding: 8px 16px;
@@ -1120,17 +1123,75 @@ body {
   white-space: nowrap;
 }
 
-.copy-day-context-menu-item:hover {
+.copy-day-context-menu-item:hover,
+.more-menu-item:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.06);
 }
 
-.copy-day-context-menu-header {
+.copy-day-context-menu-header,
+.more-menu-header {
   padding: 6px 16px;
   color: var(--muted, #6b7280);
   font-size: 0.8rem;
   font-weight: 600;
   border-bottom: 1px solid var(--border, #e5e7eb);
   margin-bottom: 4px;
+}
+
+/* Disabled entries in the ⋮ menu mirror the state of the control they proxy. */
+.more-menu-item:disabled {
+  color: var(--muted, #6b7280);
+  cursor: not-allowed;
+}
+
+/* Language choices: the same items, side by side instead of stacked. */
+.more-menu-languages {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.more-menu-languages .more-menu-item {
+  width: auto;
+  flex: 0 0 auto;
+}
+
+.more-menu-languages .more-menu-item[aria-pressed='true'] {
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+/* Language selector: in the toolbar on desktop, inside the ⋮ menu on phones. */
+.language-select-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+/* The ⋮ trigger only exists below the desktop breakpoint, so desktop keeps the
+   individual buttons it replaces. Id selectors so no later `.btn` rule wins. */
+#moreMenuBtn {
+  display: none;
+  /* Icon-only: the shared `.btn` min-width of 120px would swallow a third of the
+     toolbar row and force the very wrap the menu exists to avoid. */
+  min-width: auto;
+  padding: 0 clamp(10px, 2vw, 14px);
+}
+
+@media (max-width: 1439.98px) {
+  #moreMenuBtn {
+    display: inline-flex;
+  }
+
+  /* Actions that move into the ⋮ menu on phones. They stay in the DOM and keep
+     their handlers - the menu proxies .click() to them - and hiding
+     #skipReportingBtn collapses the footer (updateFooterVisibility). */
+  #removeLastBtn,
+  #clearTimelineBtn,
+  .language-select-wrapper,
+  #skipReportingBtn {
+    display: none;
+  }
 }
 
 /* "Copy this day" button in the timeline title.
@@ -1173,7 +1234,8 @@ body {
     margin-left: 6px;
   }
 
-  .copy-day-context-menu {
+  .copy-day-context-menu,
+  .more-menu {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
@@ -1184,7 +1246,8 @@ body {
     padding: 8px 0;
   }
 
-  .copy-day-context-menu-item {
+  .copy-day-context-menu-item,
+  .more-menu-item {
     padding: 14px 20px;
     font-size: 1rem;
   }
@@ -1225,11 +1288,11 @@ body {
   cursor: not-allowed;
 }
 
-.clean-row-btn {
+.clear-timeline-btn {
   background-color: var(--danger-color);
 }
 
-.clean-row-btn:hover:not(:disabled) {
+.clear-timeline-btn:hover:not(:disabled) {
   background-color: #b91c1c;
 }
 
@@ -1532,11 +1595,11 @@ body.carrying-activity .modal-close {
   white-space: nowrap;
 }
 
-.next-btn {
+.save-day-btn {
   background-color: var(--primary-color);
 }
 
-.next-btn:hover:not(:disabled) {
+.save-day-btn:hover:not(:disabled) {
   background-color: #1d4ed8;
 }
 
@@ -1551,15 +1614,6 @@ body.carrying-activity .modal-close {
 
 .skip-btn:hover:not(:disabled) {
   background-color: #cbd5e1;
-}
-
-/* When next button shows Submit text, use success color */
-.next-btn:has(i.fa-check) {
-  background-color: var(--success-color);
-}
-
-.next-btn:has(i.fa-check):hover:not(:disabled) {
-  background-color: #047857;
 }
 
 /* Copy Days: Submit Study button — looks like a normal button when inactive
@@ -2603,7 +2657,7 @@ body.carrying-activity .modal-close {
 }
 
 /* Allow clicks on the disabled Save button for toast messages */
-#nextBtn:disabled {
+#saveDayBtn:disabled {
   pointer-events: auto !important;
   cursor: not-allowed;
 }

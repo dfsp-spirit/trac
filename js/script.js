@@ -5526,10 +5526,7 @@ function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
   }
 
   const wrapper = document.createElement('div');
-  wrapper.style.display = 'inline-flex';
-  wrapper.style.alignItems = 'center';
-  wrapper.style.gap = '0.4rem';
-  wrapper.style.marginLeft = '0.5rem';
+  wrapper.className = 'language-select-wrapper';
 
   const label = document.createElement('label');
   label.setAttribute('for', 'languageSelectMain');

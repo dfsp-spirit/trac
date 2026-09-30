@@ -40,7 +40,7 @@
     },
     "helpfulTools": "Pomocne narzędzia",
     "removeLastHelp": "Usuń ostatnio umieszczoną aktywność",
-    "cleanRowHelp": "Chcesz zacząć od nowa? Wyczyść rząd",
+    "clearTimelineHelp": "Chcesz zacząć od nowa? Wyczyść oś czasu",
     "customActivityHelp": "Brak aktywności na liście? Dodaj własną aktywność",
     "customActivityName": "Inne (wpisz)"
   },
@@ -73,7 +73,8 @@
     "submitStudy": "Wyślij badanie",
     "start": "Rozpocznij",
     "removeLast": "Usuń ostatnią",
-    "cleanRow": "Wyczyść rząd",
+    "clearTimeline": "Wyczyść oś czasu",
+    "moreActions": "Więcej działań",
     "skipReporting": "Pomiń raportowanie czasu",
     "switchTimeline": "Zmień oś czasu",
     "giveConsent": "Wyrażam zgodę i kontynuuję",
@@ -101,9 +102,9 @@
       "title": "Czy na pewno chcesz pominąć raportowanie czasu?",
       "message": "Zostaniesz przeniesiony bezpośrednio na stronę z podziękowaniami."
     },
-    "confirmCleanRow": {
-      "title": "Wyczyścić bieżący rząd osi czasu?",
-      "message": "Czy na pewno chcesz usunąć wszystkie aktywności z bieżącego rzędu osi czasu?"
+    "confirmClearTimeline": {
+      "title": "Wyczyścić tę oś czasu?",
+      "message": "Czy na pewno chcesz usunąć wszystkie aktywności z tej osi czasu?"
     },
     "activityContext": {
       "copy": "Kopiuj",
@@ -135,8 +136,8 @@
     "timelineHoverActiveWithSelection": "Kliknij, aby umieścić tutaj wybraną aktywność.",
     "invalidPlacement": "Nie można umieścić aktywności w tym miejscu z powodu niewłaściwej pozycji.",
     "timelineValidationError": "Błąd walidacji osi czasu: {{message}}",
-    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
-    "templateCopiedBanner": "Wstępnie wypełniliśmy Twój dziennik aktywnościami uczestnika wzorcowego. Kliknij <strong>'Wyczyść rząd'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności.",
+    "templateLoadedBanner": "Załadowaliśmy Twoje aktywności z dnia <strong>{{day}}</strong> jako punkt wyjścia. Kliknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności. Na urządzeniu mobilnym usuń pojedynczą aktywność przez długie naciśnięcie. Na komputerze kliknij aktywność prawym przyciskiem myszy i wybierz <strong>'Usuń'</strong> (lub najedź kursorem i naciśnij klawisz DEL albo 'd').",
+    "templateCopiedBanner": "Wstępnie wypełniliśmy Twój dziennik aktywnościami uczestnika wzorcowego. Kliknij <strong>'Wyczyść oś czasu'</strong>, aby zacząć od nowa lub edytuj poniższe aktywności.",
     "studyDayOf": "Dzień {{current}} z {{total}}",
     "currentDayTooltip": "{{dayName}} (Dzień {{current}} z {{total}})",
     "goBackToEditPreviousDays": "Przełącz na dzień:",

@@ -375,11 +375,11 @@ li {
   box-shadow: 0 0 0 2px var(--primary-color);
 }
 
-.clean-row-btn {
+.clear-timeline-btn {
   background-color: #dc2626;
 }
 
-.clean-row-btn:hover:not(:disabled) {
+.clear-timeline-btn:hover:not(:disabled) {
   background-color: #b91c1c;
 }
 
@@ -391,11 +391,11 @@ li {
   background-color: #334155;
 }
 
-.next-btn {
+.save-day-btn {
   background-color: #2563eb;
 }
 
-.next-btn:hover:not(:disabled) {
+.save-day-btn:hover:not(:disabled) {
   background-color: #1d4ed8;
 }
 
