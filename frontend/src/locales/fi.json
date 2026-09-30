@@ -155,6 +155,8 @@
     "daySavedStayOnPage": "Päivä tallennettu.",
     "copyDayEmpty": "tyhjä",
     "copyDayHasData": "sisältää dataa",
+    "copyOverwriteTitle": "Korvataanko päivä?",
+    "copyOverwriteYes": "Korvaa",
     "copyOverwriteConfirm": "{{day}} sisältää jo dataa. Ylikirjoitetaanko?",
     "submitStudyIncomplete": "Puutteelliset päivät: {{days}}",
     "submitStudyIncompleteHint": "Täytä kaikki päivät ennen lähettämistä"

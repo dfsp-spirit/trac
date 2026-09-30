@@ -77,6 +77,8 @@ test('all locales contain the banner and recently added keys', () => {
     'messages.daySavedStayOnPage',
     'messages.copyDayToAnother',
     'messages.goToCopiedDay',
+    'messages.copyOverwriteTitle',
+    'messages.copyOverwriteYes',
     'common.pageTitle',
     'common.pageTitleWithStudy',
     'common.error',

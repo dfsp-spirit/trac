@@ -623,6 +623,47 @@ Guarded by `mobile_context_bar.spec.js`: the row is disabled with the reason on 
 empty day (and enabled, with the tooltip line gone, once the day has an activity),
 and the copy flow's toast action lands on the copied day with its activities.
 
+## 12. Copy overwrite asked in the browser's bare prompt (2026-09-30)
+
+Reported from testing: confirming an overwrite showed a completely unstyled
+browser dialog. Cause: `copyDayTo()` asked with `window.confirm()` - the only
+native prompt left in the app; every other confirmation is a styled
+`.modal-overlay` dialog.
+
+**The dialog was already specced and never built.** `dev_tools/copy_days_plan/
+implementation_plan.md` names a confirmation dialog with `copyOverwriteTitle`,
+`copyOverwriteConfirm`, `copyOverwriteYes`, `copyOverwriteNo`, and the E2E helper
+was written against `#copyOverwriteConfirm` / `#copyOverwriteYes` - but only the
+*message* key ever landed, so the implementation fell back to `window.confirm()`
+and the helper's branch was dead code. The dialog is now built with exactly those
+ids.
+
+- New generic `showConfirmDialog({ overlayId, confirmId, cancelId, title,
+  message, confirmLabel, cancelLabel })` in `ui.js` → `Promise<boolean>`. It
+  lazily creates the overlay from the shared modal markup (`.modal-overlay >
+  .modal > .modal-content` + `.button-container`), reuses it on later calls, and
+  resolves `false` on Cancel, Escape or a backdrop click.
+- The cancel button carries `data-modal-cancel`, which was added to
+  `MODAL_CLOSE_SELECTOR` so the existing focus manager closes the dialog on
+  Escape and restores focus - no new focus code.
+- Keys: `messages.copyOverwriteTitle` ("Overwrite day?") and
+  `messages.copyOverwriteYes` ("Overwrite") added to all 7 locales; the cancel
+  label reuses `buttons.cancel`, so the plan's `copyOverwriteNo` was unnecessary.
+- **Latent bug fixed:** `e2e_helpers.copyDayTo` / `rightClickCopyDay` clicked
+  `.nth(targetDayIndex)`, but the picker excludes the source day, so the item for
+  target N sits at N-1 (the neighbouring spec had the correct maths inline). Dead
+  code until this test started using it.
+- Guarded by `copy_days_flow.spec.js`: the dialog is a styled `modal-overlay` with
+  the expected title, message and button labels; **Cancel leaves the target day's
+  own activity in place** (2 activities stay 2) while Overwrite replaces them
+  (2 -> 1); and a `page.on('dialog')` trap fails the test if a native prompt ever
+  returns.
+
+Optional follow-up (not done): the skip-confirmation and clear-timeline modals
+still hand-roll the same markup in `createModal()`. They could call
+`showConfirmDialog` with their own ids and lose ~60 lines of duplication - worth
+it only if we touch them anyway.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,
@@ -693,13 +734,12 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green 2026-09-30 after §11: `sh test_frontend_typecheck.sh`,
+Green 2026-09-30 after §12: `sh test_frontend_typecheck.sh`,
 `sh test_frontend_unit.sh` (69/69, incl. `locales_consistency` key-set +
-untranslated-value guards and the new `page_titles` guards), and on chromium
-**77/77** (`npx playwright test --project=chromium $(ls tests/e2e/*.spec.js |
+untranslated-value guards and the `page_titles` guards), and on chromium
+**78/78** (`npx playwright test --project=chromium $(ls tests/e2e/*.spec.js |
 grep -v accessibility.spec.js)` - `accessibility.spec.js` needs
 `@axe-core/playwright`, which is not installed locally, so it cannot run here).
-
 New specs added during this work: `mobile_activity_gestures` (§3),
 `mobile_context_bar` (§4, day/timeline sheets + the copy row),
 `page_titles` (§10).

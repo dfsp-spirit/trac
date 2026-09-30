@@ -461,7 +461,13 @@ async function copyDayTo(page, sourceDayIndex, targetDayIndex, { expectOverwrite
   const picker = page.locator('.copy-day-context-menu');
   await picker.waitFor({ state: 'visible', timeout: 5000 });
 
-  const targetItem = picker.locator('.copy-day-context-menu-item').nth(targetDayIndex);
+  // The picker lists every day EXCEPT the source, so the item for target N sits
+  // at N-1 once the source day comes before it.
+  const targetPosition =
+    targetDayIndex > sourceDayIndex ? targetDayIndex - 1 : targetDayIndex;
+  const targetItem = picker
+    .locator('.copy-day-context-menu-item')
+    .nth(targetPosition);
   await targetItem.waitFor({ state: 'visible', timeout: 3000 });
   await targetItem.click();
 
@@ -497,7 +503,12 @@ async function rightClickCopyDay(page, sourceDayIndex, targetDayIndex, { expectO
   const picker = page.locator('.copy-day-context-menu');
   await picker.waitFor({ state: 'visible', timeout: 5000 });
 
-  const targetItem = picker.locator('.copy-day-context-menu-item').nth(targetDayIndex);
+  // Same indexing rule as copyDayTo: the source day is not in the list.
+  const targetPosition =
+    targetDayIndex > sourceDayIndex ? targetDayIndex - 1 : targetDayIndex;
+  const targetItem = picker
+    .locator('.copy-day-context-menu-item')
+    .nth(targetPosition);
   await targetItem.waitFor({ state: 'visible', timeout: 3000 });
   await targetItem.click();
 

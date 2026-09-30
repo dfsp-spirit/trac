@@ -8,6 +8,7 @@ const {
   isDayButtonGreen,
   getDayButtonCount,
   closeCopyDayPicker,
+  copyDayTo,
   submitStudy,
 } = require('./e2e_helpers.js');
 
@@ -147,6 +148,94 @@ test.describe('Copy Days — core flows', () => {
     await saveCurrentDay(page);
     const tuesdayGreen = await isDayButtonGreen(page, 1);
     expect(tuesdayGreen).toBe(true);
+  });
+
+  test('overwriting a day with data asks in a styled dialog, not the browser prompt', async ({
+    page,
+  }) => {
+    // A native window.confirm() cannot be styled and looks nothing like the app.
+    // This test fails if one ever comes back, and proves the dialog can actually
+    // stop the copy: cancelling must leave the target day's own activity alone.
+    let nativeDialogAppeared = false;
+    page.on('dialog', async (dialog) => {
+      nativeDialogAppeared = true;
+      await dialog.dismiss();
+    });
+
+    const activityCountOnCurrentDay = () =>
+      page.evaluate(() =>
+        Object.values(window.timelineManager.activities).reduce(
+          (sum, list) => sum + list.length,
+          0
+        )
+      );
+
+    await page.goto('index.html?study_name=default&lang=en', {
+      waitUntil: 'domcontentloaded',
+    });
+    await enterStudyIfNeeded(page);
+
+    // Monday holds one activity; Tuesday gets a copy of it plus one of its own,
+    // so an overwrite is visible as "2 activities became 1".
+    await placeActivity(page, { activityName: 'Sleeping', positionPercent: 20 });
+    await saveCurrentDay(page);
+    await copyDayTo(page, 0, 1);
+    await switchToDay(page, 1);
+    await placeActivity(page, { activityName: 'Cooking', positionPercent: 70 });
+    await saveCurrentDay(page);
+    expect(await activityCountOnCurrentDay()).toBe(2);
+
+    const openOverwriteDialog = async () => {
+      if ((await getCurrentDayIndex(page)) !== 0) {
+        await switchToDay(page, 0);
+      }
+      const copyBtn = page.locator('.copy-day-link').first();
+      await expect(copyBtn).toBeVisible({ timeout: 5000 });
+      await copyBtn.click();
+      const picker = page.locator('.copy-day-context-menu');
+      await picker.waitFor({ state: 'visible', timeout: 5000 });
+      await expect(picker.locator('.copy-day-context-menu-item').nth(0)).toContainText(
+        '(has data)'
+      );
+      await picker.locator('.copy-day-context-menu-item').nth(0).click();
+      const dialog = page.locator('#copyOverwriteConfirm');
+      await expect(dialog).toBeVisible({ timeout: 5000 });
+      return dialog;
+    };
+
+    // Cancel: a styled app dialog (not the browser prompt), and the copy aborts.
+    let dialog = await openOverwriteDialog();
+    await expect(dialog).toHaveClass(/modal-overlay/);
+    await expect(dialog.locator('.modal-content h3')).toHaveText('Overwrite day?');
+    await expect(dialog.locator('.confirm-dialog-message')).toHaveText(
+      'Tuesday already has data. Overwrite it?'
+    );
+    await expect(page.locator('#copyOverwriteYes')).toHaveText('Overwrite');
+    await expect(page.locator('#copyOverwriteNo')).toHaveText('Cancel');
+    await dialog.screenshot({ path: 'test-results/overwrite-confirm-dialog.png' });
+
+    await page.locator('#copyOverwriteNo').click();
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+    await switchToDay(page, 1);
+    expect(
+      await activityCountOnCurrentDay(),
+      'cancelling must leave the target day untouched'
+    ).toBe(2);
+
+    // Confirm: the overwrite happens.
+    dialog = await openOverwriteDialog();
+    await page.locator('#copyOverwriteYes').click();
+    await expect(dialog).toBeHidden({ timeout: 5000 });
+    await switchToDay(page, 1);
+    expect(
+      await activityCountOnCurrentDay(),
+      'confirming must overwrite the target day with the source day'
+    ).toBe(1);
+
+    expect(
+      nativeDialogAppeared,
+      'the overwrite confirmation must use the styled dialog, not window.confirm()'
+    ).toBe(false);
   });
 
   test('right-click day button opens copy picker with current day as target', async ({ page }) => {

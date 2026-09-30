@@ -51,6 +51,7 @@ interface Window {
   initModalFocusManagement?: (...args: any[]) => any;
   renderPreviousDaysSwitchRow?: (...args: any[]) => any;
   showActivityContextMenu?: (...args: any[]) => any;
+  showConfirmDialog?: (...args: any[]) => any;
   showCopyTargetPicker?: (...args: any[]) => any;
   showToast?: (...args: any[]) => any;
   toggleDebugOverlay?: (...args: any[]) => any;

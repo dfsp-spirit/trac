@@ -155,6 +155,8 @@
     "daySavedStayOnPage": "Dagen sparad.",
     "copyDayEmpty": "tom",
     "copyDayHasData": "har data",
+    "copyOverwriteTitle": "Skriva över dagen?",
+    "copyOverwriteYes": "Skriv över",
     "copyOverwriteConfirm": "{{day}} har redan data. Skriva över?",
     "submitStudyIncomplete": "Ofullständiga dagar: {{days}}",
     "submitStudyIncompleteHint": "Slutför alla dagar innan du skickar in"
