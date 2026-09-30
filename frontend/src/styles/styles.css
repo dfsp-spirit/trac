@@ -1166,6 +1166,35 @@ body {
   font-weight: 700;
 }
 
+/* The copy action at the top of the day menu. It is not a day, so it must not
+   look like one: accent colour, a copy glyph and its own row above the list,
+   separated by a rule from the day list below it. As the eighth row of the
+   list it was invisible - nobody reads all seven weekdays. */
+.context-menu-item.day-menu-copy {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* The shared item style is nowrap; this label carries the day name and wraps
+     to two lines on a phone rather than overflowing the sheet. */
+  white-space: normal;
+  line-height: 1.25;
+  color: var(--primary-color);
+  font-weight: 600;
+  background-color: rgba(37, 99, 235, 0.08);
+  border-bottom: 1px solid var(--border-color);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.context-menu-item.day-menu-copy:hover:not(:disabled) {
+  background-color: rgba(37, 99, 235, 0.16);
+}
+
+.day-menu-copy .context-menu-item-icon {
+  flex: 0 0 auto;
+  font-size: 0.95em;
+}
+
 /* Language choices in the ⋮ menu: the same items, side by side. */
 .more-menu-languages {
   display: flex;

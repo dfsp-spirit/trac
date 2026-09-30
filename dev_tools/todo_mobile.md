@@ -449,6 +449,41 @@ re-injecting `position: static`: the test fails with
 "Expected ≤ 844, Received 1149.84". Use geometry assertions for every popup, not
 visibility.
 
+## 9. Done — the copy-day action made unmissable in the day menu (2026-09-30)
+
+The user could not find copy-by-day on a phone even though it worked. Root
+cause: it was the **eighth row of a seven-day list**, styled exactly like the day
+rows, labelled "Copy this day" - in a menu where every other row means "go to
+that day", while the action actually refers to the day the participant is
+already on.
+
+- Moved to the **first row, above the day list** and above the "Switch to day:"
+  header, with a `fa-copy` glyph (new optional `icon` argument in
+  `addMenuItem`), the primary colour, a tinted background and a rule under it -
+  so it cannot be read as a day.
+- Relabelled with the direction and the day: `messages.copyDayToAnother` =
+  "Copy {{day}} to another day" → "Copy Monday to another day" (the first key
+  with the `{{day}}` placeholder in a *menu*; `moreMenuLabel` now forwards
+  params, and the fallback passed to it is already interpolated so the
+  not-yet-loaded-i18n path stays readable).
+- Added to all 7 locales and to `locales_consistency.test.js`'s required keys.
+- Guarded by `mobile_context_bar.spec.js`: first row is the copy row, it names
+  the current day, it carries the glyph, and it sits above the day list.
+- Desktop is untouched: `#dayPickerBtn` does not exist ≥ 1440 px, and the
+  timeline-title `.copy-day-link` button is unchanged (verified 1600×900).
+
+Known rough edge, deliberately not changed: on a day with no activities the row
+is still offered and only toasts `copyEmptySource`. Now that it is the most
+prominent row this is more visible - see the deferred idea below.
+
+### Long-term idea (user, 2026-09-30)
+
+Once saving happens on every action (see "Deferred - autosave"), **Save Day can
+go away**, and its toolbar slot is a good home for copy-day: one prominent
+button in the main controls instead of a row inside the day menu. Not now - it
+depends on autosave, and until then the day menu is where the copy target is
+picked anyway.
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,

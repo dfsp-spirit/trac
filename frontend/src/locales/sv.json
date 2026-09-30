@@ -143,6 +143,7 @@
     "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
     "goBackToEditPreviousDays": "Byt till dag:",
     "copyDayLink": "Kopiera denna dag",
+    "copyDayToAnother": "Kopiera {{day}} till en annan dag",
     "copyToDay": "Kopiera till en annan dag",
     "copyFromDay": "Kopiera från en annan dag",
     "copySuccess": "Kopierade {{sourceDay}} till {{targetDay}}",

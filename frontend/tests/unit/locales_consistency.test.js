@@ -71,6 +71,7 @@ test('all locales contain the banner and recently added keys', () => {
     'buttons.saveDay',
     'messages.completeOtherDaysFirst',
     'messages.daySavedStayOnPage',
+    'messages.copyDayToAnother',
   ];
   for (const file of localeFiles) {
     const keys = flattenKeys(parsed[file]);

@@ -84,8 +84,28 @@ test('the context bar replaces the day row and the timeline button', async ({
   await expect(dayMenu.locator('.day-menu-item')).toHaveCount(7);
   // The day being viewed is marked and not selectable.
   await expect(dayMenu.locator('.day-menu-item[aria-current="true"]')).toBeDisabled();
-  // Copying a day is reachable from where the target day is chosen.
-  await expect(dayMenu.locator('.day-menu-copy')).toHaveText('Copy this day');
+  // Copying is a day-pair action on the day the participant is in, not a day to
+  // jump to - so it is the first row, above the list, names the day it acts on
+  // and carries a copy glyph. As the last row of the list it read as an eighth
+  // day and nobody found it.
+  await expect(dayMenu.locator('.context-menu-item').first()).toHaveClass(
+    /day-menu-copy/
+  );
+  await expect(dayMenu.locator('.day-menu-copy')).toHaveText(
+    /^Copy Tuesday to another day$/
+  );
+  await expect(
+    dayMenu.locator('.day-menu-copy .context-menu-item-icon')
+  ).toHaveClass(/fa-copy/);
+  // It sits above the "Switch to day:" header, i.e. outside the day list.
+  const copyIsAboveDayList = await dayMenu.evaluate((menu) => {
+    const rows = Array.from(menu.children);
+    return (
+      rows.findIndex((row) => row.classList.contains('day-menu-copy')) <
+      rows.findIndex((row) => row.classList.contains('context-menu-header'))
+    );
+  });
+  expect(copyIsAboveDayList).toBe(true);
 
   await dayMenu.locator('.day-menu-item').nth(4).click();
   await expect
