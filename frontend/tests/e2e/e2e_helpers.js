@@ -188,32 +188,43 @@ const ACTIVE_TIMELINE = '.timeline-container[data-active="true"] .timeline';
  *
  * @param {import('@playwright/test').Page} page
  * @param {string} [selector] - timeline selector, defaults to the active day
+ * @param {number} [fraction] - horizontal position (0-1) to insist on. Omitted,
+ *   any point across the timeline's width is acceptable; when given it is the
+ *   only x tried, because callers that place several activities side by side
+ *   rely on where they land.
  * @returns {Promise<{x: number, y: number}>} viewport coordinates
  */
-async function findTimelinePoint(page, selector = ACTIVE_TIMELINE) {
-  const point = await page.evaluate((sel) => {
-    const timeline = document.querySelector(sel);
-    if (!timeline) return null;
+async function findTimelinePoint(page, selector = ACTIVE_TIMELINE, fraction) {
+  const point = await page.evaluate(
+    ({ sel, fraction }) => {
+      const timeline = document.querySelector(sel);
+      if (!timeline) return null;
 
-    const rect = timeline.getBoundingClientRect();
-    const top = Math.max(rect.top, 0);
-    const bottom = Math.min(rect.bottom, window.innerHeight);
-    if (bottom - top < 30) return null;
+      const rect = timeline.getBoundingClientRect();
+      const top = Math.max(rect.top, 0);
+      const bottom = Math.min(rect.bottom, window.innerHeight);
+      if (bottom - top < 30) return null;
 
-    const middle = (top + bottom) / 2;
-    for (const offset of [0, 40, -40, 80, -80, 120, -120, 160, -160, 200, -200]) {
-      const y = middle + offset;
-      if (y < top + 5 || y > bottom - 5) continue;
-      for (const fraction of [0.25, 0.5, 0.35, 0.65, 0.75]) {
-        const x = rect.left + rect.width * fraction;
-        const hit = document.elementFromPoint(x, y);
-        if (hit && timeline.contains(hit)) {
-          return { x, y };
+      const middle = (top + bottom) / 2;
+      const fractions =
+        fraction === undefined
+          ? [0.25, 0.5, 0.35, 0.65, 0.75]
+          : [fraction];
+      for (const offset of [0, 40, -40, 80, -80, 120, -120, 160, -160, 200, -200]) {
+        const y = middle + offset;
+        if (y < top + 5 || y > bottom - 5) continue;
+        for (const f of fractions) {
+          const x = rect.left + rect.width * f;
+          const hit = document.elementFromPoint(x, y);
+          if (hit && timeline.contains(hit)) {
+            return { x, y };
+          }
         }
       }
-    }
-    return null;
-  }, selector);
+      return null;
+    },
+    { sel: selector, fraction }
+  );
 
   if (!point) {
     throw new Error(
@@ -242,13 +253,17 @@ async function placeActivity(page, { activityName, positionPercent = 20 }) {
   await activityItem.waitFor({ state: 'visible', timeout: 5000 });
   await activityItem.click();
 
-  const timeline = page.locator('.timelines-wrapper .timeline-container').first();
-  const box = await timeline.boundingBox();
-  if (!box) {
-    throw new Error('Timeline not found for placing activity');
-  }
-  const x = box.x + (box.width * positionPercent) / 100;
-  const y = box.y + box.height / 2;
+  // Clicking the activity button scrolls it into view, which can push the
+  // timeline out of the viewport. A box-derived click then lands at a negative
+  // y - on nothing - and the activity is silently never placed, so the second
+  // and third edits of a burst disappeared on Firefox and WebKit. Bring the
+  // timeline back and click a point it really receives.
+  await page.locator(ACTIVE_TIMELINE).first().scrollIntoViewIfNeeded();
+  const { x, y } = await findTimelinePoint(
+    page,
+    ACTIVE_TIMELINE,
+    positionPercent / 100
+  );
   await page.mouse.click(x, y);
   await page.waitForTimeout(300);
 }
