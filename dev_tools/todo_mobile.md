@@ -997,6 +997,55 @@ day text at 148, and 30 px of clearance to the timeline canvas. Guarded in
 `copy_days_flow.spec.js` (button centre within 2 px of the day text, >= 8 px above
 the timeline).
 
+## 18. Instructions page: step badges out, heading levels answered (2026-09-30)
+
+### The numbered circles are gone
+
+Participants complained the blue badges 1-4 are "not referenced in text". They are
+right, and there was nothing to fix by referencing them: the headings already name
+each step, the order is the page order, and the badge was the reason
+`applyCopyDayStepVisibility()` had to renumber the visible steps whenever it hid
+"Copy a Day". Removed (`instructions.html` x4, `.step-number` + the row-layout
+media query in `instructions.css`, the renumbering loop in `instructions.js`).
+
+Measured what it saves: **48 px per step on a phone** (the badge stacked above the
+content below 768 px: 492 -> 444 px, i.e. ~190 px over four steps), nothing in
+height on desktop where it sat beside the content, and ~32-40 px of width back to
+the text/GIF column there. Content now starts at the card's padding only (24 px
+desktop / 16 px phone), no sideways scroll at either width.
+
+### What heading level equals the illustrated steps' headings: `##`
+
+Question from the study side: headings in their own `study_text_*` markdown are not
+the same size as the headings above the instruction images. Answer, measured by
+injecting one heading per level into the study-text container and reading the
+computed style back (identical at every width, both sides use the same `clamp`):
+
+| markdown | element | laptop | phone | weight | colour |
+| --- | --- | --- | --- | --- | --- |
+| `#` | `h1` | 32 px | 24 px | 700 | primary blue, centred |
+| `##` | `h2` | **24 px** | **20 px** | **600** | `--text-color` |
+| `###` | `h3` | 22 px | 18 px | 600 | `--secondary-color` (grey) |
+| `####` | `h4` | 16 px | 15 px | 700 | browser default, 1.33em margin |
+| `#####` / `######` | `h5`/`h6` | 13.3 / 10.7 px | 12.5 / 10.1 px | 700 | browser default |
+
+The illustrated steps, "Helpful tools" and the "Visual Illustrations…" section
+title are all `h2`, so **`##` is the level that matches exactly** - size, weight,
+colour and spacing. `###` is one step down and grey (it is what the page's own
+"General Information on the Study" uses). `####` and deeper are the complaint:
+these pages only style `h1`-`h3`, so deeper levels fall back to browser defaults -
+bold, smaller, and off-palette.
+
+Written up for study authors in `README_CREATE_STUDY.md` ("Which heading level to
+use on the instructions page"), including the reasoning, so the answer we give is
+a rule rather than "fix your file".
+
+**Our own default had the same bug**: `instructions.instructionsDefault` started with
+`####` in all 7 locales, so every study that did not write its own second text block
+showed the 16 px browser-default heading directly under the 24 px step heading.
+Changed to `##` in all 7; verified live (level 2, 24 px desktop / 20 px phone, i.e.
+identical to the step headings).
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,

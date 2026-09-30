@@ -250,6 +250,25 @@ escaped, so `<br>`, `<b>` and friends appear as literal text — use a blank lin
 to start a new paragraph.  The end texts (`study_text_end_*`) are inserted as
 raw HTML instead (no Markdown rendering, no escaping).
 
+**Which heading level to use on the instructions page.** The page styles `#`,
+`##` and `###` itself. Its own illustrated steps further down ("Select and Place
+an Activity", "Adjust Activity Duration", …) are `##`, so a section heading in
+your text looks the same as those if you use `##`:
+
+| Markdown | Looks like | On a laptop | On a phone |
+|---|---|---|---|
+| `#` | the page title (blue, centred) | 32 px | 24 px |
+| `##` | **the illustrated steps' headings** | **24 px** | **20 px** |
+| `###` | "General Information on the Study" (grey) | 22 px | 18 px |
+| `####` and deeper | *not* styled by the app — the browser's own default | ~16 px | ~15 px |
+
+That last row is what looks inconsistent next to the illustrated steps: those
+pages only define `#`–`###`, so `####`, `#####` and `######` fall back to the
+browser defaults (bold, but smaller and with different spacing, and no colour
+from the design). Use `##` for sections that should match the illustrated steps,
+`###` for a sub-heading under one, and avoid going deeper. (The consent page has
+its own title scale; this table is about the instructions page.)
+
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `study_text_intro` | `{lang: text}` | No | Introduction text at the top of the instructions page. Markdown. Falls back to a built-in default text. |
