@@ -68,10 +68,10 @@ Target mobile header (~80 px instead of 235 px):
 [ Save Day ] [ Submit Study ] [ ⋮ ]         action row   ~40px
 ```
 
-Measured progress after §5: 235 → **212 px** (toolbar 99 → 76 px, i.e. 3 → 2 rows)
-and the timeline 602 → **688 px**, because moving Skip into the menu also
-reclaimed the 63 px footer. The remaining win depends on §4, which is what frees
-the 155 px timeline-switcher label and the 76 px day row.
+Measured progress after §4: 235 → **99 px** sticky header and the timeline
+602 → **801 px** (+33 %). The timeline switcher button and the day row are gone
+from phones; what is left is the context row (32 px: day picker + timeline
+picker) and a one-row toolbar (40 px).
 
 ### Decisions
 
@@ -217,17 +217,75 @@ Not yet committed; working tree on `develop`. Net −46 lines in `script.js`.
   context-menu/mobile/drag/keyboard subset, plus `frequency_activity_flows_mobile`
   and `ensure_switching_desktop_mobile_keeps_activities_issue42`.
 - Still open: `#removeLastBtn` and `#clearTimelineBtn` are untouched — see §6.
-## 4. Next — collapse the day row into a title picker (mobile only)
+## 4. Done — phone context row: day picker + timeline picker (2026-09-30)
 
-> Superseded by "Agreed direction" above; kept for the reasoning and the
-> measurements.
+Not yet committed. What shipped:
+
+- `#contextBar` (`.context-bar`) is inserted *before* `.controls`, so a phone
+  reads context first, actions second. It is `display: none` from 1440 px up and
+  below that the navigation it replaces is hidden: `#previousDaysSwitchRow` (no
+  longer rendered on phones at all) and the cycling `#switchTimelineBtn`.
+- Left: `‹  Wednesday (3/7)  ›` - two step buttons plus the day picker. The
+  arrows name the day they lead to, the full "Wednesday (Day 3 of 7)" sentence
+  stays the button's accessible name and tooltip, and only the compact counter is
+  visible. `#currentDayDisplay` still exists - inside the context bar now, which
+  is what the 11 specs waiting for it check.
+- Right: `Main Activity ▾`, the current timeline (hidden when a study has only
+  one).
+- **Day menu** (`#dayMenu`): every day, with a `✓` when it meets min_coverage
+  (same signal and palette as the desktop day buttons), the current day marked
+  `aria-current` and disabled, plus "Copy this day" opening the existing copy
+  picker. Selecting a day calls `window.saveAndSwitchToDay(index)`, which still
+  auto-saves first.
+- **Timeline menu** (`#timelineMenu`): one row per timeline with its coverage on
+  a second line (reusing `messages.timelineCoverageMet/Missing`) and **Clear this
+  timeline**, which moved here out of the ⋮ menu because it is per-timeline, not
+  per-day.
+- The four popups (copy picker, ⋮ menu, day menu, timeline menu) now share one
+  look and one open/close path: `.context-menu` / `.context-menu-item` /
+  `.context-menu-header` in CSS, `openContextMenu()` / `closeContextMenu()` /
+  `addMenuItem()` in `ui.js`. The old `.copy-day-context-menu*` style rules are
+  gone; the class names stay on the elements because specs locate them.
+- Bug caught on the way: `updateCurrentDayDisplay()` still wrote the
+  `?custom_page_title=` label through the *old* variable name after the container
+  rename - a `ReferenceError` waiting for any study that passes that param, and
+  invisible to `tsc` because `ui.js` is not `@ts-check`ed. Fixed; on phones that
+  label now gets its own line in the context bar instead of vanishing with the
+  title row.
+
+Measured at 408×900 (`default` study):
+
+| | Original | After §5 | After §4 |
+| --- | --- | --- | --- |
+| sticky `.header-section` | 235 px | 212 px | **99 px** |
+| `.timeline-canvas` | 602 px | 688 px | **801 px** |
+
+Desktop 1600×900 re-verified: context bar hidden, day row with 7 buttons,
+switcher labelled "Secondary Activity", title row with "Copy this day", one-row
+toolbar with all four extra buttons and no ⋮.
+
+### Test changes for §4
+
+- `e2e_helpers.js`: `switchToDay()` now works with either layout (day row or day
+  menu), and the phone placement helper moved in as `placeActivityMobile()`
+  (it was private to `mobile_activity_gestures.spec.js`).
+- New `mobile_context_bar.spec.js`: the context bar replaces the day row and the
+  timeline button; the day menu lists days/✓/current/copy; the timeline menu
+  lists every timeline with coverage; and - closing the gap this whole bug class
+  came from - **both timelines of a phone day can be filled and survive a save**.
+- Three specs clicked `#skipReportingBtn` directly and therefore broke at the
+  default 1280 px viewport, which is the *phone* layout: `instructions_skip_to_thankyou`,
+  `return_url_continue_link`, `return_url_default_thankyou`. All three now use
+  `openSkipConfirmation()`.
+- Full suite 72/72 on chromium (`accessibility.spec.js` still cannot run locally:
+  `@axe-core/playwright` is not installed).
+
+### Original plan for §4 (kept for the reasoning)
 
 Today: `#previousDaysSwitchRow` = "Switch to day:" label + one button per day.
 7 days ⇒ 76 px ⇒ 2 rows, always visible; a 14-day study would be 3–4 rows. The
 day is also printed twice on screen (the row and the `Monday (Day 1 of 7)`
 title).
-
-Plan:
 
 - Hide `#previousDaysSwitchRow` below 1440 px; desktop keeps it untouched.
 - Make the day title itself the switcher: `#currentDayDisplay` lives inside
@@ -240,10 +298,11 @@ Plan:
 - Selecting a day calls `saveAndSwitchToDay(dayIndex)` — it already auto-saves
   the current day first.
 - i18n: reuse `messages.goBackToEditPreviousDays` ("Switch to day:") as the
-  heading, or add a new key to all 7 locales (the unit test
-  `locales_consistency.test.js` requires identical key sets everywhere).
+  heading; no new keys were needed in the end (the arrows name their target day,
+  the day menu uses a ✓ glyph, and the timeline menu reuses the coverage keys).
 
-Expected win: one whole row + its label (~76 px on a 408 px screen).
+Expected win: one whole row + its label (~76 px on a 408 px screen) — delivered
+as 133 px total, together with the timeline switcher row.
 
 ## 5. Done — mobile overflow menu (`⋮`) (2026-09-30)
 
@@ -297,17 +356,16 @@ and retries until its handler is wired.
 phone" and its tap-target list now measures `#moreMenuBtn` instead of the hidden
 skip button.
 
-## 6. Next — Remove Last becomes an Undo toast, Clear timeline moves into its menu
+## 6. Next — Remove Last becomes an Undo toast
 
-> The long-press half of this landed in §3. What is left:
+> The long-press half landed in §3 and Clear timeline moved to the timeline menu
+> in §4. What is left:
 
 - `#removeLastBtn` is now redundant: its only unique value is a fast undo, which
-  an "Activity removed — Undo" toast does better.
-- `#clearTimelineBtn` is destructive but *per-timeline* (not per-day), so it
-  belongs in the timeline-scoped menu ("Clear this timeline"), together with the
-  timeline switcher.
+  an "Activity removed — Undo" toast does better. It is the last item in the ⋮
+  menu besides Skip and Language.
 - Instruction banner and `pages/instructions.html` step 2 were updated in §3 and
-  describe the menu now; revisit them when these two buttons move.
+  describe the menu now; revisit them when this button goes.
 
 ## Known landmine — done in §3 (the gesture was removed)
 

@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const { openSkipConfirmation } = require('./e2e_helpers.js');
 
 function mockDefaultStudyConfig(route, overrides = {}) {
   return route.fulfill({
@@ -127,10 +128,11 @@ test('default study: return_url from invitation is shown on thank-you page after
   );
 
   await expect(page).toHaveURL(/index\.html/);
-  await expect(page.locator('#skipReportingBtn')).toBeVisible();
 
-  await page.locator('#skipReportingBtn').click();
-  await expect(page.locator('#skipConfirmationModal')).toBeVisible();
+  // The skip action has its own button on desktop and lives in the ⋮ menu on a
+  // phone (this spec runs at the default 1280 px viewport, i.e. the phone
+  // layout), so go through the shared helper.
+  await openSkipConfirmation(page);
   await page.locator('#confirmSkipOk').click();
 
   await expect(page).toHaveURL(/pages\/thank-you\.html/);

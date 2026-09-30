@@ -1092,10 +1092,12 @@ body {
   font-weight: 700;
 }
 
-/* Shared look for the "pick something" popups: the Copy Days picker and the
-   mobile ⋮ menu. Both become a bottom sheet on phones (see the 768 px block). */
-.copy-day-context-menu,
-.more-menu {
+/* Shared look for every "pick something" popup in the diary: the Copy Days
+   picker, the ⋮ menu, the day menu and the timeline menu. All of them become a
+   bottom sheet on phones (see the 768 px block). The semantic class names
+   (`.copy-day-context-menu`, `.more-menu`, ...) stay on the elements for the
+   specs and for behaviour-specific rules. */
+.context-menu {
   position: fixed;
   background: var(--surface, #fff);
   border: 1px solid var(--border-strong, #d1d5db);
@@ -1108,8 +1110,7 @@ body {
   font-size: 0.88rem;
 }
 
-.copy-day-context-menu-item,
-.more-menu-item {
+.context-menu-item {
   display: block;
   width: 100%;
   padding: 8px 16px;
@@ -1123,13 +1124,16 @@ body {
   white-space: nowrap;
 }
 
-.copy-day-context-menu-item:hover,
-.more-menu-item:hover:not(:disabled) {
+.context-menu-item:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.06);
 }
 
-.copy-day-context-menu-header,
-.more-menu-header {
+.context-menu-item:disabled {
+  color: var(--muted, #6b7280);
+  cursor: not-allowed;
+}
+
+.context-menu-header {
   padding: 6px 16px;
   color: var(--muted, #6b7280);
   font-size: 0.8rem;
@@ -1138,26 +1142,125 @@ body {
   margin-bottom: 4px;
 }
 
-/* Disabled entries in the ⋮ menu mirror the state of the control they proxy. */
-.more-menu-item:disabled {
-  color: var(--muted, #6b7280);
-  cursor: not-allowed;
+/* Items that carry a second line (the timeline menu shows coverage under the
+   name), so they may wrap instead of overrunning the sheet. */
+.context-menu-item:has(.context-menu-item-detail) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: normal;
 }
 
-/* Language choices: the same items, side by side instead of stacked. */
+.context-menu-item-detail {
+  font-size: 0.78rem;
+  color: var(--muted, #6b7280);
+}
+
+/* Days that meet min_coverage, same palette as the desktop day buttons. */
+.day-menu-item.is-complete {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.day-menu-item[aria-current='true'] {
+  font-weight: 700;
+}
+
+/* Language choices in the ⋮ menu: the same items, side by side. */
 .more-menu-languages {
   display: flex;
   flex-wrap: wrap;
 }
 
-.more-menu-languages .more-menu-item {
+.more-menu-languages .context-menu-item {
   width: auto;
   flex: 0 0 auto;
 }
 
-.more-menu-languages .more-menu-item[aria-pressed='true'] {
+.more-menu-languages .context-menu-item[aria-pressed='true'] {
   font-weight: 700;
   text-decoration: underline;
+}
+
+/* Phone context row: which day and which timeline the participant is in, with
+   ‹ › to step days. Hidden on desktop, where the day row and the timeline
+   switcher button do the same job and stay exactly as they were. */
+.context-bar {
+  display: none;
+}
+
+@media (max-width: 1439.98px) {
+  .context-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 4px;
+  }
+
+  .context-day {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  /* The day moved into the context bar and the timeline name is already in the
+     canvas coverage row, so the title row would only repeat both. */
+  .header-section .timeline-title {
+    display: none;
+  }
+
+  .btn.context-step-btn {
+    min-width: auto;
+    min-height: 28px;
+    padding: 4px 8px;
+    background-color: var(--secondary-color);
+  }
+
+  .btn.context-picker-btn {
+    min-width: auto;
+    max-width: 100%;
+    min-height: 28px;
+    padding: 4px 10px;
+    gap: 6px;
+    font-size: 0.82rem;
+    background-color: var(--secondary-color);
+    overflow: hidden;
+  }
+
+  .btn.context-picker-btn:hover:not(:disabled) {
+    background-color: #334155;
+    transform: none;
+  }
+
+  .context-day-text,
+  #contextTimelineName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .context-day-text .timeline-header-emphasis {
+    font-weight: 700;
+  }
+
+  .context-day-text .timeline-study-day-meta {
+    opacity: 0.85;
+  }
+
+  /* Study-owner label from ?custom_page_title=: the row it used to live in is
+     not rendered on phones, so it gets its own line here. */
+  .context-custom-title {
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 0.78rem;
+    color: #475569;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 /* Language selector: in the toolbar on desktop, inside the ⋮ menu on phones. */
@@ -1190,6 +1293,12 @@ body {
   #clearTimelineBtn,
   .language-select-wrapper,
   #skipReportingBtn {
+    display: none;
+  }
+
+  /* The cycling switcher is replaced by the context bar's timeline picker,
+     which names the current timeline and lists them all with their coverage. */
+  #switchTimelineBtn {
     display: none;
   }
 }
@@ -1235,7 +1344,8 @@ body {
   }
 
   .copy-day-context-menu,
-  .more-menu {
+  .more-menu,
+  .context-menu {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
@@ -1246,8 +1356,7 @@ body {
     padding: 8px 0;
   }
 
-  .copy-day-context-menu-item,
-  .more-menu-item {
+  .context-menu-item {
     padding: 14px 20px;
     font-size: 1rem;
   }

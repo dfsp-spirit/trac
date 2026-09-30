@@ -1,6 +1,6 @@
 const { test, expect } = require('@playwright/test');
 const { MOBILE_VIEWPORT } = require('./participant_pages.js');
-const { enterStudyIfNeeded } = require('./e2e_helpers.js');
+const { enterStudyIfNeeded, placeActivityMobile } = require('./e2e_helpers.js');
 
 // Mobile gesture contract for activity blocks.
 //
@@ -19,8 +19,6 @@ const { enterStudyIfNeeded } = require('./e2e_helpers.js');
 test.use({ viewport: MOBILE_VIEWPORT, hasTouch: true });
 
 const ADD_BUTTON = '.floating-add-button';
-const MODAL = '#activitiesModal';
-const MODAL_ACTIVITIES = '#modalActivitiesContainer .activity-button';
 const CONTEXT_MENU = '#activityContextMenu';
 
 async function openDiary(page, pid) {
@@ -41,72 +39,6 @@ async function openDiary(page, pid) {
 }
 
 /**
- * Place one activity through the mobile flow: the floating `+` opens the picker
- * modal (the inline `.activities-container` is 0x0 at this width), and the
- * position within the day is a clientY on the vertical timeline.
- *
- * @returns {import('@playwright/test').Locator} the placed block, scrolled into view
- */
-async function placeActivity(page, positionPercent = 40) {
-  await page.locator(ADD_BUTTON).click();
-  await expect(page.locator(MODAL)).toBeVisible();
-  await expect
-    .poll(async () => page.locator(MODAL_ACTIVITIES).count(), {
-      timeout: 30000,
-      message: 'waiting for the mobile activity picker',
-    })
-    .toBeGreaterThan(0);
-
-  await page.evaluate((selector) => {
-    const buttons = Array.from(document.querySelectorAll(selector));
-    const placeable = buttons.find(
-      (button) =>
-        !button.classList.contains('has-child-items') &&
-        !button.classList.contains('custom-input')
-    );
-    if (!placeable) {
-      throw new Error('no placeable activity in the mobile picker');
-    }
-    placeable.click();
-  }, MODAL_ACTIVITIES);
-  await expect(page.locator(MODAL)).toBeHidden();
-
-  const selected = await page.evaluate(() => window.selectedActivity);
-  expect(selected, 'picking an activity must select it').toBeTruthy();
-
-  // The timeline is far taller than the viewport in the vertical layout, so the
-  // placement events are dispatched on the element instead of being tapped at
-  // viewport coordinates, and the position within the day is the clientY.
-  await page.evaluate((percent) => {
-    const timeline = window.timelineManager.activeTimeline;
-    const rect = timeline.getBoundingClientRect();
-    const clientX = rect.left + rect.width / 2;
-    const clientY = rect.top + (rect.height * percent) / 100;
-    for (const type of [
-      'pointerdown',
-      'mousedown',
-      'pointerup',
-      'mouseup',
-      'click',
-    ]) {
-      timeline.dispatchEvent(
-        new MouseEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          clientX,
-          clientY,
-          view: window,
-        })
-      );
-    }
-  }, positionPercent);
-
-  const block = page.locator('.activity-block').first();
-  await expect(block).toHaveCount(1, { timeout: 5000 });
-  return block;
-}
-
-/**
  * Press and hold the centre of `locator` for `holdMs`.
  *
  * `hover()` scrolls the block into view and waits until it actually receives
@@ -124,7 +56,7 @@ test('a long press opens the activity menu instead of deleting', async ({
   page,
 }) => {
   await openDiary(page, `e2e-longpress-${Date.now()}`);
-  const block = await placeActivity(page);
+  const block = await placeActivityMobile(page);
 
   // A plain tap on an activity must stay inert.
   await pressAndHold(page, block, 150);
@@ -149,7 +81,7 @@ test('deleting through the long-press menu removes the activity', async ({
   page,
 }) => {
   await openDiary(page, `e2e-longpress-delete-${Date.now()}`);
-  const block = await placeActivity(page);
+  const block = await placeActivityMobile(page);
 
   await pressAndHold(page, block, 700);
   await page.locator(`${CONTEXT_MENU} [data-action="delete"]`).click();
@@ -167,7 +99,7 @@ test('deleting through the long-press menu removes the activity', async ({
 
 test('a horizontal drag does not save the day or navigate', async ({ page }) => {
   await openDiary(page, `e2e-swipe-${Date.now()}`);
-  await placeActivity(page);
+  await placeActivityMobile(page);
 
   const saves = [];
   page.on('request', (request) => {

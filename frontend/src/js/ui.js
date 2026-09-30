@@ -836,8 +836,15 @@ export function updateCurrentDayDisplay() {
     studyDaysCount
   );
 
-  const timelineTitle = document.querySelector('.timeline-title');
-  if (!timelineTitle) {
+  // Phones show the day in the context bar; the title row is not rendered there
+  // (`.header-section .timeline-title { display: none }`). Desktop keeps the day
+  // in the timeline title, next to "Copy this day".
+  const isMobile = getIsMobile();
+  const container = isMobile
+    ? ensureMobileContextBar()?.querySelector('#contextDayText')
+    : document.querySelector('.timeline-title');
+
+  if (!container) {
     return null;
   }
 
@@ -858,33 +865,59 @@ export function updateCurrentDayDisplay() {
         })
       : `${dayName} (Day ${dayIndex + 1} of ${studyDaysCount})`;
 
-  timelineTitle.textContent = '';
+  container.textContent = '';
 
   const dayNameSpan = document.createElement('span');
   dayNameSpan.className = 'timeline-header-emphasis';
   dayNameSpan.textContent = dayName;
-  timelineTitle.appendChild(dayNameSpan);
+  container.appendChild(dayNameSpan);
 
-  timelineTitle.appendChild(document.createTextNode(' '));
+  container.appendChild(document.createTextNode(' '));
 
   const dayDisplay = document.createElement('span');
   dayDisplay.id = 'currentDayDisplay';
   dayDisplay.className = 'timeline-study-day-meta';
-  dayDisplay.textContent = `(${studyDayText})`;
+  // Phones show a compact counter ("(3/7)") so the context row stays one line;
+  // the full sentence is still the button's accessible name and tooltip.
+  dayDisplay.textContent = isMobile
+    ? `(${dayIndex + 1}/${studyDaysCount})`
+    : `(${studyDayText})`;
   dayDisplay.title = dayTooltipText;
-  timelineTitle.appendChild(dayDisplay);
+  container.appendChild(dayDisplay);
 
-  addCopyDayLink(timelineTitle, dayIndex);
+  if (isMobile) {
+    const dayTrigger = document.getElementById('dayPickerBtn');
+    if (dayTrigger) {
+      dayTrigger.setAttribute('aria-label', dayTooltipText);
+      dayTrigger.title = dayTooltipText;
+    }
+  }
+
+  // Copying happens in the day menu on phones, so the inline link stays a
+  // desktop affordance.
+  if (!isMobile) {
+    addCopyDayLink(container, dayIndex);
+  }
 
   // Custom page title from URL param (frontend-only, not sent to backend)
   const customTitle = urlParams.get('custom_page_title');
   if (customTitle && customTitle.trim()) {
-    timelineTitle.appendChild(document.createTextNode(' '));
     const customTitleSpan = document.createElement('span');
     customTitleSpan.id = 'customPageTitle';
     customTitleSpan.className = 'timeline-header-emphasis';
     customTitleSpan.textContent = `\u2014 ${customTitle.trim()}`;
-    timelineTitle.appendChild(customTitleSpan);
+
+    const contextBar = isMobile ? ensureMobileContextBar() : null;
+    if (contextBar) {
+      // The title row is not rendered on phones, so the study-owner label goes
+      // on its own line in the context bar instead of disappearing.
+      contextBar.querySelector('.context-custom-title')?.remove();
+      customTitleSpan.classList.add('context-custom-title');
+      contextBar.appendChild(customTitleSpan);
+    } else {
+      container.appendChild(document.createTextNode(' '));
+      container.appendChild(customTitleSpan);
+    }
   }
 
   return document.getElementById('currentDayDisplay');
@@ -1025,7 +1058,8 @@ function updateButtonStates() {
   // The "Copy this day" button in the timeline title is gated on the same
   // min_coverage check (the copy operation saves the current day first, so
   // the state must be saveable).  Refresh it from the same single chokepoint.
-  if (typeof window.addCopyDayLink === 'function') {
+  // Phones copy from the day menu instead and have no title row.
+  if (!getIsMobile() && typeof window.addCopyDayLink === 'function') {
     const timelineTitle = document.querySelector('.timeline-title');
     if (timelineTitle) {
       window.addCopyDayLink(timelineTitle, currentDayIndex);
@@ -1035,8 +1069,9 @@ function updateButtonStates() {
   // Copy Days: update the Submit Study button state
   updateSubmitStudyButton();
 
-  // Keep the ⋮ menu's mirrored disabled states in sync (no-op when closed).
-  refreshMoreMenuItems();
+  // Keep the context bar and any open menu in sync (both no-ops off phones).
+  refreshMobileContextBar();
+  refreshOpenMenuItems();
 }
 
 /**
@@ -1462,11 +1497,6 @@ let buttonsInitialized = false;
 const MORE_MENU_ID = 'moreMenu';
 const MORE_MENU_ACTIONS = [
   {
-    controlId: 'clearTimelineBtn',
-    labelKey: 'buttons.clearTimeline',
-    fallback: 'Clear timeline',
-  },
-  {
     controlId: 'removeLastBtn',
     labelKey: 'buttons.removeLast',
     fallback: 'Remove Last',
@@ -1478,7 +1508,7 @@ const MORE_MENU_ACTIONS = [
   },
 ];
 
-let moreMenuOpen = false;
+let openMenuState = null;
 let moreMenuInitialized = false;
 
 function moreMenuLabel(key, fallback) {
@@ -1497,75 +1527,68 @@ function isMoreMenuActionAvailable(control) {
   return !!control && control.style.display !== 'none';
 }
 
-function buildMoreMenu() {
-  const menu = document.createElement('div');
-  menu.className = 'more-menu';
-  menu.id = MORE_MENU_ID;
-
+function buildMoreMenu(menu) {
   MORE_MENU_ACTIONS.forEach((action) => {
     const control = document.getElementById(action.controlId);
     if (!isMoreMenuActionAvailable(control)) return;
 
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.className = 'more-menu-item';
-    item.dataset.controlId = action.controlId;
-    item.textContent = moreMenuLabel(action.labelKey, action.fallback);
-    item.addEventListener('click', () => {
-      closeMoreMenu();
-      const target = document.getElementById(action.controlId);
-      if (target && !target.disabled) target.click();
+    addMenuItem(menu, {
+      label: moreMenuLabel(action.labelKey, action.fallback),
+      controlId: action.controlId,
+      disabled: !!control && control.disabled,
+      onSelect: () => {
+        const target = document.getElementById(action.controlId);
+        if (target && !target.disabled) target.click();
+      },
     });
-    menu.appendChild(item);
   });
 
   // Language: enumerate the selector the study config already built, and switch
   // by setting its value and firing `change` - the same path the <select> uses.
   const languageSelect = document.getElementById('languageSelectMain');
-  if (languageSelect && languageSelect.options.length > 1) {
-    const header = document.createElement('div');
-    header.className = 'more-menu-header';
-    header.textContent = moreMenuLabel('common.language', 'Language');
-    menu.appendChild(header);
+  if (!languageSelect || languageSelect.options.length <= 1) return;
 
-    const languages = document.createElement('div');
-    languages.className = 'more-menu-languages';
-    Array.from(languageSelect.options).forEach((option) => {
-      const item = document.createElement('button');
-      item.type = 'button';
-      item.className = 'more-menu-item';
-      item.textContent = option.textContent;
-      item.setAttribute(
-        'aria-pressed',
-        String(option.value === languageSelect.value)
-      );
-      item.addEventListener('click', () => {
-        closeMoreMenu();
-        if (option.value === languageSelect.value) return;
-        languageSelect.value = option.value;
-        languageSelect.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-      languages.appendChild(item);
+  addMenuHeader(menu, moreMenuLabel('common.language', 'Language'));
+
+  const languages = document.createElement('div');
+  languages.className = 'more-menu-languages';
+  Array.from(languageSelect.options).forEach((option) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'context-menu-item';
+    item.textContent = option.textContent;
+    item.setAttribute(
+      'aria-pressed',
+      String(option.value === languageSelect.value)
+    );
+    item.addEventListener('click', () => {
+      closeContextMenu();
+      if (option.value === languageSelect.value) return;
+      languageSelect.value = option.value;
+      languageSelect.dispatchEvent(new Event('change', { bubbles: true }));
     });
-    menu.appendChild(languages);
-  }
-
-  return menu;
+    languages.appendChild(item);
+  });
+  menu.appendChild(languages);
 }
 
-/** Mirror each proxied control's disabled state (called on open and on any
- * activity mutation, which is what disables Clear timeline / Remove Last). */
-function refreshMoreMenuItems() {
-  const menu = document.getElementById(MORE_MENU_ID);
-  if (!menu) return;
+/**
+ * Mirror the disabled state of every control a menu item proxies: the ⋮ menu
+ * entries and the timeline menu's "Clear this timeline". Called when a menu is
+ * built and again from updateButtonStates(), the chokepoint that disables those
+ * controls.
+ */
+function refreshOpenMenuItems() {
+  const state = openMenuState;
+  if (!state) return;
 
-  menu.querySelectorAll('.more-menu-item[data-control-id]').forEach((item) => {
+  state.menu.querySelectorAll('[data-control-id]').forEach((item) => {
     const control = document.getElementById(item.dataset.controlId);
     item.disabled = !!control && control.disabled;
   });
 }
 
-function positionMoreMenu(menu, trigger) {
+function positionContextMenu(menu, trigger) {
   const triggerRect = trigger.getBoundingClientRect();
   const menuRect = menu.getBoundingClientRect();
   const margin = 8;
@@ -1585,67 +1608,89 @@ function positionMoreMenu(menu, trigger) {
   menu.style.top = `${top}px`;
 }
 
-function closeMoreMenu() {
-  const menu = document.getElementById(MORE_MENU_ID);
-  const trigger = document.getElementById('moreMenuBtn');
+function closeContextMenu() {
+  const state = openMenuState;
+  openMenuState = null;
 
+  if (!state) return;
+
+  const { menu, trigger } = state;
   if (trigger) trigger.setAttribute('aria-expanded', 'false');
 
-  document.removeEventListener('click', handleMoreMenuOutsideClick, true);
-  document.removeEventListener('keydown', handleMoreMenuKeydown);
-  document.removeEventListener('scroll', handleMoreMenuScroll, true);
-  window.removeEventListener('resize', closeMoreMenu);
+  document.removeEventListener('click', handleContextMenuOutsideClick, true);
+  document.removeEventListener('keydown', handleContextMenuKeydown);
+  document.removeEventListener('scroll', handleContextMenuScroll, true);
+  window.removeEventListener('resize', closeContextMenu);
 
-  if (moreMenuOpen && trigger && menu && menu.contains(document.activeElement)) {
+  if (trigger && menu.contains(document.activeElement)) {
     trigger.focus();
   }
-  moreMenuOpen = false;
-
-  if (menu) menu.remove();
+  menu.remove();
 }
 
-function handleMoreMenuOutsideClick(event) {
-  const menu = document.getElementById(MORE_MENU_ID);
-  const trigger = document.getElementById('moreMenuBtn');
-  if (menu && event.target instanceof Node && menu.contains(event.target)) return;
-  if (trigger && trigger.contains(event.target)) return;
-  closeMoreMenu();
+function handleContextMenuOutsideClick(event) {
+  const state = openMenuState;
+  if (!state || !(event.target instanceof Node)) return;
+  if (
+    state.menu.contains(event.target) ||
+    state.trigger?.contains(event.target)
+  ) {
+    return;
+  }
+  closeContextMenu();
 }
 
-function handleMoreMenuKeydown(event) {
+function handleContextMenuKeydown(event) {
   if (event.key !== 'Escape') return;
   event.stopPropagation();
-  closeMoreMenu();
+  closeContextMenu();
 }
 
-function handleMoreMenuScroll(event) {
-  const menu = document.getElementById(MORE_MENU_ID);
+function handleContextMenuScroll(event) {
+  const state = openMenuState;
+  if (!state) return;
   // Scrolling the menu itself (a bottom sheet can overflow) must not close it.
-  if (menu && event.target instanceof Node && menu.contains(event.target)) return;
-  closeMoreMenu();
+  if (event.target instanceof Node && state.menu.contains(event.target)) return;
+  closeContextMenu();
 }
 
-function openMoreMenu() {
-  const trigger = document.getElementById('moreMenuBtn');
+/**
+ * Open one of the phone popups - the ⋮ menu, the day menu or the timeline
+ * menu. They share one look (`.context-menu`, a bottom sheet on phones), one
+ * open/close path and one ARIA contract; only the items differ.
+ */
+function openContextMenu({ id, trigger, className = '', build }) {
   if (!trigger) return;
 
-  closeMoreMenu();
+  closeContextMenu();
 
-  const menu = buildMoreMenu();
+  const menu = document.createElement('div');
+  menu.id = id;
+  menu.className = `context-menu ${className}`.trim();
+  build(menu);
+
   document.body.appendChild(menu);
-  refreshMoreMenuItems();
-  positionMoreMenu(menu, trigger);
+  positionContextMenu(menu, trigger);
 
   trigger.setAttribute('aria-expanded', 'true');
-  moreMenuOpen = true;
+  openMenuState = { menu, trigger };
+  refreshOpenMenuItems();
 
-  const firstItem = menu.querySelector('.more-menu-item:not(:disabled)');
+  const firstItem = menu.querySelector('.context-menu-item:not(:disabled)');
   if (firstItem) firstItem.focus();
 
-  document.addEventListener('click', handleMoreMenuOutsideClick, true);
-  document.addEventListener('keydown', handleMoreMenuKeydown);
-  document.addEventListener('scroll', handleMoreMenuScroll, true);
-  window.addEventListener('resize', closeMoreMenu);
+  document.addEventListener('click', handleContextMenuOutsideClick, true);
+  document.addEventListener('keydown', handleContextMenuKeydown);
+  document.addEventListener('scroll', handleContextMenuScroll, true);
+  window.addEventListener('resize', closeContextMenu);
+}
+
+function toggleContextMenu(options) {
+  if (openMenuState && openMenuState.menu.id === options.id) {
+    closeContextMenu();
+  } else {
+    openContextMenu(options);
+  }
 }
 
 function initMoreMenu() {
@@ -1656,12 +1701,320 @@ function initMoreMenu() {
 
   moreMenuInitialized = true;
   trigger.addEventListener('click', () => {
-    if (moreMenuOpen) {
-      closeMoreMenu();
-    } else {
-      openMoreMenu();
+    toggleContextMenu({
+      id: MORE_MENU_ID,
+      className: 'more-menu',
+      trigger,
+      build: buildMoreMenu,
+    });
+  });
+}
+
+/** Add a button to an open menu. Items that proxy a control carry its id so
+ * refreshOpenMenuItems() can mirror the control's disabled state. */
+function addMenuItem(
+  menu,
+  { label, detail, controlId, disabled = false, className = '', onSelect }
+) {
+  const item = document.createElement('button');
+  item.type = 'button';
+  item.className = `context-menu-item ${className}`.trim();
+  item.disabled = disabled;
+  if (controlId) item.dataset.controlId = controlId;
+
+  const labelSpan = document.createElement('span');
+  labelSpan.className = 'context-menu-item-label';
+  labelSpan.textContent = label;
+  item.appendChild(labelSpan);
+
+  if (detail) {
+    const detailSpan = document.createElement('span');
+    detailSpan.className = 'context-menu-item-detail';
+    detailSpan.textContent = detail;
+    item.appendChild(detailSpan);
+  }
+
+  item.addEventListener('click', () => {
+    closeContextMenu();
+    onSelect();
+  });
+  menu.appendChild(item);
+  return item;
+}
+
+function addMenuHeader(menu, text) {
+  const header = document.createElement('div');
+  header.className = 'context-menu-header';
+  header.textContent = text;
+  menu.appendChild(header);
+  return header;
+}
+
+// ── Phone context bar ─────────────────────────────────────────────────────
+// The row above the toolbar: which day and which timeline the participant is
+// in, both as pickers. The day menu replaces the desktop day row
+// (#previousDaysSwitchRow) and the timeline menu replaces the cycling switcher
+// button, so a phone no longer spends two extra rows on navigation.
+const DAY_MENU_ID = 'dayMenu';
+const TIMELINE_MENU_ID = 'timelineMenu';
+
+let contextBarInitialized = false;
+
+function getDayIndexFromUrl() {
+  return (
+    parseInt(
+      new URLSearchParams(window.location.search).get('day_label_index')
+    ) || 0
+  );
+}
+
+function getStudyDaysCount() {
+  return (
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount?.() ||
+    0
+  );
+}
+
+function getDayDisplayName(dayIndex) {
+  return (
+    window.studyConfigManager?.getDayDisplayLabel?.(dayIndex) ||
+    `${moreMenuLabel('common.day', 'Day')} ${dayIndex + 1}`
+  );
+}
+
+/**
+ * Build the context bar once. It is hidden above the desktop breakpoint
+ * (`.context-bar { display: none }`) and sits *before* the toolbar in the DOM,
+ * so a phone gets context first and actions second.
+ */
+function ensureMobileContextBar() {
+  if (!getIsMobile()) return null;
+
+  const existing = document.getElementById('contextBar');
+  if (existing) return existing;
+
+  const controls = document.querySelector('.header-section .controls');
+  if (!controls || !controls.parentElement) return null;
+
+  const bar = document.createElement('div');
+  bar.className = 'context-bar';
+  bar.id = 'contextBar';
+  bar.innerHTML = `
+    <div class="context-day">
+      <button type="button" class="btn context-step-btn" id="prevDayBtn">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="btn context-picker-btn" id="dayPickerBtn"
+              aria-haspopup="true" aria-expanded="false"
+              aria-controls="${DAY_MENU_ID}">
+        <span class="context-day-text" id="contextDayText"></span>
+        <i class="fas fa-caret-down" aria-hidden="true"></i>
+      </button>
+      <button type="button" class="btn context-step-btn" id="nextDayBtn">
+        <i class="fas fa-chevron-right" aria-hidden="true"></i>
+      </button>
+    </div>
+    <button type="button" class="btn context-picker-btn" id="timelinePickerBtn"
+            aria-haspopup="true" aria-expanded="false"
+            aria-controls="${TIMELINE_MENU_ID}">
+      <span id="contextTimelineName"></span>
+      <i class="fas fa-caret-down" aria-hidden="true"></i>
+    </button>
+  `;
+
+  controls.insertAdjacentElement('beforebegin', bar);
+  return bar;
+}
+
+function buildDayMenu(menu) {
+  const currentDayIndex = getDayIndexFromUrl();
+  const studyDaysCount = getStudyDaysCount();
+  const completeDays = Array.isArray(
+    window.timelineManager?.dayIndicesMeetMinCoverage
+  )
+    ? window.timelineManager.dayIndicesMeetMinCoverage
+    : Array.isArray(window.timelineManager?.dayIndicesWithData)
+      ? window.timelineManager.dayIndicesWithData
+      : [];
+
+  addMenuHeader(
+    menu,
+    moreMenuLabel('messages.goBackToEditPreviousDays', 'Switch to day:')
+  );
+
+  for (let dayIndex = 0; dayIndex < studyDaysCount; dayIndex += 1) {
+    const isCurrent = dayIndex === currentDayIndex;
+    const isComplete = completeDays.includes(dayIndex);
+    const dayName = getDayDisplayName(dayIndex);
+
+    // A checkmark rather than a status sentence: language-neutral, and the same
+    // signal the desktop day buttons use.
+    const item = addMenuItem(menu, {
+      label: isComplete ? `${dayName} ✓` : dayName,
+      className: isComplete ? 'day-menu-item is-complete' : 'day-menu-item',
+      disabled: isCurrent,
+      onSelect: () => window.saveAndSwitchToDay?.(dayIndex),
+    });
+
+    if (isCurrent) item.setAttribute('aria-current', 'true');
+    if (isComplete) {
+      const completeHint = moreMenuLabel(
+        'messages.dayCompleteAria',
+        'Day complete (meets minimum coverage)'
+      );
+      item.setAttribute('aria-label', `${dayName}, ${completeHint}`);
+    }
+  }
+
+  // Copying is a day-pair operation, so it belongs where the target is picked.
+  addMenuItem(menu, {
+    label: moreMenuLabel('messages.copyDayLink', 'Copy this day'),
+    className: 'day-menu-copy',
+    onSelect: () => {
+      if (typeof window.showCopyTargetPicker === 'function') {
+        window.showCopyTargetPicker(currentDayIndex, {
+          clientX: window.innerWidth / 2,
+          clientY: window.innerHeight / 2,
+        });
+      }
+    },
+  });
+}
+
+function buildTimelineMenu(menu) {
+  const keys = window.timelineManager?.keys || [];
+  const currentIndex = Number.isInteger(window.timelineManager?.currentIndex)
+    ? window.timelineManager.currentIndex
+    : 0;
+  const translate = (key, params, fallback) =>
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t(key, params)
+      : fallback;
+
+  addMenuHeader(
+    menu,
+    moreMenuLabel('buttons.switchTimeline', 'Switch timeline')
+  );
+
+  keys.forEach((key, index) => {
+    const meta = window.timelineManager?.metadata?.[key] || {};
+    const requiredMinutes = parseInt(meta.minCoverage) || 0;
+    const coveredMinutes = getCoverageForTimelineKey(key);
+    const meetsCoverage = coveredMinutes >= requiredMinutes;
+    const coverageText = meetsCoverage
+      ? translate('messages.timelineCoverageMet', undefined, '✓')
+      : translate(
+          'messages.timelineCoverageMissing',
+          { covered: coveredMinutes, required: requiredMinutes },
+          `${coveredMinutes} of ${requiredMinutes} required minutes covered`
+        );
+
+    addMenuItem(menu, {
+      label: meta.name || key,
+      detail: coverageText,
+      className: 'timeline-menu-item',
+      disabled: index === currentIndex,
+      onSelect: () => navigateToTimelineByKey(key),
+    });
+  });
+
+  // Clearing is per-timeline (not per-day), so it lives with the timeline list
+  // instead of in the ⋮ menu.
+  addMenuItem(menu, {
+    label: moreMenuLabel('buttons.clearTimeline', 'Clear timeline'),
+    className: 'timeline-menu-clear',
+    controlId: 'clearTimelineBtn',
+    onSelect: () => {
+      const target = document.getElementById('clearTimelineBtn');
+      if (target && !target.disabled) target.click();
+    },
+  });
+}
+
+/** Refresh what changes without a page load: the timeline name and the ./.
+ * arrows. The arrows name the day they lead to, like the timeline switcher
+ * names its destination - no new translations and more useful than "next day". */
+function refreshMobileContextBar() {
+  const bar = ensureMobileContextBar();
+  if (!bar) return;
+
+  const keys = window.timelineManager?.keys || [];
+  const timelineName =
+    window.timelineManager?.metadata?.[getCurrentTimelineKey()]?.name || '';
+  const timelineNameLabel = document.getElementById('contextTimelineName');
+  const timelinePicker = document.getElementById('timelinePickerBtn');
+
+  if (timelineNameLabel) timelineNameLabel.textContent = timelineName;
+  if (timelinePicker) {
+    // Pointless with a single timeline, and the day control can use the space.
+    timelinePicker.hidden = keys.length < 2;
+    timelinePicker.setAttribute(
+      'aria-label',
+      `${moreMenuLabel('buttons.switchTimeline', 'Switch timeline')}: ${timelineName}`
+    );
+  }
+
+  const currentDayIndex = getDayIndexFromUrl();
+  const studyDaysCount = getStudyDaysCount();
+  const prevBtn = document.getElementById('prevDayBtn');
+  const nextBtn = document.getElementById('nextDayBtn');
+
+  if (prevBtn) {
+    prevBtn.disabled = currentDayIndex <= 0;
+    prevBtn.setAttribute(
+      'aria-label',
+      getDayDisplayName(Math.max(0, currentDayIndex - 1))
+    );
+  }
+  if (nextBtn) {
+    nextBtn.disabled =
+      studyDaysCount <= 1 || currentDayIndex >= studyDaysCount - 1;
+    nextBtn.setAttribute(
+      'aria-label',
+      getDayDisplayName(Math.min(studyDaysCount - 1, currentDayIndex + 1))
+    );
+  }
+}
+
+function initMobileContextBar() {
+  const bar = ensureMobileContextBar();
+  if (!bar || contextBarInitialized) return;
+  contextBarInitialized = true;
+
+  document.getElementById('prevDayBtn')?.addEventListener('click', () => {
+    const currentDayIndex = getDayIndexFromUrl();
+    if (currentDayIndex > 0) window.saveAndSwitchToDay?.(currentDayIndex - 1);
+  });
+
+  document.getElementById('nextDayBtn')?.addEventListener('click', () => {
+    const currentDayIndex = getDayIndexFromUrl();
+    if (currentDayIndex < getStudyDaysCount() - 1) {
+      window.saveAndSwitchToDay?.(currentDayIndex + 1);
     }
   });
+
+  const dayTrigger = document.getElementById('dayPickerBtn');
+  dayTrigger?.addEventListener('click', () => {
+    toggleContextMenu({
+      id: DAY_MENU_ID,
+      className: 'day-menu',
+      trigger: dayTrigger,
+      build: buildDayMenu,
+    });
+  });
+
+  const timelineTrigger = document.getElementById('timelinePickerBtn');
+  timelineTrigger?.addEventListener('click', () => {
+    toggleContextMenu({
+      id: TIMELINE_MENU_ID,
+      className: 'timeline-menu',
+      trigger: timelineTrigger,
+      build: buildTimelineMenu,
+    });
+  });
+
+  refreshMobileContextBar();
 }
 
 function initButtons() {
@@ -1670,6 +2023,7 @@ function initButtons() {
 
   initSkipReportingButton();
   initMoreMenu();
+  initMobileContextBar();
 
   const clearTimelineBtn = document.getElementById('clearTimelineBtn');
 

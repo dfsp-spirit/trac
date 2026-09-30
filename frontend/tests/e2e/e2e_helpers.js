@@ -332,16 +332,99 @@ async function openSkipConfirmation(page, maxAttempts = 5) {
 /**
  * Click a day button to navigate. Auto-saves current day first.
  *
+ * Desktop has the day row (#previousDaysSwitchRow); a phone has the context
+ * bar's day menu instead, so this works with whichever is present.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {number} dayIndex - 0-based
  */
 async function switchToDay(page, dayIndex) {
   const dayButtons = page.locator('#previousDaysSwitchRow .previous-day-btn');
-  const button = dayButtons.nth(dayIndex);
-  await button.waitFor({ state: 'visible', timeout: 5000 });
-  await button.click();
+
+  if ((await dayButtons.count()) > 0) {
+    const button = dayButtons.nth(dayIndex);
+    await button.waitFor({ state: 'visible', timeout: 5000 });
+    await button.click();
+  } else {
+    const trigger = page.locator('#dayPickerBtn');
+    await trigger.waitFor({ state: 'visible', timeout: 5000 });
+    await trigger.click();
+
+    const item = page.locator('#dayMenu .day-menu-item').nth(dayIndex);
+    await item.waitFor({ state: 'visible', timeout: 5000 });
+    await item.click();
+  }
+
   await page.waitForTimeout(1500);
   await page.locator('#currentDayDisplay').waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Place one activity through the phone flow: the floating `+` opens the picker
+ * modal (the inline `.activities-container` is 0x0 at that width), and the
+ * position within the day is a clientY on the vertical timeline.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} [positionPercent=40]
+ * @returns {Promise<import('@playwright/test').Locator>} the placed block
+ */
+async function placeActivityMobile(page, positionPercent = 40) {
+  await page.locator('.floating-add-button').click();
+  await expect(page.locator('#activitiesModal')).toBeVisible();
+  await expect
+    .poll(
+      async () =>
+        page.locator('#modalActivitiesContainer .activity-button').count(),
+      { timeout: 30000, message: 'waiting for the phone activity picker' }
+    )
+    .toBeGreaterThan(0);
+
+  await page.evaluate(() => {
+    const buttons = Array.from(
+      document.querySelectorAll('#modalActivitiesContainer .activity-button')
+    );
+    const placeable = buttons.find(
+      (button) =>
+        !button.classList.contains('has-child-items') &&
+        !button.classList.contains('custom-input')
+    );
+    if (!placeable) throw new Error('no placeable activity in the phone picker');
+    placeable.click();
+  });
+  await expect(page.locator('#activitiesModal')).toBeHidden();
+
+  const selected = await page.evaluate(() => window.selectedActivity);
+  expect(selected, 'picking an activity must select it').toBeTruthy();
+
+  // The timeline is far taller than the viewport in the vertical layout, so the
+  // events are dispatched on the element itself.
+  await page.evaluate((percent) => {
+    const timeline = window.timelineManager.activeTimeline;
+    const rect = timeline.getBoundingClientRect();
+    const clientX = rect.left + rect.width / 2;
+    const clientY = rect.top + (rect.height * percent) / 100;
+    for (const type of [
+      'pointerdown',
+      'mousedown',
+      'pointerup',
+      'mouseup',
+      'click',
+    ]) {
+      timeline.dispatchEvent(
+        new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          clientX,
+          clientY,
+          view: window,
+        })
+      );
+    }
+  }, positionPercent);
+
+  const block = page.locator('.activity-block').first();
+  await expect(block).toHaveCount(1, { timeout: 5000 });
+  return block;
 }
 
 /**
@@ -522,6 +605,7 @@ module.exports = {
   placeActivity,
   saveCurrentDay,
   switchToDay,
+  placeActivityMobile,
   openSkipConfirmation,
   getCurrentDayIndex,
   copyDayTo,

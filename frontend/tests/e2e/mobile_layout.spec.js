@@ -99,12 +99,10 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
   const menu = page.locator('#moreMenu');
   await expect(menu).toBeVisible();
 
-  // The day is empty, so both activity actions are offered but disabled -
-  // mirroring the real buttons they proxy.
+  // The day is empty, so the activity action is offered but disabled - mirroring
+  // the real button it proxies. Clear timeline moved on to the timeline menu
+  // (covered by mobile_context_bar.spec.js).
   await expect(menu.locator('[data-control-id="removeLastBtn"]')).toBeDisabled();
-  await expect(
-    menu.locator('[data-control-id="clearTimelineBtn"]')
-  ).toBeDisabled();
 
   // The language picker moved in too, with the active language marked.
   await expect(menu.locator('.more-menu-languages [aria-pressed="true"]')).toHaveText(
