@@ -125,6 +125,30 @@ test.describe('Copy Days — core flows', () => {
     const copyBtn = page.locator('.copy-day-link').first();
     await expect(copyBtn).toBeVisible({ timeout: 5000 });
 
+    // It shares a line with the day text: aligned with it (baseline alignment used
+    // to hang it ~5 px lower, half out of the title row), and clear of the timeline
+    // below the title row.
+    const geometry = await page.evaluate(() => {
+      const rect = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, centre: box.top + box.height / 2 };
+      };
+      return {
+        day: rect('#currentDayDisplay'),
+        button: rect('.copy-day-link'),
+        canvasTop: document.querySelector('.timeline-canvas').getBoundingClientRect()
+          .top,
+      };
+    });
+    expect(
+      Math.abs(geometry.button.centre - geometry.day.centre),
+      'the copy button must sit level with the day text'
+    ).toBeLessThanOrEqual(2);
+    expect(
+      geometry.canvasTop - geometry.button.bottom,
+      'the copy button must not sit on the timeline'
+    ).toBeGreaterThanOrEqual(8);
+
     // Click copy, pick Tuesday (day index 1) as target
     await copyBtn.click();
 

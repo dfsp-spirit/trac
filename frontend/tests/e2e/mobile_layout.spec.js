@@ -71,7 +71,7 @@ test('the main diary controls are big enough to tap', async ({ page }) => {
   }
 });
 
-test('the secondary controls move into the ⋮ menu on a phone', async ({
+test('the secondary controls live in the ⋮ menu on a phone', async ({
   page,
 }) => {
   await page.goto('index.html?pid=mobile_more_menu&study_name=default&lang=en', {
@@ -80,8 +80,10 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
   await enterStudyIfNeeded(page);
   await expect(page.locator('#moreMenuBtn')).toBeVisible({ timeout: 30000 });
 
-  // On desktop each of these has a button of its own (or, for the language
-  // picker, a row); on a phone they are reached through the ⋮ menu instead.
+  // Clear timeline has a button of its own on desktop; on a phone it is reached
+  // through the context bar's timeline menu. Skip time reporting and the
+  // language picker are in the ⋮ menu at every width (see the desktop case
+  // below).
   await expect(page.locator('#clearTimelineBtn')).toBeHidden();
   await expect(page.locator('#skipReportingBtn')).toBeHidden();
   await expect(page.locator('.language-select-wrapper')).toBeHidden();
@@ -112,6 +114,58 @@ test('the secondary controls move into the ⋮ menu on a phone', async ({
   await menu.locator('[data-control-id="skipReportingBtn"]').click();
   await expect(page.locator('#skipConfirmationModal')).toBeVisible();
   await expect(menu).toHaveCount(0);
+});
+
+// The ⋮ menu is not a phone speciality any more: the two actions that should not
+// compete with the day's own controls live there at every width.
+test.describe('on desktop', () => {
+  test.use({ viewport: { width: 1600, height: 900 } });
+
+  test('the toolbar holds only the day actions, the rest is in the ⋮ menu', async ({
+    page,
+  }) => {
+    await page.goto('index.html?pid=desktop_more_menu&study_name=default&lang=en', {
+      waitUntil: 'load',
+    });
+    await enterStudyIfNeeded(page);
+    await expect(page.locator('#moreMenuBtn')).toBeVisible({ timeout: 30000 });
+
+    // No language control and no skip action competing with the day's buttons,
+    // and no footer row for the skip action either - that is the space this
+    // reclaims on a large screen.
+    await expect(page.locator('.language-select-wrapper')).toBeHidden();
+    await expect(page.locator('#skipReportingBtn')).toBeHidden();
+    await expect(page.locator('#instructionsFooter')).toBeHidden();
+
+    // What is left in the toolbar: switch timeline, clear timeline, submit, ⋮.
+    const visibleToolbarControls = await page.evaluate(() =>
+      Array.from(
+        document.querySelectorAll('.header-section .controls-group > *')
+      )
+        .filter((element) => element.getBoundingClientRect().width > 0)
+        .map((element) => element.id || element.className.split(' ')[0])
+    );
+    expect(visibleToolbarControls).toEqual([
+      'switchTimelineBtn',
+      'clearTimelineBtn',
+      'submitStudyBtn',
+      'moreMenuBtn',
+    ]);
+
+    await page.locator('#moreMenuBtn').click();
+    const menu = page.locator('#moreMenu');
+    await expect(menu).toBeVisible();
+    await expect(
+      menu.locator('[data-control-id="skipReportingBtn"]')
+    ).toBeEnabled();
+    await expect(
+      menu.locator('.more-menu-languages [aria-pressed="true"]')
+    ).toHaveText('EN');
+
+    // Both entries are reachable: the language one switches the page.
+    await menu.locator('.more-menu-languages [aria-pressed="true"]').click();
+    await expect(menu).toHaveCount(0);
+  });
 });
 
 test('the day-one banner explains the layout the participant is in', async ({

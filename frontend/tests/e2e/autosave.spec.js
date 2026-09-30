@@ -289,27 +289,52 @@ test('the toolbar reports what happened to the day', async ({ page }) => {
   await expect(chip).toContainText('Saving');
   await expect(chip.locator('.sync-status-retry')).toBeHidden();
 
-  // And it is part of the toolbar, not a block of its own below it: as a sibling
-  // of .controls it took a line of its own, which moved the timeline while the
-  // participant was editing (a burst of placements then missed).
-  await expect(page.locator('.header-section .controls #syncStatus')).toHaveCount(
-    1
-  );
-  const toolbarHeight = () =>
-    page.evaluate(() =>
-      Math.round(
-        document.querySelector('.header-section .controls').getBoundingClientRect()
-          .height
-      )
-    );
-  const withChip = await toolbarHeight();
+  // It belongs to the toolbar's button group (as a plain child of .controls it
+  // took a line of its own and moved the timeline - a burst of placements then
+  // missed), and showing it must not budge the buttons: the row is centred, so an
+  // in-flow chip re-centres everything next to it (measured: Submit Study 86 px).
+  await expect(
+    page.locator('.header-section .controls-group #syncStatus')
+  ).toHaveCount(1);
+
+  const geometry = () =>
+    page.evaluate(() => {
+      const box = (selector) => {
+        const rect = document.querySelector(selector).getBoundingClientRect();
+        return { x: Math.round(rect.x), right: Math.round(rect.right) };
+      };
+      return {
+        toolbar: Math.round(
+          document
+            .querySelector('.header-section .controls')
+            .getBoundingClientRect().height
+        ),
+        submit: box('#submitStudyBtn'),
+        clear: box('#clearTimelineBtn'),
+        chip: box('#syncStatus'),
+        chipVisible: !document.getElementById('syncStatus').hidden,
+        viewport: window.innerWidth,
+      };
+    });
+
+  const shown = await geometry();
   await page.evaluate(() => {
     document.getElementById('syncStatus').hidden = true;
   });
+  const hidden = await geometry();
+
   expect(
-    await toolbarHeight(),
+    hidden.toolbar,
     'showing the chip must not add a toolbar row'
-  ).toBe(withChip);
+  ).toBe(shown.toolbar);
+  expect(shown.submit.x, 'the buttons must not move with the chip').toBe(
+    hidden.submit.x
+  );
+  expect(shown.clear.x, 'the buttons must not move with the chip').toBe(
+    hidden.clear.x
+  );
+  expect(shown.chip.right).toBeLessThanOrEqual(shown.viewport);
+
   await page.evaluate(() => {
     document.getElementById('syncStatus').hidden = false;
   });

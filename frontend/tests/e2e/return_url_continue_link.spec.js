@@ -22,8 +22,8 @@ test('return_url is preserved and shown as continue link on thank-you page', asy
     rawReturnUrl
   );
 
-  // The skip action is hidden at phone widths (it moves into the ⋮ menu there),
-  // but it must never be disabled.
+  // The skip action is never a toolbar button at any width any more (it lives in
+  // the ⋮ menu), but it must never be disabled either.
   await expect(page.locator('#skipReportingBtn')).toBeEnabled();
 
   if (!/pages\/thank-you\.html/.test(page.url())) {

@@ -11,6 +11,7 @@
     <title>Consent</title>
     <link href="../assets/fonts/inter/inter.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="../styles/language-pill.css">
     <style>
         :root {
             --primary-color: #2563eb;
@@ -256,9 +257,11 @@
             <br />
             <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
                 <div id="study-metadata" class="study-metadata" aria-live="polite"></div>
-                <div id="consent-language-selector-container" style="margin-left:auto">
-                    <label for="consentLanguageSelector" data-i18n="common.language" style="font-size:0.95rem;color:var(--secondary-color);margin-right:0.5rem;">Language</label>
+                <div id="consent-language-selector-container" class="language-pill" style="margin-left:auto">
+                    <i class="fas fa-globe language-pill-globe" aria-hidden="true"></i>
+                    <label class="language-pill-label" for="consentLanguageSelector" data-i18n="common.language">Language</label>
                     <select id="consentLanguageSelector" data-i18n-aria-label="common.chooseLanguage" aria-label="Select language"></select>
+                    <i class="fas fa-caret-down language-pill-caret" aria-hidden="true"></i>
                 </div>
             </div>
             <br />

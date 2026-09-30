@@ -940,6 +940,63 @@ the button was visible and clicked it) and `mobile_layout` (which measured it as
 tap target, now `#clearTimelineBtn` is hidden on phones so it measures
 `#submitStudyBtn`) were adapted; the new clear-undo case lives in `autosave.spec.js`.
 
+## 17. Desktop clean-up: toolbar, language control, menu, footer (2026-09-30)
+
+Four things the user spotted on a large screen. All four are about the toolbar
+having accumulated controls that do not belong to the day:
+
+### 1 + 4. The language picker and "Skip time reporting" move into ⋮ at every width
+
+The ⋮ trigger was phone-only (`display: none` from 1440 px up) because desktop
+had the individual controls. Now it is the home of exactly the two actions that
+should not compete with the day's own buttons:
+
+- **Skip time reporting** - a last resort, not something to offer all day. It was
+  the sole occupant of its own footer row (`#instructionsFooter`), which is now
+  collapsed at every width (`updateFooterVisibility` keys off the button's computed
+  display, so CSS-hiding it is all it takes). The row's markup stays: it is what the
+  page's `--footer-height` bookkeeping and `autoscroll.js` measure, and removing it
+  would touch that plumbing for no user-visible gain.
+- **Language** - touched about once per participant. `#languageSelectMain` stays in
+  the DOM (hidden) and the menu enumerates its options, so nothing else changed.
+
+Desktop toolbar now: `Switch timeline | Clear timeline | Submit Study | ⋮` (pinned
+by the new `mobile_layout.spec.js > on desktop > the toolbar holds only the day
+actions`). The remaining `#footer` (study name, version, backend status, Imprint /
+Privacy / Study Info / Contact) stays - the user confirmed removing it is a policy
+call, and the legal links are usually required.
+
+### 1b. One compact language control on the pages that need it visible
+
+Consent and instructions must offer the language *before* the diary, so they keep a
+visible control - now the same pill everywhere (`styles/language-pill.css`, linked by
+both pages): a globe, the code, a caret, one rounded border, native `<select>`
+underneath (`appearance: none`, so no platform chrome), and the word "Language"
+kept in the DOM for screen readers only. A globe is also the one label that works
+for someone who cannot read the page's current language - which is exactly who
+needs the control.
+
+### 2. The status chip no longer shuffles the toolbar
+
+The toolbar row is centred, so an in-flow chip re-centred everything beside it -
+measured: **Submit Study moved 86 px** every time the chip appeared or faded. Now
+the buttons live in `.controls-group` and the chip is absolutely positioned against
+that group (desktop) / fixed (phones), i.e. out of the flow in both layouts.
+Verified live at 1600 px and 1440 px: Submit Study stays at the same x with the chip
+shown and hidden, and the chip never overlaps the controls or leaves the viewport.
+Guarded in `autosave.spec.js > the toolbar reports what happened to the day`.
+
+### 3. "Copy this day" sits level with the day text
+
+Baseline alignment hung the inline-flex button ~5 px below the 24 px title text and
+below the title's own box, so it ate into the gap above the timeline. The title is a
+flex row now (`align-items: center`), which puts the button level with the day name
+and restores the space underneath; the 2 px of extra air the user asked for comes
+from `margin: 4px 0 6px 0` on the title. Measured: button top 153 -> 149 against the
+day text at 148, and 30 px of clearance to the timeline canvas. Guarded in
+`copy_days_flow.spec.js` (button centre within 2 px of the day text, >= 8 px above
+the timeline).
+
 ## Known landmine — done in §3 (the gesture was removed)
 
 `initMobileSwipeNavigation()` (mobile only): a **left** swipe clicks `#nextBtn`,
@@ -1016,12 +1073,12 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green 2026-09-30 after §16: `sh test_frontend_typecheck.sh`,
+Green 2026-09-30 after §17: `sh test_frontend_typecheck.sh`,
 `sh test_frontend_unit.sh` (90/90, incl. `locales_consistency` key-set +
 untranslated-value guards, the `page_titles` guards, the 13 `autosave` and the 8
 `sync_status` tests), the backend suites (`test_backend_unit.sh` 156/156,
 `uv run pytest tests/integration` 126/126 against the running dev server), and on
-chromium **87/87** in **4.0 min**.
+chromium **88/88** in **4.1 min**.
 New specs added during this work: `mobile_activity_gestures` (§3),
 `mobile_context_bar` (§4, day/timeline sheets + the copy row),
 `page_titles` (§10), `autosave` (§14 engine, §15 status chip, §16 clear undo).

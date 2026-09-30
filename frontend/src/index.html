@@ -42,6 +42,12 @@
     <div class="header-section">
         <div class="controls" style="padding-top: 4px; padding-left: 4px; padding-bottom: 4px; padding-right: 4px;">
 
+        <!-- The buttons sit in their own group so the autosave status chip can
+             hang beside them without taking part in the row's centring. Inline,
+             the chip re-centred the whole row and pushed the buttons sideways on
+             every save state change (measured: Submit Study moved 86 px). -->
+        <div class="controls-group">
+
         <!-- Cycles through the study's timelines, at every width. The label
              always names the timeline this button switches to, so it doubles as
              the hint that more than one timeline exists - on narrow viewports
@@ -63,16 +69,16 @@
             <span data-i18n="buttons.submitStudy">Submit Study</span>
         </button>
 
-        <!-- Phone-only overflow menu. The actions it holds (Skip time
-             reporting, language) are visible in the footer or toolbar on
-             desktop, so the trigger is hidden from 1440 px up. Each item proxies
-             .click() to the real control, which keeps one implementation of
-             every action. -->
+        <!-- Overflow menu, at every width. It holds the two actions that should
+             not compete with the day's own controls: Skip time reporting (a last
+             resort) and the language picker. Each item proxies .click() to the
+             real control, which keeps one implementation of every action. -->
         <button class="btn more-menu-btn" id="moreMenuBtn" type="button"
                 aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"
                 data-i18n-aria-label="buttons.moreActions" aria-label="More actions">
             <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
         </button>
+        </div>
         </div>
 
         <div class="timeline-header">
@@ -129,10 +135,10 @@
     <!-- Attribute Tracker Script -->
     <script src="js/attributeTracker.js"></script>
 
-    <!-- Footer with optional actions. It starts hidden and is only revealed by
-         ui.js when it actually contains a visible action ("Skip time reporting",
-         which studies can disable). An empty footer would otherwise waste a
-         full row of vertical space on phones. -->
+    <!-- Footer row for optional actions. It starts hidden and stays hidden while
+         "Skip time reporting" lives in the ⋮ menu (ui.js updateFooterVisibility
+         keys off that button's computed display); it remains the container the
+         page's footer-height bookkeeping measures. -->
     <div id="instructionsFooter" class="instructions-footer" hidden>
         <div class="footer-actions-row">
             <button class="btn skip-btn footer-skip-btn" id="skipReportingBtn" data-is-active="true">

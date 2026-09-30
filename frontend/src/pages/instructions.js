@@ -171,14 +171,22 @@ function renderLanguageSelector(studyConfig, selectedLanguage) {
   }
 
   const selectorContainer = document.createElement('div');
-  selectorContainer.className = 'language-selector-container';
+  selectorContainer.className = 'language-pill language-selector-container';
   selectorContainer.style.marginBottom = '1rem';
+
+  // Globe + language code, the same control as on the consent page
+  // (styles/language-pill.css). The word "Language" stays for screen readers: a
+  // visible label in the page's own language is no help to someone who cannot
+  // read that language, which is exactly who needs this control.
+  const globe = document.createElement('i');
+  globe.className = 'fas fa-globe language-pill-globe';
+  globe.setAttribute('aria-hidden', 'true');
 
   const label = document.createElement('label');
   label.setAttribute('for', 'languageSelect');
+  label.className = 'language-pill-label';
   label.textContent = 'Language';
   label.setAttribute('data-i18n', 'common.language');
-  label.style.marginRight = '0.5rem';
 
   const select = document.createElement('select');
   select.id = 'languageSelect';
@@ -202,8 +210,14 @@ function renderLanguageSelector(studyConfig, selectedLanguage) {
     window.location.href = url.toString();
   });
 
+  const caret = document.createElement('i');
+  caret.className = 'fas fa-caret-down language-pill-caret';
+  caret.setAttribute('aria-hidden', 'true');
+
+  selectorContainer.appendChild(globe);
   selectorContainer.appendChild(label);
   selectorContainer.appendChild(select);
+  selectorContainer.appendChild(caret);
 
   const bodyFirstDiv = document.body.querySelector('div');
   if (bodyFirstDiv) {
