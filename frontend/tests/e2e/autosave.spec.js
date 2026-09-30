@@ -80,11 +80,11 @@ test('an edit is saved without pressing Save Day', async ({ page }) => {
     .toBeGreaterThan(0);
 });
 
-test('a burst of edits becomes a single request', async ({ page }) => {
+test('a burst of edits is saved without a request per edit', async ({ page }) => {
   await openDiary(page, `e2e-autosave-burst-${Date.now()}`);
   const posts = trackActivityPosts(page);
 
-  // Three edits in quick succession, faster than the debounce.
+  // Three edits in quick succession.
   await placeActivity(page, { activityName: 'Sleeping', positionPercent: 15 });
   await placeActivity(page, { activityName: 'Cooking', positionPercent: 50 });
   await placeActivity(page, { activityName: 'Reading (digital)', positionPercent: 80 });
@@ -93,10 +93,17 @@ test('a burst of edits becomes a single request', async ({ page }) => {
     .poll(() => page.evaluate(() => window.autosave.state()), { timeout: 20000 })
     .toBe('saved');
 
+  // Three placements through the real UI, so how many of them fall inside one
+  // AUTOSAVE_DEBOUNCE_MS window is a matter of how fast the runner is: on a
+  // loaded CI machine the gaps can exceed 2s and a second save is then correct
+  // behaviour, not a defect. What this spec is for is that the burst reaches
+  // the backend with every edit - "exactly one request" is asserted where the
+  // clock can be controlled (tests/unit/autosave.test.js, "a burst of edits
+  // collapses into a single request").
   expect(
     posts.length,
-    `three quick edits should coalesce into one save, got ${posts.length}`
-  ).toBe(1);
+    `three quick edits must not produce one request each, got ${posts.length}`
+  ).toBeLessThan(3);
   expect(await activityCount(page)).toBe(3);
 });
 
