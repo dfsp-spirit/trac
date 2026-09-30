@@ -14,8 +14,8 @@ const { enterStudyIfNeeded, placeActivityMobile } = require('./e2e_helpers.js');
 // `#saveDayBtn`), which has been "Save Day" since Copy Days, so an accidental
 // horizontal drag saved the
 // day and triggered a 1.5 s `location.reload()`. That gesture is gone, and the
-// test below pins down that a horizontal drag stays inert - it must not save, and
-// it must not navigate away from unsaved work.
+// test below pins down that a horizontal drag stays inert - it must not write the
+// day itself, and it must not navigate away from it.
 test.use({ viewport: MOBILE_VIEWPORT, hasTouch: true });
 
 const ADD_BUTTON = '.floating-add-button';
@@ -134,6 +134,12 @@ test('a horizontal drag does not save the day or navigate', async ({ page }) => 
   await openDiary(page, `e2e-swipe-${Date.now()}`);
   await placeActivityMobile(page);
 
+  // The placement is saved by autosave a moment later; wait for that write so
+  // this test only counts the requests the gesture itself causes.
+  await expect
+    .poll(() => page.evaluate(() => window.autosave.state()), { timeout: 20000 })
+    .toBe('saved');
+
   const saves = [];
   page.on('request', (request) => {
     if (
@@ -193,8 +199,9 @@ test('a horizontal drag does not save the day or navigate', async ({ page }) => 
     dispatchPointer('pointerup', clientX.end);
   });
 
-  // Longer than the 1.5 s reload the old swipe handler triggered.
-  await page.waitForTimeout(2500);
+  // Longer than the 1.5 s reload the old swipe handler triggered, and longer
+  // than the autosave debounce.
+  await page.waitForTimeout(3500);
 
   expect(saves, 'a horizontal drag must not save the day').toEqual([]);
   expect(page.url()).toBe(urlBefore);

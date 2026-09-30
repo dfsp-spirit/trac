@@ -82,6 +82,11 @@ test('all locales contain the banner and recently added keys', () => {
     'common.pageTitle',
     'common.pageTitleWithStudy',
     'common.error',
+    // Autosave status chip (slice 3)
+    'messages.syncSaving',
+    'messages.syncSaved',
+    'messages.syncNotSaved',
+    'messages.syncRetry',
   ];
   for (const file of localeFiles) {
     const keys = flattenKeys(parsed[file]);

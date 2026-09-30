@@ -177,11 +177,24 @@ function _onTimeout() {
     }
   }
 
+  // Persist anything still pending before the session is abandoned: the
+  // participant is sent to the timeout page and never returns to this view.
+  // Capped so a hanging save cannot keep the diary open indefinitely.
+  const pendingSave = window.autosave?.flush?.();
+  const saveSettled = pendingSave
+    ? Promise.race([
+        pendingSave.catch(() => ({})),
+        new Promise((resolve) => setTimeout(resolve, 4000)),
+      ])
+    : Promise.resolve();
+
   // Brief delay so the user sees the final state, then redirect
   // Use replace() to avoid the diary page being in history
-  setTimeout(() => {
-    window.location.replace(_buildTimeoutRedirectUrl());
-  }, 1500);
+  saveSettled.then(() => {
+    setTimeout(() => {
+      window.location.replace(_buildTimeoutRedirectUrl());
+    }, 1500);
+  });
 }
 
 /**

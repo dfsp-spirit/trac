@@ -7,6 +7,7 @@ import {
   positionToMinutes,
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
+import { SYNC_STATUS_SAVED_VISIBLE_MS, syncStatusView } from './sync_status.js';
 import {
   navigateToTimelineByKey,
   renderActivities,
@@ -72,6 +73,119 @@ function showToast(message, type = 'info', duration = 3000, action = null) {
 
 // Make showToast globally available for debugging and accessibility
 window.showToast = showToast;
+
+// ---------------------------------------------------------------------------
+// Autosave status chip
+//
+// Save Day is no longer the only way a day reaches the backend, so the diary has
+// to say what happened to the day by itself: "Saving..." while an edit is on its
+// way, "Saved" briefly afterwards, and - the part that matters - a persistent
+// "Not saved" with a Retry that does not wait for the engine's own backoff.
+// Silent autosave failure would be worse than a failed explicit save.
+//
+// The chip sits next to Save Day because that is where "is my day stored?" is
+// looked for; sync_status.js owns the state -> label mapping.
+// ---------------------------------------------------------------------------
+let syncStatusHideTimer = null;
+
+function uiText(key, fallback) {
+  return window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
+}
+
+/** Build the chip on first use, next to Save Day. */
+function ensureSyncStatusChip() {
+  const existing = document.getElementById('syncStatus');
+  if (existing) return existing;
+
+  // Falls back to the toolbar itself, so removing Save Day does not take the
+  // status with it.
+  const anchor =
+    document.getElementById('saveDayBtn') ||
+    document.querySelector('.header-section .controls');
+  if (!anchor || !anchor.parentElement) return null;
+
+  const chip = document.createElement('span');
+  chip.id = 'syncStatus';
+  chip.className = 'sync-status';
+  // role=status + aria-live announces the text; the retry is an ordinary button
+  // inside it, so it keeps its own role.
+  chip.setAttribute('role', 'status');
+  chip.setAttribute('aria-live', 'polite');
+  chip.hidden = true;
+
+  const icon = document.createElement('i');
+  icon.className = 'fas sync-status-icon';
+  icon.setAttribute('aria-hidden', 'true');
+
+  const text = document.createElement('span');
+  text.className = 'sync-status-text';
+
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.className = 'btn sync-status-retry';
+  retry.hidden = true;
+  retry.addEventListener('click', () => {
+    // flush() clears the scheduled backoff, so this is the retry - not a second
+    // one racing the engine's own timer.
+    window.autosave?.flush?.();
+  });
+
+  chip.append(icon, text, retry);
+  anchor.insertAdjacentElement('afterend', chip);
+  return chip;
+}
+
+/**
+ * Autosave state -> chip. Called by the engine on every transition: `idle` hides
+ * it, a success confirms briefly, a failure stays until the day is stored.
+ */
+function renderSyncStatus(state) {
+  const chip = ensureSyncStatusChip();
+  if (!chip) return;
+
+  if (syncStatusHideTimer !== null) {
+    clearTimeout(syncStatusHideTimer);
+    syncStatusHideTimer = null;
+  }
+
+  const view = syncStatusView(state);
+  if (!view) {
+    chip.hidden = true;
+    return;
+  }
+
+  chip.hidden = false;
+  chip.classList.toggle('is-progress', view.kind === 'progress');
+  chip.classList.toggle('is-saved', view.kind === 'ok');
+  chip.classList.toggle('is-error', view.kind === 'error');
+
+  const icon = chip.querySelector('.sync-status-icon');
+  icon.className = `fas sync-status-icon ${view.icon}${
+    view.spin ? ' fa-spin' : ''
+  }`;
+
+  // data-i18n so the next applyTranslations() pass (language switch) rewrites
+  // the text from the same key.
+  const text = chip.querySelector('.sync-status-text');
+  text.setAttribute('data-i18n', view.textKey);
+  text.textContent = uiText(view.textKey, state);
+
+  const retry = chip.querySelector('.sync-status-retry');
+  retry.hidden = !view.canRetry;
+  if (view.canRetry) {
+    retry.setAttribute('data-i18n', 'messages.syncRetry');
+    retry.textContent = uiText('messages.syncRetry', 'Retry');
+  }
+
+  if (view.kind === 'ok') {
+    syncStatusHideTimer = setTimeout(() => {
+      syncStatusHideTimer = null;
+      chip.hidden = true;
+    }, SYNC_STATUS_SAVED_VISIBLE_MS);
+  }
+}
+
+window.renderSyncStatus = renderSyncStatus;
 
 // Create invisible overlays for disabled buttons to capture real mouse/touch events
 function createDisabledButtonOverlay(buttonId) {
@@ -1168,6 +1282,12 @@ function updateButtonStates() {
   // Keep the context bar and any open menu in sync (both no-ops off phones).
   refreshMobileContextBar();
   refreshOpenMenuItems();
+
+  // Autosave trigger. Every mutation path ends here (including the ends of drag
+  // and resize gestures), but so do pure re-renders - the engine compares the
+  // serialised day with the last stored one, so nothing is written unless the
+  // day really changed. See js/autosave.js.
+  window.autosave?.notePossibleChange?.();
 }
 
 /**
@@ -1447,6 +1567,10 @@ const handleSaveDayAction = async () => {
     // updated - the day buttons' green/grey state and the Submit gate - is
     // computed locally from the coverage rules.
     refreshDayStatusAfterSave();
+
+    // An explicit save is also the autosave baseline: without this the engine
+    // would write the same content again on the next change.
+    window.autosave?.markSaved?.();
 
     const daySavedMsg = window.i18n
       ? window.i18n.t('messages.daySavedStayOnPage')
@@ -2263,9 +2387,11 @@ function initButtons() {
 
       try {
         // Persist the current day before submitting so the backend validates
-        // the exact visible state.  Submit is a rare explicit action, so the
-        // extra save round-trip is acceptable.
-        const saveResult = await sendData();
+        // the exact visible state. Submitting is a rare explicit action, so
+        // waiting for a flush here is acceptable.
+        const saveResult = window.autosave
+          ? await window.autosave.flush()
+          : await sendData();
 
         if (!saveResult?.success) {
           const submitErrorMessage = window.i18n

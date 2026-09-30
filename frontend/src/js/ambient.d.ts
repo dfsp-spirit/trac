@@ -27,6 +27,7 @@ interface Window {
   tudIdleTimeout: any;
   TUDRefreshFooter: any;
   // shared state / caches
+  autosave: any;
   activitiesConfigCache: any;
   activitiesConfigCacheByKey: any;
   selectedActivity: any;
@@ -50,6 +51,7 @@ interface Window {
   handleCustomActivityModalClose?: (...args: any[]) => any;
   initModalFocusManagement?: (...args: any[]) => any;
   renderPreviousDaysSwitchRow?: (...args: any[]) => any;
+  renderSyncStatus?: (state: string) => void;
   showActivityContextMenu?: (...args: any[]) => any;
   showConfirmDialog?: (...args: any[]) => any;
   showCopyTargetPicker?: (...args: any[]) => any;

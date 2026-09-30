@@ -1756,6 +1756,93 @@ body.carrying-activity .modal-close {
   background-color: #1d4ed8;
 }
 
+/* Autosave status chip (ui.js renderSyncStatus). Deliberately quiet - it sits in
+   the toolbar next to Save Day, where it answers "is my day stored?" without
+   competing with the actions. Only the failure state takes the danger colour,
+   because that is the one that asks for something. */
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background-color: var(--background-color);
+  color: var(--secondary-color);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+/* The chip is an inline-flex element, so `hidden` needs the explicit rule. */
+.sync-status[hidden] {
+  display: none;
+}
+
+.sync-status-text {
+  font-weight: 600;
+}
+
+.sync-status-icon {
+  font-size: 0.85rem;
+}
+
+.sync-status.is-saved {
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
+  color: var(--success-color);
+}
+
+.sync-status.is-error {
+  border-color: #fecaca;
+  background-color: #fef2f2;
+  color: var(--danger-color);
+}
+
+/* The retry is a real button: it must be tappable (24x24 minimum) inside a chip
+   that is otherwise not interactive. */
+.btn.sync-status-retry {
+  min-width: auto;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 8px;
+  border: none;
+  background-color: var(--danger-color);
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.btn.sync-status-retry:hover:not(:disabled) {
+  background-color: #b91c1c;
+}
+
+.btn.sync-status-retry[hidden] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-status .fa-spin {
+    animation: none;
+  }
+}
+
+/* On a phone the toolbar has no spare row: inline, the chip pushes Save Day onto
+   a second line and grows the header by 38 px every time an edit is saved
+   (measured 99 -> 137 px), i.e. the working area would jump while the
+   participant is editing. It floats instead, mirroring the "+" button on the
+   other side, which also keeps it visible while the timeline is scrolled. */
+@media (max-width: 1439.98px) {
+  .sync-status {
+    position: fixed;
+    left: 12px;
+    bottom: max(80px, calc(var(--footer-height, 80px) + 20px));
+    z-index: 900;
+    max-width: calc(100vw - 24px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
 /* Two classes so the colour survives the later `.btn { color: white }` rule:
    white on this light background rendered the label invisible (1.23:1). */
 .btn.skip-btn {

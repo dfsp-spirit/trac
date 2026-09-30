@@ -741,15 +741,146 @@ of a reload (a save no longer navigates), and
 that is what the test is actually about. Full chromium suite: **78/78, 4.0m ->
 3.0m**; individual saves went 7.5 s -> 2.0 s, 17.2 s -> 6.2 s in the specs.
 
-### What is left of autosave (slices 2-4)
+### What is left of autosave (slice 4)
 
-Slice 2 (engine: debounce ~2 s + single-flight queue per day + flush on day
-switch/`pagehide`/idle-timeout/Submit), slice 3 (sync state
-`Saving… / Saved / Not saved`, retry with backoff, i18n x 7, E2E), slice 4 (remove
-Save Day). Non-negotiables from the assessment: single-flight (two overlapping
-snapshots on one day can duplicate or blank rows - the only corruption risk),
-visible failure state, and extending undo to Clear timeline, which becomes
-instantly permanent once edits autosave.
+Slices 2 (the engine, §14) and 3 (the visible state, §15) are done. Slice 4:
+remove Save Day, which now only duplicates what autosave does - button, its strings
+(`buttons.saveDay`, `instructions.step4.description` x 7 locales, the instructions
+page), plus the specs and helper that press it. Two things it must not lose:
+**Clear timeline needs an undo** (with autosave its delete is permanent within a
+second) and no new reload may be introduced anywhere.
+
+## 14. Done — autosave engine, slice 2 (2026-09-30)
+
+Edits reach the backend on their own now. `frontend/src/js/autosave.js` is the
+whole engine: no DOM, no network, `save` and `serialize` are injected, so every
+timing rule is unit-testable without a browser.
+
+### The rules it enforces
+
+1. **First observation only seeds the reference point.** The day the backend just
+   loaded is not written back.
+2. **Snapshot diff.** No request when the serialised day equals the last stored
+   one. This is what makes `notePossibleChange()` safe to over-call from a
+   re-render - and it matters beyond efficiency: every save re-creates the day's
+   rows, so a pointless write also moves `created_at`, i.e. the participant's
+   `diary_completed_at` (`api.py:758`).
+3. **Debounce with a ceiling.** Burst -> one request (`debounceMs` 2 s), but
+   continuous editing still saves at least every `maxWaitMs` 10 s, so the work at
+   risk stays bounded.
+4. **Single-flight.** One save at a time per day; changes made while a request is
+   in flight are queued, never overlapped. This is the corruption guard.
+5. **Retry with backoff and a state.** `[2 s, 5 s, 15 s]`, then `error`, with the
+   latest content always sent (never the snapshot that failed).
+
+API: `notePossibleChange()`, `flush()`, `markSaved()`, `resetBaseline()`,
+`dispose()`, `state()` (`idle|pending|saving|saved|error`), `isSaving()`,
+`hasPendingChanges()`, `lastSavedAt()`.
+
+### Wiring (all 11 points, `script.js` + `ui.js` + `idle_timeout.js`)
+
+- Created in `init()` right after `startIdleTimer()`:
+  `save: () => sendData()`, `serialize: () => createTimelineJSON(true)`,
+  `onSaved: () => { refreshDayStatusAfterSave(); markDaySavedForCurrentDay(); }`.
+  **Answers the day-completion question**: the day row, the submit gate and the
+  coverage indicators are refreshed after *every* autosave, not only after an
+  explicit save.
+- `notePossibleChange()` is called at the tail of `updateButtonStates()` - the one
+  chokepoint every mutation and re-render already goes through.
+- Flush points: `saveAndSwitchToDay()` (aborts the navigation if the write fails),
+  Submit Study, `visibilitychange`, `pagehide`, and the idle timeout
+  (`_onTimeout()` caps the flush at 4 s before redirecting).
+- `sendData()` takes **no options** any more; `copyDayTo()` calls `markSaved()`
+  after the source day was stored, so the copy's own save is not duplicated.
+
+### Three traps found while verifying this
+
+1. **`createTimelineJSON` was missing from `script.js`'s `./utils.js` import
+   list.** The `serialize` closure threw, from `updateButtonStates()`, so *app
+   init* failed with "Failed to initialize application" and the activity picker
+   never opened. `tsc` cannot see it: `script.js` is deliberately not `@ts-check`ed.
+   Lesson: a new cross-module call inside `script.js` is only checked at runtime -
+   run one edit-touching E2E spec right after wiring it.
+2. **`sendData()` already retries 5xx itself** (`fetchWithSmartRetry`,
+   `maxRetries: 2`, 2 s apart). A single mocked 500 therefore *succeeds* after the
+   internal retry and never surfaces as an autosave failure; the E2E retry test has
+   to fail the whole first attempt (3 requests) to reach the engine's own retry.
+3. **Specs written around "unsaved" semantics.** `mobile_activity_gestures`'
+   swipe test counted POSTs from before the placement; it now waits for the
+   placement's autosave to settle first. The no-op test needs a *filled* day (an
+   empty one makes `sendData()` short-circuit, so the write it guards would not
+   show up as a request) and the phone breakpoint, because the day/timeline sheets
+   only exist in the context bar.
+
+### Guard quality
+
+- 13 unit tests (`tests/unit/autosave.test.js`) cover the timing rules with an
+  injected clock; 5 E2E tests (`tests/e2e/autosave.spec.js`) cover what only a
+  browser can show: the edit reaches the backend and survives a reload, a burst is
+  one request, a day switch flushes first, a re-render writes nothing, and a
+  failed save is retried.
+- Fault injection: removing the two `snapshot === baseline` guards makes the
+  autosave spec fail (the day never settles - each save's `onSaved` ->
+  `updateButtonStates()` -> `notePossibleChange()` -> another save, i.e. a write
+  loop at the debounce interval). That is the regression the diff prevents.
+
+## 15. Done — visible sync state, slice 3 (2026-09-30)
+
+Autosave is silent by design, so it must not be *invisible*: a participant who
+never presses a button needs another way to see that their day is stored, and
+above all to notice when it is not.
+
+| engine state | chip |
+| --- | --- |
+| `idle` | hidden |
+| `pending` / `saving` | "Saving..." + spinner |
+| `saved` | "Saved" + check, fades after 2.5 s |
+| `error` | "Not saved" + **Retry**, stays until the day is stored |
+
+The mapping is `sync_status.js` (state -> kind / label key / icon / retry?), which
+keeps it unit-testable; `renderSyncStatus()` in `ui.js` owns the DOM and is called
+from the engine's `onStateChange`. Three properties worth keeping:
+
+- the chip is built lazily, and its anchor falls back from `#saveDayBtn` to the
+toolbar itself, so **slice 4 removing Save Day does not take the status with it**;
+- the retry calls `flush()`, which clears the scheduled backoff - it is *the*
+retry, not a second one racing the engine's own timer;
+- the text carries `data-i18n`, so a language switch re-translates it like any
+other label. `role="status"` + `aria-live="polite"` announce it; the retry is a
+real button (24x24, WCAG 2.2 SC 2.5.8); `prefers-reduced-motion` drops the
+spinner.
+
+### The placement decision (the only interesting part)
+
+Inline next to Save Day costs nothing on desktop - measured `.header-section`
+**132 px with and without** the chip. On a phone the same inline chip pushed Save
+Day onto a second toolbar row: **99 -> 137 px**, on every save, right while the
+participant is dragging blocks. It was unacceptable for the reason this whole
+plan exists, so below 1440 px the chip is `position: fixed` at the bottom left,
+mirroring the `+` button on the right: header stays **99 px**, and the chip is
+visible even when the timeline is scrolled. Guarded by
+`autosave.spec.js > the status does not push the phone layout around`.
+
+### i18n
+
+4 new keys x 7 locales: `messages.syncSaving`, `messages.syncSaved`,
+`messages.syncNotSaved`, `messages.syncRetry`, plus the four in the required-keys
+list of `locales_consistency`. (Chosen over a `buttons.retry` key because it keeps
+one insertion point per locale file - the anchor is the identical `✓` line.)
+
+### Guards
+
+- 8 unit tests (`tests/unit/sync_status.test.js`): every engine state has a
+presentation, `idle`/unknown hide the chip, only the progress states spin, only
+the failure offers a retry, a failure never shares its label with a success, and
+the confirmation outlasts the debounce it follows.
+- 3 E2E: the chip is hidden until the first edit, shows Saving... then Saved and
+then fades; a failed save shows "Not saved" with a retry that stores the day
+(within 1.5 s of the click, i.e. before the engine's own 2 s backoff, so the click
+is provably what caused the request); and the phone layout guard above.
+- Fault injection: making `onStateChange` a no-op fails the chip test
+(`#syncStatus` never appears), and removing the retry's click handler fails the
+retry test (`attempts` stays at 3 inside the poll window).
 
 ## Known landmine — done in §3 (the gesture was removed)
 
@@ -768,8 +899,9 @@ and it is the only control that can silently save a day mid-drag. **Removed in
 
 ## Deferred — autosave instead of "Save Day" (decided 2026-09-30)
 
-**Slices 0 and 1 are done — see §13** (cheap write path, no reload after save).
-What follows is the original assessment, still valid for slices 2–4.
+**Slices 0-3 are done — see §13** (cheap write path, no reload after save),
+**§14** (the autosave engine) **and §15** (the visible sync state). What follows is
+the original assessment, still valid for slice 4.
 
 Question: save after every action, so the reloads and the Save button disappear?
 Answer: **not now, and not as a prerequisite for the mobile work.**
@@ -824,15 +956,15 @@ if autosave lands later the sheet just loses its save step. Add no new reloads.
 
 ## Test status / debt
 
-Green 2026-09-30 after §13: `sh test_frontend_typecheck.sh`,
-`sh test_frontend_unit.sh` (69/69, incl. `locales_consistency` key-set +
-untranslated-value guards and the `page_titles` guards), the backend suites
-(`test_backend_unit.sh` 156/156, `uv run pytest tests/integration` 126/126 against
-the running dev server), and on chromium **78/78** in **3.0 min** (the suite got
-27 % faster once saving stopped reloading the page).
+Green 2026-09-30 after §15: `sh test_frontend_typecheck.sh`,
+`sh test_frontend_unit.sh` (90/90, incl. `locales_consistency` key-set +
+untranslated-value guards, the `page_titles` guards, the 13 `autosave` and the 8
+`sync_status` tests), the backend suites (`test_backend_unit.sh` 156/156,
+`uv run pytest tests/integration` 126/126 against the running dev server), and on
+chromium **86/86** in **3.9 min**.
 New specs added during this work: `mobile_activity_gestures` (§3),
 `mobile_context_bar` (§4, day/timeline sheets + the copy row),
-`page_titles` (§10).
+`page_titles` (§10), `autosave` (§14 engine, §15 status chip).
 
 Everything that had to be adapted for steps 4–6 has been adapted:
 
