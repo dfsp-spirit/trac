@@ -1806,16 +1806,21 @@ body.carrying-activity .modal-close {
   font-size: 0.85rem;
 }
 
+/* The text sits on its own tinted background, not on --background-color, so the
+   --success-color / --danger-color used for borders and icons are too light as
+   text: axe measured 3.58:1 (green on #ecfdf5) and 4.41:1 (red on #fef2f2) at
+   this 12.8px, both below the 4.5:1 WCAG AA needs. Darker shades of the same
+   hues keep the meaning: 5.21:1 and 5.91:1. */
 .sync-status.is-saved {
   border-color: #a7f3d0;
   background-color: #ecfdf5;
-  color: var(--success-color);
+  color: #047857;
 }
 
 .sync-status.is-error {
   border-color: #fecaca;
   background-color: #fef2f2;
-  color: var(--danger-color);
+  color: #b91c1c;
 }
 
 /* The retry is a real button: it must be tappable (24x24 minimum) inside a chip
