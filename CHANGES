@@ -2,8 +2,8 @@ TRAC MPIAE Changes
 ===================
 
 
-Version 0.20.1 -- i18n hardening
---------------------------------
+Version 0.22.0 -- Optional opt-in browser identification
+--------------------------------------------------------
 - NEW: browser/device identification, so researchers can tell whether the app
   works for participants on different devices (it complements the questions
   participants are asked about their experience). A study opts in with the new
@@ -53,6 +53,11 @@ Version 0.20.1 -- i18n hardening
   The footer now collapses entirely while it has no visible action, which is the
   case for every study with `allow_skip_timeuse: false`: an empty action row was
   costing a full row of vertical space on phones.
+
+
+
+Version 0.21.0 -- New mobile interface, i18n hardening, clarify DB migration policy
+------------------------------------------------------------------------------------
 - NEW: the database schema is documented as forward-only, and that policy now has
   tests. `backend/tests/migrations/` (run with the new `./test_backend_migrations.sh`,
   which starts a throwaway database) executes the real migrations, which no other
