@@ -1,5 +1,6 @@
 // @ts-check
 // settings/study_config_manager.js - IMPROVED
+import { captureClientInfoIfEnabled } from './client_info.js';
 console.log('=== Study Config Manager Loading ===');
 
 // Simple retry helper for background sync operations
@@ -674,6 +675,12 @@ async function syncWithBackendConfig() {
           backendConfig.hide_server_wide_links;
       }
 
+      // Browser/device identification capture (per-study opt-out, on by default).
+      if (backendConfig.save_browser_identification != null) {
+        CURRENT_STUDY_CACHE.save_browser_identification =
+          backendConfig.save_browser_identification;
+      }
+
       if (backendConfig.consent_given !== undefined) {
         CURRENT_STUDY_CACHE.consent_given = backendConfig.consent_given;
       }
@@ -738,6 +745,17 @@ async function syncWithBackendConfig() {
       // Store full backend config for reference
       CURRENT_STUDY_CACHE.backend_config = backendConfig;
       CURRENT_STUDY_CACHE.source = 'backend';
+
+      // Best-effort, fire-and-forget: record browser/device identification once
+      // per participant. Never blocks or breaks study initialisation. Skipped
+      // until consent is given when the study requires it.
+      void captureClientInfoIfEnabled({
+        studyNameShort: CURRENT_STUDY_CACHE.name_short || studyName,
+        participantId,
+        enabled: CURRENT_STUDY_CACHE.save_browser_identification,
+        requiresConsent: CURRENT_STUDY_CACHE.require_consent === true,
+        consentGiven: CURRENT_STUDY_CACHE.consent_given === true,
+      });
 
       console.log('[TRAC day-label-debug] study cache after backend sync', {
         selected_language: CURRENT_STUDY_CACHE.selected_language,
