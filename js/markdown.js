@@ -93,3 +93,13 @@ export function renderMarkdown(markdown) {
   flushList();
   return chunks.join('');
 }
+
+/**
+ * Render one line of inline markdown (bold, italic, links) without wrapping it
+ * in a block element. Used for study text that has to live inside an existing
+ * element - e.g. the instructions page's `<h1>` study title, where a heading
+ * marker would nest a heading inside a heading.
+ */
+export function renderInlineMarkdown(markdown) {
+  return parseInlineMarkdown(String(markdown ?? '').trim());
+}
