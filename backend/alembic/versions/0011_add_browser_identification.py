@@ -7,9 +7,10 @@ Create Date: 2026-10-01 00:00:00.000000
 Adds per-study opt-out and per-participant storage for browser/device
 identification data:
 
-* ``studies.save_browser_identification`` -- when true (the server default, so
-  existing studies get it enabled), the frontend captures the raw user agent
-  plus a parsed ``ua-parser-js`` snapshot and posts it once per participant.
+* ``studies.save_browser_identification`` -- opt-in flag; when true the frontend
+  captures the raw user agent plus a parsed ``ua-parser-js`` snapshot and posts
+  it once per participant. It defaults to false (the server default), so neither
+  existing nor new studies start collecting this data without an explicit choice.
 * ``study_participants.user_agent`` / ``client_info`` / ``client_info_captured_at``
   -- the captured data itself, stored on the study-participant association so the
   existing activities export can reuse the rows it already loads.
@@ -41,10 +42,14 @@ def upgrade() -> None:
             sa.Boolean(),
             nullable=False,
             # Real boolean literal so SQLAlchemy compiles it per dialect:
-            # PostgreSQL/SQLite -> DEFAULT true / 1, MSSQL (BIT) -> DEFAULT 1,
-            # MySQL/MariaDB -> DEFAULT true. A raw text "1" breaks PostgreSQL,
+            # PostgreSQL/SQLite -> DEFAULT false / 0, MSSQL (BIT) -> DEFAULT 0,
+            # MySQL/MariaDB -> DEFAULT false. A raw text "0" breaks PostgreSQL,
             # where BOOLEAN DEFAULT must be a boolean, not an integer.
-            server_default=sa.true(),
+            #
+            # Opt-in: existing studies are left with the feature off, exactly
+            # like newly created ones, so nothing starts collecting device data
+            # without an explicit decision.
+            server_default=sa.false(),
         ),
     )
     op.add_column(

@@ -88,11 +88,12 @@ class Study(SQLModel, table=True):
         default=None, sa_column=Column(JSON, nullable=True)
     )
     hide_server_wide_links: bool = Field(default=False)
-    # When true (default), the frontend captures browser/device identification
-    # data (raw user agent + parsed ua-parser-js result + a few environment
-    # signals) and stores it per participant. Used to assess whether the app
-    # works across different devices. Can be disabled per study.
-    save_browser_identification: bool = Field(default=True)
+    # When true (opt-in, default false), the frontend captures browser/device
+    # identification data (raw user agent + parsed ua-parser-js result + a few
+    # environment signals) and stores it per participant. Used to assess whether
+    # the app works across different devices. Off by default so that studies
+    # have to make a deliberate choice about collecting this personal data.
+    save_browser_identification: bool = Field(default=False)
     # Usernames of the scientists who own (i.e. administer) this study.
     # `None` means the study is not owned by any scientist and can only be
     # managed by super admins. Stored as JSON so a study can have several owners.
@@ -423,8 +424,13 @@ class StudyParticipant(SQLModel, table=True):
     # kept verbatim so it can be re-parsed later when parsing rules improve;
     # `client_info` holds the parsed snapshot plus extra environment signals.
     user_agent: Optional[str] = Field(default=None, sa_type=String(2048))
+    # none_as_null=True so an empty capture is a real SQL NULL, not the JSON
+    # value `null`. SQLAlchemy's default (none_as_null=False) would store "null",
+    # which makes `WHERE client_info IS NOT NULL` match rows that hold no data.
+    # The type has to be instantiated (not passed as a class) for the option to
+    # reach the type instead of being treated as a Column dialect argument.
     client_info: Optional[Dict[str, Any]] = Field(
-        default=None, sa_column=Column(JSON, nullable=True)
+        default=None, sa_column=Column(JSON(none_as_null=True), nullable=True)
     )
     client_info_captured_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)

@@ -319,7 +319,13 @@ its own title scale; this table is about the instructions page.)
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `save_browser_identification` | boolean | No | If `true` (default), the frontend captures browser/device identification data once per participant (raw `navigator.userAgent`, a parsed `ua-parser-js` snapshot, Client Hints where available, and a few screen/touch signals) and the backend stores it with the participant. Set to `false` to disable capture entirely for this study. Default: `true`. |
+| `save_browser_identification` | boolean | No | Opt-in, default `false`. When set to `true`, the frontend captures browser/device identification data once per participant (raw `navigator.userAgent`, a parsed `ua-parser-js` snapshot, Client Hints where available, and a few screen/touch signals) and the backend stores it with the participant. |
+
+This setting is **off by default on purpose**: a user agent combined with screen
+metrics is personal, potentially identifying data, so a study has to opt in
+explicitly rather than starting to collect it unnoticed. When enabling it, also
+mention it in the study consent text (`study_text_consent`) where the applicable
+legislation requires it.
 
 Captured data is exported with the research data and is intended to help assess
 whether the app works for participants on different devices (see the exports
@@ -328,10 +334,7 @@ spoofed or missing; treat it as a hint, not as verified fact.
 
 Consent is respected: for studies with `require_consent: true`, no device data is
 captured until the participant has given consent. Participants who never reach
-(or refuse) the consent step are therefore absent from the capture. Because a user
-agent combined with screen metrics can be identifying, also mention this in the
-study consent text (`study_text_consent`) where the applicable legislation
-requires it.
+(or refuse) the consent step are therefore absent from the capture.
 
 When enabled, the data is stored on the study-participant association, so
 participants who never logged a single activity are still covered by the

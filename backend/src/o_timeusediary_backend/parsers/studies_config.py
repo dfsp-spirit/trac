@@ -444,11 +444,13 @@ class CfgFileStudy(BaseModel):
         description="When true, hide the server-wide legal links (imprint/privacy) from the footer.",
     )
     save_browser_identification: bool = Field(
-        default=True,
+        default=False,
         description=(
-            "When true (default), capture browser/device identification data "
+            "Opt-in. When true, capture browser/device identification data "
             "(raw user agent, parsed ua-parser-js result, and a few environment "
-            "signals) once per participant and export it with the research data."
+            "signals) once per participant and export it with the research data. "
+            "Off by default because this is personal data that studies have to "
+            "choose to collect deliberately; mention it in the consent text."
         ),
     )
 

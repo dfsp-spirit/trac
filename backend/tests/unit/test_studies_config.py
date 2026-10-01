@@ -154,23 +154,10 @@ def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
     assert config.studies[0].allow_skip_timeuse is False
 
 
-def test_load_studies_config_save_browser_identification_defaults_true(tmp_path):
-    """Browser/device identification is collected unless a study opts out."""
+def test_load_studies_config_save_browser_identification_defaults_false(tmp_path):
+    """Browser/device identification is opt-in and must stay off unless asked for."""
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()
-
-    config_file = tmp_path / "studies_config.json"
-    config_file.write_text(json.dumps(payload), encoding="utf-8")
-
-    config = load_studies_config(str(config_file))
-
-    assert config.studies[0].save_browser_identification is True
-
-
-def test_load_studies_config_accepts_save_browser_identification_setting(tmp_path):
-    _write_default_multilingual_activities(tmp_path)
-    payload = _valid_studies_payload()
-    payload["studies"][0]["save_browser_identification"] = False
 
     config_file = tmp_path / "studies_config.json"
     config_file.write_text(json.dumps(payload), encoding="utf-8")
@@ -178,6 +165,19 @@ def test_load_studies_config_accepts_save_browser_identification_setting(tmp_pat
     config = load_studies_config(str(config_file))
 
     assert config.studies[0].save_browser_identification is False
+
+
+def test_load_studies_config_accepts_save_browser_identification_opt_in(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["save_browser_identification"] = True
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].save_browser_identification is True
 
 
 def _external_task_payload_open_pool(

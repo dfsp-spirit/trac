@@ -237,9 +237,11 @@ async def test_browser_identification_is_stored_and_exported(
     participant_without_activity = f"it_bi_b_{uuid.uuid4().hex[:6]}"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        await _import_study(client, study_name_short)
+        await _import_study(
+            client, study_name_short, save_browser_identification=True
+        )
 
-        # The flag defaults to true and is part of the study-config contract.
+        # Opting in is visible in the study-config contract.
         config_response = await client.get(
             f"{BASE_URL}/api/studies/{study_name_short}/study-config"
         )
@@ -322,7 +324,9 @@ async def test_client_info_is_upserted_and_counted(created_studies_for_cleanup):
     participant_id = f"it_bi_u_{uuid.uuid4().hex[:6]}"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        await _import_study(client, study_name_short)
+        await _import_study(
+            client, study_name_short, save_browser_identification=True
+        )
 
         first_response = await _submit_client_info(
             client, study_name_short, participant_id
@@ -357,16 +361,15 @@ async def test_client_info_is_upserted_and_counted(created_studies_for_cleanup):
 
 
 @pytest.mark.asyncio
-async def test_disabled_study_stores_nothing(created_studies_for_cleanup):
-    """A study with the flag off accepts the call but stores no data."""
+async def test_disabled_by_default_stores_nothing(created_studies_for_cleanup):
+    """Capture is off unless a study opts in: the call is accepted but stores nothing."""
     study_name_short = f"it_browser_{uuid.uuid4().hex[:8]}"
     created_studies_for_cleanup.append(study_name_short)
     participant_id = f"it_bi_d_{uuid.uuid4().hex[:6]}"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        await _import_study(
-            client, study_name_short, save_browser_identification=False
-        )
+        # No flag passed: this is the default a study gets.
+        await _import_study(client, study_name_short)
 
         config_response = await client.get(
             f"{BASE_URL}/api/studies/{study_name_short}/study-config"
@@ -413,7 +416,9 @@ async def test_participant_export_csv_and_filter(created_studies_for_cleanup):
     participant_without_client_info = f"it_bi_e_{uuid.uuid4().hex[:6]}"
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        await _import_study(client, study_name_short)
+        await _import_study(
+            client, study_name_short, save_browser_identification=True
+        )
         await _submit_client_info(
             client, study_name_short, participant_with_client_info
         )

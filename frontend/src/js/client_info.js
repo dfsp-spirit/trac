@@ -17,9 +17,10 @@
  * - Everything here is best-effort: a failure must never break the diary, so all
  *   errors are swallowed (and logged) rather than propagated.
  *
- * Controlled by the per-study `save_browser_identification` flag (default on);
- * the backend enforces the flag as well and stores nothing when it is disabled.
- * For studies that require consent, capture is skipped until consent is given.
+ * Controlled by the per-study `save_browser_identification` flag, which is
+ * **opt-in and off by default** (the backend enforces the flag as well and
+ * stores nothing when it is disabled). For studies that require consent,
+ * capture is skipped until consent is given.
  *
  * @module client_info
  */
