@@ -59,9 +59,9 @@
  * @property {Record<string,string>|null} [inactivity_page_custom_text]
  * @property {Array<Record<string,unknown>>|null} [footer_links]
  * @property {boolean} [hide_server_wide_links]
- * @property {boolean} [save_browser_identification]  when true (default), the
- *   frontend captures browser/device identification once per participant and
- *   the backend stores it for export
+ * @property {boolean} [save_browser_identification]  opt-in (default false); when
+ *   true, the frontend captures browser/device identification once per
+ *   participant and the backend stores it for export
  * @property {boolean|null} [consent_given]
  * @property {string|null} [consent_decided_at]
  * @property {boolean} [instructions_completed]
