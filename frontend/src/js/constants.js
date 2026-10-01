@@ -8,4 +8,4 @@ export const TIMELINE_HOURS = 24;
 
 // Debug mode
 export const DEBUG_MODE = true;
-export const TUD_FRONTEND_VERSION = '0.20.1';
+export const TUD_FRONTEND_VERSION = '0.21.0'; // Update this version number when making changes to the frontend code
