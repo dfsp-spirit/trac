@@ -2,9 +2,14 @@ TRAC MPIAE Changes
 ===================
 
 
-Version 0.23.0 -- Make instructions title configurable
+Current WIP -- Version 0.23.0 -- Make instructions title configurable
 --------------------------------------------------------
 - NEW: make page title of instructions text configurable by user via study_text_instructions_title key in studies_config.json section of study.
+- FIX: record the stored (DBMS-normalized) capture instant as the browser
+  identification blob's `first_captured_at` instead of the pre-write Python
+  timestamp. MySQL/MariaDB and SQL Server keep less sub-second precision than
+  PostgreSQL, so the datetime column and the blob used to disagree on the same
+  capture, which made the backend integration tests fail on those DBMS.
 
 
 

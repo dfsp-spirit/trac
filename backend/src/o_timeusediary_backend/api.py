@@ -9691,6 +9691,7 @@ def submit_participant_client_info(
     existing_blob = (
         association.client_info if isinstance(association.client_info, dict) else {}
     )
+    existing_first_captured_at = existing_blob.get("first_captured_at")
     stored_blob: Dict[str, Any] = dict(payload.client_info or {})
     try:
         capture_count = int(existing_blob.get("capture_count") or 0) + 1
@@ -9698,7 +9699,7 @@ def submit_participant_client_info(
         capture_count = 1
     stored_blob["capture_count"] = capture_count
     stored_blob["first_captured_at"] = (
-        existing_blob.get("first_captured_at") or now.isoformat()
+        existing_first_captured_at or now.isoformat()
     )
     stored_blob["server_user_agent_header"] = server_user_agent
 
@@ -9706,6 +9707,23 @@ def submit_participant_client_info(
     association.client_info = stored_blob
     association.client_info_captured_at = now
     session.add(association)
+    session.flush()
+
+    if not existing_first_captured_at:
+        # The sub-second precision of a timestamp column is a DBMS property
+        # (MySQL/MariaDB DATETIME keeps whole seconds, SQL Server rounds to
+        # milliseconds, PostgreSQL keeps microseconds). Read the value that was
+        # actually stored and record that exact instant as the blob's
+        # first_captured_at, so the blob and the client_info_captured_at column
+        # never claim two different instants for the same capture -- they are
+        # exported side by side.
+        session.refresh(association)
+        stored_captured_at = association.client_info_captured_at
+        if stored_captured_at is not None:
+            stored_blob["first_captured_at"] = stored_captured_at.isoformat()
+        association.client_info = stored_blob
+        session.add(association)
+
     session.commit()
     session.refresh(association)
 
