@@ -315,6 +315,28 @@ its own title scale; this table is about the instructions page.)
 | `footer_links` | `[object]` | No | Array of study-specific footer links. Each link has `title` (localized map), `target_url` (string), and `in_new_tab` (boolean, default `true`). |
 | `hide_server_wide_links` | boolean | No | If `true`, hides the server-wide legal links (imprint/privacy) from the footer for this study. DIsplaying these is legally required in some countries, so check legislation before removing these. (Server-wide links are configured in the frontend in the `tud_settings.json` file.) Default: `false`. |
 
+#### Browser Identification
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `save_browser_identification` | boolean | No | If `true` (default), the frontend captures browser/device identification data once per participant (raw `navigator.userAgent`, a parsed `ua-parser-js` snapshot, Client Hints where available, and a few screen/touch signals) and the backend stores it with the participant. Set to `false` to disable capture entirely for this study. Default: `true`. |
+
+Captured data is exported with the research data and is intended to help assess
+whether the app works for participants on different devices (see the exports
+section in `README.md`). Note that it is client-supplied metadata and can be
+spoofed or missing; treat it as a hint, not as verified fact.
+
+Consent is respected: for studies with `require_consent: true`, no device data is
+captured until the participant has given consent. Participants who never reach
+(or refuse) the consent step are therefore absent from the capture. Because a user
+agent combined with screen metrics can be identifying, also mention this in the
+study consent text (`study_text_consent`) where the applicable legislation
+requires it.
+
+When enabled, the data is stored on the study-participant association, so
+participants who never logged a single activity are still covered by the
+participant export.
+
 #### Pre-Logged Activities (Admin)
 
 | Field | Type | Required | Description |

@@ -17,6 +17,10 @@ declare var TUD_SETTINGS: {
 
 declare var interact: any;
 
+// Vendored library loaded as a classic script: assets/ua-parser-js/ua-parser.min.js
+// (see js/client_info.js). Optional because a CSP or script failure may prevent it.
+declare var UAParser: any;
+
 interface Window {
   // modules that assign themselves onto window
   i18n: any;

@@ -154,6 +154,32 @@ def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
     assert config.studies[0].allow_skip_timeuse is False
 
 
+def test_load_studies_config_save_browser_identification_defaults_true(tmp_path):
+    """Browser/device identification is collected unless a study opts out."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].save_browser_identification is True
+
+
+def test_load_studies_config_accepts_save_browser_identification_setting(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["save_browser_identification"] = False
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].save_browser_identification is False
+
+
 def _external_task_payload_open_pool(
     task_key: str,
     *,

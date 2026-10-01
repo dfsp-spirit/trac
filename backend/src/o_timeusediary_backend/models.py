@@ -88,6 +88,11 @@ class Study(SQLModel, table=True):
         default=None, sa_column=Column(JSON, nullable=True)
     )
     hide_server_wide_links: bool = Field(default=False)
+    # When true (default), the frontend captures browser/device identification
+    # data (raw user agent + parsed ua-parser-js result + a few environment
+    # signals) and stores it per participant. Used to assess whether the app
+    # works across different devices. Can be disabled per study.
+    save_browser_identification: bool = Field(default=True)
     # Usernames of the scientists who own (i.e. administer) this study.
     # `None` means the study is not owned by any scientist and can only be
     # managed by super admins. Stored as JSON so a study can have several owners.
@@ -411,6 +416,17 @@ class StudyParticipant(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     study_submitted_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    # Browser/device identification captured once per participant (see the
+    # study's `save_browser_identification` flag). The raw user agent string is
+    # kept verbatim so it can be re-parsed later when parsing rules improve;
+    # `client_info` holds the parsed snapshot plus extra environment signals.
+    user_agent: Optional[str] = Field(default=None, sa_type=String(2048))
+    client_info: Optional[Dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
+    client_info_captured_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     created_at: datetime = Field(

@@ -59,6 +59,9 @@
  * @property {Record<string,string>|null} [inactivity_page_custom_text]
  * @property {Array<Record<string,unknown>>|null} [footer_links]
  * @property {boolean} [hide_server_wide_links]
+ * @property {boolean} [save_browser_identification]  when true (default), the
+ *   frontend captures browser/device identification once per participant and
+ *   the backend stores it for export
  * @property {boolean|null} [consent_given]
  * @property {string|null} [consent_decided_at]
  * @property {boolean} [instructions_completed]
@@ -122,6 +125,22 @@
  * @property {number} skipped_days_count
  * @property {number[]} copied_day_indices
  * @property {number[]} skipped_day_indices
+ */
+
+/**
+ * Browser/device identification snapshot, POST /api/studies/{study}/participants/{pid}/client-info.
+ * @typedef {Object} ClientInfoSubmitRequest
+ * @property {string|null} [user_agent]  `navigator.userAgent` verbatim, so it can be re-parsed later
+ * @property {Record<string, unknown>|null} [client_info]  ua-parser-js result plus extra signals
+ */
+
+/**
+ * Client-info submission response. `saved` is false when the study has
+ * `save_browser_identification` disabled, in which case nothing was stored.
+ * @typedef {Object} ClientInfoSubmitResponse
+ * @property {boolean} saved
+ * @property {string} [reason]
+ * @property {string|null} [client_info_captured_at]
  */
 
 export {};

@@ -276,6 +276,7 @@ Some endpoints are especially useful for automation, monitoring, backup, and int
 - `PATCH /api/admin/studies/{study_name_short}/owners` replaces the list of scientist owners of a study (`{"owner_usernames": ["alice", "bob"]}`). Only configured scientists can be owners; an empty list makes the study super-admin-only.
 - `POST` / `DELETE /api/admin/studies/{study_name_short}/owners/{username}` add or remove a single owner (both idempotent, so they are safe to retry and cannot overwrite a concurrent change by someone else). `DELETE` also removes owner entries whose account is no longer configured; scientists cannot delete themselves.
 - `GET /api/admin/export/{study_name_short}/activities` exports all recorded activities for one study in CSV or JSON, which is useful for data pipelines and integration with external systems.
+- `GET /api/admin/export/{study_name_short}/participants` exports one row per study participant (no activity data), so participants who never logged an activity are still covered. It carries the browser/device identification columns and can be joined to the activities export on `participant_id`. Pass `only_with_client_info=true` to export only participants with stored browser data.
 - `POST /api/admin/studies/{study_name_short}/assign-participants` assigns one or more participants to a study and can create participant records when needed, which is useful for automated invitation workflows.
 
 The `/api/admin/...` endpoints are protected with the same admin authentication as the admin interface.

@@ -3,6 +3,10 @@ o-timeusediary MPIAE Changes
 
 See CHANGES file in project root for later versions.
 
+Current WIP
+-----------
+* NEW: capture browser/device identification once per participant (`js/client_info.js`) when the study enables `save_browser_identification` (default on). Posts the raw user agent, a ua-parser-js 1.0.41 snapshot (vendored MIT build in `src/assets/ua-parser-js/`, see its README for licence rationale) and extra signals such as Client Hints, screen size and touch support. Uses `navigator.sendBeacon` (falling back to `fetch` with `keepalive`) so the capture survives the redirect that normally follows study-config load, and is skipped for consent-requiring studies until consent is given. Best-effort only: never blocks or breaks the diary.
+
 Version 0.7.1 -- Bug fixes
 --------------------------
 * NEW: add top-bar "Skip time reporting" button with confirmation modal that redirects to thank-you page

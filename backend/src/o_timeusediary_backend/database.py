@@ -700,6 +700,14 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                             study_config.hide_server_wide_links
                         )
                         study_updated = True
+                    if (
+                        existing_study.save_browser_identification
+                        != study_config.save_browser_identification
+                    ):
+                        existing_study.save_browser_identification = (
+                            study_config.save_browser_identification
+                        )
+                        study_updated = True
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
                             existing_participant = session.exec(
@@ -915,6 +923,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     inactivity_page_custom_text=study_config.inactivity_page_custom_text,
                     footer_links=config_footer_links,
                     hide_server_wide_links=study_config.hide_server_wide_links,
+                    save_browser_identification=study_config.save_browser_identification,
                 )
                 session.add(study)
                 # Keep study creation in the same transaction as dependent rows.

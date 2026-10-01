@@ -443,6 +443,14 @@ class CfgFileStudy(BaseModel):
         default=False,
         description="When true, hide the server-wide legal links (imprint/privacy) from the footer.",
     )
+    save_browser_identification: bool = Field(
+        default=True,
+        description=(
+            "When true (default), capture browser/device identification data "
+            "(raw user agent, parsed ua-parser-js result, and a few environment "
+            "signals) once per participant and export it with the research data."
+        ),
+    )
 
     def get_activities_json_files(self) -> Dict[str, str]:
         if isinstance(self.activities_json_files, dict) and self.activities_json_files:
