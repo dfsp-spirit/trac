@@ -7,57 +7,26 @@ Version 0.22.0 -- Optional opt-in browser identification
 - NEW: browser/device identification, so researchers can tell whether the app
   works for participants on different devices (it complements the questions
   participants are asked about their experience). A study opts in with the new
-  `save_browser_identification` setting (studies config file, `studies` table,
-  study-config API). It is off by default and has to be switched on
-  deliberately: a user agent combined with screen metrics is personal,
-  potentially identifying data, and a study that wants it should say so in its
-  consent text. Studies with `require_consent: true` capture nothing until
-  consent is given. The frontend posts the raw `navigator.userAgent`, a parsed
-  `ua-parser-js` snapshot and a few environment signals (Client Hints where
-  available, screen size, touch support) once per participant to the new
-  `POST /api/studies/{study}/participants/{pid}/client-info`, which stores them
-  on the study-participant association and is a no-op for studies that did not
-  opt in. The raw user agent is kept verbatim so the records can be re-parsed
-  later when the parsing rules improve.
-- NEW: the captured data is exported with the participant answers. The
-  activities export repeats the participant-level browser columns on every row,
-  exactly like the consent and completion columns already do, and a new
-  `GET /api/admin/export/{study}/participants` exports one row per participant
-  with no activity data at all: participants who never logged a single activity
-  are the ones whose devices are most interesting, and they had no row in the
-  activities export. The study-level flag is exported as well, so empty browser
-  columns can be read as "not collected by design" rather than "collection
-  failed".
-- NEW: `ua-parser-js` is vendored in `frontend/src/assets/ua-parser-js/` at
-  version 1.0.41, the last MIT-licensed release. 2.x is AGPL-3.0-or-later and
-  serving the app would trigger its network clause, which is not a trade worth
-  making for device detection (the folder README records this and how to
-  update). The capture is sent with `navigator.sendBeacon`, falling back to
-  `fetch` with `keepalive`: it runs right after the study config loads, and for
-  studies with consent that is immediately followed by a redirect to the
-  consent page, which aborts a plain `fetch` (`net::ERR_ABORTED`) and silently
-  loses the data. Like the rest of the app it is best-effort and never blocks or
-  breaks the diary.
+  `save_browser_identification` setting. For this, `ua-parser-js` is vendored
+  in `frontend/src/assets/ua-parser-js/` at version 1.0.41, the last
+  MIT-licensed release.
 - DEV: migration 0011 adds `studies.save_browser_identification` and
   `study_participants.user_agent` / `client_info` /
-  `client_info_captured_at`. `client_info` uses `none_as_null=True` so that an
-  empty capture is a real SQL NULL rather than the JSON value `null`; with
-  SQLAlchemy's default the column held `null`, which made
-  `client_info IS NOT NULL` match every participant who had never been captured.
+  `client_info_captured_at`.
 - DEV: `README_CREATE_STUDY.md` documents the setting as opt-in and points out
-  that the data is personal and belongs in the consent text, and `README.md`
-  documents the new participant export alongside the activities export.
+  that the data is personal and usage of the feature belongs in the consent text,
+  and `README.md` documents the new participant export alongside the activities export.
+
+
+
+Version 0.21.0 -- New mobile interface, i18n hardening, clarify DB migration policy
+------------------------------------------------------------------------------------
 - CHG: drop the duplicate "Save Day" button from the diary footer. Both it and
   the button in the toolbar above the timeline called the very same save
   routine, and the toolbar one is the one users reach (it is sticky on phones).
   The footer now collapses entirely while it has no visible action, which is the
   case for every study with `allow_skip_timeuse: false`: an empty action row was
   costing a full row of vertical space on phones.
-
-
-
-Version 0.21.0 -- New mobile interface, i18n hardening, clarify DB migration policy
-------------------------------------------------------------------------------------
 - NEW: the database schema is documented as forward-only, and that policy now has
   tests. `backend/tests/migrations/` (run with the new `./test_backend_migrations.sh`,
   which starts a throwaway database) executes the real migrations, which no other
