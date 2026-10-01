@@ -416,6 +416,7 @@ class CfgFileStudy(BaseModel):
     study_text_end_noconsent: Optional[Dict[str, str]] = None
     study_text_consent: Optional[Dict[str, str]] = None
     study_text_instructions: Optional[Dict[str, str]] = None
+    study_text_instructions_title: Optional[Dict[str, str]] = None
     data_collection_start: datetime  # UTC-aware datetime, parsed from ISO 8601 string
     data_collection_end: datetime  # UTC-aware datetime, parsed from ISO 8601 string
     activities_logged_by_userid: Dict[str, Dict[str, List[CfgFileLoggedActivity]]] = (
@@ -796,6 +797,7 @@ class CfgFileStudy(BaseModel):
             "study_text_end_noconsent",
             "study_text_consent",
             "study_text_instructions",
+            "study_text_instructions_title",
         ]:
             text_map = getattr(self, text_field_name, None)
             if text_map is None:

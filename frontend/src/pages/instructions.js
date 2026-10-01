@@ -1,7 +1,7 @@
 import { getIsMobile, updateIsMobile } from '../js/globals.js';
 import i18n from '../js/i18n.js';
 import { loadActivitiesConfig } from '../js/activities_config.js';
-import { renderMarkdown } from '../js/markdown.js';
+import { renderMarkdown, renderInlineMarkdown } from '../js/markdown.js';
 import { hasPendingExternalTasks } from '../js/utils.js';
 
 function getUrlParams() {
@@ -278,6 +278,36 @@ function applyStudyInstructionsText(studyConfig) {
   );
 }
 
+/**
+ * Override the big page title with the study's own title when it defines one.
+ * Without a study title the localized default (`instructions.welcomeTitle`)
+ * that i18n already applied stays in place.
+ */
+function applyStudyTitleText(studyConfig) {
+  const titleElement = document.getElementById('study-custom-message-title');
+  if (!titleElement) {
+    return;
+  }
+
+  const selectedLanguage =
+    studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
+  const defaultLanguage = studyConfig?.default_language || 'en';
+
+  const resolvedText = resolveLocalizedStudyText(
+    studyConfig?.study_text_instructions_title,
+    selectedLanguage,
+    defaultLanguage
+  );
+
+  if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
+    // Inline markdown only: this element already is the page <h1>, so a heading
+    // marker in the study text would nest a heading inside a heading.
+    titleElement.innerHTML = renderInlineMarkdown(resolvedText);
+    // Detached from i18n so a later translation pass cannot overwrite it.
+    titleElement.removeAttribute('data-i18n');
+  }
+}
+
 function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {
   const currentUrl = new URL(window.location.href);
   const hasPendingTasks = hasPendingExternalTasks(studyConfig);
@@ -430,6 +460,7 @@ function applyCopyDayStepVisibility(studyConfig) {
     i18n.applyTranslations();
     if (studyConfig) {
       applyStudyIntroText(studyConfig);
+      applyStudyTitleText(studyConfig);
       applyStudyInstructionsText(studyConfig);
     }
     applyCopyDayStepVisibility(studyConfig);

@@ -43,6 +43,7 @@ HEAD = REVISIONS[0]
 # 0003_add_study_footer_links` assumes) and the current models.
 COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "study_text_instructions"),
+    ("studies", "study_text_instructions_title"),
     ("studies", "owner_usernames"),
     ("studies", "save_browser_identification"),
     ("day_labels", "display_names"),

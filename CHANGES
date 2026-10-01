@@ -2,6 +2,11 @@ TRAC MPIAE Changes
 ===================
 
 
+Current WIP
+------------
+- NEW: make page title of instructions text configurable by user via study_text_instructions_title key in studies_config.json section of study.
+
+
 Version 0.22.0 -- Optional opt-in browser identification
 --------------------------------------------------------
 - NEW: browser/device identification, so researchers can tell whether the app

@@ -566,6 +566,46 @@ def test_load_studies_config_rejects_supported_languages_missing_text_translatio
         load_studies_config(str(config_file))
 
 
+def test_load_studies_config_accepts_study_text_instructions_title(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["study_text_instructions_title"] = {
+        "en": "English title",
+        "sv": "Svensk titel",
+    }
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+    study = config.studies[0]
+
+    assert (
+        study.get_study_text("study_text_instructions_title", "sv") == "Svensk titel"
+    )
+    assert (
+        study.get_study_text("study_text_instructions_title", "en") == "English title"
+    )
+
+
+def test_load_studies_config_rejects_missing_title_translation(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["supported_languages"] = ["en", "sv"]
+    payload["studies"][0]["study_text_instructions_title"] = {
+        "en": "English title only",
+    }
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(
+        ValueError,
+        match="study_text_instructions_title is missing translations for supported_languages",
+    ):
+        load_studies_config(str(config_file))
+
+
 def test_load_studies_config_rejects_supported_language_without_activity_file(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()

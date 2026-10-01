@@ -51,6 +51,7 @@
  * @property {string} [study_text_end_noconsent]
  * @property {string} [study_text_consent]
  * @property {string} [study_text_instructions]
+ * @property {string} [study_text_instructions_title]
  * @property {number} study_days_count
  * @property {ApiDayLabel[]} day_labels
  * @property {ApiTimeline[]} timelines

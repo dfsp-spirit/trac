@@ -2751,6 +2751,7 @@ class ImportStudiesConfigStudy(BaseModel):
     study_text_end_noconsent: Optional[Dict[str, str]] = None
     study_text_consent: Optional[Dict[str, str]] = None
     study_text_instructions: Optional[Dict[str, str]] = None
+    study_text_instructions_title: Optional[Dict[str, str]] = None
     data_collection_start: datetime
     data_collection_end: datetime
     inactivity_timeout_minutes: int = 0
@@ -3729,6 +3730,7 @@ def _create_study_from_import_payload(
         study_text_end_noconsent=study_payload.study_text_end_noconsent,
         study_text_consent=study_payload.study_text_consent,
         study_text_instructions=study_payload.study_text_instructions,
+        study_text_instructions_title=study_payload.study_text_instructions_title,
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
@@ -4797,6 +4799,7 @@ async def export_runtime_studies_config(
                 "study_text_end_noconsent": study.study_text_end_noconsent,
                 "study_text_consent": study.study_text_consent,
                 "study_text_instructions": study.study_text_instructions,
+                "study_text_instructions_title": study.study_text_instructions_title,
                 "data_collection_start": study.data_collection_start,
                 "data_collection_end": study.data_collection_end,
             }
@@ -8859,6 +8862,7 @@ class StudyConfigResponse(BaseModel):
     study_text_end_noconsent: Optional[str] = None
     study_text_consent: Optional[str] = None
     study_text_instructions: Optional[str] = None
+    study_text_instructions_title: Optional[str] = None
     consent_given: Optional[bool] = None
     consent_decided_at: Optional[datetime] = None
     instructions_completed: bool = False
@@ -9037,6 +9041,9 @@ def get_study_config(
     study_text_instructions = _get_localized_study_text(
         study, "study_text_instructions", selected_language
     )
+    study_text_instructions_title = _get_localized_study_text(
+        study, "study_text_instructions_title", selected_language
+    )
     require_consent = bool(study.require_consent)
 
     consent_given = None
@@ -9095,6 +9102,7 @@ def get_study_config(
         study_text_end_noconsent=study_text_end_noconsent,
         study_text_consent=study_text_consent,
         study_text_instructions=study_text_instructions,
+        study_text_instructions_title=study_text_instructions_title,
         consent_given=consent_given,
         consent_decided_at=consent_decided_at,
         instructions_completed=instructions_completed,

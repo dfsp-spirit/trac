@@ -66,6 +66,12 @@ class Study(SQLModel, table=True):
     study_text_instructions: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # Optional per-study override for the big title at the top of the
+    # instructions page. When unset, the frontend keeps its localized
+    # `instructions.welcomeTitle` default.
+    study_text_instructions_title: Optional[Dict[str, str]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
     activities_json_url: str = Field(sa_type=String(2048))
     data_collection_start: datetime = Field(
         sa_column=Column(DateTime(timezone=True), nullable=False)

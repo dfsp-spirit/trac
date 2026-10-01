@@ -116,6 +116,10 @@ localized maps, e.g.:
 "study_text_instructions": {
   "en": "## How to fill out the diary\n\nClick an activity to select it, then click on the timeline to place it.",
   "de": "## So füllen Sie das Tagebuch aus\n\nKlicken Sie eine Aktivität an, um sie auszuwählen, und klicken Sie dann auf die Zeitleiste."
+},
+"study_text_instructions_title": {
+  "en": "Welcome to our weekly time diary!",
+  "de": "Willkommen zu unserem Wochen-Zeit-Tagebuch!"
 }
 ```
 
@@ -272,6 +276,7 @@ its own title scale; this table is about the instructions page.)
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `study_text_intro` | `{lang: text}` | No | Introduction text at the top of the instructions page. Markdown. Falls back to a built-in default text. |
+| `study_text_instructions_title` | `{lang: text}` | No | Title at the very top of the instructions page. Inline Markdown only (bold, italic, links) because it *is* the page heading. Falls back to a built-in localized title. |
 | `study_text_instructions` | `{lang: text}` | No | Second text block on the instructions page, below the intro (e.g. how to fill out the diary). Markdown. Falls back to a built-in default text. |
 | `study_text_end_completed` | `{lang: text}` | No | Text shown after the participant completes all days. Raw HTML. |
 | `study_text_end_skipped` | `{lang: text}` | No | Text shown if the participant skipped the time-use part. Raw HTML. |

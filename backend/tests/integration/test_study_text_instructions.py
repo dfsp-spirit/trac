@@ -62,3 +62,52 @@ async def test_study_config_returns_null_instructions_for_default_study():
     assert (
         instructions is None
     ), f"Expected null study_text_instructions for default study, got: {instructions!r}"
+
+
+@pytest.mark.asyncio
+async def test_study_config_returns_custom_instructions_title_for_15yearolds():
+    """The 15yearolds study has a custom study_text_instructions_title — verify it is returned."""
+    study_name_short = "15yearolds"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        url = f"{BASE_URL}/api/studies/{study_name_short}/study-config?lang=en"
+        response = await client.get(url)
+
+    assert (
+        response.status_code == 200
+    ), f"Expected 200, got {response.status_code}: {response.text}"
+
+    data = response.json()
+    assert (
+        "study_text_instructions_title" in data
+    ), f"study-config response missing 'study_text_instructions_title' key. Keys: {list(data.keys())}"
+
+    title = data["study_text_instructions_title"]
+    assert isinstance(
+        title, str
+    ), f"study_text_instructions_title should be a string, got {type(title)}: {title!r}"
+    assert "15-Year-Olds" in title
+
+
+@pytest.mark.asyncio
+async def test_study_config_returns_null_instructions_title_for_default_study():
+    """The 'default' study has no study_text_instructions_title — verify null is returned so the frontend keeps its i18n default."""
+    study_name_short = "default"
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        url = f"{BASE_URL}/api/studies/{study_name_short}/study-config?lang=en"
+        response = await client.get(url)
+
+    assert (
+        response.status_code == 200
+    ), f"Expected 200, got {response.status_code}: {response.text}"
+
+    data = response.json()
+    assert (
+        "study_text_instructions_title" in data
+    ), f"study-config response missing 'study_text_instructions_title' key. Keys: {list(data.keys())}"
+
+    title = data["study_text_instructions_title"]
+    assert (
+        title is None
+    ), f"Expected null study_text_instructions_title for default study, got: {title!r}"
