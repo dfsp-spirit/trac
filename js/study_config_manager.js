@@ -1,31 +1,24 @@
 // @ts-check
 // settings/study_config_manager.js - IMPROVED
 import { captureClientInfoIfEnabled } from './client_info.js';
+import { fetchWithRetry } from './api_request.js';
 console.log('=== Study Config Manager Loading ===');
 
-// Simple retry helper for background sync operations
-async function fetchWithBackgroundRetry(url, maxRetries = 2, delayMs = 1500) {
-  let lastError = null;
-  for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-    try {
-      const response = await fetch(url);
-      if (response.ok) return response;
-      // Don't retry on client errors (4xx) - return to caller for specific handling.
-      if (response.status < 500) return response;
-      // Retry on server errors (5xx)
-      throw new Error(`HTTP ${response.status}`);
-    } catch (error) {
-      lastError = error;
-      if (attempt > maxRetries) throw lastError;
-      const delay = delayMs * attempt;
+// Simple retry helper for background sync operations. The retry policy itself
+// lives in js/api_request.js so the standalone pages (consent, ...) retry the
+// same failures; only the logging differs here.
+function fetchWithBackgroundRetry(url, maxRetries = 2, delayMs = 1500) {
+  return fetchWithRetry(url, {}, {
+    maxRetries,
+    delayMs,
+    onRetry: (attempt, delay) => {
       console.log(
         `Study config sync attempt ${attempt}/${
           maxRetries + 1
         } failed, retrying in ${delay}ms...`
       );
-      await new Promise((r) => setTimeout(r, delay));
-    }
-  }
+    },
+  });
 }
 
 if (!TUD_SETTINGS) {

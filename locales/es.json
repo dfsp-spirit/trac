@@ -57,7 +57,10 @@
     "saveError": "No se pudo guardar el consentimiento. Inténtalo de nuevo.",
     "loadError": "No se pudo cargar la información de consentimiento.",
     "loadErrorReload": "No se pudo cargar la información de consentimiento. Recarga la página.",
-    "studyNotFound": "El estudio solicitado no existe."
+    "studyNotFound": "El estudio solicitado no existe.",
+    "accessDenied": "Este enlace no es válido para este estudio. Abre de nuevo tu enlace personal del estudio o contacta con el equipo del estudio.",
+    "studyUnavailable": "Este estudio no está disponible en este momento. Inténtalo de nuevo más tarde.",
+    "saveDenied": "No se pudo guardar el consentimiento: este enlace no es válido para este estudio o el estudio ya se ha enviado. Contacta con el equipo del estudio."
   },
   "common": {
     "language": "Idioma",

@@ -57,7 +57,10 @@
     "saveError": "Could not save consent. Please try again.",
     "loadError": "Could not load the consent information.",
     "loadErrorReload": "Could not load the consent information. Please reload the page.",
-    "studyNotFound": "The requested study does not exist."
+    "studyNotFound": "The requested study does not exist.",
+    "accessDenied": "This link is not valid for this study. Please open your personal study link again or contact the study team.",
+    "studyUnavailable": "This study is currently not available. Please try again later.",
+    "saveDenied": "The consent could not be saved: this link is not valid for this study or the study has already been submitted. Please contact the study team."
   },
   "common": {
     "language": "Language",

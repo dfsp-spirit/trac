@@ -57,7 +57,10 @@
     "saveError": "Suostumuksen tallentaminen epäonnistui. Yritä uudelleen.",
     "loadError": "Suostumustietojen lataaminen epäonnistui.",
     "loadErrorReload": "Suostumustietojen lataaminen ei onnistunut. Lataa sivu uudelleen.",
-    "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa."
+    "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
+    "accessDenied": "Tämä linkki ei kelpaa tähän tutkimukseen. Avaa henkilökohtainen tutkimuslinkkisi uudelleen tai ota yhteyttä tutkimusryhmään.",
+    "studyUnavailable": "Tämä tutkimus ei ole tällä hetkellä saatavilla. Yritä myöhemmin uudelleen.",
+    "saveDenied": "Suostumusta ei voitu tallentaa: linkki ei kelpaa tähän tutkimukseen tai tutkimus on jo lähetetty. Ota yhteyttä tutkimusryhmään."
   },
   "common": {
     "language": "Kieli",

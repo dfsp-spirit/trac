@@ -57,7 +57,10 @@
     "saveError": "Kunde inte spara samtycket. Försök igen.",
     "loadError": "Kunde inte läsa in samtyckesinformationen.",
     "loadErrorReload": "Kunde inte ladda samtyckesinformationen. Ladda om sidan.",
-    "studyNotFound": "Den begärda studien finns inte."
+    "studyNotFound": "Den begärda studien finns inte.",
+    "accessDenied": "Den här länken är inte giltig för den här studien. Öppna din personliga studielänk igen eller kontakta studieteamet.",
+    "studyUnavailable": "Den här studien är inte tillgänglig just nu. Försök igen senare.",
+    "saveDenied": "Samtycket kunde inte sparas: länken är inte giltig för den här studien eller så har studien redan skickats in. Kontakta studieteamet."
   },
   "common": {
     "language": "Språk",

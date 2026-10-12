@@ -292,6 +292,30 @@
     <script type="module">
         import i18n from '../js/i18n.js';
         import { renderMarkdown } from '../js/markdown.js';
+        import {
+            classifyApiFailure,
+            fetchWithRetry,
+            NO_STUDIES_AVAILABLE,
+            STUDY_PARTICIPANT_ID_REQUIRED,
+        } from '../js/api_request.js';
+
+        /**
+         * The URL carries no usable study and no frontend default study is
+         * configured. That is a broken/expired link, not a backend problem, so
+         * it must not be reported to the participant as a temporary one.
+         */
+        function missingStudyError() {
+            const error = new Error('No studies available.');
+            error.code = NO_STUDIES_AVAILABLE;
+            return error;
+        }
+
+        /** Same idea for a link that lost its participant id. */
+        function missingParticipantError() {
+            const error = new Error('Missing participant id');
+            error.code = STUDY_PARTICIPANT_ID_REQUIRED;
+            return error;
+        }
 
         function getStudyEndpoint(language) {
             const urlParams = new URLSearchParams(window.location.search);
@@ -300,7 +324,7 @@
                 window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
                 null;
             if (!studyName) {
-                throw new Error('No studies available.');
+                throw missingStudyError();
             }
             const participantId = urlParams.get('pid');
             const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
@@ -318,16 +342,41 @@
             return endpointUrl;
         }
 
+        /**
+         * Error code carried in a JSON error body (FastAPI `detail` object),
+         * e.g. `study_unavailable`. Returns null for plain-string details and
+         * for non-JSON bodies (nginx error pages, ...).
+         */
+        async function readErrorCode(response) {
+            try {
+                const payload = await response.json();
+                const detail = payload && payload.detail;
+                if (detail && typeof detail === 'object' && typeof detail.code === 'string') {
+                    return detail.code;
+                }
+            } catch (error) {
+                // Body is not JSON: the status code is all we know.
+            }
+            return null;
+        }
+
         async function loadStudyConfig(language) {
-            const response = await fetch(getStudyEndpoint(language).toString(), {
-                headers: {
-                    Accept: 'application/json',
+            // Retry transient failures (backend restart, 502/504) instead of
+            // failing on the first attempt, like the diary page does.
+            const response = await fetchWithRetry(
+                getStudyEndpoint(language).toString(),
+                {
+                    headers: {
+                        Accept: 'application/json',
+                    },
                 },
-            });
+                { maxRetries: 2, delayMs: 1000 }
+            );
 
             if (!response.ok) {
                 const error = new Error(`Failed to load study-config: ${response.status}`);
                 error.status = response.status;
+                error.code = await readErrorCode(response);
                 throw error;
             }
 
@@ -383,14 +432,16 @@
             const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
 
             if (!studyName) {
-                throw new Error('No studies available.');
+                throw missingStudyError();
             }
 
             if (!participantId) {
-                throw new Error('Missing participant id');
+                throw missingParticipantError();
             }
 
-            const response = await fetch(
+            // The endpoint is idempotent (it stores the given flag plus a
+            // timestamp), so retrying a lost response is harmless.
+            const response = await fetchWithRetry(
                 `${apiBaseUrl}/studies/${encodeURIComponent(studyName)}/participants/${encodeURIComponent(participantId)}/consent`,
                 {
                     method: 'POST',
@@ -399,12 +450,15 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({ consent_given: consentGiven }),
-                }
+                },
+                { maxRetries: 2, delayMs: 1000 }
             );
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || `Consent save failed: ${response.status}`);
+                const error = new Error(`Consent save failed: ${response.status}`);
+                error.status = response.status;
+                error.code = await readErrorCode(response);
+                throw error;
             }
 
             return await response.json();
@@ -461,6 +515,21 @@
                 }
             };
 
+            const reportSaveFailure = (error) => {
+                console.error('Failed to save consent:', error);
+                const retryable = classifyApiFailure(error) === 'temporary';
+                // A permanent failure (broken link, participant not part of the
+                // study, study already submitted) can never succeed by trying
+                // again, so say that instead of inviting an endless retry.
+                const messageKey = retryable ? 'consent.saveError' : 'consent.saveDenied';
+                setStatus(i18n.t(messageKey) || 'Could not save consent.', true);
+                if (retryable) {
+                    setBusy(false);
+                } else {
+                    disableConsentActions();
+                }
+            };
+
             acceptBtn.addEventListener('click', async () => {
                 try {
                     setBusy(true);
@@ -468,9 +537,7 @@
                     await saveConsent(true);
                     window.location.href = getSafeRedirectUrl('instructions.html');
                 } catch (error) {
-                    console.error('Failed to save consent:', error);
-                    setStatus(i18n.t('consent.saveError') || 'Could not save consent.', true);
-                    setBusy(false);
+                    reportSaveFailure(error);
                 }
             });
 
@@ -486,11 +553,58 @@
                     });
                     window.location.href = nextUrl.toString();
                 } catch (error) {
-                    console.error('Failed to save consent:', error);
-                    setStatus(i18n.t('consent.saveError') || 'Could not save consent.', true);
-                    setBusy(false);
+                    reportSaveFailure(error);
                 }
             });
+        }
+
+        /** Hide the consent actions entirely (there is nothing to consent to). */
+        function hideConsentActions() {
+            const checkboxEl = document.querySelector('.consent-checkbox');
+            if (checkboxEl) checkboxEl.style.display = 'none';
+            const actionsEl = document.querySelector('.consent-actions');
+            if (actionsEl) actionsEl.style.display = 'none';
+        }
+
+        /**
+         * Fail closed: no consent can be given or declined from a page whose
+         * study config - and therefore the participant's consent state - is
+         * unknown. The buttons stay visible but disabled, so it is obvious that
+         * the page would normally offer them, while a tick box that claims the
+         * information was read cannot be used to consent to nothing.
+         */
+        function disableConsentActions() {
+            const checkbox = document.getElementById('consentCheckbox');
+            const acceptBtn = document.getElementById('consentAcceptBtn');
+            const declineBtn = document.getElementById('consentDeclineBtn');
+            if (checkbox) checkbox.disabled = true;
+            [acceptBtn, declineBtn].forEach((button) => {
+                if (!button) return;
+                button.disabled = true;
+                button.title = '';
+            });
+        }
+
+        /**
+         * Show a load failure: the message replaces the consent text, the status
+         * line repeats it (or shows a shorter variant), and the actions are
+         * hidden (unknown study) or disabled (everything else).
+         */
+        function renderLoadFailure(messageKey, options = {}) {
+            const { statusKey = messageKey, hideActions = false } = options;
+            const message = i18n.t(messageKey) || messageKey;
+            const statusMessage =
+                statusKey === messageKey ? message : i18n.t(statusKey) || statusKey;
+            setStatus(statusMessage, true);
+            const consentTextEl = document.getElementById('study-consent-text');
+            if (consentTextEl) {
+                consentTextEl.innerHTML = '<p>' + escapeHtml(message) + '</p>';
+            }
+            if (hideActions) {
+                hideConsentActions();
+            } else {
+                disableConsentActions();
+            }
         }
 
         async function initializeConsentPage() {
@@ -619,26 +733,36 @@
                 await i18n.init(language).catch(() => {});
                 i18n.applyTranslations();
 
-                if (error && error.status === 404) {
-                    // Study not found – show a dedicated error page with no consent actions
-                    setStatus(i18n.t('consent.studyNotFound') || 'The requested study does not exist.', true);
-                    const consentTextEl = document.getElementById('study-consent-text');
-                    if (consentTextEl) {
-                        consentTextEl.innerHTML = '<p>' + escapeHtml(i18n.t('consent.studyNotFound') || 'The requested study does not exist.') + '</p>';
-                    }
-                    const checkboxEl = document.querySelector('.consent-checkbox');
-                    if (checkboxEl) checkboxEl.style.display = 'none';
-                    const actionsEl = document.querySelector('.consent-actions');
-                    if (actionsEl) actionsEl.style.display = 'none';
+                const failure = classifyApiFailure(error);
+
+                if (failure === 'notFound') {
+                    // Study not found – dedicated error view without consent actions.
+                    renderLoadFailure('consent.studyNotFound', { hideActions: true });
                     return;
                 }
 
-                setStatus(i18n.t('consent.loadError') || 'Could not load consent information.', true);
-                const consentTextEl = document.getElementById('study-consent-text');
-                if (consentTextEl) {
-                    consentTextEl.innerHTML = '<p>' + escapeHtml(i18n.t('consent.loadErrorReload')) + '</p>';
+                if (failure === 'unavailable') {
+                    // Paused or outside the collection window; the participant's
+                    // link is fine, the study is temporarily closed.
+                    renderLoadFailure('consent.studyUnavailable');
+                    return;
                 }
-                wireButtons();
+
+                if (failure === 'denied') {
+                    // Broken/expired link, or the participant is not part of the
+                    // study. Retrying and reloading cannot fix this.
+                    renderLoadFailure('consent.accessDenied');
+                    return;
+                }
+
+                // Transient (network error or 5xx): the page does not know
+                // whether the participant already consented, so it must not
+                // offer the actions (fail closed) - consenting to information
+                // that never loaded would be meaningless while the tick box
+                // claims the information was read.
+                renderLoadFailure('consent.loadErrorReload', {
+                    statusKey: 'consent.loadError',
+                });
             }
         }
 

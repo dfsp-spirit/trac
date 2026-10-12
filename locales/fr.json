@@ -57,7 +57,10 @@
     "saveError": "Impossible d'enregistrer le consentement. Veuillez réessayer.",
     "loadError": "Impossible de charger les informations de consentement.",
     "loadErrorReload": "Impossible de charger les informations de consentement. Veuillez recharger la page.",
-    "studyNotFound": "L'étude demandée n'existe pas."
+    "studyNotFound": "L'étude demandée n'existe pas.",
+    "accessDenied": "Ce lien n'est pas valide pour cette étude. Ouvrez à nouveau votre lien personnel d'étude ou contactez l'équipe de l'étude.",
+    "studyUnavailable": "Cette étude n'est pas disponible pour le moment. Veuillez réessayer plus tard.",
+    "saveDenied": "Le consentement n'a pas pu être enregistré : ce lien n'est pas valide pour cette étude ou l'étude a déjà été soumise. Veuillez contacter l'équipe de l'étude."
   },
   "common": {
     "language": "Langue",

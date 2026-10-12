@@ -57,7 +57,10 @@
     "saveError": "Die Einwilligung konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
     "loadError": "Die Einwilligungsinformationen konnten nicht geladen werden.",
     "loadErrorReload": "Die Einwilligungsinformationen konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
-    "studyNotFound": "Die angeforderte Studie existiert nicht."
+    "studyNotFound": "Die angeforderte Studie existiert nicht.",
+    "accessDenied": "Dieser Link ist für diese Studie nicht gültig. Bitte öffnen Sie Ihren persönlichen Studienlink erneut oder wenden Sie sich an das Studienteam.",
+    "studyUnavailable": "Diese Studie ist momentan nicht verfügbar. Bitte versuchen Sie es später erneut.",
+    "saveDenied": "Die Einwilligung konnte nicht gespeichert werden: Dieser Link ist für diese Studie nicht gültig oder die Studie wurde bereits abgeschickt. Bitte wenden Sie sich an das Studienteam."
   },
   "common": {
     "language": "Sprache",

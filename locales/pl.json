@@ -57,7 +57,10 @@
     "saveError": "Nie udało się zapisać zgody. Spróbuj ponownie.",
     "loadError": "Nie udało się wczytać informacji o zgodzie.",
     "loadErrorReload": "Nie udało się załadować informacji o zgodzie. Odśwież stronę.",
-    "studyNotFound": "Żądane badanie nie istnieje."
+    "studyNotFound": "Żądane badanie nie istnieje.",
+    "accessDenied": "Ten link nie jest ważny dla tego badania. Otwórz ponownie swój osobisty link do badania lub skontaktuj się z zespołem badawczym.",
+    "studyUnavailable": "To badanie jest obecnie niedostępne. Spróbuj ponownie później.",
+    "saveDenied": "Nie udało się zapisać zgody: ten link nie jest ważny dla tego badania lub badanie zostało już wysłane. Skontaktuj się z zespołem badawczym."
   },
   "common": {
     "language": "Język",
