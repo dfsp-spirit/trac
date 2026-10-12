@@ -84,7 +84,12 @@ body {
       100vh - var(--header-height, 80px) - var(--footer-height, 80px)
     );
     overscroll-behavior: none;
-    touch-action: pan-x pinch-zoom;
+    /* Vertical panning is allowed here so it can reach .timelines-wrapper, the
+       element that actually scrolls the day. Chrome already scrolled on
+       without this, but the permission has to be granted along the whole chain
+       for engines that intersect strictly (Safari), otherwise a swipe starting
+       on a block would still be dead there. */
+    touch-action: pan-x pan-y pinch-zoom;
     -webkit-overflow-scrolling: auto;
   }
 
@@ -1638,6 +1643,93 @@ body.carrying-activity .modal-close {
 @media (max-width: 1439.98px) {
   .activity-block {
     cursor: ns-resize;
+  }
+
+  /* --- Scrolling vs. resizing on the block's surface ---
+     A finger that lands on a block has to be able to scroll the timeline: on a
+     phone the blocks cover ~75 % of the timeline width, so `touch-action: none`
+     on the whole block made most of the surface a scroll dead zone - reported
+     as "the scrolling doesn't work on the phone". Block swipes may pan now.
+
+     The two ends stay reserved for resizing, because a pannable drag would make
+     the browser scroll and fire pointercancel, killing the resize in progress.
+     Their height is the measured resize band: interact starts a resize 4-20 px
+     from an end, so 16 px keeps ~80 % of the target while leaving a 30-minute
+     block (≈51 px tall) a scrollable middle. Re-tune here if that trade-off
+     ever needs to shift - it is the single place that decides it. */
+  .activity-block {
+    touch-action: pan-y pinch-zoom;
+  }
+
+  .activity-block-edge-zone {
+    display: block;
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: min(16px, 40%);
+    touch-action: none;
+    z-index: 2; /* above the block text, which is what a middle swipe hits */
+  }
+
+  .activity-block-edge-zone-top {
+    top: 0;
+  }
+
+  .activity-block-edge-zone-bottom {
+    bottom: 0;
+  }
+}
+
+/* Inert on desktop, where the block is dragged/resized with a mouse and the
+   `touch-action: none` of the base rule stays in force. */
+.activity-block-edge-zone {
+  display: none;
+}
+
+/* --- Visible resize grips (desktop) ---
+   The edges have always been draggable, but the 10 px zones above are
+   invisible and the hover tooltip took over ::before, so nothing on the block
+   announced the gesture - participants reported not knowing that a duration
+   can be adjusted by dragging its edges and asked for a visible marker
+   (participant feedback 2026-10, "like an Excel cell").
+   The grips are decoration: `pointer-events: none` keeps the block the pointer
+   target, so interact.js' edge zones and the ew-resize cursor are unchanged.
+   Hidden by default, shown while the block is targeted (hover), keyboard
+   focused, or being resized. Not shown on the phone layout (separate slice). */
+.activity-block-grip {
+  display: none;
+}
+
+@media (min-width: 1440px) {
+  .activity-block-grip {
+    display: block;
+    position: absolute;
+    top: 50%;
+    width: 4px;
+    height: 55%;
+    min-height: 12px;
+    max-height: 36px;
+    transform: translateY(-50%);
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+    opacity: 0;
+    z-index: 16; /* above the block text, below the hover tooltip (z-index 1000) */
+  }
+
+  .activity-block-grip-left {
+    left: 2px;
+  }
+
+  .activity-block-grip-right {
+    right: 2px;
+  }
+
+  .activity-block:hover .activity-block-grip,
+  .activity-block:focus-visible .activity-block-grip,
+  .activity-block.resizing .activity-block-grip {
+    opacity: 1;
   }
 }
 

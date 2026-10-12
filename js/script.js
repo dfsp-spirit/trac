@@ -1527,6 +1527,34 @@ function createActivityBlock(activityData, isFromTemplate = false) {
   bottomTooltip.textContent = currentBlock.dataset.tooltipText || '';
   currentBlock.appendChild(bottomTooltip);
 
+  // Resize grips: the left/right edges have always been draggable (a 10 px
+  // zone plus interact.js resizing), but nothing on the block showed it, so
+  // participants did not find the gesture and asked for a visible marker in
+  // the style of an Excel fill handle. The grips are decoration only
+  // (`pointer-events: none`), which keeps the block the pointer target and
+  // leaves the resize zones and cursor untouched. Whether they are shown at
+  // all is decided by the desktop media query in styles/styles.css.
+  ['left', 'right'].forEach((side) => {
+    const grip = document.createElement('span');
+    grip.className = `activity-block-grip activity-block-grip-${side}`;
+    grip.setAttribute('aria-hidden', 'true');
+    currentBlock.appendChild(grip);
+  });
+
+  // Mobile end zones: they reserve the top/bottom band of the block for the
+  // resize gesture by declaring `touch-action: none`, so the browser does not
+  // take the drag over as a scroll and cancel the resize (see the mobile rules
+  // in styles/styles.css). The rest of the block allows vertical panning, which
+  // is what makes a swipe that starts on a block scroll the timeline again -
+  // before, `touch-action: none` on the whole block turned 75 % of the timeline
+  // width into a scroll dead zone ("Handy-Scrollen defekt").
+  ['top', 'bottom'].forEach((end) => {
+    const zone = document.createElement('span');
+    zone.className = `activity-block-edge-zone activity-block-edge-zone-${end}`;
+    zone.setAttribute('aria-hidden', 'true');
+    currentBlock.appendChild(zone);
+  });
+
   // No extra title attribute - child/custom label is shown inline in the block
 
   // Give the focusable block an accessible name (activity + time range) so a
