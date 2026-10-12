@@ -12,6 +12,7 @@ import {
   navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
+  getTimelineLabel,
 } from './script.js';
 import { DEBUG_MODE } from './constants.js';
 
@@ -1305,8 +1306,9 @@ function updateButtonStates() {
  * dead control on desktop, and phone users could not reach the other timelines
  * at all.
  *
- * The label names the timeline the button switches *to*, so it also tells the
- * participant that a second timeline exists and what it is called.
+ * The label names the timeline the button switches *to* - with its position in
+ * the set ("Nebenaktivität (2/2)") - so it also tells the participant that a
+ * second timeline exists, what it is called and where it sits.
  */
 function updateTimelineSwitchButton() {
   const button = document.getElementById('switchTimelineBtn');
@@ -1325,7 +1327,7 @@ function updateTimelineSwitchButton() {
     ? window.timelineManager.currentIndex
     : 0;
   const nextKey = keys[(currentIndex + 1) % keys.length];
-  const nextName = window.timelineManager?.metadata?.[nextKey]?.name || nextKey;
+  const nextName = getTimelineLabel(nextKey);
 
   const label = document.getElementById('switchTimelineLabel');
   if (label) label.textContent = nextName;
@@ -2059,10 +2061,8 @@ function buildTimelineMenu(menu) {
   );
 
   keys.forEach((key, index) => {
-    const meta = window.timelineManager?.metadata?.[key] || {};
-
     addMenuItem(menu, {
-      label: meta.name || key,
+      label: getTimelineLabel(key),
       // Same text as the indicator next to the timeline title, so the menu
       // cannot claim a coverage state the timeline itself does not show.
       detail: getTimelineCoverageText(key).text,
@@ -2093,8 +2093,10 @@ function refreshMobileContextBar() {
   if (!bar) return;
 
   const keys = window.timelineManager?.keys || [];
-  const timelineName =
-    window.timelineManager?.metadata?.[getCurrentTimelineKey()]?.name || '';
+  // Includes the position in the set ("(1/2)"), like the timeline titles and
+  // the day counter - the participant should be able to tell from any of them
+  // that a second timeline exists.
+  const timelineName = getTimelineLabel(getCurrentTimelineKey());
   const timelineNameLabel = document.getElementById('contextTimelineName');
   const timelinePicker = document.getElementById('timelinePickerBtn');
 

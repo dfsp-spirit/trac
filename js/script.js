@@ -1921,6 +1921,27 @@ function updateTimelineHeader(title, description) {
   }
 }
 
+/**
+ * A timeline's name plus where it sits in the set - "Hauptaktivität (1/2)" - the
+ * compact pattern the phone day counter already uses ("(3/7)"). The bare name
+ * left a participant who had only ever seen one timeline with no hint that the
+ * study has a second one; the count says so for the price of a few characters,
+ * and it is plain numbers, so it needs no translation. A single-timeline study
+ * is unchanged: "(1/1)" would announce a choice that does not exist.
+ */
+function getTimelineLabel(timelineKey) {
+  const manager = window.timelineManager;
+  const name = manager?.metadata?.[timelineKey]?.name || timelineKey || '';
+  const keys = manager?.keys || [];
+  const index = keys.indexOf(timelineKey);
+
+  if (keys.length < 2 || index === -1) {
+    return name;
+  }
+
+  return `${name} (${index + 1}/${keys.length})`;
+}
+
 function appendTimelineCanvasLabels(
   containerElement,
   timelineKey,
@@ -1928,7 +1949,7 @@ function appendTimelineCanvasLabels(
 ) {
   const titleDiv = document.createElement('div');
   titleDiv.className = 'title';
-  titleDiv.textContent = timelineMeta?.name || '';
+  titleDiv.textContent = getTimelineLabel(timelineKey);
 
   const coverageIndicator = document.createElement('span');
   coverageIndicator.className = 'timeline-coverage-indicator';
@@ -7422,11 +7443,12 @@ window.addEventListener('pagehide', () => {
 });
 
 // Export addNextTimeline, goToPreviousTimeline, navigateToTimelineByKey,
-// renderActivities and getCurrentDayIndex for ui.js
+// renderActivities, getCurrentDayIndex and getTimelineLabel for ui.js
 export {
   addNextTimeline,
   goToPreviousTimeline,
   navigateToTimelineByKey,
   renderActivities,
   getCurrentDayIndex,
+  getTimelineLabel,
 };
