@@ -138,6 +138,8 @@
     "timelineCoverageMetAria": "Minimum coverage met",
     "dayCompleteAria": "Day complete (meets minimum coverage)",
     "timelineCoverageMissing": "{{covered}} of {{required}} required minutes covered",
+    "timelineNothingEntered": "nothing entered yet",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Switch to this timeline.",
     "timelineHoverInactive": "Click to switch to this timeline",
     "timelineHoverActiveNoSelection": "Select an activity below, then place it here.",
     "timelineHoverActiveWithSelection": "Click to place the selected activity here.",

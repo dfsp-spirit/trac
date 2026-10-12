@@ -138,6 +138,8 @@
     "timelineCoverageMetAria": "Couverture minimale atteinte",
     "dayCompleteAria": "Journée complète (couverture minimale atteinte)",
     "timelineCoverageMissing": "{{covered}} sur {{required}} minutes requises couvertes",
+    "timelineNothingEntered": "rien de saisi pour l'instant",
+    "timelineSwitchHintAria": "{{timeline}} : {{state}}. Basculer vers cette ligne de temps.",
     "timelineHoverInactive": "Cliquez pour passer à cette chronologie",
     "timelineHoverActiveNoSelection": "Sélectionnez une activité ci-dessous, puis placez-la ici.",
     "timelineHoverActiveWithSelection": "Cliquez pour placer l'activité sélectionnée ici.",

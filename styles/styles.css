@@ -343,6 +343,20 @@ body {
   color: #c62828;
 }
 
+/* min_coverage 0 with nothing entered: no requirement to report, so no verdict
+   colour either. (This used to be the green ✓, on a timeline nobody touched.) */
+.timeline-coverage-indicator.is-empty {
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Phone-only rows that advertise the other timelines - the other containers
+   measure 0×0 below the breakpoint, so nothing else on the page mentions them.
+   Desktop shows both timelines side by side and hides these. */
+.empty-timeline-hint {
+  display: none;
+}
+
 .timeline-container[data-active='false'] .title {
   color: #6b7280;
 }
@@ -507,6 +521,61 @@ body {
     top: 0;
     margin: 0 0 10px 0;
     font-size: 10px;
+  }
+
+  /* One tappable row per untouched other timeline, under the active timeline's
+     description. A tap target, not a label: full width, 44px tall. */
+  .empty-timeline-hint {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    gap: 6px;
+    margin: 0 0 10px 0;
+  }
+
+  .empty-timeline-hint-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px dashed #9ca3af;
+    border-radius: 8px;
+    background: #fff;
+    color: #374151;
+    font-family: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    /* Tapping must not be held back by double-tap zoom, but a drag that starts
+       on the row still scrolls the day like everywhere else. */
+    touch-action: manipulation;
+  }
+
+  .empty-timeline-hint-row:active {
+    background: #f3f4f6;
+  }
+
+  .empty-timeline-hint-row[disabled] {
+    opacity: 0.6;
+  }
+
+  .empty-timeline-hint-name {
+    font-weight: 600;
+  }
+
+  .empty-timeline-hint-state {
+    margin-left: auto;
+    color: #6b7280;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .empty-timeline-hint-row .fa-chevron-right {
+    color: #9ca3af;
+    font-size: 12px;
   }
 
   .timeline-container[data-active='false'] {

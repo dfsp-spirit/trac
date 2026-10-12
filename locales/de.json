@@ -138,6 +138,8 @@
     "timelineCoverageMetAria": "Mindestabdeckung erreicht",
     "dayCompleteAria": "Tag abgeschlossen (Mindestabdeckung erfüllt)",
     "timelineCoverageMissing": "{{covered}} von {{required}} erforderlichen Minuten abgedeckt",
+    "timelineNothingEntered": "noch nichts eingetragen",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Zu dieser Zeitleiste wechseln.",
     "timelineHoverInactive": "Klicken Sie, um zu dieser Zeitleiste zu wechseln",
     "timelineHoverActiveNoSelection": "Wählen Sie unten eine Aktivität und platzieren Sie sie dann hier.",
     "timelineHoverActiveWithSelection": "Klicken Sie, um die ausgewählte Aktivität hier zu platzieren.",

@@ -138,6 +138,8 @@
     "timelineCoverageMetAria": "Minimalne pokrycie spełnione",
     "dayCompleteAria": "Dzień ukończony (spełniono minimalne pokrycie)",
     "timelineCoverageMissing": "Pokryto {{covered}} z {{required}} wymaganych minut",
+    "timelineNothingEntered": "nic jeszcze nie wpisano",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Przełącz na tę os czasu.",
     "timelineHoverInactive": "Kliknij, aby przełączyć się na tę oś czasu",
     "timelineHoverActiveNoSelection": "Wybierz aktywność poniżej, a następnie umieść ją tutaj.",
     "timelineHoverActiveWithSelection": "Kliknij, aby umieścić tutaj wybraną aktywność.",

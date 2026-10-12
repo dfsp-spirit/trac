@@ -775,35 +775,182 @@ function updateTimelineCoverageIndicators() {
 
   coverageIndicators.forEach((indicator) => {
     const timelineKey = indicator.dataset.timelineKey;
-    const timelineMetadata = window.timelineManager.metadata[timelineKey] || {};
-    const requiredMinutes = parseInt(timelineMetadata?.minCoverage) || 0;
-    const coveredMinutes = getCoverageForTimelineKey(timelineKey);
-    const meetsCoverage = coveredMinutes >= requiredMinutes;
+    const { text, label, state } = getTimelineCoverageText(timelineKey);
 
-    if (meetsCoverage) {
-      const metText = window.i18n
-        ? window.i18n.t('messages.timelineCoverageMet')
-        : '✓';
-      indicator.textContent = metText;
-      indicator.classList.remove('is-missing');
-      indicator.classList.add('is-met');
-      const metAriaLabel = window.i18n
-        ? window.i18n.t('messages.timelineCoverageMetAria')
-        : 'Minimum coverage met';
-      indicator.setAttribute('aria-label', metAriaLabel);
-    } else {
-      const missingText = window.i18n
-        ? window.i18n.t('messages.timelineCoverageMissing', {
-            covered: coveredMinutes,
-            required: requiredMinutes,
-          })
-        : `${coveredMinutes} of ${requiredMinutes} required minutes covered`;
-      indicator.textContent = missingText;
-      indicator.classList.remove('is-met');
-      indicator.classList.add('is-missing');
-      indicator.setAttribute('aria-label', missingText);
-    }
+    indicator.textContent = text;
+    indicator.classList.toggle('is-met', state === 'met');
+    indicator.classList.toggle('is-missing', state === 'missing');
+    indicator.classList.toggle('is-empty', state === 'empty');
+    indicator.setAttribute('aria-label', label);
   });
+}
+
+/**
+ * How one timeline reads for the day being viewed: the visible text, the text a
+ * screen reader gets instead, and which of three states it is in. Every surface
+ * that reports coverage goes through here so the title indicator and the
+ * timeline menu cannot drift apart.
+ *
+ * The rule that matters, and the bug this fixed: min_coverage 0 is satisfied by
+ * an empty timeline, so a timeline the participant had never touched was
+ * reported as "requirement met" - a green ✓, read as "this one is done, skip
+ * it". A ✓ is only earned where the study actually requires something and that
+ * requirement is met; a timeline with no requirement and no entries is reported
+ * as empty instead, in the neutral colour that claims nothing.
+ */
+function getTimelineCoverageText(timelineKey) {
+  const timelineMetadata = window.timelineManager?.metadata?.[timelineKey] || {};
+  const requiredMinutes = parseInt(timelineMetadata?.minCoverage) || 0;
+  const coveredMinutes = getCoverageForTimelineKey(timelineKey);
+
+  const translate = (key, params, fallback) =>
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t(key, params)
+      : fallback;
+
+  if (requiredMinutes <= 0 && coveredMinutes === 0) {
+    const emptyText = translate(
+      'messages.timelineNothingEntered',
+      undefined,
+      'nothing entered yet'
+    );
+    return { text: emptyText, label: emptyText, state: 'empty' };
+  }
+
+  if (coveredMinutes >= requiredMinutes) {
+    return {
+      text: translate('messages.timelineCoverageMet', undefined, '✓'),
+      label: translate(
+        'messages.timelineCoverageMetAria',
+        undefined,
+        'Minimum coverage met'
+      ),
+      state: 'met',
+    };
+  }
+
+  const missingText = translate(
+    'messages.timelineCoverageMissing',
+    { covered: coveredMinutes, required: requiredMinutes },
+    `${coveredMinutes} of ${requiredMinutes} required minutes covered`
+  );
+  return { text: missingText, label: missingText, state: 'missing' };
+}
+
+const EMPTY_TIMELINE_HINT_CLASS = 'empty-timeline-hint';
+
+/**
+ * Phones lay out a single timeline at a time - every other container measures
+ * 0×0 there - so nothing on the page says that a second timeline exists, and a
+ * participant who never opens the timeline picker in the context bar never
+ * finds out. (On a desktop both timelines are side by side and need no help.)
+ *
+ * This renders one row per untouched other timeline of the current day, in the
+ * active timeline's label block just below its description - the block a
+ * participant reads before starting the day. The row names the timeline, says
+ * it is still empty, and tapping it switches timelines through the same path the
+ * timeline picker uses.
+ *
+ * Deliberately not a navigation bar: a timeline that already has something on
+ * this day gets no row (it is not a nudge, only a discovery aid for a track the
+ * participant never saw), the rows are gone once every timeline has entries, and
+ * a single-timeline study shows nothing at all.
+ */
+function updateEmptyTimelineHints() {
+  document
+    .querySelectorAll(`.${EMPTY_TIMELINE_HINT_CLASS}`)
+    .forEach((node) => node.remove());
+
+  if (!getIsMobile()) {
+    return;
+  }
+
+  const manager = window.timelineManager;
+  const activeKey = getCurrentTimelineKey();
+  if (!manager || !activeKey || !Array.isArray(manager.keys)) {
+    return;
+  }
+
+  const emptyOtherKeys = manager.keys.filter(
+    (key) => key !== activeKey && getCoverageForTimelineKey(key) === 0
+  );
+  if (emptyOtherKeys.length === 0) {
+    return;
+  }
+
+  // The labels live in the active container; the inactive ones are 0×0 and
+  // would put the row inside a box nobody can see.
+  const activeContainer =
+    manager.activeTimeline?.closest?.('.timeline-container') ||
+    document.querySelector(".timeline-container[data-active='true']");
+  const host =
+    activeContainer &&
+    (activeContainer.querySelector('.timeline-canvas-description') ||
+      activeContainer.querySelector('.title'));
+  if (!host) {
+    return;
+  }
+
+  const translate = (key, params, fallback) =>
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t(key, params)
+      : fallback;
+  const emptyText = translate(
+    'messages.timelineNothingEntered',
+    undefined,
+    'nothing entered yet'
+  );
+
+  const list = document.createElement('div');
+  list.className = EMPTY_TIMELINE_HINT_CLASS;
+
+  emptyOtherKeys.forEach((key) => {
+    const name = manager.metadata?.[key]?.name || key;
+
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'empty-timeline-hint-row';
+    row.setAttribute(
+      'aria-label',
+      translate(
+        'messages.timelineSwitchHintAria',
+        { timeline: name, state: emptyText },
+        `${name}: ${emptyText} - switch to this timeline`
+      )
+    );
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'empty-timeline-hint-name';
+    nameSpan.textContent = name;
+
+    const stateSpan = document.createElement('span');
+    stateSpan.className = 'empty-timeline-hint-state';
+    stateSpan.textContent = emptyText;
+
+    const chevron = document.createElement('i');
+    chevron.className = 'fas fa-chevron-right';
+    chevron.setAttribute('aria-hidden', 'true');
+
+    row.append(nameSpan, stateSpan, chevron);
+    row.addEventListener('click', async () => {
+      row.disabled = true;
+      try {
+        await navigateToTimelineByKey(key);
+      } catch (error) {
+        console.error('Failed to switch timeline from the hint row:', error);
+      } finally {
+        // The switch re-renders the containers, so this rebuilds the rows for
+        // the timeline that is now active - and re-enables the row if the
+        // switch did nothing.
+        updateEmptyTimelineHints();
+        row.disabled = false;
+      }
+    });
+
+    list.appendChild(row);
+  });
+
+  host.insertAdjacentElement('afterend', list);
 }
 
 function addCopyDayLink(timelineTitle, dayIndex) {
@@ -1102,6 +1249,10 @@ function updateButtonStates() {
 
   // Copy Days: all timelines are always visible.
   updateTimelineCoverageIndicators();
+  // Phone-only: a second timeline is invisible there (its container measures
+  // 0×0), so the rows advertising an untouched one are re-rendered from the
+  // same chokepoint that reports whether it is still untouched.
+  updateEmptyTimelineHints();
 
   // The day-switch buttons in #previousDaysSwitchRow are gated on the same
   // min_coverage check as the Next/Submit buttons above.  Every activity
@@ -1902,11 +2053,6 @@ function buildTimelineMenu(menu) {
   const currentIndex = Number.isInteger(window.timelineManager?.currentIndex)
     ? window.timelineManager.currentIndex
     : 0;
-  const translate = (key, params, fallback) =>
-    window.i18n && window.i18n.isReady()
-      ? window.i18n.t(key, params)
-      : fallback;
-
   addMenuHeader(
     menu,
     moreMenuLabel('buttons.switchTimeline', 'Switch timeline')
@@ -1914,20 +2060,12 @@ function buildTimelineMenu(menu) {
 
   keys.forEach((key, index) => {
     const meta = window.timelineManager?.metadata?.[key] || {};
-    const requiredMinutes = parseInt(meta.minCoverage) || 0;
-    const coveredMinutes = getCoverageForTimelineKey(key);
-    const meetsCoverage = coveredMinutes >= requiredMinutes;
-    const coverageText = meetsCoverage
-      ? translate('messages.timelineCoverageMet', undefined, '✓')
-      : translate(
-          'messages.timelineCoverageMissing',
-          { covered: coveredMinutes, required: requiredMinutes },
-          `${coveredMinutes} of ${requiredMinutes} required minutes covered`
-        );
 
     addMenuItem(menu, {
       label: meta.name || key,
-      detail: coverageText,
+      // Same text as the indicator next to the timeline title, so the menu
+      // cannot claim a coverage state the timeline itself does not show.
+      detail: getTimelineCoverageText(key).text,
       className: 'timeline-menu-item',
       disabled: index === currentIndex,
       onSelect: () => navigateToTimelineByKey(key),

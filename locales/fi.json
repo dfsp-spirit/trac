@@ -138,6 +138,8 @@
     "timelineCoverageMetAria": "Vähimmäiskattavuus täyttyi",
     "dayCompleteAria": "Päivä valmis (vähimmäiskattavuus täytetty)",
     "timelineCoverageMissing": "{{covered}} / {{required}} vaaditusta minuutista katettu",
+    "timelineNothingEntered": "ei vielä merkintöjä",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Vaihda tähän aikajanaan.",
     "timelineHoverInactive": "Napsauta siirtyäksesi tähän aikajanaan",
     "timelineHoverActiveNoSelection": "Valitse toiminto alhaalta ja sijoita se sitten tähän.",
     "timelineHoverActiveWithSelection": "Napsauta sijoittaaksesi valitun toiminnon tähän.",
