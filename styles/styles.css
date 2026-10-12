@@ -2204,6 +2204,68 @@ body.carrying-activity .modal-close {
   line-height: 1.4;
 }
 
+/* ── "How to use the diary" ────────────────────────────────────────────────
+   The instructions page in an iframe (see openHelpModal in ui.js), so the modal
+   is a frame plus a title bar rather than a message: it owns the whole modal
+   box and scrolls internally. On a phone it is full screen, which leaves the
+   iframe as the only scrollable area - two nested scroll areas fight over a
+   thumb on the way down to the timeline. */
+#helpModal .modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 96vw);
+  height: min(90vh, 900px);
+  max-height: 90vh;
+  padding: 0;
+  overflow: hidden;
+}
+
+#helpModal .modal-header {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+  padding: clamp(12px, 2vw, 18px) clamp(14px, 2vw, 20px);
+  border-bottom: 1px solid #e2e8f0;
+}
+
+#helpModal .modal-header h3 {
+  margin: 0;
+  font-size: clamp(16px, 2.5vw, 20px);
+  color: #333;
+}
+
+#helpModal .help-modal-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0;
+  text-align: left;
+}
+
+.help-modal-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 1439.98px) {
+  #helpModal {
+    /* The idle-timeout chip is pinned to the very top and, by design, floats
+       above every dialog so the countdown is never hidden. Measured on a phone:
+       the chip occupies y 0-20, so the sheet starts below that strip instead of
+       running under it (it clipped the sheet's own title otherwise). */
+    align-items: flex-start;
+  }
+
+  #helpModal .modal {
+    width: 100%;
+    height: calc(100% - 24px);
+    max-height: none;
+    margin-top: 24px;
+    border-radius: 0;
+  }
+}
+
 /* Custom activity input with clear button */
 .custom-activity-input-wrapper {
   display: flex;

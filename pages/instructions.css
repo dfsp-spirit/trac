@@ -61,6 +61,13 @@ body {
   display: grid;
   grid-template-columns: 1fr minmax(0, 1100px) 1fr;
   grid-auto-rows: auto;
+  /* Auto rows used to stretch when the window was taller than the page (the
+     default align-content is `stretch`): measured at 1600x1300 the Start row
+     grew from 121 px to 196 px and the button - a flex item with the default
+     align-items: stretch - grew with it into a 140x131 square, with the footer
+     row padded out to 140 px as well. Rows are content-sized now, so a short
+     page simply ends and the background shows below it. */
+  align-content: start;
   background-color: var(--background-color);
   color: var(--text-color);
   overflow-x: hidden;
@@ -210,6 +217,9 @@ li {
 .navigation {
   grid-column: 2;
   padding: var(--space-md);
+  /* Belt and braces next to `align-content: start` on body: the button must
+     never be stretched to whatever height the row happens to have. */
+  align-items: center;
   padding-bottom: max(
     var(--space-md),
     env(safe-area-inset-bottom, var(--space-md))
@@ -700,4 +710,128 @@ li {
     grid-column: 2;
     padding: var(--space-md);
   }
+}
+
+/* ── Collapsed walk-through ────────────────────────────────────────────────
+   Measured at 390x664 before this change: the page was 4779 px (7.2 screens)
+   and the Start button sat at px 4623 - the last element of the document,
+   because the nav is `position: static`. The walk-through alone was 5 of those
+   screens, and the study's own text (which is the study's protocol, not ours)
+   sat above it. Collapsed, the page is 1524 px (2.3 screens) and Start is at
+   px 605, i.e. inside the first screen. Nothing is removed: the steps and their
+   GIFs load on demand when the summary is tapped. */
+.instruction-card {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: white;
+}
+
+.how-to-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  min-height: 48px; /* a tap target, not a line of text */
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-color-light);
+  color: var(--primary-color);
+  font-weight: var(--font-weight-semibold);
+  font-size: clamp(15px, 2vw, 17px);
+  line-height: 1.3;
+  cursor: pointer;
+  list-style: none; /* Chrome/Safari paint their own triangle otherwise */
+  touch-action: manipulation;
+}
+
+.how-to-summary::-webkit-details-marker {
+  display: none;
+}
+
+.how-to-summary:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.how-to-chevron {
+  flex-shrink: 0;
+  font-size: 14px;
+  transition: transform 0.2s ease;
+}
+
+.how-to[open] .how-to-chevron {
+  transform: rotate(180deg);
+}
+
+.how-to[open] .how-to-summary {
+  margin-bottom: var(--space-sm);
+}
+
+/* ── Start stays in reach ──────────────────────────────────────────────────
+   The nav is the last element of the document, so on a phone the only way into
+   the study was to scroll to the bottom - and far further while the
+   walk-through is expanded. Pinned on the phone layout only: on a desktop the
+   collapsed page fits in one screen, and a full-width bar there would just be
+   noise. */
+@media (max-width: 1439.98px) {
+  .navigation {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+
+  body {
+    /* Room for the pinned nav, including the safe area it already respects. */
+    padding-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 1440px) {
+  /* Desktop: the Start row belongs to the page, it is not a separate white bar.
+     It used to be a 101 px slab (opaque white, an upward shadow, its own side
+     padding) wedged between the text and the footer links, with ~70 px of dead
+     space above it and the button hugging the far right of the column - a page
+     that ends in a toolbar instead of a page that ends. Now it is a hairline
+     across the content column with the primary action on the right. */
+  .navigation {
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: none;
+    border-top: 1px solid var(--border-color);
+    padding: var(--space-lg) 0;
+  }
+}
+
+/* ── Embedded in the diary's help modal (?embed=1) ─────────────────────────
+   Only the walk-through travels into the modal: no page heading, no study
+   text, no language pill, no Start button, no footer. The modal supplies the
+   title and the way out. */
+body.is-embedded > div > *:not(.instruction-card) {
+  display: none !important;
+}
+
+body.is-embedded .navigation,
+body.is-embedded .language-selector-container,
+body.is-embedded #footer,
+body.is-embedded footer,
+body.is-embedded .trac-legal-footer {
+  display: none !important;
+}
+
+body.is-embedded .how-to > summary {
+  display: none !important;
+}
+
+body.is-embedded .instruction-card {
+  border: 0;
+  padding: 0;
+}
+
+/* The pinned nav is hidden in here, so the space reserved for it (below) would
+   be dead room at the end of the modal. */
+body.is-embedded {
+  padding-bottom: var(--space-lg);
 }

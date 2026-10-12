@@ -8,6 +8,16 @@ function getUrlParams() {
   return new URLSearchParams(window.location.search);
 }
 
+/**
+ * `?embed=1` renders this page as the walk-through only - no page heading, no
+ * study text, no language pill, no Start button - for the diary's help modal,
+ * which loads it in an iframe so the GIFs, the layout switching and the
+ * translations stay in one place. The walk-through is open, and the Start
+ * button's job (marking the instructions as completed) is unreachable from
+ * there.
+ */
+const IS_EMBED = getUrlParams().get('embed') === '1';
+
 function getCurrentLanguageFromUrl() {
   return getUrlParams().get('lang');
 }
@@ -396,6 +406,12 @@ function applyCopyDayStepVisibility(studyConfig) {
 // Initialize i18n when the module loads
 (async () => {
   try {
+    if (IS_EMBED) {
+      document.body.classList.add('is-embedded');
+      const howToSection = document.getElementById('howToSection');
+      if (howToSection) howToSection.open = true;
+    }
+
     let studyConfig = null;
     const requestedLanguage =
       getCurrentLanguageFromUrl() || getPreferredLanguage();
@@ -408,9 +424,12 @@ function applyCopyDayStepVisibility(studyConfig) {
       window.TUD_STUDY_CONFIG = studyConfig;
       window.dispatchEvent(new CustomEvent('tud:studyConfigReady'));
     } catch (studyConfigError) {
+      // Inside the help modal a dead study config must not navigate the iframe
+      // to the diary - the generic walk-through is still worth showing.
       if (
-        studyConfigError?.code === 'STUDY_UNAVAILABLE' ||
-        studyConfigError?.status === 403
+        !IS_EMBED &&
+        (studyConfigError?.code === 'STUDY_UNAVAILABLE' ||
+          studyConfigError?.status === 403)
       ) {
         const currentUrl = new URL(window.location.href);
         const redirectUrl = new URL('../index.html', currentUrl.href);
@@ -437,7 +456,7 @@ function applyCopyDayStepVisibility(studyConfig) {
       setLanguageInUrl(selectedLanguage);
     }
 
-    if (studyConfig) {
+    if (studyConfig && !IS_EMBED) {
       if (studyConfig.participant_has_completed_study === true) {
         window.location.href =
           buildPostDiaryLandingUrlWithCurrentParams(studyConfig);
@@ -458,11 +477,12 @@ function applyCopyDayStepVisibility(studyConfig) {
     console.log('Loading language:', language);
     await i18n.init(language);
     i18n.applyTranslations();
-    if (studyConfig) {
+    if (studyConfig && !IS_EMBED) {
       applyStudyIntroText(studyConfig);
       applyStudyTitleText(studyConfig);
       applyStudyInstructionsText(studyConfig);
     }
+    // Applies in the modal too: a single-day study has no day to copy to.
     applyCopyDayStepVisibility(studyConfig);
     console.log('i18n initialized successfully');
   } catch (error) {

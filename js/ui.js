@@ -1618,6 +1618,102 @@ const handleSwitchTimelineAction = async () => {
 
 let buttonsInitialized = false;
 
+// ── "How do I use this?" ────────────────────────────────────────────────
+// The walk-through that used to be the only way into the study is reachable
+// while working, from the ⋮ menu (it is on both layouts).
+//
+// The content is the instructions page itself in `?embed=1` mode: the same
+// steps, the same GIFs and the same translations, with no study text and no
+// Start button. An iframe rather than a second copy of the markup on purpose -
+// four animated GIFs plus the horizontal/vertical switch are exactly the kind
+// of duplication that rots.
+//
+// Deliberately a modal and not a link to that page: navigating away is safe now
+// that the day autosaves, but it costs a page load, the scroll position, the
+// selected activity and the participant's place in the day - and landing on an
+// error page mid-task is what the pilot's "could not load" report was about.
+const HELP_MODAL_ID = 'helpModal';
+
+function buildHelpModal() {
+  const existing = document.getElementById(HELP_MODAL_ID);
+  if (existing) return existing;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = HELP_MODAL_ID;
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', `${HELP_MODAL_ID}Title`);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal help-modal';
+
+  const header = document.createElement('div');
+  header.className = 'modal-header';
+
+  const title = document.createElement('h3');
+  title.id = `${HELP_MODAL_ID}Title`;
+  title.textContent = uiText('buttons.help', 'How to use the diary');
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'modal-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.setAttribute('aria-label', uiText('buttons.close', 'Close'));
+
+  const content = document.createElement('div');
+  content.className = 'modal-content help-modal-content';
+
+  header.append(title, closeBtn);
+  modal.append(header, content);
+  overlay.appendChild(modal);
+  document.body.appendChild(overlay);
+
+  // Same show/hide contract as showConfirmDialog(): an inline display:block is
+  // what the stylesheet turns into a flex overlay, and what the shared focus
+  // manager observes. Escape therefore closes it through .modal-close, which is
+  // in MODAL_CLOSE_SELECTOR, and focus returns to the ⋮ button.
+  const hide = () => {
+    overlay.style.display = 'none';
+  };
+  closeBtn.addEventListener('click', hide);
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) hide();
+  });
+
+  return overlay;
+}
+
+function openHelpModal() {
+  // The focus manager (Escape, focus trap, focus restore) is normally armed by
+  // createModal(), i.e. by opening the activity picker. Help must not depend on
+  // the participant having placed an activity first.
+  initModalFocusManagement();
+
+  const overlay = buildHelpModal();
+  const content = overlay.querySelector('.help-modal-content');
+
+  // A fresh frame on every open: the language can change from this same menu,
+  // and a reload plays the walk-through from the beginning.
+  content.textContent = '';
+
+  const frame = document.createElement('iframe');
+  frame.className = 'help-modal-frame';
+  frame.title = uiText('buttons.help', 'How to use the diary');
+
+  const url = new URL('pages/instructions.html', window.location.href);
+  new URLSearchParams(window.location.search).forEach((value, key) => {
+    url.searchParams.set(key, value);
+  });
+  // The diary URL says the instructions are done; that is meaningless here.
+  url.searchParams.delete('instructions');
+  url.searchParams.set('embed', '1');
+  frame.src = url.toString();
+
+  content.appendChild(frame);
+  overlay.style.display = 'block';
+}
+
 // ── Phone ⋮ menu ──────────────────────────────────────────────────────────
 // On phones the toolbar only has room for Clear timeline and Submit Study. Skip
 // time reporting and the language picker move in here instead of taking rows of
@@ -1671,6 +1767,14 @@ function buildMoreMenu(menu) {
         if (target && !target.disabled) target.click();
       },
     });
+  });
+
+  // The walk-through, without leaving the day - see openHelpModal(). It is not
+  // a proxy like the entries above: it opens a dialog itself.
+  addMenuItem(menu, {
+    label: moreMenuLabel('buttons.help', 'How to use the diary'),
+    className: 'more-menu-help',
+    onSelect: openHelpModal,
   });
 
   // Language: enumerate the selector the study config already built, and switch
