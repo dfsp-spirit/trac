@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Fehler beim Laden der Aktivitäten. Bitte laden Sie die Seite neu und versuchen Sie es erneut. Fehler:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Anleitung: Tippen Sie auf den + Button unten rechts, um eine neue Aktivität auszuwählen, und tippen Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, halten Sie sie gedrückt und wählen Sie Löschen.",
-    "dayOneInstructionsDesktop": "Anleitung: Wählen Sie unten eine Aktivität aus und klicken Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, klicken Sie mit der rechten Maustaste darauf und wählen Sie Löschen."
+    "instructionsMobile": "Anleitung: Tippen Sie auf den + Button unten rechts, um eine neue Aktivität auszuwählen, und tippen Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, halten Sie sie gedrückt und wählen Sie Löschen.",
+    "instructionsDesktop": "Anleitung: Wählen Sie unten eine Aktivität aus und klicken Sie dann auf die Zeitleiste, um sie zu platzieren. Ziehen Sie an den Rändern, um sie zu verlängern. Um eine Aktivität zu löschen, klicken Sie mit der rechten Maustaste darauf und wählen Sie Löschen."
   },
   "thankYou": {
     "title": "Vielen Dank",

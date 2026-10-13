@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Instructions: tap the + button in the bottom right corner to choose an activity, then tap the timeline to place it. Drag its edges to extend it. To delete an activity, long-press it and choose Delete.",
-    "dayOneInstructionsDesktop": "Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete."
+    "instructionsMobile": "Instructions: tap the + button in the bottom right corner to choose an activity, then tap the timeline to place it. Drag its edges to extend it. To delete an activity, long-press it and choose Delete.",
+    "instructionsDesktop": "Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete."
   },
   "thankYou": {
     "title": "Thank You",

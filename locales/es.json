@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Error al cargar las actividades. Actualice la página para intentarlo de nuevo. Error:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Instrucciones: toca el botón + de la esquina inferior derecha para elegir una actividad y luego toca la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, manténla pulsada y elige Eliminar.",
-    "dayOneInstructionsDesktop": "Instrucciones: selecciona una actividad abajo y luego haz clic en la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, haz clic derecho sobre ella y elige Eliminar."
+    "instructionsMobile": "Instrucciones: toca el botón + de la esquina inferior derecha para elegir una actividad y luego toca la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, manténla pulsada y elige Eliminar.",
+    "instructionsDesktop": "Instrucciones: selecciona una actividad abajo y luego haz clic en la línea de tiempo para colocarla. Arrastra los bordes para ampliarla. Para eliminar una actividad, haz clic derecho sobre ella y elige Eliminar."
   },
   "thankYou": {
     "title": "Gracias",

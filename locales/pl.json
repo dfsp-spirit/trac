@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Błąd ładowania aktywności. Proszę odświeżyć stronę, aby spróbować ponownie. Błąd:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Instrukcje: dotknij przycisku + w prawym dolnym rogu, aby wybrać aktywność, a następnie dotknij osi czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, przytrzymaj ją i wybierz Usuń.",
-    "dayOneInstructionsDesktop": "Instrukcje: wybierz aktywność poniżej, a następnie kliknij oś czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, kliknij ją prawym przyciskiem myszy i wybierz Usuń."
+    "instructionsMobile": "Instrukcje: dotknij przycisku + w prawym dolnym rogu, aby wybrać aktywność, a następnie dotknij osi czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, przytrzymaj ją i wybierz Usuń.",
+    "instructionsDesktop": "Instrukcje: wybierz aktywność poniżej, a następnie kliknij oś czasu, aby ją umieścić. Przeciągnij jej krawędzie, aby ją wydłużyć. Aby usunąć aktywność, kliknij ją prawym przyciskiem myszy i wybierz Usuń."
   },
   "thankYou": {
     "title": "Dziękujemy",

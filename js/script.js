@@ -549,8 +549,15 @@ function initInstructionBanner() {
     return;
   }
 
-  // Check if user has already closed the banner (using localStorage). Storage
-  // access itself can throw (blocked cookies, private mode), so it is guarded.
+  // The banner stays until the participant closes it - including on later days,
+  // which is what makes it usable as a reminder of the gestures (feedback: "it
+  // only shows on first day of study, which is irritating; show it on all days
+  // UNTIL user first closes it"). It used to be a day-one-only banner, so a
+  // participant who came back the next day had to remember the gestures.
+  //
+  // Check if the user has already closed it (using localStorage).
+  // Storage access itself can throw (blocked cookies, private mode), so it is
+  // guarded.
   const bannerClosed = safeGetItem(localStorage, bannerStorageKey);
   if (bannerClosed === 'true') {
     banner.remove();
@@ -578,6 +585,10 @@ function getInstructionBannerStorageKey() {
     (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
       ? TUD_SETTINGS.DEFAULT_STUDY_NAME
       : '');
+  // One flag per participant and study, deliberately not per day and no longer
+  // carrying the historical `:day1` suffix in its name: the key predates the
+  // banner being shown on every day, and renaming it would make everyone who
+  // already closed the banner see it again.
   return `instructionBannerClosed:${studyName}:${pid}:day1`;
 }
 

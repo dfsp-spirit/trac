@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Fel vid laddning av aktiviteter. Uppdatera sidan och försök igen. Fel:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Instruktioner: tryck på +-knappen längst ned till höger för att välja en aktivitet och tryck sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, håll den intryckt och välj Ta bort.",
-    "dayOneInstructionsDesktop": "Instruktioner: välj en aktivitet nedan och klicka sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, högerklicka på den och välj Ta bort."
+    "instructionsMobile": "Instruktioner: tryck på +-knappen längst ned till höger för att välja en aktivitet och tryck sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, håll den intryckt och välj Ta bort.",
+    "instructionsDesktop": "Instruktioner: välj en aktivitet nedan och klicka sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, högerklicka på den och välj Ta bort."
   },
   "thankYou": {
     "title": "Tack",

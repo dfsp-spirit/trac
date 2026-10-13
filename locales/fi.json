@@ -174,8 +174,8 @@
     "loadingActivitiesShort": "Virhe toimintojen latauksessa. Päivitä sivu ja yritä uudelleen. Virhe:"
   },
   "banner": {
-    "dayOneInstructionsMobile": "Ohjeet: napauta oikeassa alakulmassa olevaa +-painiketta valitaksesi toiminnon ja napauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto pitämällä sitä painettuna ja valitsemalla Poista.",
-    "dayOneInstructionsDesktop": "Ohjeet: valitse toiminto alta ja napsauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto napsauttamalla sitä hiiren oikealla painikkeella ja valitsemalla Poista."
+    "instructionsMobile": "Ohjeet: napauta oikeassa alakulmassa olevaa +-painiketta valitaksesi toiminnon ja napauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto pitämällä sitä painettuna ja valitsemalla Poista.",
+    "instructionsDesktop": "Ohjeet: valitse toiminto alta ja napsauta sitten aikajanaa sijoittaaksesi sen. Vedä reunoista pidentääksesi. Poista toiminto napsauttamalla sitä hiiren oikealla painikkeella ja valitsemalla Poista."
   },
   "thankYou": {
     "title": "Kiitos",
