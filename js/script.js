@@ -61,17 +61,6 @@ import {
 import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
 import { checkAndRequestPID } from './utils.js';
 
-// Colours for the footer's backend status line. It is 13px text on the page
-// background (#f8fafc), which needs 4.5:1 (WCAG AA) - the #ccc / 'red' /
-// 'orange' it shipped with were 1.53:1, 3.82:1 and 1.89:1, i.e. unreadable, and
-// are caught by the accessibility spec as soon as the status leaves its
-// initial "Connecting..." state.
-const FOOTER_STATUS_COLOR = {
-  ok: '#047857', // 5.2:1 - "Connected to backend"
-  warning: '#a16207', // 4.7:1 - no study / study not found
-  error: '#b91c1c', // 6.2:1 - backend unreachable
-};
-
 // Make window.selectedActivity a global property that persists across DOM changes.
 // Using a property setter so the body cursor updates automatically whenever an
 // activity is selected (→ crosshair to indicate "carrying" it) or cleared.
@@ -6021,15 +6010,6 @@ async function init() {
               : 'No studies available on server.';
           timelinesWrapper.appendChild(msg);
         }
-        // Update footer status
-        const footerStatus = document.getElementById('footer_backend_status');
-        if (footerStatus) {
-          footerStatus.textContent =
-            window.i18n && window.i18n.isReady()
-              ? i18n.t('messages.noStudiesAvailable')
-              : 'No studies available on server.';
-          footerStatus.style.color = FOOTER_STATUS_COLOR.warning;
-        }
         // Hide footer action buttons (Submit, Skip) since no study is active
         const footerActions = document.getElementById('instructionsFooter');
         if (footerActions) footerActions.style.display = 'none';
@@ -6062,12 +6042,6 @@ async function init() {
             msg.appendChild(detail);
           }
           timelinesWrapper.appendChild(msg);
-        }
-        // Update footer status
-        const footerStatus = document.getElementById('footer_backend_status');
-        if (footerStatus) {
-          footerStatus.textContent = msgText;
-          footerStatus.style.color = FOOTER_STATUS_COLOR.warning;
         }
         // Hide footer action buttons (Submit, Skip) since no study is active
         const footerActions = document.getElementById('instructionsFooter');
@@ -6220,7 +6194,6 @@ async function init() {
 
     checkAndRequestPID();
     preventPullToRefresh();
-    let configLoadBackendSuccess = false;
 
     // Get URL parameters
     const urlParams = new URLSearchParams(window.location.search);
@@ -6314,18 +6287,6 @@ async function init() {
       footerVersionEl.textContent = `v${TUD_FRONTEND_VERSION}`;
     }
 
-    const footerStatus = document.getElementById('footer_backend_status');
-    const updateFooterBackendStatus = (statusKey, color, fallbackText) => {
-      if (!footerStatus) {
-        return;
-      }
-
-      footerStatus.setAttribute('data-i18n', statusKey);
-      footerStatus.textContent =
-        window.i18n && window.i18n.isReady() ? i18n.t(statusKey) : fallbackText;
-      footerStatus.style.color = color;
-    };
-
     try {
       configData = await loadActivitiesConfig({
         participantId,
@@ -6338,21 +6299,8 @@ async function init() {
         useCache: true,
       });
       console.log('Successfully loaded activities config from backend');
-      configLoadBackendSuccess = true;
     } catch (error) {
       console.error('Failed to load activities config from backend:', error);
-      configLoadBackendSuccess = false;
-      if (footerStatus) {
-        updateFooterBackendStatus(
-          'footer.backend_status_error',
-          FOOTER_STATUS_COLOR.error,
-          'Backend error'
-        );
-      } else {
-        console.warn(
-          'Footer status element not found, cannot display backend error status'
-        );
-      }
       throw new Error(
         `Cannot load activities configuration: ${error.message}. The application requires backend configuration to run.`
       );
@@ -6404,22 +6352,6 @@ async function init() {
       });
       window.location.href = redirectUrl.toString();
       return;
-    }
-
-    if (footerStatus) {
-      if (configLoadBackendSuccess) {
-        updateFooterBackendStatus(
-          'footer.backend_status_connected',
-          FOOTER_STATUS_COLOR.ok,
-          'Connected to backend'
-        );
-      } else {
-        updateFooterBackendStatus(
-          'footer.backend_status_error',
-          FOOTER_STATUS_COLOR.error,
-          'Backend error'
-        );
-      }
     }
 
     // Handle instructions or redirection if needed
@@ -7028,11 +6960,6 @@ function renderFatalInitializationError({
   }
 
   if (hideInteractiveUi) {
-    const backendStatus = document.getElementById('footer_backend_status');
-    if (backendStatus) {
-      backendStatus.style.display = 'none';
-    }
-
     [
       '.controls',
       '.timeline-header',

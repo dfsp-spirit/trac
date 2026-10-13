@@ -202,11 +202,6 @@
     "heading": "Session Timed Out",
     "message": "Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work."
   },
-  "footer": {
-    "backend_status_connecting": "Connecting to backend...",
-    "backend_status_connected": "Connected to backend",
-    "backend_status_error": "Error connecting to backend"
-  },
   "idleTimeout": {
     "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
   },

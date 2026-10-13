@@ -202,11 +202,6 @@
     "heading": "Sessionen har gått ut",
     "message": "Din session avslutades på grund av inaktivitet. Använd din inbjudningslänk för att återgå till dagboken och fortsätta."
   },
-  "footer": {
-    "backend_status_connecting": "Ansluter till backend...",
-    "backend_status_connected": "Ansluten till backend",
-    "backend_status_error": "Fel vid anslutning till backend"
-  },
   "idleTimeout": {
     "tooltip": "Inaktivitetstimeout. Klicka för att bekräfta att du fortfarande är här och återställ timern."
   },

@@ -202,11 +202,6 @@
     "heading": "Istunto päättyi",
     "message": "Istuntosi päättyi toimettomuuden vuoksi. Käytä kutsulinkkiäsi palataksesi päiväkirjaan ja jatkaaksesi."
   },
-  "footer": {
-    "backend_status_connecting": "Yhdistetään taustajärjestelmään...",
-    "backend_status_connected": "Yhdistetty taustajärjestelmään",
-    "backend_status_error": "Virhe yhdistettäessä taustajärjestelmään"
-  },
   "idleTimeout": {
     "tooltip": "Passiivisuuden aikakatkaisu. Napsauta vahvistaaksesi, että olet vielä paikalla, ja nollaa ajastin."
   },
