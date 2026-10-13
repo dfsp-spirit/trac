@@ -544,11 +544,6 @@ function initInstructionBanner() {
 
   const bannerStorageKey = getInstructionBannerStorageKey();
 
-  if (getCurrentDayIndex() !== 0) {
-    banner.remove();
-    return;
-  }
-
   // The banner stays until the participant closes it - including on later days,
   // which is what makes it usable as a reminder of the gestures (feedback: "it
   // only shows on first day of study, which is irritating; show it on all days
