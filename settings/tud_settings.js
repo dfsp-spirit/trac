@@ -1,7 +1,13 @@
 // Application settings for Time Used Diary (TUD) frontend.
 
 const TUD_SETTINGS = {
-    API_BASE_URL: 'http://localhost:8000/tud_backend/api',
+    // Same-origin API base: the page talks to whatever host it was loaded from,
+    // and nginx proxies /tud_backend/ to 127.0.0.1:8000. This is what production
+    // looks like, and it is what makes the app work from a phone on the same
+    // wifi - an absolute 'http://localhost:8000/...' would point the phone at
+    // the phone itself. For the same reason the dev nginx listens on all
+    // interfaces (port 3000), so http://<your-lan-ip>:3000/report/ works.
+    API_BASE_URL: '/tud_backend/api',
     DEFAULT_STUDY_NAME: 'default',
     DEFAULT_STUDIES_FILE: 'settings/studies_config.json',
     // Maintenance notice: set to true before short server maintenance to warn
