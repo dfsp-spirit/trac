@@ -1804,7 +1804,8 @@ body.carrying-activity .modal-close {
    The grips are decoration: `pointer-events: none` keeps the block the pointer
    target, so interact.js' edge zones and the ew-resize cursor are unchanged.
    Hidden by default, shown while the block is targeted (hover), keyboard
-   focused, or being resized. Not shown on the phone layout (separate slice). */
+   focused, or being resized. The phone layout re-uses the same spans - see the
+   mobile block at the end of this section. */
 .activity-block-grip {
   display: none;
 }
@@ -1837,6 +1838,52 @@ body.carrying-activity .modal-close {
 
   .activity-block:hover .activity-block-grip,
   .activity-block:focus-visible .activity-block-grip,
+  .activity-block.resizing .activity-block-grip {
+    opacity: 1;
+  }
+}
+
+/* --- The same grips on the phone ---
+   The markup is shared: `activity-block-grip-left/right` exist on every block.
+   On the vertical layout the block's start and end are its top and bottom edge,
+   so the vertical bars become horizontal ones and move onto those ends - which
+   is where the resize bands above reserve the gesture.
+
+   Two differences from desktop. There is no hover on a touch device, so a grip
+   that waited for it would never appear and the gesture would stay undiscovered
+   (the whole point of the marker); they are therefore visible at a modest
+   opacity and step up while the block is focused or being resized. And they sit
+   flush in the band (`top: 0` / `bottom: 0`) rather than inset, so the marker is
+   inside the band that actually resizes for every block size.
+
+   This block MUST come after the `display: none` above: same specificity, so a
+   rule placed before it would be overridden and the grips would exist but never
+   be rendered - exactly how the resize bands themselves once went missing. */
+@media (max-width: 1439.98px) {
+  .activity-block-grip {
+    display: block;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(36px, 55%);
+    height: 3px;
+    border-radius: 2px;
+    background-color: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.35);
+    pointer-events: none;
+    opacity: 0.7;
+    z-index: 16; /* above the block text, below the hover tooltip */
+  }
+
+  .activity-block-grip-left {
+    top: 0;
+  }
+
+  .activity-block-grip-right {
+    bottom: 0;
+  }
+
+  .activity-block:focus .activity-block-grip,
   .activity-block.resizing .activity-block-grip {
     opacity: 1;
   }

@@ -1633,7 +1633,9 @@ function createActivityBlock(activityData, isFromTemplate = false) {
   // the style of an Excel fill handle. The grips are decoration only
   // (`pointer-events: none`), which keeps the block the pointer target and
   // leaves the resize zones and cursor untouched. Whether they are shown at
-  // all is decided by the desktop media query in styles/styles.css.
+  // all, and how they are oriented, is decided by the media queries in
+  // styles/styles.css: vertical bars on the block's side edges on desktop,
+  // horizontal bars on its top/bottom ends on a phone.
   ['left', 'right'].forEach((side) => {
     const grip = document.createElement('span');
     grip.className = `activity-block-grip activity-block-grip-${side}`;
