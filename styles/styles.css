@@ -80,10 +80,29 @@ body {
     overflow: hidden;
     padding: 0 2px;
     width: 100%;
+    /* `100vh` is the viewport with the browser's own chrome *hidden*, and on a
+       phone that bar never goes away here (the page itself does not scroll, the
+       day scrolls inside it) - so the bottom of the day, and the 20px tail that
+       keeps its last hour line reachable, sat behind the URL bar. `svh` is the
+       smallest viewport, chrome included, so the day always fits; the `vh` line
+       above it is the fallback for engines without viewport units. */
     height: calc(
       100vh - var(--header-height, 80px) - var(--footer-height, 80px)
     );
+    height: calc(
+      100svh - var(--header-height, 80px) - var(--footer-height, 80px)
+    );
     overscroll-behavior: none;
+    /* No vertical margin, and the breathing room under the header is padding
+       *inside* this box instead: the height above is the whole space between
+       header and footer, so a 20px margin on top pushed the box (and the day's
+       scroller in it) 20px below the viewport - measured at 412x915 the
+       scroller ended at 935px in a 915px viewport, and the 20px tail that keeps
+       the day's last hour line reachable was exactly the part hanging off
+       screen. That is why the day still looked like it ended flush at 04:00. */
+    margin: 0;
+    padding-top: 20px;
+    box-sizing: border-box;
     /* Vertical panning is allowed here so it can reach .timelines-wrapper, the
        element that actually scrolls the day. Chrome already scrolled on
        without this, but the permission has to be granted along the whole chain
@@ -797,9 +816,10 @@ body {
     overflow-y: auto;
     align-items: center;
     justify-content: flex-start;
-    height: calc(
-      100vh - var(--header-height, 80px) - var(--footer-height, 80px)
-    );
+    /* Fill the space the canvas reserves (header/footer are already subtracted
+       there) so the scroller ends where the screen does; `100vh` here as well
+       would overflow by the canvas' padding. */
+    height: 100%;
   }
 
   .past-initialized-timelines-wrapper {
