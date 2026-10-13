@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Kopieren",
       "showInfo": "Info anzeigen",
+      "moveEarlier": "Früher verschieben",
+      "moveLater": "Später verschieben",
       "delete": "Löschen",
       "infoTitle": "Aktivitätsdetails",
       "start": "Start",
@@ -131,8 +133,6 @@
     "studyNotFound": "Die angeforderte Studie existiert nicht.",
     "submitError": "Fehler beim Übermitteln des Tagebuchs",
     "sending_retry": "Erneuter Versuch beim Speichern (Versuch {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Wird gespeichert ...",
-    "syncSaved": "Gespeichert",
     "syncNotSaved": "Nicht gespeichert",
     "syncRetry": "Erneut versuchen",
     "timelineCoverageMet": "✓",

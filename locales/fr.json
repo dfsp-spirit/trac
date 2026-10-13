@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Copier",
       "showInfo": "Afficher les infos",
+      "moveEarlier": "Déplacer plus tôt",
+      "moveLater": "Déplacer plus tard",
       "delete": "Supprimer",
       "infoTitle": "Détails de l'activité",
       "start": "Début",
@@ -131,8 +133,6 @@
     "studyNotFound": "L'étude demandée n'existe pas.",
     "submitError": "Erreur lors de la soumission du journal",
     "sending_retry": "Nouvelle tentative d'enregistrement du journal (essai {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Enregistrement ...",
-    "syncSaved": "Enregistré",
     "syncNotSaved": "Non enregistré",
     "syncRetry": "Réessayer",
     "timelineCoverageMet": "✓",

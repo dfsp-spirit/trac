@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Copiar",
       "showInfo": "Mostrar información",
+      "moveEarlier": "Mover antes",
+      "moveLater": "Mover después",
       "delete": "Eliminar",
       "infoTitle": "Detalles de la actividad",
       "start": "Inicio",
@@ -131,8 +133,6 @@
     "studyNotFound": "El estudio solicitado no existe.",
     "submitError": "Error al enviar el diario",
     "sending_retry": "Reintentando guardar tu diario (intento {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Guardando ...",
-    "syncSaved": "Guardado",
     "syncNotSaved": "No guardado",
     "syncRetry": "Reintentar",
     "timelineCoverageMet": "✓",

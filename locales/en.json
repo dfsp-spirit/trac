@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Copy",
       "showInfo": "Show info",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
       "delete": "Delete",
       "infoTitle": "Activity details",
       "start": "Start",
@@ -131,8 +133,6 @@
     "studyNotFound": "The requested study does not exist.",
     "submitError": "Error submitting diary",
     "sending_retry": "Retrying to save your diary (attempt {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Saving...",
-    "syncSaved": "Saved",
     "syncNotSaved": "Not saved",
     "syncRetry": "Retry",
     "timelineCoverageMet": "✓",

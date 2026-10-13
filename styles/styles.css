@@ -1081,7 +1081,12 @@ body {
 /* Mobile styles */
 @media (max-width: 1439.98px) {
   .time-label {
-    right: -50px; /* Space from the block */
+    /* Inside the block, not hanging off its right edge. With `right: -50px` the
+       chip needed 50 px of room beside a 48 px wide box, and the phone timeline
+       has none: measured at 390 px width it was clipped to a ~1 px black sliver
+       at the screen edge - which is what made a block look cut off. The block
+       itself now stops 5 % short of the edge, and the chip sits inside it. */
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
     white-space: normal;
@@ -1950,10 +1955,9 @@ body.carrying-activity .modal-close {
   white-space: nowrap;
 }
 
-/* Autosave status chip (ui.js renderSyncStatus). Deliberately quiet - it sits in
-   the toolbar and answers "is my day stored?" without competing with the actions.
-   Only the failure state takes the danger colour, because that is the one that
-   asks for something. */
+/* Autosave status chip (ui.js renderSyncStatus). It only ever appears when the
+   day could not be stored - a successful save says nothing - and it is the one
+   element that asks for something, so it takes the danger colour. */
 .sync-status {
   display: inline-flex;
   align-items: center;
@@ -1983,16 +1987,9 @@ body.carrying-activity .modal-close {
 }
 
 /* The text sits on its own tinted background, not on --background-color, so the
-   --success-color / --danger-color used for borders and icons are too light as
-   text: axe measured 3.58:1 (green on #ecfdf5) and 4.41:1 (red on #fef2f2) at
-   this 12.8px, both below the 4.5:1 WCAG AA needs. Darker shades of the same
-   hues keep the meaning: 5.21:1 and 5.91:1. */
-.sync-status.is-saved {
-  border-color: #a7f3d0;
-  background-color: #ecfdf5;
-  color: #047857;
-}
-
+   --danger-color used for the border and icon is too light as text: axe measured
+   4.41:1 (red on #fef2f2) at this 12.8px, below the 4.5:1 WCAG AA needs. A
+   darker shade of the same hue keeps the meaning: 5.91:1. */
 .sync-status.is-error {
   border-color: #fecaca;
   background-color: #fef2f2;
@@ -2029,12 +2026,6 @@ body.carrying-activity .modal-close {
     top: 50%;
     transform: translateY(-50%);
     margin-left: 10px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sync-status .fa-spin {
-    animation: none;
   }
 }
 

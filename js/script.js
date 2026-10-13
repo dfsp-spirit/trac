@@ -1220,6 +1220,99 @@ function handleCopyActivity(activityBlock) {
   };
 }
 
+/**
+ * Write a new start/end pair into a block: its datasets, its position on the
+ * timeline, its time chip, and the timeline state the rest of the app reads -
+ * then refresh the button states (coverage indicator, Submit gate, day row),
+ * which is also what marks the day dirty for autosave.
+ *
+ * The arrow-key nudge and the phone menu's move both go through here; the drag
+ * and resize handlers keep their own version because they write during the
+ * gesture and validate/revert at its end.
+ */
+function commitActivityTiming(block, newStartMinutes, newEndMinutes) {
+  const newStartTime = formatTimelineStart(newStartMinutes);
+  const newEndTime = formatTimelineEnd(newEndMinutes);
+
+  block.dataset.startMinutes = newStartMinutes;
+  block.dataset.endMinutes = newEndMinutes;
+  block.dataset.start = newStartTime;
+  block.dataset.end = newEndTime;
+  block.dataset.length = newEndMinutes - newStartMinutes;
+
+  if (getIsMobile()) {
+    block.style.top = `${minutesToPercentage(newStartMinutes)}%`;
+    block.style.height = `${
+      ((newEndMinutes - newStartMinutes) / MINUTES_PER_DAY) * 100
+    }%`;
+  } else {
+    block.style.left = `${minutesToPercentage(newStartMinutes)}%`;
+    block.style.width = `${
+      ((newEndMinutes - newStartMinutes) / MINUTES_PER_DAY) * 100
+    }%`;
+  }
+
+  const timeLabel = block.querySelector('.time-label');
+  if (timeLabel) {
+    updateTimeLabel(timeLabel);
+  }
+
+  const timelineKey = block.dataset.timelineKey;
+  const currentData = window.timelineManager.activities[timelineKey] || [];
+  const activityEntry = currentData.find((activity) =>
+    activityIdsEqual(activity.id, block.dataset.id)
+  );
+  if (activityEntry) {
+    activityEntry.startTime = newStartTime;
+    activityEntry.endTime = newEndTime;
+    activityEntry.startMinutes = newStartMinutes;
+    activityEntry.endMinutes = newEndMinutes;
+    activityEntry.blockLength = newEndMinutes - newStartMinutes;
+  }
+
+  persistPendingTimelineStateSoon();
+  updateButtonStates();
+}
+
+/** Minutes one nudge moves; the desktop drag snaps to the same grid. */
+const ACTIVITY_MOVE_STEP_MINUTES = 10;
+
+/**
+ * Move a whole block along the time axis by `deltaMinutes`, keeping its duration.
+ *
+ * This is what the phone's long-press menu uses ("Move earlier" / "Move later").
+ * A phone has no drag-to-move - interact.js' draggable is desktop-only, and the
+ * long press already opens this menu - so shifting a block has to be an action.
+ * A move that would leave the day or land on another activity changes nothing
+ * and only flashes the block, exactly like the arrow keys.
+ */
+function moveActivityBlockBy(block, deltaMinutes) {
+  const startMinutes = parseInt(block.dataset.startMinutes, 10);
+  const endMinutes = parseInt(block.dataset.endMinutes, 10);
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+    return;
+  }
+
+  // Same bounds as the arrow keys and the desktop drag: the day runs 04:00 to
+  // 04:00(+1), and a block slides up against either end but not past it.
+  const duration = endMinutes - startMinutes;
+  const newStart = Math.max(
+    240,
+    Math.min(1680 - duration, startMinutes + deltaMinutes)
+  );
+
+  // Already against the end of the day: there is nowhere left to go.
+  if (newStart === startMinutes) return;
+
+  if (!canPlaceActivity(newStart, newStart + duration, block.dataset.id)) {
+    block.classList.add('invalid');
+    setTimeout(() => block.classList.remove('invalid'), 400);
+    return;
+  }
+
+  commitActivityTiming(block, newStart, newStart + duration);
+}
+
 function initActivityContextMenu() {
   const MENU_ID = 'activityContextMenu';
   let targetBlock = null;
@@ -1233,6 +1326,20 @@ function initActivityContextMenu() {
     menu = document.createElement('div');
     menu.id = MENU_ID;
     menu.className = 'activity-context-menu';
+    // Moving a whole block is a phone action: desktop drags it, and on a phone
+    // the long press owns the gesture that would otherwise start a drag. The
+    // arrow keys resize (each one moves one edge), so they are not a substitute.
+    const moveItems = getIsMobile()
+      ? `
+            <button type="button" class="activity-context-menu-item" data-action="move-earlier">${translateOrFallback(
+              'modals.activityContext.moveEarlier',
+              'Move earlier'
+            )}</button>
+            <button type="button" class="activity-context-menu-item" data-action="move-later">${translateOrFallback(
+              'modals.activityContext.moveLater',
+              'Move later'
+            )}</button>`
+      : '';
     menu.innerHTML = `
             <button type="button" class="activity-context-menu-item" data-action="copy">${translateOrFallback(
               'modals.activityContext.copy',
@@ -1241,7 +1348,7 @@ function initActivityContextMenu() {
             <button type="button" class="activity-context-menu-item" data-action="show-info">${translateOrFallback(
               'modals.activityContext.showInfo',
               'Show info'
-            )}</button>
+            )}</button>${moveItems}
             <button type="button" class="activity-context-menu-item danger" data-action="delete">${translateOrFallback(
               'modals.activityContext.delete',
               'Delete'
@@ -1266,6 +1373,10 @@ function initActivityContextMenu() {
         handleCopyActivity(blockForAction);
       } else if (action === 'show-info') {
         showActivityInfoModal(blockForAction);
+      } else if (action === 'move-earlier') {
+        moveActivityBlockBy(blockForAction, -ACTIVITY_MOVE_STEP_MINUTES);
+      } else if (action === 'move-later') {
+        moveActivityBlockBy(blockForAction, ACTIVITY_MOVE_STEP_MINUTES);
       } else if (action === 'delete') {
         deleteActivityBlock(blockForAction);
       }
@@ -1621,46 +1732,10 @@ function createActivityBlock(activityData, isFromTemplate = false) {
       return;
     }
 
-    // Commit the change
-    const newStartTime = formatTimelineStart(newStart);
-    const newEndTime = formatTimelineEnd(newEnd);
-
-    block.dataset.startMinutes = newStart;
-    block.dataset.endMinutes = newEnd;
-    block.dataset.start = newStartTime;
-    block.dataset.end = newEndTime;
-    block.dataset.length = newEnd - newStart;
-
-    if (!isMobile) {
-      block.style.left = `${minutesToPercentage(newStart)}%`;
-      block.style.width = `${((newEnd - newStart) / MINUTES_PER_DAY) * 100}%`;
-    } else {
-      block.style.top = `${minutesToPercentage(newStart)}%`;
-      block.style.height = `${((newEnd - newStart) / MINUTES_PER_DAY) * 100}%`;
-    }
-
-    const timeLabel = block.querySelector('.time-label');
-    if (timeLabel) {
-      updateTimeLabel(timeLabel);
-    }
-
-    // Sync to timelineManager
-    const currentData = window.timelineManager.activities[timelineKey] || [];
-    const activityEntry = currentData.find((a) =>
-      activityIdsEqual(a.id, block.dataset.id)
-    );
-    if (activityEntry) {
-      activityEntry.startTime = newStartTime;
-      activityEntry.endTime = newEndTime;
-      activityEntry.startMinutes = newStart;
-      activityEntry.endMinutes = newEnd;
-      activityEntry.blockLength = newEnd - newStart;
-    }
-
-    // Arrow-key changes to start/end time affect coverage, so refresh the
-    // Next/Submit and day-switch button states the same way drag/resize end
-    // does (updateButtonStates() also re-renders #previousDaysSwitchRow).
-    updateButtonStates();
+    // Same commit path the phone menu's move uses: datasets, position, time
+    // chip, timeline state, then the button states (coverage, Submit gate,
+    // day row) - the latter is also what marks the day dirty for autosave.
+    commitActivityTiming(block, newStart, newEnd);
   });
 
   // Positioning logic
@@ -1670,7 +1745,12 @@ function createActivityBlock(activityData, isFromTemplate = false) {
     100;
 
   // Fixed dimensions for consistency
-  const MOBILE_BLOCK_WIDTH = 75;
+  // Mobile: the block starts after the 25 % label gutter and stops 5 % short of
+  // the right edge instead of running flush against it - against the screen
+  // border it looked cut off, and it left no thumb-safe margin for the Android
+  // back gesture. Desktop keeps its own values (time is the horizontal axis
+  // there, so the width is the duration).
+  const MOBILE_BLOCK_WIDTH = 70;
   const DESKTOP_BLOCK_HEIGHT = 90;
   const MOBILE_OFFSET = 25;
   const DESKTOP_OFFSET = 5;

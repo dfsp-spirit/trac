@@ -7,7 +7,7 @@ import {
   positionToMinutes,
 } from './utils.js';
 import { getIsMobile, updateIsMobile } from './globals.js';
-import { SYNC_STATUS_SAVED_VISIBLE_MS, syncStatusView } from './sync_status.js';
+import { syncStatusView } from './sync_status.js';
 import {
   navigateToTimelineByKey,
   renderActivities,
@@ -78,16 +78,17 @@ window.showToast = showToast;
 // ---------------------------------------------------------------------------
 // Autosave status chip
 //
-// The diary saves itself now, so the toolbar has to say what happened to the
-// day by itself: "Saving..." while an edit is on its way, "Saved" briefly
-// afterwards, and - the part that matters - a persistent "Not saved" with a
-// Retry that does not wait for the engine's own backoff.
-// Silent autosave failure would be worse than a failed explicit save.
+// The diary saves itself, so nobody presses a button - and a day that is stored
+// does not need to be announced. The chip therefore only ever appears for one
+// reason: the day could NOT be stored. That message is persistent and carries a
+// Retry that does not wait for the engine's own backoff; a silent autosave
+// failure would be worse than a failed explicit save. "Saving..." and "Saved"
+// were removed because announcing every write made the app feel busy (and, with
+// the ~2 s debounce, laggy) for no information the participant can act on.
 //
 // The chip sits in the toolbar, where "is my day stored?" is looked for;
 // sync_status.js owns the state -> label mapping.
 // ---------------------------------------------------------------------------
-let syncStatusHideTimer = null;
 
 function uiText(key, fallback) {
   return window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
@@ -140,17 +141,13 @@ function ensureSyncStatusChip() {
 }
 
 /**
- * Autosave state -> chip. Called by the engine on every transition: `idle` hides
- * it, a success confirms briefly, a failure stays until the day is stored.
+ * Autosave state -> chip. Called by the engine on every transition. Only the
+ * failure state has anything to say (see sync_status.js); it stays on screen
+ * until the day is stored.
  */
 function renderSyncStatus(state) {
   const chip = ensureSyncStatusChip();
   if (!chip) return;
-
-  if (syncStatusHideTimer !== null) {
-    clearTimeout(syncStatusHideTimer);
-    syncStatusHideTimer = null;
-  }
 
   const view = syncStatusView(state);
   if (!view) {
@@ -159,14 +156,10 @@ function renderSyncStatus(state) {
   }
 
   chip.hidden = false;
-  chip.classList.toggle('is-progress', view.kind === 'progress');
-  chip.classList.toggle('is-saved', view.kind === 'ok');
   chip.classList.toggle('is-error', view.kind === 'error');
 
   const icon = chip.querySelector('.sync-status-icon');
-  icon.className = `fas sync-status-icon ${view.icon}${
-    view.spin ? ' fa-spin' : ''
-  }`;
+  icon.className = `fas sync-status-icon ${view.icon}`;
 
   // data-i18n so the next applyTranslations() pass (language switch) rewrites
   // the text from the same key.
@@ -179,13 +172,6 @@ function renderSyncStatus(state) {
   if (view.canRetry) {
     retry.setAttribute('data-i18n', 'messages.syncRetry');
     retry.textContent = uiText('messages.syncRetry', 'Retry');
-  }
-
-  if (view.kind === 'ok') {
-    syncStatusHideTimer = setTimeout(() => {
-      syncStatusHideTimer = null;
-      chip.hidden = true;
-    }, SYNC_STATUS_SAVED_VISIBLE_MS);
   }
 }
 
@@ -2283,6 +2269,9 @@ function initButtons() {
   initSkipReportingButton();
   initMoreMenu();
   initMobileContextBar();
+  // Build the chip (hidden) up front: a live region has to be in the DOM before
+  // its text changes, otherwise the failure it is there for is never announced.
+  ensureSyncStatusChip();
 
   const clearTimelineBtn = document.getElementById('clearTimelineBtn');
 

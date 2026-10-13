@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Kopiuj",
       "showInfo": "Pokaż informacje",
+      "moveEarlier": "Przenieś wcześniej",
+      "moveLater": "Przenieś później",
       "delete": "Usuń",
       "infoTitle": "Szczegóły aktywności",
       "start": "Początek",
@@ -131,8 +133,6 @@
     "studyNotFound": "Żądane badanie nie istnieje.",
     "submitError": "Błąd przy wysyłaniu dziennika",
     "sending_retry": "Ponawianie próby zapisania dziennika (próba {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Zapisywanie ...",
-    "syncSaved": "Zapisano",
     "syncNotSaved": "Nie zapisano",
     "syncRetry": "Ponów próbę",
     "timelineCoverageMet": "✓",

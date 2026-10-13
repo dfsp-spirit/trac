@@ -112,6 +112,8 @@
     "activityContext": {
       "copy": "Kopioi",
       "showInfo": "Näytä tiedot",
+      "moveEarlier": "Siirrä aiemmaksi",
+      "moveLater": "Siirrä myöhemmäksi",
       "delete": "Poista",
       "infoTitle": "Toiminnon tiedot",
       "start": "Alku",
@@ -131,8 +133,6 @@
     "studyNotFound": "Pyydettyä tutkimusta ei ole olemassa.",
     "submitError": "Virhe päiväkirjan lähetyksessä",
     "sending_retry": "Yritetään tallentaa päiväkirjaa uudelleen (yritys {{attempt}}/{{maxRetries}})...",
-    "syncSaving": "Tallennetaan ...",
-    "syncSaved": "Tallennettu",
     "syncNotSaved": "Ei tallennettu",
     "syncRetry": "Yritä uudelleen",
     "timelineCoverageMet": "✓",
