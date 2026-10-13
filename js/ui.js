@@ -2612,32 +2612,19 @@ function updateTimelineCountVariable() {
 
 // Prevent pull-to-refresh on mobile devices
 function preventPullToRefresh() {
-  // Only prevent overscroll on iOS Safari and Chrome
+  // overscroll-behavior is what stops the browser's pull-to-refresh, and every
+  // engine we support honours it. It has to be set on the root element (that is
+  // the viewport) and on the body (Safari reads that one).
+  document.documentElement.style.overscrollBehavior = 'none';
   document.body.style.overscrollBehavior = 'none';
 
-  // For iOS Safari - only prevent default when at the top of the page and pulling down
-  document.addEventListener(
-    'touchstart',
-    function (e) {
-      // Store the initial touch position
-      window.touchStartY = e.touches[0].clientY;
-    },
-    { passive: true }
-  );
-
-  document.addEventListener(
-    'touchmove',
-    function (e) {
-      const touchY = e.touches[0].clientY;
-      const touchYDelta = touchY - window.touchStartY;
-
-      // Only prevent default if we're at the top and trying to pull down
-      if (window.pageYOffset === 0 && touchYDelta > 0) {
-        e.preventDefault();
-      }
-    },
-    { passive: false }
-  );
+  // There used to be a document-level touchmove fallback here that called
+  // preventDefault() whenever window.pageYOffset was 0 and the finger moved
+  // down. On the diary the window never scrolls - the day scrolls inside
+  // .timelines-wrapper - so that condition was permanently true and every
+  // downward drag was cancelled: the day could be scrolled to its end but never
+  // back. overscroll-behavior covers the case on its own, without a non-passive
+  // touchmove listener on the whole document.
 }
 
 function updateFooterHeight() {

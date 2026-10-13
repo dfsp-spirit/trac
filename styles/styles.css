@@ -812,7 +812,11 @@ body {
     min-width: 100%;
     height: 2500px;
     margin: 0;
-    padding: 0;
+    /* The day's last hour line sits at the very end of the content, so without
+       this it lands exactly on the bottom edge of the scroller and cannot be
+       brought into view. The padding is added outside the timeline's own height
+       (content-box), so the hour spacing stays untouched. */
+    padding: 0 0 20px;
   }
 
   .timeline-container {
@@ -1708,6 +1712,18 @@ body.carrying-activity .modal-close {
   }
 }
 
+/* Inert on desktop, where the block is dragged/resized with a mouse and the
+   `touch-action: none` of the base rule stays in force.
+
+   This has to be declared BEFORE the mobile override below: the two rules have
+   the same specificity, so a `display: none` placed after it silently wins and
+   the reserved ends exist in the DOM but never on screen - which is what
+   happened, and what made the resize depend on a document-level touchmove
+   guard instead. */
+.activity-block-edge-zone {
+  display: none;
+}
+
 /* Mobile resize handle */
 @media (max-width: 1439.98px) {
   .activity-block {
@@ -1723,9 +1739,14 @@ body.carrying-activity .modal-close {
      The two ends stay reserved for resizing, because a pannable drag would make
      the browser scroll and fire pointercancel, killing the resize in progress.
      Their height is the measured resize band: interact starts a resize 4-20 px
-     from an end, so 16 px keeps ~80 % of the target while leaving a 30-minute
-     block (≈51 px tall) a scrollable middle. Re-tune here if that trade-off
-     ever needs to shift - it is the single place that decides it. */
+     from an end, so 16 px keeps the band close to the gesture it protects.
+
+     The 30 % cap is what keeps the middle scrollable on a short block: a
+     10-minute block is only ~17 px tall, and at 40 % the two bands covered all
+     but 3 px of it - measured, that is a scroll dead zone again (the block
+     reported "the scrolling doesn't work on my phone" a second time). At 30 %
+     the middle is always at least 40 % of the block. Re-tune here if that
+     trade-off ever needs to shift - it is the single place that decides it. */
   .activity-block {
     touch-action: pan-y pinch-zoom;
   }
@@ -1735,7 +1756,7 @@ body.carrying-activity .modal-close {
     position: absolute;
     left: 0;
     width: 100%;
-    height: min(16px, 40%);
+    height: min(16px, 30%);
     touch-action: none;
     z-index: 2; /* above the block text, which is what a middle swipe hits */
   }
@@ -1747,12 +1768,6 @@ body.carrying-activity .modal-close {
   .activity-block-edge-zone-bottom {
     bottom: 0;
   }
-}
-
-/* Inert on desktop, where the block is dragged/resized with a mouse and the
-   `touch-action: none` of the base rule stays in force. */
-.activity-block-edge-zone {
-  display: none;
 }
 
 /* --- Visible resize grips (desktop) ---
