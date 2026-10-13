@@ -14,7 +14,7 @@ import {
   getCurrentDayIndex,
   getTimelineLabel,
 } from './script.js';
-import { DEBUG_MODE } from './constants.js';
+import { DEBUG_MODE, shouldShowTimelineTabs } from './constants.js';
 
 // Toast notification system
 /**
@@ -1984,6 +1984,7 @@ function addMenuHeader(menu, text) {
 // button, so a phone no longer spends two extra rows on navigation.
 const DAY_MENU_ID = 'dayMenu';
 const TIMELINE_MENU_ID = 'timelineMenu';
+const TIMELINE_TABS_ID = 'timelineTabs';
 
 let contextBarInitialized = false;
 
@@ -2042,12 +2043,15 @@ function ensureMobileContextBar() {
         <i class="fas fa-chevron-right" aria-hidden="true"></i>
       </button>
     </div>
-    <button type="button" class="btn context-picker-btn" id="timelinePickerBtn"
-            aria-haspopup="true" aria-expanded="false"
-            aria-controls="${TIMELINE_MENU_ID}">
-      <span id="contextTimelineName"></span>
-      <i class="fas fa-caret-down" aria-hidden="true"></i>
-    </button>
+    <div class="timeline-switcher" id="timelineSwitcher" hidden>
+      <div class="timeline-tabs" id="${TIMELINE_TABS_ID}" role="tablist" hidden></div>
+      <button type="button" class="btn context-picker-btn" id="timelinePickerBtn"
+              aria-haspopup="true" aria-expanded="false"
+              aria-controls="${TIMELINE_MENU_ID}">
+        <span id="contextTimelineName"></span>
+        <i class="fas fa-caret-down" aria-hidden="true"></i>
+      </button>
+    </div>
   `;
 
   controls.insertAdjacentElement('beforebegin', bar);
@@ -2175,6 +2179,51 @@ function buildTimelineMenu(menu) {
   });
 }
 
+/** A timeline's plain name. The tabs sit side by side, so the position in the
+ * set that `getTimelineLabel()` appends ("(1/2)") has nothing left to say
+ * there - the pair itself says that there are two. */
+function getTimelineName(timelineKey) {
+  return window.timelineManager?.metadata?.[timelineKey]?.name || timelineKey || '';
+}
+
+/**
+ * Paint the phone's timeline tabs.
+ *
+ * Two timelines are the case this control exists for: with both names on screen
+ * the second one is visible without opening anything, which is what the
+ * participants who "missed the existence of the 2nd timeline entirely" needed -
+ * the picker they never pressed could only hint at it with a "(1/2)" inside its
+ * own label. A study with one timeline has nothing to switch to and a study with
+ * three or more would run off the row; both keep the picker (see
+ * `refreshMobileContextBar`).
+ */
+function renderTimelineTabs(container, keys, currentKey) {
+  // Rebuild only when the set changes, so focus survives a repaint.
+  const signature = keys.join('|');
+  if (container.dataset.signature !== signature) {
+    container.replaceChildren();
+    keys.forEach((key) => {
+      const tab = document.createElement('button');
+      tab.type = 'button';
+      tab.className = 'timeline-tab';
+      tab.dataset.timelineKey = key;
+      // Each timeline's element carries the key as its id - that is the panel
+      // the tab selects.
+      if (document.getElementById(key)) tab.setAttribute('aria-controls', key);
+      container.appendChild(tab);
+    });
+    container.dataset.signature = signature;
+  }
+
+  container.querySelectorAll('.timeline-tab').forEach((tab) => {
+    const isCurrent = tab.dataset.timelineKey === currentKey;
+    tab.textContent = getTimelineName(tab.dataset.timelineKey);
+    tab.setAttribute('aria-selected', isCurrent ? 'true' : 'false');
+    // Roving tabindex: the strip is one stop, the arrow keys move within it.
+    tab.tabIndex = isCurrent ? 0 : -1;
+  });
+}
+
 /** Refresh what changes without a page load: the timeline name and the ./.
  * arrows. The arrows name the day they lead to, like the timeline switcher
  * names its destination - no new translations and more useful than "next day". */
@@ -2189,15 +2238,46 @@ function refreshMobileContextBar() {
   const timelineName = getTimelineLabel(getCurrentTimelineKey());
   const timelineNameLabel = document.getElementById('contextTimelineName');
   const timelinePicker = document.getElementById('timelinePickerBtn');
+  const switcher = document.getElementById('timelineSwitcher');
+  const tabs = document.getElementById(TIMELINE_TABS_ID);
+  // Exactly two timelines: see `shouldShowTimelineTabs()`.
+  const showTabs = shouldShowTimelineTabs(keys.length);
 
-  if (timelineNameLabel) timelineNameLabel.textContent = timelineName;
+  if (tabs) {
+    tabs.hidden = !showTabs;
+    tabs.setAttribute(
+      'aria-label',
+      moreMenuLabel('buttons.switchTimeline', 'Switch timeline')
+    );
+    if (showTabs) {
+      renderTimelineTabs(tabs, keys, getCurrentTimelineKey());
+    } else if (tabs.childElementCount) {
+      tabs.replaceChildren();
+      delete tabs.dataset.signature;
+    }
+  }
+
+  if (timelineNameLabel) {
+    timelineNameLabel.textContent = timelineName;
+    // With both names on screen this only repeats a tab, so the button shrinks
+    // to its caret - the way into the timeline sheet, which still carries the
+    // per-timeline coverage and "Clear timeline".
+    timelineNameLabel.hidden = showTabs;
+  }
+
   if (timelinePicker) {
     // Pointless with a single timeline, and the day control can use the space.
     timelinePicker.hidden = keys.length < 2;
+    timelinePicker.classList.toggle('is-icon-only', showTabs);
     timelinePicker.setAttribute(
       'aria-label',
       `${moreMenuLabel('buttons.switchTimeline', 'Switch timeline')}: ${timelineName}`
     );
+  }
+
+  if (switcher) {
+    switcher.hidden = keys.length < 2;
+    switcher.classList.toggle('has-tabs', showTabs);
   }
 
   const currentDayIndex = getDayIndexFromUrl();
@@ -2257,6 +2337,31 @@ function initMobileContextBar() {
       trigger: timelineTrigger,
       build: buildTimelineMenu,
     });
+  });
+
+  // The tabs are rebuilt as timelines come and go, so their handlers live on the
+  // strip instead of on the buttons.
+  const timelineTabs = document.getElementById(TIMELINE_TABS_ID);
+  timelineTabs?.addEventListener('click', (event) => {
+    const tab = event.target.closest?.('.timeline-tab');
+    if (!tab) return;
+    navigateToTimelineByKey(tab.dataset.timelineKey);
+  });
+  timelineTabs?.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    const tabs = Array.from(timelineTabs.querySelectorAll('.timeline-tab'));
+    const current = tabs.findIndex(
+      (tab) => tab.getAttribute('aria-selected') === 'true'
+    );
+    if (current === -1) return;
+    const step = event.key === 'ArrowRight' ? 1 : -1;
+    const next = tabs[(current + step + tabs.length) % tabs.length];
+    if (!next) return;
+    event.preventDefault();
+    // Focus lands on the tab the arrow key reached and stays there: the switch
+    // is async, but the strip is only rebuilt when the key set changes.
+    next.focus();
+    navigateToTimelineByKey(next.dataset.timelineKey);
   });
 
   refreshMobileContextBar();
