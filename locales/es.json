@@ -202,6 +202,9 @@
     "heading": "Sesión finalizada",
     "message": "Tu sesión ha finalizado por inactividad. Usa tu enlace de invitación para volver al diario y continuar."
   },
+  "footer": {
+    "opensInNewTab": "se abre en una pestaña nueva"
+  },
   "idleTimeout": {
     "tooltip": "Tiempo de inactividad agotado. Haga clic para confirmar que sigue aquí y reiniciar el temporizador."
   },

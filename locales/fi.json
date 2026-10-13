@@ -202,6 +202,9 @@
     "heading": "Istunto päättyi",
     "message": "Istuntosi päättyi toimettomuuden vuoksi. Käytä kutsulinkkiäsi palataksesi päiväkirjaan ja jatkaaksesi."
   },
+  "footer": {
+    "opensInNewTab": "avautuu uuteen välilehteen"
+  },
   "idleTimeout": {
     "tooltip": "Passiivisuuden aikakatkaisu. Napsauta vahvistaaksesi, että olet vielä paikalla, ja nollaa ajastin."
   },

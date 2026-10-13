@@ -202,6 +202,9 @@
     "heading": "Sesja wygasła",
     "message": "Twoja sesja została zakończona z powodu braku aktywności. Użyj linku z zaproszeniem, aby wrócić do dziennika i kontynuować."
   },
+  "footer": {
+    "opensInNewTab": "otwiera się w nowej karcie"
+  },
   "idleTimeout": {
     "tooltip": "Limit czasu bezczynności. Kliknij, aby potwierdzić, że wciąż tu jesteś i zresetować licznik czasu."
   },

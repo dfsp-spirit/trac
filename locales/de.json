@@ -202,6 +202,9 @@
     "heading": "Sitzung abgelaufen",
     "message": "Ihre Sitzung wurde wegen Inaktivität beendet. Bitte verwenden Sie Ihren Einladungslink, um zum Tagebuch zurückzukehren und Ihre Eingabe fortzusetzen."
   },
+  "footer": {
+    "opensInNewTab": "öffnet in einem neuen Tab"
+  },
   "idleTimeout": {
     "tooltip": "Inaktivitäts-Zeitüberschreitung. Klicken Sie hier, um zu bestätigen, dass Sie noch da sind, und der Timer wird zurückgesetzt."
   },

@@ -16,9 +16,8 @@
     const privacy = settings.PRIVACY_URL || null;
     if (!imprint && !privacy) return [];
 
-    const openInNew = settings.OPEN_LEGAL_LINKS_IN_NEW_TAB !== false;
-    const cfgLabels = (settings.FOOTER_LINK_LABELS &&
-      settings.FOOTER_LINK_LABELS[docLang]) ||
+    const cfgLabels =
+      (settings.FOOTER_LINK_LABELS && settings.FOOTER_LINK_LABELS[docLang]) ||
       settings.FOOTER_LINK_LABELS?.en || {
         imprint: 'Imprint',
         privacy: 'Privacy',
@@ -52,10 +51,10 @@
 
     const parts = [];
     if (imprint) {
-      parts.push(createLinkElement(imprint, getLabel('imprint'), openInNew));
+      parts.push(createLinkElement(imprint, getLabel('imprint')));
     }
     if (privacy) {
-      parts.push(createLinkElement(privacy, getLabel('privacy'), openInNew));
+      parts.push(createLinkElement(privacy, getLabel('privacy')));
     }
     return parts;
   }
@@ -69,15 +68,154 @@
       return [];
     return studyConfig.footer_links.map((link) => {
       const title = resolveLocalizedText(link.title, docLang, link.target_url);
-      return createLinkElement(
-        link.target_url,
-        title,
-        link.in_new_tab !== false
-      );
+      return createLinkElement(link.target_url, title);
     });
   }
 
-  function createLinkElement(href, text, openInNew) {
+  /** True for a target we serve ourselves, i.e. one no other site can frame-block. */
+  function isSameOrigin(href) {
+    try {
+      return (
+        new URL(href, window.location.href).origin === window.location.origin
+      );
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /** "opens in a new tab", translated; the visible glyph needs no translation. */
+  function newTabHint() {
+    try {
+      if (window.i18n && window.i18n.isReady && window.i18n.isReady()) {
+        const translated = window.i18n.t('footer.opensInNewTab');
+        if (typeof translated === 'string' && translated.trim() !== '') {
+          return translated;
+        }
+      }
+    } catch (e) {
+      /* fall through to the English hint */
+    }
+    return 'opens in a new tab';
+  }
+
+  /**
+   * Show one of our own pages over the current one, in an iframe dialog.
+   *
+   * Footer.js runs on pages that load neither the diary's ui.js nor styles.css
+   * (consent, instructions, open_studies, tasks, thank-you), so a modal cannot be
+   * borrowed from there - hence this small self-contained one. It exists because
+   * following a footer link used to take the participant out of the study: on a
+   * phone even a new tab looks like leaving, and a same-tab link loses the page
+   * they were on ("if people click the footer links, they effectively left
+   * study").
+   *
+   * Only same-origin targets are shown here: an external site can refuse framing
+   * (`X-Frame-Options`, `frame-ancestors`), and a blank frame cannot be detected
+   * from JS, so those keep opening in a new tab.
+   */
+  function openIframeModal(href, title) {
+    const existing = document.getElementById('footerLinkModal');
+    if (existing) existing.remove();
+
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const scrollLock = document.body.style.overflow;
+
+    const overlay = document.createElement('div');
+    overlay.id = 'footerLinkModalOverlay';
+    overlay.style.cssText =
+      'position:fixed;inset:0;background:rgba(15,23,42,0.6);z-index:10000;' +
+      'display:flex;align-items:center;justify-content:center;padding:12px;';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'footerLinkModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'footerLinkModalTitle');
+    dialog.style.cssText =
+      'background:#fff;color:#0f172a;border-radius:8px;width:100%;' +
+      'max-width:900px;height:min(88vh,900px);display:flex;' +
+      'flex-direction:column;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.3);';
+
+    const header = document.createElement('div');
+    header.style.cssText =
+      'display:flex;align-items:center;justify-content:space-between;gap:12px;' +
+      'padding:10px 14px;border-bottom:1px solid #e5e7eb;';
+
+    const heading = document.createElement('h2');
+    heading.id = 'footerLinkModalTitle';
+    heading.textContent = title;
+    heading.style.cssText = 'margin:0;font-size:1rem;';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent =
+      window.i18n && window.i18n.isReady && window.i18n.isReady()
+        ? window.i18n.t('buttons.close')
+        : 'Close';
+    closeBtn.style.cssText =
+      'min-height:32px;padding:4px 12px;border:1px solid #cbd5e1;' +
+      'border-radius:6px;background:#f8fafc;color:#0f172a;font:inherit;cursor:pointer;';
+
+    const frame = document.createElement('iframe');
+    frame.src = href;
+    frame.title = title;
+    frame.style.cssText = 'flex:1;width:100%;border:0;background:#fff;';
+
+    header.append(heading, closeBtn);
+    dialog.append(header, frame);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    // The page behind must not scroll while the dialog is up.
+    document.body.style.overflow = 'hidden';
+    closeBtn.focus();
+
+    function close() {
+      document.removeEventListener('keydown', onKeydown, true);
+      overlay.remove();
+      document.body.style.overflow = scrollLock;
+      if (previouslyFocused) {
+        previouslyFocused.focus();
+      }
+    }
+
+    function onKeydown(event) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+        return;
+      }
+      // Keep Tab inside the dialog: the only reachable stops are its own, the
+      // iframe being one of them.
+      if (event.key === 'Tab') {
+        /** @type {HTMLElement[]} */
+        const stops = [closeBtn, frame];
+        const active =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+        const index = active ? stops.indexOf(active) : -1;
+        const next =
+          index === -1
+            ? stops[0]
+            : stops[
+                (index + (event.shiftKey ? -1 : 1) + stops.length) % stops.length
+              ];
+        event.preventDefault();
+        next.focus();
+      }
+    }
+
+    closeBtn.addEventListener('click', close);
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+  }
+
+  function createLinkElement(href, text) {
     const a = document.createElement('a');
     a.href = href;
     a.textContent = text;
@@ -88,10 +226,39 @@
     a.style.display = 'inline-block';
     a.style.padding = '4px 2px';
     a.setAttribute('aria-label', text);
-    if (openInNew) {
-      a.target = '_blank';
-      a.rel = 'noopener noreferrer';
+
+    if (isSameOrigin(href)) {
+      // Our own content: show it here, so the participant never leaves the page
+      // they are working on.
+      a.setAttribute('aria-haspopup', 'dialog');
+      a.addEventListener('click', (event) => {
+        // Modified and middle clicks stay ordinary link clicks (new tab/window).
+        if (
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        ) {
+          return;
+        }
+        event.preventDefault();
+        openIframeModal(href, text);
+      });
+      return a;
     }
+
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    // Opening a tab is a change of context, so the accessible name says it; the
+    // glyph is decoration and needs no translation.
+    a.setAttribute('aria-label', `${text} (${newTabHint()})`);
+    const glyph = document.createElement('span');
+    glyph.textContent = '\u2197';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.style.marginLeft = '2px';
+    glyph.style.fontSize = '0.85em';
+    a.appendChild(glyph);
     return a;
   }
 

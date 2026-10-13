@@ -202,6 +202,9 @@
     "heading": "Session expirée",
     "message": "Votre session a pris fin pour cause d'inactivité. Utilisez votre lien d'invitation pour revenir au journal et continuer."
   },
+  "footer": {
+    "opensInNewTab": "s'ouvre dans un nouvel onglet"
+  },
   "idleTimeout": {
     "tooltip": "Délai d'inactivité. Cliquez pour confirmer votre présence et réinitialiser le minuteur."
   },

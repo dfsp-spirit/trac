@@ -142,8 +142,7 @@
             "sv": "Studieinformation",
             "de": "Studieninformation"
           },
-          "target_url": "https://example.com/study-info",
-          "in_new_tab": true
+          "target_url": "https://example.com/study-info"
         },
         {
           "title": {
@@ -151,8 +150,7 @@
             "sv": "Kontakt",
             "de": "Kontakt"
           },
-          "target_url": "https://example.com/contact",
-          "in_new_tab": false
+          "target_url": "https://example.com/contact"
         }
       ]
     },

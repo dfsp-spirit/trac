@@ -202,6 +202,9 @@
     "heading": "Session Timed Out",
     "message": "Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work."
   },
+  "footer": {
+    "opensInNewTab": "opens in a new tab"
+  },
   "idleTimeout": {
     "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
   },
