@@ -8,7 +8,7 @@ export const TIMELINE_HOURS = 24;
 
 // Debug mode
 export const DEBUG_MODE = true;
-export const TUD_FRONTEND_VERSION = '0.23.0'; // Update this version number when making changes to the frontend code
+export const TUD_FRONTEND_VERSION = '0.24.0'; // Update this version number when making changes to the frontend code
 
 /**
  * Does this study get timeline tabs on a phone, or the picker?
