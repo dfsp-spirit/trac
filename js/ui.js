@@ -2205,6 +2205,11 @@ function renderTimelineTabs(container, keys, currentKey) {
     keys.forEach((key) => {
       const tab = document.createElement('button');
       tab.type = 'button';
+      // role="tab" is what makes `aria-selected`/`aria-controls` legal on the
+      // button and satisfies the tablist's required children. Without it axe
+      // reports `aria-allowed-attr` on both tabs and `aria-required-children`
+      // on `#timelineTabs` (CI-only, because that spec needs @axe-core).
+      tab.setAttribute('role', 'tab');
       tab.className = 'timeline-tab';
       tab.dataset.timelineKey = key;
       // Each timeline's element carries the key as its id - that is the panel
