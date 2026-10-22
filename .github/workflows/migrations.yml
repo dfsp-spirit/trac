@@ -48,7 +48,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup uv and Python
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.2
 
       - name: Install backend dependencies
         working-directory: backend
@@ -92,7 +92,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup uv and Python
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.2
 
       - name: Install backend dependencies and the MariaDB driver
         working-directory: backend
@@ -133,7 +133,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup uv and Python
-        uses: astral-sh/setup-uv@v10.2.0
+        uses: astral-sh/setup-uv@v10.3.2
 
       - name: Install backend dependencies and the MSSQL driver
         working-directory: backend
