@@ -130,7 +130,7 @@ Implikationen:
   verwechselt werden.
 - **Aktivitätscodes ändern sich:** Der zweite Katalog (Codes `2xxx`, z. B. `2200 Streaming
   Video`) wird gelöscht, weil die Inhalte im Hauptkatalog bereits vorhanden sind (`1200`).
-  Jede Code-basierte Zuordnung (REDCap-Felder, Auswertungsskripte, Veröffentlichungen) muss
+  Jede Code-basierte Zuordnung (Auswertungsskripte, Veröffentlichungen) muss
   auf die neuen Codes umgestellt werden.
 - Die Option „zweite Timeline bleibt leer" existiert nicht mehr. Wer bisher bewusst nur die
   Hauptaktivität erhoben hat, erhält jetzt automatisch die Möglichkeit, parallele
@@ -243,11 +243,10 @@ Implikationen:
 | Q3 | **Muss „Hauptaktivität vs. parallel" in den Daten überleben?** Falls ja: wer setzt es (teilnehmende Person, Reihenfolge, Regel)? | Decides whether `activities` gets an explicit `role` field. Cheap now, expensive after data collection. |
 | Q4 | **Abdeckung als Union mit Abschneiden an der Tagesgrenze** – bestätigt? Und bleibt `min_coverage: 1440` (volle Abdeckung) sinnvoll, wenn Nächte über Mitternacht gehen? | Changes which days count as complete; affects submit gate, admin progress and analysis. |
 | Q5 | **Kopieren/Sammel-Anlegen:** erlaubt? Wenn ja, mit oder ohne Herkunftsmarkierung (`copy_source_uuid`)? Obergrenze an Tagen? | Data-quality and analysis rule; also endpoint design. |
-| Q6 | **Katalog-Merge:** Löschen der `2xxx`-Codes und der zweiten Timeline bestätigt? Wer legt finale Aktivitätsliste und Farben fest? | Content ownership; blocks fixtures and REDCap mapping. |
+| Q6 | **Katalog-Merge:** Löschen der `2xxx`-Codes und der zweiten Timeline bestätigt? Wer legt finale Aktivitätsliste und Farben fest? | Content ownership; blocks fixture |
 | Q7 | **Bestehende Studien neu aufsetzen** (zwei Timelines → eine) – Freigabe? | Import/validation changes; study configs must be regenerated. |
 | Q8 | **Änderungsprotokoll nötig?** Reicht der Endzustand, oder braucht es Historie/`updated_at` in Exporten? | Data protection requirement; schema and export design. |
 | Q9 | **Wer schreibt die Texte um** (Anleitung, Einwilligung, Studienbeschreibung), die „zwei Timelines" erwähnen? | Content work must start before the new UI ships. |
-| Q10 | **REDCap-/Code-Mapping** mit den neuen Codes neu erstellen – bestätigt? | External system mapping. |
 
 ---
 
