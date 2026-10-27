@@ -736,6 +736,15 @@ JS, and any router dependency. `hashchange`/`popstate` plus a parse function is 
   (`done_reason` decides the text), so `ui/stageMachine.js` refetches once per transition rather than
   patching its cached payload from several responses.
 
+**Deployment (the rewrite is served next to the old app, not instead of it).** `frontend_new/src` is
+mounted at `/report-new/` with the API at `/tud_backend/` and the shared locale files at `/locales/`,
+in both the dev nginx config and the CI config, so a study can be piloted on the new UI while every
+other study stays on the old one. No second set of `run_dev_*` / `test_*` scripts: each environment
+has one nginx config with both locations and one settings file per app, copied into the served tree
+exactly like `tud_settings.js` is today. The rewrite therefore reads `apiBaseUrl` and `localesUrl`
+from `js/config.js` and must work under any host or path prefix. Cutover is deleting the old
+`location` block, not a migration.
+
 ### D38 — Consent is a one-way latch
 
 Once recorded, `consent_given` does not go back to false inside this application. Withdrawal happens

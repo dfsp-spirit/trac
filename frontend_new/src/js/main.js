@@ -115,7 +115,7 @@ export function mount({ root, params }) {
       removeWithUndo: () => Promise.reject(new Error('no participant')),
     },
     toastRegion,
-    toastLabels: { undo: t('diary.toast.undo'), dismiss: t('diary.toast.dismiss') },
+    toastLabels: { undo: () => t('diary.toast.undo'), dismiss: () => t('diary.toast.dismiss') },
     t,
   });
 

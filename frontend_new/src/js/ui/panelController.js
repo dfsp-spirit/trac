@@ -26,7 +26,7 @@ import { createToast } from './toast.js';
  *     removeWithUndo: (activity: import('../domain/diary.js').ApiActivity) => Promise<() => Promise<void>>,
  *   },
  *   toastRegion: HTMLElement,
- *   toastLabels: { undo: string, dismiss: string },
+ *   toastLabels: { undo: () => string, dismiss: () => string },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  * }} deps
  */

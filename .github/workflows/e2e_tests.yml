@@ -69,14 +69,20 @@ jobs:
         run: |
           sudo systemctl stop nginx || true
           export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
-          envsubst '$FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
+          export NEW_FRONTEND_PATH="$GITHUB_WORKSPACE/frontend_new/src/"
+          export LOCALES_PATH="$GITHUB_WORKSPACE/frontend/src/locales/"
+          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH $LOCALES_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
           cp dev_tools/ci/frontend_settings/tud_settings.ci.js frontend/src/settings/tud_settings.js
+          cp dev_tools/ci/frontend_settings/config.new.ci.js frontend_new/src/js/config.js
           # nginx config now specifies 'user runner' to run as the user that owns the files
           sudo nginx -c /tmp/nginx.conf -p /tmp/
 
       - name: Run backend and Playwright tests
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000/report/
+          # The rewrite is mounted next to the old app (D37+); same backend, same
+          # locales, its own entry point.
+          PLAYWRIGHT_NEW_FRONTEND_URL: http://127.0.0.1:3000/report-new/
           TZ: ${{ matrix.tz }}
         run: |
           set -euxo pipefail

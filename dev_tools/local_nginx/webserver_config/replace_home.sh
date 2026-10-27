@@ -85,6 +85,13 @@ fi
 # Perform the replacement and write to output file
 sed "s|USERHOME|$REPLACEMENT_PATH|g" "$INPUT_FILE" > "$OUTPUT_FILE"
 
+# NEWFRONTENDREPOPATH first: it ends in FRONTENDREPOPATH, so the reverse order
+# would leave a stray 'NEW' glued to the substituted path.
+# It is the rewrite that lives next to the old app in the same checkout, so no
+# extra argument is needed and the template stays readable.
+NEW_FRONTEND_REPO_PATH="$(cd "$(dirname "$FRONTEND_REPO_PATH")" && pwd)/frontend_new"
+sed -i "s|NEWFRONTENDREPOPATH|$NEW_FRONTEND_REPO_PATH|g" "$OUTPUT_FILE"
+
 # Replace the placeholder 'FRONTENDREPOPATH' with the actual frontend repository path in the output file
 sed -i "s|FRONTENDREPOPATH|$FRONTEND_REPO_PATH|g" "$OUTPUT_FILE"
 

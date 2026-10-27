@@ -51,6 +51,24 @@ http {
             add_header Cache-Control "no-cache, no-store, must-revalidate";
         }
 
+        # The rewrite (D37+) lives here next to the old app, not instead of it: a
+        # study can be piloted on the new frontend while every other study keeps
+        # using the old one. Cutover is deleting this block's sibling, not a
+        # second set of scripts.
+        location /report-new/ {
+            alias NEWFRONTENDREPOPATH/src/;
+
+            try_files $uri $uri/ /index.html;
+
+            add_header Cache-Control "no-cache, no-store, must-revalidate";
+        }
+
+        # Shared locale files (D35): both frontends read the same JSON, so the
+        # new app does not carry its own copy.
+        location /locales/ {
+            alias FRONTENDREPOPATH/src/locales/;
+        }
+
         location /tud_backend/ {
             proxy_pass http://127.0.0.1:8000;
 
@@ -68,7 +86,7 @@ http {
 
         # Optional: Handle requests without the prefix (redirect or 404)
         location / {
-            return 404 "This development server only serves paths under '/report/' (frontend) and '/tud_backend/' (backend, API). \n\n Try adding these to the origin for example: \n\n  * frontend: /report/index.html \n  * API: /tud_backend/api/active_open_study_names \n  * API docs: /tud_backend/docs \n  * admin interface: /tud_backend/admin. \n \n";
+            return 404 "This development server only serves paths under '/report/' (frontend), '/report-new/' (frontend rewrite) and '/tud_backend/' (backend, API). \n\n Try adding these to the origin for example: \n\n  * frontend: /report/index.html \n  * frontend rewrite: /report-new/index.html?study=<study>&pid=<participant> \n  * API: /tud_backend/api/active_open_study_names \n  * API docs: /tud_backend/docs \n  * admin interface: /tud_backend/admin. \n \n";
         }
     }
 }

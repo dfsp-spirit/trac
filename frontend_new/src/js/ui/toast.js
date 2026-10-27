@@ -9,7 +9,11 @@
 
 /**
  * @param {HTMLElement} host Element with role="status".
- * @param {{ undo: string, dismiss: string }} labels
+ * @param {{ undo: () => string, dismiss: () => string }} labels
+ *
+ * Labels are functions, not strings: the toast outlives a language switch, and a
+ * string captured at construction would still be the key the translator did not
+ * know yet (the panel is built before the locale is loaded).
  */
 export function createToast(host, labels) {
   /** @type {ReturnType<typeof setTimeout> | null} */
@@ -39,7 +43,7 @@ export function createToast(host, labels) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 't-toast__action';
-      button.textContent = action.label || labels.undo;
+      button.textContent = action.label || labels.undo();
       button.addEventListener('click', async () => {
         hide();
         await action.run?.();
