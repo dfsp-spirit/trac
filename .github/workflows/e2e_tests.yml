@@ -74,6 +74,9 @@ jobs:
           envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH $LOCALES_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
           cp dev_tools/ci/frontend_settings/tud_settings.ci.js frontend/src/settings/tud_settings.js
           cp dev_tools/ci/frontend_settings/config.new.ci.js frontend_new/src/js/config.js
+          # Fail here, with nginx's own message, rather than on the first request: an
+          # unsubstituted $VARIABLE in the template is the mistake this catches.
+          sudo nginx -t -c /tmp/nginx.conf -p /tmp/
           # nginx config now specifies 'user runner' to run as the user that owns the files
           sudo nginx -c /tmp/nginx.conf -p /tmp/
 
