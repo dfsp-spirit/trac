@@ -1,5 +1,8 @@
 from datetime import time
-from o_timeusediary_backend.utils import get_time_for_minutes_from_midnight
+from o_timeusediary_backend.utils import (
+    get_time_for_minutes_from_midnight,
+    localized_study_text,
+)
 
 
 class TestGetTimeForMinutesFromMidnight:
@@ -101,3 +104,49 @@ class TestGetTimeForMinutesFromMidnight:
         for minutes, expected in test_cases:
             result = get_time_for_minutes_from_midnight(minutes)
             assert result == expected, f"Failed for {minutes} minutes"
+
+
+class TestLocalizedStudyText:
+    """A study's per-language text columns resolve the same way everywhere."""
+
+    class _Study:
+        default_language = "de"
+        study_text_instructions = {"de": "Anleitung", "en": "Instructions"}
+        study_text_consent = {"de": "Einwilligung"}
+        study_text_empty: dict = {}
+        study_text_plain = "Ein einzelner Text"
+        study_text_none = None
+
+    def test_the_requested_language_wins(self):
+        assert (
+            localized_study_text(self._Study(), "study_text_instructions", "en")
+            == "Instructions"
+        )
+
+    def test_it_falls_back_to_the_study_default(self):
+        assert (
+            localized_study_text(self._Study(), "study_text_instructions", "sv")
+            == "Anleitung"
+        )
+
+    def test_english_is_the_last_resort(self):
+        study = self._Study()
+        study.default_language = "fr"
+        assert (
+            localized_study_text(study, "study_text_instructions", "sv")
+            == "Instructions"
+        )
+
+    def test_an_untranslated_text_falls_back_to_the_study_default(self):
+        assert (
+            localized_study_text(self._Study(), "study_text_consent", "en")
+            == "Einwilligung"
+        )
+
+    def test_a_plain_string_and_an_empty_map_are_handled(self):
+        assert (
+            localized_study_text(self._Study(), "study_text_plain", "en")
+            == "Ein einzelner Text"
+        )
+        assert localized_study_text(self._Study(), "study_text_empty", "en") is None
+        assert localized_study_text(self._Study(), "study_text_none", "en") is None

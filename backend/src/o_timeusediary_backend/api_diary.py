@@ -44,6 +44,7 @@ from .coverage import (
 )
 from .database import get_session
 from .models import Activity, DayLabel, Study, Timeline
+from .stages import stage_for_participant
 from .utils import utc_now
 
 router = APIRouter(
@@ -473,6 +474,9 @@ def submit_diary(
         return {
             "study_submitted_at": participant.study_submitted_at.isoformat(),
             "already_submitted": True,
+            "stage": stage_for_participant(
+                session, study, participant.participant_id
+            ).stage,
         }
 
     rows = _activity_rows(session, study, participant.participant_id)
@@ -500,7 +504,14 @@ def submit_diary(
     submitted_at = participant.study_submitted_at
     assert submitted_at is not None
 
-    return {"study_submitted_at": submitted_at.isoformat(), "already_submitted": False}
+    return {
+        "study_submitted_at": submitted_at.isoformat(),
+        "already_submitted": False,
+        # `tasks` when external tasks are still owed, otherwise `done` (D37).
+        "stage": stage_for_participant(
+            session, study, participant.participant_id
+        ).stage,
+    }
 
 
 @router.post("/activities", status_code=201)

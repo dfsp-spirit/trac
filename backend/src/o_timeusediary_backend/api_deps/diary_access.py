@@ -28,20 +28,29 @@ class DiaryContext(NamedTuple):
     study_participant: StudyParticipant
 
 
-def ensure_study_is_currently_available(study: Study) -> None:
-    """Raise 403 when a study cannot currently be filled in by participants."""
+def study_is_currently_available(study: Study) -> bool:
+    """Is the study collecting right now?
+
+    The one place that answers this, because both the 403 and the participant's
+    stage (D37) need the same answer and must not drift.
+    """
     now = coerce_utc_aware(utc_now())
     collection_start = coerce_utc_aware(study.data_collection_start)
     collection_end = coerce_utc_aware(study.data_collection_end)
+    return not (now < collection_start or now > collection_end or study.is_paused)
 
-    if now < collection_start or now > collection_end or study.is_paused:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "study_unavailable",
-                "message": "Diese Studie ist momentan nicht verfügbar.",
-            },
-        )
+
+def ensure_study_is_currently_available(study: Study) -> None:
+    """Raise 403 when a study cannot currently be filled in by participants."""
+    if study_is_currently_available(study):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail={
+            "code": "study_unavailable",
+            "message": "Diese Studie ist momentan nicht verfügbar.",
+        },
+    )
 
 
 def get_study(

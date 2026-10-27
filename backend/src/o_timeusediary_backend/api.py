@@ -105,7 +105,13 @@ from .api_deps.admin_auth import (
     require_super_admin,
     verify_admin,
 )
-from .utils import utc_now, get_time_for_minutes_from_midnight
+from .utils import (
+    get_time_for_minutes_from_midnight,
+    localized_study_text,
+    utc_now,
+)
+from . import stages
+from .api_deps.diary_access import study_is_currently_available
 
 
 setup_logging()
@@ -128,20 +134,9 @@ def _normalize_language_code(language: Optional[str]) -> Optional[str]:
     return primary_subtag or None
 
 
-def _get_localized_study_text(
-    study: Study, field_name: str, language: Optional[str] = None
-) -> Optional[str]:
-    target_language = language or study.default_language
-    text_map = getattr(study, field_name, None)
-
-    if not isinstance(text_map, dict) or not text_map:
-        return None
-
-    return (
-        text_map.get(target_language)
-        or text_map.get(study.default_language)
-        or text_map.get("en")
-    )
+# Resolving a per-language study text lives in utils, because the stage machine
+# (stages.py) needs the same rule and cannot import this module.
+_get_localized_study_text = localized_study_text
 
 
 def _resolve_description(study: Study) -> Optional[str]:
@@ -8953,6 +8948,7 @@ def submit_study(
         return {
             "study_submitted_at": study_participant.study_submitted_at.isoformat(),
             "already_submitted": True,
+            "stage": stages.stage_for_participant(session, study, participant_id).stage,
         }
 
     # Verify all days meet min_coverage
@@ -8992,6 +8988,8 @@ def submit_study(
     return {
         "study_submitted_at": now.isoformat(),
         "already_submitted": False,
+        # `tasks` when external tasks are still owed, otherwise `done` (D37).
+        "stage": stages.stage_for_participant(session, study, participant_id).stage,
     }
 
 
@@ -9583,6 +9581,10 @@ class StudyConfigResponse(BaseModel):
     instructions_completed_at: Optional[datetime] = None
     participant_has_completed_study: bool = False
     study_submitted_at: Optional[datetime] = None
+    # Where this participant belongs right now (D37). Computed here and nowhere
+    # else, so the client never has to re-derive the rules.
+    stage: str = stages.STAGE_DIARY
+    done_reason: Optional[str] = None
     external_tasks: List[ParticipantExternalTaskResponse] = []
     all_external_tasks_confirmed: bool = False
     timelines: List[TimelineConfigResponse]
@@ -9789,6 +9791,20 @@ def get_study_config(
         study_days_count=len(day_labels),
     )
 
+    placement = stages.resolve_placement(
+        available=study_is_currently_available(study),
+        require_consent=require_consent,
+        consent_given=consent_given,
+        require_instructions=bool(study_text_instructions),
+        instructions_completed=instructions_completed,
+        submitted=participant_has_completed_study,
+        pending_external_tasks=sum(
+            1
+            for external_task in participant_external_tasks
+            if not external_task.is_confirmed
+        ),
+    )
+
     # Resolve localized study description for the selected language when possible
     localized_description = _get_localized_study_text(
         study, "description", selected_language
@@ -9823,6 +9839,8 @@ def get_study_config(
         instructions_completed_at=instructions_completed_at,
         participant_has_completed_study=participant_has_completed_study,
         study_submitted_at=study_submitted_at,
+        stage=placement.stage,
+        done_reason=placement.done_reason,
         external_tasks=participant_external_tasks,
         all_external_tasks_confirmed=all_external_tasks_confirmed,
         timelines=timeline_responses,
@@ -10231,6 +10249,8 @@ def complete_participant_instructions(
         "participant_id": participant_id,
         "instructions_completed": association.instructions_completed,
         "instructions_completed_at": association.instructions_completed_at,
+        # The next stage, so the client moves on without asking again (D37).
+        "stage": stages.stage_for_participant(session, study, participant_id).stage,
     }
 
 
@@ -10300,6 +10320,8 @@ async def set_participant_consent(
         "participant_id": participant_id,
         "consent_given": association.consent_given,
         "consent_decided_at": association.consent_decided_at,
+        # Declining lands in `done`, agreeing in `instructions` or `diary` (D37).
+        "stage": stages.stage_for_participant(session, study, participant_id).stage,
     }
 
 
