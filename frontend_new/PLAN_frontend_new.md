@@ -175,6 +175,8 @@ Implikationen:
   leichter. Wenn das unerwünscht ist, lassen wir das Mehrfach-Anlegen weg und behalten nur
   das Kopieren einzelner Aktivitäten (oder gar nichts).
 
+==> It does not make a difference whether an activity was created manually on its own or copied. It is an activitiy, thats it. we do not need to know where it was copied from.
+
 **e) Änderungsverlauf: es wird weiterhin nur der Endzustand gespeichert**
 
 - Auch mit dem neuen Schreibmodell speichern wir keine Bearbeitungshistorie. Ein Löschen
@@ -612,3 +614,46 @@ timeout — pages this rewrite does not touch.
   references are unguarded. Add a test for the allowed-reference rule in the same pass.
 - **At cutover** the 84 old diary keys are deleted together with the old `index.html`/`script.js`,
   verified by a single grep for `data-i18n=` and `t(`.
+
+### D36 — Publication seam: build C now, defer A/B/D, keep three hooks
+
+Priority is shipping the new frontend. Generality is a later concern, so only the work that is
+cheap now and expensive later is done now. Estimates are one developer on this codebase.
+
+| Item | Now | If deferred | Verdict |
+| --- | --- | --- | --- |
+| **C.** Host-agnostic `mount()`: components take `scrollRoot` / `portalRoot`, never write `document.documentElement`, never listen on `window` | 0.5–1 day | 5–10 days (retrofit scroll/portal in every component, re-verify sticky/scroll-spy, add contained layout mode) | **do now** |
+| **A.** `trac.study/v1` + `trac.diary/v1` documents, JSON Schema, `tud studies validate` | 6–9 days | 8–12 days | defer |
+| **B.** `SubmitSink` port + webhook + outbox/retry + delivery state in admin | 6–9 days | 7–10 days | defer |
+| **D.** Standalone URL contract + `postMessage` lifecycle + iframe embedding | 3–4 days | 3–4 days (stays cheap because of C) | defer |
+
+A+B+D ≈ 15–22 days, i.e. +30–40 % on top of the 8–12 week plan, with no value for our own studies.
+
+**Three hooks (<1.5 days total), so deferring is a delay and not a bet:**
+
+1. `schema_version: "1"` in the whole-diary GET and in the study payload (D27). Promoting either to
+   a published document later is then additive instead of a breaking change.
+2. One backend function owns "a diary was submitted" (`deliver_submission(study, participant,
+   payload)`); today it only writes `study_submitted_at`. A webhook sink later is a second call
+   inside it, not a redesign of the submit endpoint.
+3. C's two parameters. Free while writing a component, a rewrite afterwards.
+
+**Cost of the mandatory core (D33):** rules that cost nothing (naming, one component per file,
+size caps, import direction, CSS prefix, no globals), rules that cost a little (per-component CSS
+and its enforcement), and rules that cost real time: fixture-page component tests ~1–2 days of
+infrastructure, `check-architecture.mjs` ~1 day. Total ~2–3 days, about 4 % of the plan — and both
+are kept, because an unchecked size cap is a comment and an unverified "isolated component" is a
+claim.
+
+**Deferral triggers, so "later" does not become "never":**
+
+- **A** — when a partner wants to import a study, or a second installation must share definitions.
+- **B** — when a study's data must land in REDCap/JATOS/a warehouse; then via the webhook receiver,
+  not a storage driver.
+- **D** — when a survey platform wants to embed the diary; the deliverable is the URL contract plus
+  `postMessage`, not a JS widget.
+
+Explicitly rejected for v1: a storage-driver abstraction (REDCap/JATOS have different write models:
+bulk record overwrite and one result blob), offline sync, a plugin system, and in-page JS-widget
+embedding (would require a contained layout mode; an iframe reaches the same platforms for a
+fraction of the cost).
