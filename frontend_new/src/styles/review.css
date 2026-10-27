@@ -1,0 +1,38 @@
+/* Review and submit (D32). The design-system bundle already carries the review
+   list; what is missing is the frame: on desktop the review is a centred modal
+   rather than a full-screen sheet, because it is a focused task and wider than
+   the activity column it is launched from. Tokens only, no ids. */
+
+@media (min-width: 1200px) {
+  .t-review-modal {
+    max-width: 45rem;
+    height: auto;
+    max-height: min(90dvh, 56rem);
+    margin: auto;
+    border: 1.5px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+  }
+  .t-review-modal .t-modal__head,
+  .t-review-modal .t-modal__foot {
+    flex: none;
+  }
+}
+
+/* The bundle's review list brings its own page padding; inside a modal body
+   that padding doubles up. */
+.t-review-modal .t-review {
+  padding: 0;
+}
+
+/* Day state under the day name: "Complete", or how much is still missing. */
+.t-review__state {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--ink-muted);
+}
+.t-review__day--open .t-review__state {
+  color: var(--ink);
+  font-weight: 600;
+}
