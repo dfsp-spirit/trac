@@ -29,7 +29,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 - **One submission per participant per study** (`StudyParticipant.study_submitted_at`).
 - **`min_coverage` is enforced at submit**, not while editing.
 - **Save after every interaction** to the server (no device-only storage, no offline queue).
-- Study configuration, activity catalogues, i18n (7 locales), idle timeout, consent and
+- Study configuration, activity catalogues, i18n (en, de, sv — see D34), idle timeout, consent and
   instructions flow, external tasks, exports, admin portal and its tests.
 
 ## 2. Decisions
@@ -289,7 +289,7 @@ Order matters: the data model first, so there is exactly one write path when the
 | 2 | Domain/state layer: store, selectors, pure geometry (minutes↔px, lanes, clipping), API client, save-state machine. Unit tests, no DOM. | 1 week |
 | 3 | Mobile view: continuous vertical timeline with lanes, day rail/pager, bottom sheet form, edit/delete/undo, gaps, recent, coverage display, review, submit. Behind a temporary entry point so running pilots keep working. | 3–4 weeks |
 | 4 | Desktop layout: same components, 3 columns, searchable palette, keyboard shortcuts, optional drag-to-move module. | 1–2 weeks |
-| 5 | Cutover: port the e2e specs to the new flows (45 specs today, most pin the old interaction model), accessibility pass, i18n pass over 7 locales, then delete the old timeline modules, drag/long-press engine, switch-timeline code, old save endpoints and dead CSS. | 1–2 weeks |
+| 5 | Cutover: port the e2e specs to the new flows (45 specs today, most pin the old interaction model), accessibility pass, i18n pass over the 3 remaining locales (en, de, sv), then delete the old timeline modules, drag/long-press engine, switch-timeline code, old save endpoints and dead CSS. | 1–2 weeks |
 
 Order of magnitude: **8–12 weeks for one developer**, with mobile usable around week 6–7.
 
@@ -316,3 +316,299 @@ Calendar dates, waves, multiple diaries, per-diary receipts, offline/PWA storage
 admin portal redesign, dark mode, colour design or colour testing, a 2-column layout tier,
 a graphical overview strip, drag/resize at launch, React or any UI library, changes to the
 study import format beyond dropping the second timeline.
+
+---
+
+## 7. Decisions from the 2026-10-27 prototype review
+
+Source: `~/develop_mpiae/time-diary-frontend-prototype-alex/` (design system, `src/page.py`,
+`src/app.js`, its README/HANDOFF and Playwright checks). These decisions settle the questions
+that section 5 assumed; where they contradict earlier text, this section wins.
+
+### D23 — Prototype reuse: hybrid
+
+Keep the design layer, rewrite the JS. The prototype is two artefacts with different value.
+
+| From the prototype | What we do |
+| --- | --- |
+| `design-system/components/bundle.css` (125 `td-` classes), `tokens.css`, `tokens.json` | Copy. Drop the `prefers-color-scheme: dark` block (D11: no dark mode) instead of shipping it untested. |
+| 11 component READMEs, `screens.md`, `accessibility.md`, `data.md` | Copy as the behaviour + accessibility spec; they are step 0's checklist, already written. |
+| Static shell markup in `src/page.py` (topbar, main, `<dialog>`, drawer, popover, toast) | Copy by hand (~200 lines). Not the generator, not the demo catalogue. |
+| `segmentsFor` (lanes), `coverageFor` (union), gap generation, `fillEnd` (+1 day), `fullAt` (overlap limit), multi-day `targets`/`group`, `dayInView`/`timeInView` | Port into pure modules with unit tests. |
+| `src/app.js` as a whole, `src/page.py` as a generator, generated root files, `dist/`, `tools/` | Do not copy. IndexedDB-only persistence, fixed demo clock, diary/date model, no server, no i18n, one IIFE with module-scope state — the coupling D15/D16 remove. |
+| `tests/*.cjs` | Convert into e2e specs: last day ends at midnight, one jump per day-nav tap, toast/live-region placement, one `<main>` per view. |
+
+Consequences to plan for: the prototype needs `<dialog>`, the `popover` attribute and `:has()`,
+so the `bowser` floor in `js/client_info.js` has to be re-decided; and the prototype is English-only
+where we need the 3 locales (D34).
+
+### D24 — Granularity stays 10 minutes
+
+The prototype works in 15-minute steps (`Q = 96`); the app keeps `INCREMENT_MINUTES = 10`
+(`frontend/src/js/constants.js`). Geometry is px-per-minute, so the prototype's `--quarter`
+token becomes `--ten-min`.
+
+### D25 — The old whole-day save path stays until cutover
+
+- New `activities` columns are nullable/defaulted so the existing
+  `POST …/day_labels/{name}/activities` keeps working unchanged.
+- No translation layer between snapshot saves and row writes: the new UI uses only the new
+  endpoints, one write path once the UI lands.
+- Shared semantics (coverage union, overlap, duplicate rule, collection-window/paused/submitted
+  guards) live in one place so the two writers cannot drift.
+- Dropping the second timeline and the `2xxx` codes moves from step 1 to step 5 (cutover): the
+  old frontend and ~43 e2e specs still pin them, and they cost nothing to keep.
+- The old endpoint's day-wide delete does not touch new rows beyond the day it rewrites. One
+  participant uses one frontend; write that down rather than code around it.
+
+### D26 — `day_start_minutes` becomes a study field
+
+Old frontend day window is 04:00–04:00 (`TIMELINE_START_HOUR = 4`); the new UI is 00:00 (Q2).
+Two frontends over one table with different day windows is a data-semantics bug, so the window
+moves into the study: `Study.day_start_minutes`, default `0`, legacy studies imported with `240`.
+Coverage clips to that window; the geometry reads it from study config instead of a constant.
+
+### D27 — Additions to the backend list (section 5, step 1)
+
+- `client_uuid` is for **idempotency** as much as undo: save-per-interaction plus retries
+  duplicates rows without it. Unique per (study, participant).
+- Duplicate rejection (D8) must be a DB constraint, not only a check.
+- `CHECK (end_minutes > start_minutes AND end_minutes - start_minutes <= 1440)` for D21.
+- `Timeline.max_overlap` (default 2, PI answer to Q1) next to `min_coverage`.
+- One `coverage.py`: union + clipping is currently summed in three places — submit validation,
+  admin progress and the "days meeting min coverage" helper — and `_get_completed_day_indices`
+  ("has any data") guards copy-overwrite.
+- `GET …/participants/{id}/diary`: the continuous view needs the whole diary in one request.
+- `copy_source_uuid` is still an open question (Q5 answered multi-day, not provenance). Add the
+  nullable column now; after data collection it is expensive.
+
+### D28 — Desktop UI/UX (external review, 27 Oct 2026)
+
+The three "extra content" blocks the review flags are prototype-only text in `src/page.py`:
+the topbar note ("Desktop layout prototype · 7 days · sample data"), the rail note, and the
+docked panel's idle copy. All three go. In their place:
+
+- **Rail (column 1):** days with real coverage (already there) plus per-day state
+  (complete / incomplete) against `min_coverage`, submission state, and Submit — one place,
+  not two.
+- **Dock (column 3):** coverage feedback for the day being edited ("1 h 20 min to go") instead
+  of instructions, plus *Used recently*.
+- **Topbar:** a compact progress figure ("4 of 7 days complete") instead of the prototype note.
+- **Completion is not minutes.** The prototype gates Submit on "every day has any activity";
+  the real rule is `min_coverage` per day, and that is the signal the UI shows (already D20).
+- **Toast** is `position: fixed` today and lands viewport-right when the panel is docked; anchor
+  it to the third column instead. Do not rely on `html:has(#add[open])` for scroll lock.
+- **Gap blocks stay** (the fastest catch-up path), limited to gaps of at least 30 minutes and
+  never leading/trailing, as in the prototype.
+- **Colour** stays study-config only; the `td-pat--*` category patterns are only the
+  no-colour fallback.
+
+Settled by D29: the catalogue is always visible on desktop and a palette click opens the form
+(prefilled) rather than creating a block.
+
+Settled since: D30 (search), D31 (keyboard), D32 (Review as a modal). Step 4 no longer has open
+questions; D33 is the binding architecture contract for all of steps 2–5.
+
+### D29 — Desktop column 3: one panel whose content swaps
+
+The catalogue is roughly 61 codes and six screens tall, so nothing may be placed below it. Column 3
+is therefore a single fixed-height panel (`100dvh - topbar`) with a sticky head, one scrollable
+content region and a sticky foot:
+
+- **Default content on desktop is the catalogue**, always present, with a pinned search field,
+  sticky category headings and *Used recently* on top. No "Add activity" reveal; the floating
+  button stays hidden on desktop as it is now.
+- **Selecting an activity replaces the content region with the form.** Never stacked, never
+  appended. `←` returns to the list and restores the search query and scroll offset, which is
+  what makes `←` usable at all with this many rows.
+- **The head names the target explicitly** ("Add activity · Tue 20 Oct, 14:00 – 15:00"). The panel
+  is non-modal and column 2 keeps scrolling while it is open, so the day in view is *not* the
+  target: the `Day` select is authoritative, and the head states it.
+- **The head's second line carries the day context and coverage** — for the day in view when
+  browsing the catalogue, for the target day when the form is open ("6 h 45 min · requirement met",
+  or "1 h 20 min to go"). This is where the external reviewer's point A lands; it replaces the
+  prototype's explanatory copy and removes the need for a separate instructions block.
+- **The foot stays sticky** (Add to timeline / Save and add another / Save changes / Delete), so the
+  primary action remains visible even when the form's lower fields scroll. Worst case at 768 px
+  viewport height: content region 568 px, form ≈ 400–590 px.
+- **Consequence for the write path:** a palette click never creates a block. It opens the form
+  prefilled with the time at the top of the viewport, and D8's duplicate rule applies to form
+  submits only. One create path, one undo path.
+
+Rejected alternatives: a sticky form sheet over the scrolling list (eats 50–60 % of a 380 px column
+and leaves two scroll regions in one narrow column), and the prototype's on-demand dock (costs a
+click and idles the column).
+
+### D30 — Activity search in the panel head
+
+The catalogue is ~61 codes in the pilot study, so search is not optional, and it is not a "nice to
+have later" item: both the desktop panel and mobile step 1 need it.
+
+- **Placement:** a search field in the fixed part of the panel head, directly under the title row,
+  so it never scrolls out of view. Hidden (not disabled) in the form state, restored on `←` with
+  the previous query and the previous scroll offset.
+- **Matching:** localized activity name, option/parent labels, example/hint text and category name,
+  from the backend `activities-config` payload — not a hardcoded list. Case- and accent-insensitive
+  (NFKD + diacritic stripping) because German and Swedish both carry diacritics (ä/ö/ü/ß, å/ä/ö)
+  while English does not; word-start matches rank before inner-substring matches.
+- **Result rendering:** matching activities stay grouped under their category headings; categories
+  with no match are hidden, not left as empty headings. *Used recently* is shown only while the
+  query is empty. A live region announces the result count; no match reads "No activity matches
+  …, try Other activity".
+- **Keys:** `Enter` selects the first result, `Esc` clears the query, then returns focus to the list.
+- **Implementation constraint:** filtering must replace only the result list, never the input node —
+  re-rendering the head on every keystroke loses focus mid-word. 61 items need no debounce.
+
+### D31 — Keyboard model: ship it, confined, but no onboarding screen
+
+Single-key shortcuts are a WCAG 2.1.4 problem if they are global, and that constraint also answers
+the "how do we teach it" question:
+
+- Allowed keys: `PageUp`/`PageDown` = previous/next day, `n` = new activity, `/` = focus search,
+  `Esc` = close panel / clear search, `Enter` = confirm, `Delete` = delete while the form's delete
+  action has focus, `?` = shortcut list.
+- **Single-character shortcuts are active only while focus is inside the diary region** (timeline or
+  panel), never globally, and never while a text field has focus. This satisfies 2.1.4 without
+  remapping.
+- **Teaching surface:** one menu entry, *Keyboard shortcuts*, opens a compact list and contains the
+  on/off switch for participants who don't want them. No separate page, no screenshots, no
+  onboarding step. Controls that have shortcuts carry `aria-keyshortcuts`.
+- Desktop only (`pointer: fine`); nothing here is reachable on touch.
+
+### D32 — Review is a modal
+
+Review keeps the prototype's presentation: a centred modal, max-width ~720 px, sticky head and foot,
+focus trapped, one scroll region, days in order with *Edit* links back to the day, then the confirm
+step. It does not replace the middle column: reviewing is a focused task, and swapping the timeline
+out would add a third state to column 2 for no gain. On desktop it is deliberately not docked into
+column 3 — it is wider than that column and unrelated to the activity palette.
+
+### D33 — Component architecture: separate, testable components instead of a god module
+
+This is the failure the rewrite exists to fix. The current diary is ~31k lines of JS
+(`js/script.js` alone is 7.5k) over ~3.8k lines of global CSS, and the prototype shows the same
+shape at small scale: one 830-line IIFE with module-scope `diaries`, `entries`, `viewing` and `view`,
+and renderers that reach into the document by id. **We port the prototype's algorithms, never its
+structure.**
+
+Layout and dependency direction (arrows point at the allowed import direction):
+
+```
+src/
+  index.html
+  styles/  tokens.css   base.css   layout.css          (shell + grid only)
+  js/
+    domain/    pure: geometry, coverage, days, validation, formatting
+    data/      api client, study config, i18n loader
+    state/     store, actions, selectors
+    ui/<component>/<component>.js + <component>.css
+    main.js    composition root
+```
+
+```
+main ──▶ ui ──▶ domain
+  │       ▲
+  ├──▶ state ──▶ domain
+  └──▶ data ──▶ domain
+```
+
+Rules. Each is checkable, and the ones marked *(CI)* are enforced, not requested:
+
+1. **One-way dependencies.** `domain` imports nothing from the app. `ui` and `state` may import
+   `domain`, never `data`. Only `main.js` imports `data` **and** `state` *and* `ui`. No cycles. *(CI)*
+2. **No globals.** No assignment to `window.*` or `globalThis.*`. Module-level mutable state exists
+   only in `state/store.js`; configuration is passed in through `config.js`, not read off `window`. *(CI)*
+3. **One-way data flow.** DOM event → action → store → subscriber re-render. A component never calls
+   the API and never mutates state; persistence lives in `state/` actions and `data/`.
+4. **Component contract.** Each component exports `mount(root, props, emit) → { update, destroy }`,
+   plus pure `render…` helpers. A component may only touch the DOM inside the root it was given;
+   `document.querySelector` outside that root is forbidden, and `main.js` resolves each root once.
+5. **CSS ownership.** One stylesheet per component, `t-<component>` block prefix (`t-timeline__event`).
+   No selector may reach into another component's classes, no id selectors, no `!important` (the
+   single global `[hidden]` rule excepted), no colour literals — tokens only. Inline styles are
+   allowed only for CSS custom properties set from data (`--start`, `--dur`, `--lane`, `--fill`),
+   as the prototype already does. *(CI)*
+6. **Explicit, minimal state.** One object with named fields; derived values live in selectors, never
+   in the store; UI state is limited to what must survive a re-render (panel mode, search query,
+   target day/time, focus target).
+7. **Size caps:** 300 lines per JS file, 150 per CSS file, one component per file. This is the rule
+   that actually prevents a new `script.js`. *(CI)*
+8. **Test layer per boundary.** `domain` and `state` are unit-tested with `node --test` and no DOM —
+   every rule in D20/overlap-limit/duplicate/last-day/coverage is a domain unit test, not an e2e.
+   Each component gets a mount test on a fixture page (Playwright project `tests/components`).
+   End-to-end specs cover flows only.
+9. **Enforcement:** `tools/check-architecture.mjs` (Node, no new dependencies) fails CI on rules
+   1, 2, 5 and 7, and `tsc --noEmit` over JSDoc keeps the contracts honest (D15).
+10. **Naming:** components are named for the domain noun — TopBar, MenuDrawer, DayRail, Timeline,
+    DaySection, ActivityEvent, GapSlot, NowLine, ActivityPanel, ActivitySearch, AddActivityForm,
+    ReviewDialog, ToastHost — so the file tree is the map of the UI.
+
+The composition root (`main.js`) is the only file allowed to know about everything, and it carries
+the same 300-line cap, so "wiring" can never become the new god module.
+
+### D34 — UI languages: English, German, Swedish only
+
+i18n stays; the locale set shrinks to `en`, `de`, `sv`. `es`, `fi`, `fr` and `pl` are dropped from
+now on — in the old frontend, in the new one and in anything imported from a study config.
+
+What this does *not* change: one JSON file per language, `data-i18n` attributes, the selector driven
+by the study's `supported_languages`, and switching language without a reload. Only the set of files
+gets smaller, and no component may hardcode a user-visible string.
+
+What has to move with the decision:
+
+- **Delete** `frontend/src/locales/{es,fi,fr,pl}.json`. `locales_consistency.test.js` and
+  `locale_values.test.js` discover files by directory listing, so the guards keep working unchanged;
+  only their `LANGUAGE_NEUTRAL_VALUES` entries that existed for es/fr ("No", "Error", "Code",
+  "Description") become dead and should be cleaned out.
+- **Trim** `FOOTER_LINK_LABELS` in `frontend/src/settings/tud_settings.js` (7 languages today).
+- **Trim** the day-label `display_names` maps in `frontend/src/settings/studies_config.json`: they
+  still carry `es`, `fi`, `fr`, `pl` although `supported_languages` is already `["en","sv","de"]` /
+  `["en","sv"]`.
+- **Backend:** nothing is allow-listed today — `supported_languages` comes from the study and is
+  validated against the activity blobs and the day-label `display_names` (`api.py:3053-3151`). Add a
+  single module-level constant of UI-supported languages and reject anything else at study import,
+  so a future config cannot reintroduce a locale the app can no longer render. Same constant serves
+  the export/validation error messages.
+- **New frontend:** new keys go to `en`, `de`, `sv` only. This is where the effort saved actually
+  lands: the ported prototype copy is English-only and has to be translated twice, not six times.
+- **Docs:** section 1 and the cutover step in section 5 now name the three languages instead of
+  "7 locales".
+
+### D35 — Locale keys: `diary.*` namespaces in the shared files, no version prefix
+
+The new UI adds its strings to the existing `frontend/src/locales/{en,de,sv}.json`, under a
+`diary.*` root with one subtree per component, and never reuses an old diary key.
+
+Rationale, in the numbers: the three files hold 166 leaf keys today, 84 of them diary-surface
+(`messages` 41, `modals` 25, `buttons` 13, `errors` 3, `banner` 2); the other 82 belong to consent,
+instructions, tasks, open studies, thank-you, timeout, `common`, footer, maintenance and idle
+timeout — pages this rewrite does not touch.
+
+- **No version prefix** (`v2.`, `new.`, `beta.`). It encodes a transient fact into a permanent
+  artefact: at cutover the keys are either renamed across three files, the markup and the code, or
+  the prefix stays forever. It also says nothing about ownership.
+- **Namespace by component**, mirroring D33: `diary.timeline.*`, `diary.dayRail.*`,
+  `diary.activityPanel.*`, `diary.activitySearch.*`, `diary.addActivity.*`, `diary.review.*`,
+  `diary.submit.*`, `diary.toast.*`. The set is deletable in one sweep at cutover, and it makes the
+  rule below enforceable.
+- **Shared files, not forked ones.** The new diary page still needs shell strings (footer links,
+  language label, maintenance banner, idle timeout). A forked file would either duplicate them
+  (drift, and `locales_consistency.test.js` only compares within one directory) or force the loader
+  to merge two files.
+- **Reuse shell keys freely, never reuse diary keys.** `common.*`, `footer.*`, `maintenance.*`,
+  `idleTimeout.*` stay shared. Old diary keys (`messages.*`, `modals.*`, `buttons.*`, `errors.*`,
+  `banner.*`) are not referenced by the new UI, because the copy is being rewritten (D28–D31) and
+  because they are scheduled for deletion.
+- **Allowed references rule:** the new frontend may use `diary.*` plus the shell allowlist above.
+  Anything else is a bug — it would tie the new UI to keys that disappear at cutover.
+- **Plain text only.** No `data-i18n-html` in the new UI; split a string into title and body instead
+  of embedding markup, so `locale_values.test.js` has nothing to police.
+- **Counts use `{{count}}` with `_one` / `_other`** and a small `tCount(key, n)` helper. The
+  prototype concatenates (`'… for ' + n + ' days'`), which does not survive German or Swedish word
+  order; en/de/sv need exactly two plural forms, so no CLDR machinery is involved.
+- **Enforcement:** `page_i18n_keys.test.js` scans a fixed root (`frontend/src/`); it needs a second
+  instance for `frontend_new/src`, or the directory parameterised, otherwise the new UI's key
+  references are unguarded. Add a test for the allowed-reference rule in the same pass.
+- **At cutover** the 84 old diary keys are deleted together with the old `index.html`/`script.js`,
+  verified by a single grep for `data-i18n=` and `t(`.
