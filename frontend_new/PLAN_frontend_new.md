@@ -240,38 +240,39 @@ Implikationen:
 | --- | --- | --- |
 | Q1 | **Maximale Gleichzeitigkeit:** 3? Darf dieselbe Aktivität sich selbst überlappen? | Sets `max_overlap`, validation, lane rendering and the coverage rule. |
 
-PI Answer: set max parallel to 2, but keep as a variable. we do not check anything regaring self-overlap for now, no special rules here. users fill in things, thats it.
+=>  PI Answer: set max parallel to 2, but keep as a variable. we do not check anything regaring self-overlap for now, no special rules here. users fill in things, thats it.
 
 | Q2 | **Tagesbeginn 00:00 oder 04:00?** Ist die 4-Uhr-Konvention (ATUS-Vergleichbarkeit) für uns relevant? | Determines attribution, coverage clipping, migration of fixtures, and whether the continuous timeline needs the paged fallback. |
 
-Due to the constinuozus scroll and calendar style, we use 00:00.
+=>  Due to the constinuozus scroll and calendar style, we use 00:00.
 
 | Q3 | **Muss „Hauptaktivität vs. parallel" in den Daten überleben?** Falls ja: wer setzt es (teilnehmende Person, Reihenfolge, Regel)? | Decides whether `activities` gets an explicit `role` field. Cheap now, expensive after data collection. |
 
-We do not collect this info anymore.
+=>  We do not collect this info anymore.
 
 | Q4 | **Abdeckung als Union mit Abschneiden an der Tagesgrenze** – bestätigt? Und bleibt `min_coverage: 1440` (volle Abdeckung) sinnvoll, wenn Nächte über Mitternacht gehen? | Changes which days count as complete; affects submit gate, admin progress and analysis. |
 
-yes, there still needs to be support to require a coverage. the value (1440) stays a configuration detail. time slots in which several things were done in parallel do not count twice. so if min_coverage = 200, we require 200 minutes of the day to be covered (with 1 or more activities).
+=>  yes, there still needs to be support to require a coverage. the value (1440) stays a configuration detail. time slots in which several things were done in parallel do not count twice. so if min_coverage = 200, we require 200 minutes of the day to be covered (with 1 or more activities).
 
 | Q5 | **Kopieren/Sammel-Anlegen:** erlaubt? Wenn ja, mit oder ohne Herkunftsmarkierung (`copy_source_uuid`)? Obergrenze an Tagen? | Data-quality and analysis rule; also endpoint design. |
 
-When adding an activiity, one can select several days (up to all days of study) on which this has happened, no limits.
+=>  When adding an activiity, one can select several days (up to all days of study) on which this has happened, no limits.
 
 | Q6 | **Katalog-Merge:** Löschen der `2xxx`-Codes und der zweiten Timeline bestätigt? Wer legt finale Aktivitätsliste und Farben fest? | Content ownership; blocks fixture |
 
-Yes, the 2xxx codes and 2nd timeline make no sense anymore, they need to go. colors and acitivites are a study configuration, like they have always been. this software aloow scientists to create studies, the studies we ship are NOTHING but examples and test data.
+=> Yes, the 2xxx codes and 2nd timeline make no sense anymore, they need to go. colors and acitivites are a study configuration, like they have always been. this software aloow scientists to create studies, the studies we ship are NOTHING but examples and test data.
 
 | Q7 | **Bestehende Studien neu aufsetzen** (zwei Timelines → eine) – Freigabe? | Import/validation changes; study configs must be regenerated. |
 
-We will adapt the test data in studies_config.json to work with the new system, of course. This includes removing 2nd timeline.
+=> We will adapt the test data in studies_config.json to work with the new system, of course. This includes removing 2nd timeline.
 
 | Q8 | **Änderungsprotokoll nötig?** Reicht der Endzustand, oder braucht es Historie/`updated_at` in Exporten? | Data protection requirement; schema and export design. |
 
+=> No history required.
 
 | Q9 | **Wer schreibt die Texte um** (Anleitung, Einwilligung, Studienbeschreibung), die „zwei Timelines" erwähnen? | Content work must start before the new UI ships. |
 
-The study creators are responsible for changing study-specific text, we are responsible for chaing app--specfific text. Study-specific text is changed in studies_config.json fields, app specific text in frontend i18n files.
+=> The study creators are responsible for changing study-specific text, we are responsible for chaing app--specfific text. Study-specific text is changed in studies_config.json fields, app specific text in frontend i18n files.
 
 We drop the help page with screenshots entirely. Its outdated and hopefully not needed anymore, now that UI is easier, like calendar. People dont read this anyways.
 
