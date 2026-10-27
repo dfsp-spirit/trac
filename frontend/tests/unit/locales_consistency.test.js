@@ -45,6 +45,7 @@ const LANGUAGE_NEUTRAL_VALUES = new Set([
   'Start', // de/sv: "Start" is the natural word
   'Name', // de: German for "Name"
   'Code', // de: "Code" is the same word
+  '{{count}} min', // sv: "min" is the SI-style abbreviation, same as en
   // The shared "<study> - <page>" title pattern: pure placeholder glue, no
   // words of its own, and every locale orders these two the same way.
   '{{study}} - {{page}}',

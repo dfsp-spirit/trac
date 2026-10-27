@@ -39,6 +39,20 @@ export function snapMinutes(minutes, options = {}) {
 }
 
 /**
+ * Clock minutes -> minutes since the study day started (the inverse of
+ * clockMinutes). Mirrors `coverage.to_day_relative` on the server.
+ *
+ * @param {number} minutes Clock minutes; may exceed 1440 for a next-day end.
+ * @param {number} [dayStartMinutes]
+ * @returns {number}
+ */
+export function toDayRelative(minutes, dayStartMinutes = 0) {
+  let shifted = minutes - dayStartMinutes;
+  if (shifted < 0) shifted += MINUTES_PER_DAY;
+  return shifted;
+}
+
+/**
  * The wall-clock minute a day-relative minute maps to.
  *
  * @param {number} minutesSinceDayStart

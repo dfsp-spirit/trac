@@ -238,6 +238,146 @@
       "contact": "Contact",
       "language": "Language",
       "noScript": "This page needs JavaScript to show your diary."
+    },
+    "timeline": {
+      "continuesNextDay": "continues after midnight",
+      "gap": "Nothing added · {{start}} – {{end}}",
+      "dayActivities": "Activities on {{day}}"
+    },
+    "rail": {
+      "complete": "complete",
+      "toGo": "{{minutes}} min to go",
+      "empty": "empty",
+      "dayLabel": "{{day}}, {{minutes}} minutes covered"
+    },
+    "nav": {
+      "position": "Day {{current}} of {{total}}",
+      "previous": "Previous day",
+      "next": "Next day"
+    },
+    "review": {
+      "title": "Check your diary",
+      "step": "Step {{current}} of {{total}}",
+      "back": "Back to the diary",
+      "edit": "Edit",
+      "dayComplete": "Complete",
+      "dayEmpty": "Nothing added yet",
+      "dayToGo": "{{minutes}} min still to add",
+      "nextDay": "next day",
+      "submit": "Submit diary",
+      "hint": "You confirm on the next step before anything is sent.",
+      "rejectedTitle": "Some days are not complete yet",
+      "rejected": "These days still need minutes: {{days}}. Use Edit to add them.",
+      "rejectedServer": "These days still need minutes. Use Edit to add them.",
+      "confirmTitle": "Submit your diary?",
+      "confirmText": "This sends all {{total}} days to the research team.",
+      "confirmLocked": "After that you can look at it, but not change it.",
+      "confirmYes": "Yes, submit",
+      "confirmNo": "Not yet, keep checking",
+      "sending": "Sending…"
+    },
+    "progress": {
+      "summary": "{{done}} of {{total}} days complete"
+    },
+    "notice": {
+      "submittedTitle": "Your diary is submitted",
+      "submittedText": "The research team has it. You can still read it, but not change it.",
+      "locked": "Submitted. The diary can be read, not changed."
+    },
+    "panel": {
+      "chooseActivity": "Choose an activity",
+      "addActivity": "Add activity",
+      "editActivity": "Edit activity",
+      "addToTimeline": "Add to timeline",
+      "addAnother": "Save and add another",
+      "saveChanges": "Save changes",
+      "delete": "Delete activity",
+      "noMatches": "No activity matches “{{query}}”",
+      "met": "requirement met",
+      "toGo": "{{minutes}} min to go",
+      "emptyDay": "nothing added yet"
+    },
+    "form": {
+      "option": "Which one?",
+      "chooseOption": "Choose an option",
+      "what": "What did you do?",
+      "frequency": "How often?",
+      "frequencyUnset": "Not specified",
+      "when": "When?",
+      "day": "Day",
+      "start": "Start",
+      "end": "End",
+      "lasts": "Lasts",
+      "nextDay": "(next day)",
+      "midnight": "(midnight)",
+      "lastDayHint": "This is the last day, so activities end by midnight. Add the rest in your next diary.",
+      "alsoOn": "Also on other days?",
+      "hours": "{{count}} h",
+      "minutes": "{{count}} min"
+    },
+    "toast": {
+      "added": "Added: {{name}}, {{range}}",
+      "addedDays": "Also on {{count}} days.",
+      "skipped": "Not added: {{reason}}",
+      "changed": "Changed: {{name}}, {{range}}",
+      "deleted": "Deleted: {{name}}",
+      "undo": "Undo",
+      "dismiss": "Dismiss"
+    },
+    "error": {
+      "noParticipant": "No study or participant in the address.",
+      "generic": {
+        "title": "Not saved",
+        "text": "Something went wrong. Please try again."
+      },
+      "overlap": {
+        "title": "This time is full",
+        "text": "Up to {{max}} activities can run at the same time. Change the time or remove one."
+      },
+      "duplicate": {
+        "title": "Already added",
+        "text": "This activity is already on the timeline at that time."
+      },
+      "lastMidnight": {
+        "title": "The last day ends at midnight",
+        "text": "Add the rest in your next diary."
+      },
+      "endBeforeStart": {
+        "title": "Check the times",
+        "text": "The end must be after the start."
+      },
+      "tooLong": {
+        "title": "Too long",
+        "text": "One activity cannot last more than 24 hours."
+      },
+      "notOnStep": {
+        "title": "Check the times",
+        "text": "Times go in 10-minute steps."
+      },
+      "startOutOfRange": {
+        "title": "Check the times",
+        "text": "The start must be within the day."
+      },
+      "dayRange": {
+        "title": "Day not available",
+        "text": "This day is not part of the study."
+      },
+      "needsOption": {
+        "title": "Choose an option",
+        "text": "Pick the option that describes the activity."
+      },
+      "needsText": {
+        "title": "Say what you did",
+        "text": "Please write a few words."
+      },
+      "submitted": {
+        "title": "Diary submitted",
+        "text": "It can no longer be changed."
+      },
+      "unavailable": {
+        "title": "Study unavailable",
+        "text": "Please try again later."
+      }
     }
   }
 }

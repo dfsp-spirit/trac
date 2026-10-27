@@ -238,6 +238,146 @@
       "contact": "Kontakt",
       "language": "Språk",
       "noScript": "Den här sidan behöver JavaScript för att visa din dagbok."
+    },
+    "timeline": {
+      "continuesNextDay": "fortsätter efter midnatt",
+      "gap": "Inget tillagt · {{start}} – {{end}}",
+      "dayActivities": "Aktiviteter på {{day}}"
+    },
+    "rail": {
+      "complete": "klar",
+      "toGo": "{{minutes}} min kvar",
+      "empty": "tom",
+      "dayLabel": "{{day}}, {{minutes}} minuter täckta"
+    },
+    "nav": {
+      "position": "Dag {{current}} av {{total}}",
+      "previous": "Föregående dag",
+      "next": "Nästa dag"
+    },
+    "review": {
+      "title": "Kontrollera din dagbok",
+      "step": "Steg {{current}} av {{total}}",
+      "back": "Tillbaka till dagboken",
+      "edit": "Ändra",
+      "dayComplete": "Komplett",
+      "dayEmpty": "Inget tillagt än",
+      "dayToGo": "{{minutes}} min kvar att fylla i",
+      "nextDay": "nästa dag",
+      "submit": "Skicka in dagboken",
+      "hint": "Du bekräftar i nästa steg innan något skickas.",
+      "rejectedTitle": "Några dagar är inte kompletta än",
+      "rejected": "De här dagarna saknar fortfarande minuter: {{days}}. Använd Ändra för att fylla i dem.",
+      "rejectedServer": "De här dagarna saknar fortfarande minuter. Använd Ändra för att fylla i dem.",
+      "confirmTitle": "Skicka in din dagbok?",
+      "confirmText": "Det här skickar alla {{total}} dagar till forskargruppen.",
+      "confirmLocked": "Efter det kan du läsa den men inte ändra den.",
+      "confirmYes": "Ja, skicka in",
+      "confirmNo": "Inte än, fortsätt kontrollera",
+      "sending": "Skickar …"
+    },
+    "progress": {
+      "summary": "{{done}} av {{total}} dagar klara"
+    },
+    "notice": {
+      "submittedTitle": "Din dagbok är inskickad",
+      "submittedText": "Forskargruppen har fått den. Du kan fortfarande läsa den, men inte ändra den.",
+      "locked": "Inskickad. Dagboken kan läsas men inte ändras."
+    },
+    "panel": {
+      "chooseActivity": "Välj en aktivitet",
+      "addActivity": "Lägg till aktivitet",
+      "editActivity": "Redigera aktivitet",
+      "addToTimeline": "Lägg till i tidslinjen",
+      "addAnother": "Spara och lägg till en till",
+      "saveChanges": "Spara ändringar",
+      "delete": "Ta bort aktivitet",
+      "noMatches": "Ingen aktivitet matchar ”{{query}}”",
+      "met": "kravet uppfyllt",
+      "toGo": "{{minutes}} min kvar",
+      "emptyDay": "inget tillagt än"
+    },
+    "form": {
+      "option": "Vilken variant?",
+      "chooseOption": "Välj ett alternativ",
+      "what": "Vad gjorde du?",
+      "frequency": "Hur ofta?",
+      "frequencyUnset": "Ej angivet",
+      "when": "När?",
+      "day": "Dag",
+      "start": "Start",
+      "end": "Slut",
+      "lasts": "Varar",
+      "nextDay": "(nästa dag)",
+      "midnight": "(midnatt)",
+      "lastDayHint": "Detta är sista dagen, så aktiviteter slutar vid midnatt. Lägg till resten i nästa dagbok.",
+      "alsoOn": "Även andra dagar?",
+      "hours": "{{count}} tim",
+      "minutes": "{{count}} min"
+    },
+    "toast": {
+      "added": "Tillagt: {{name}}, {{range}}",
+      "addedDays": "Även på {{count}} dagar.",
+      "skipped": "Inte tillagt: {{reason}}",
+      "changed": "Ändrat: {{name}}, {{range}}",
+      "deleted": "Borttaget: {{name}}",
+      "undo": "Ångra",
+      "dismiss": "Stäng"
+    },
+    "error": {
+      "noParticipant": "Ingen studie eller deltagare i adressen.",
+      "generic": {
+        "title": "Inte sparat",
+        "text": "Något gick fel. Försök igen."
+      },
+      "overlap": {
+        "title": "Den tiden är full",
+        "text": "Upp till {{max}} aktiviteter kan pågå samtidigt. Ändra tiden eller ta bort en."
+      },
+      "duplicate": {
+        "title": "Redan tillagt",
+        "text": "Den här aktiviteten finns redan i tidslinjen vid den tiden."
+      },
+      "lastMidnight": {
+        "title": "Sista dagen slutar vid midnatt",
+        "text": "Lägg till resten i nästa dagbok."
+      },
+      "endBeforeStart": {
+        "title": "Kontrollera tiderna",
+        "text": "Slutet måste vara efter starten."
+      },
+      "tooLong": {
+        "title": "För lång",
+        "text": "En aktivitet kan inte vara längre än 24 timmar."
+      },
+      "notOnStep": {
+        "title": "Kontrollera tiderna",
+        "text": "Tiderna går i 10-minuterssteg."
+      },
+      "startOutOfRange": {
+        "title": "Kontrollera tiderna",
+        "text": "Starten måste ligga inom dagen."
+      },
+      "dayRange": {
+        "title": "Dagen är inte tillgänglig",
+        "text": "Den här dagen ingår inte i studien."
+      },
+      "needsOption": {
+        "title": "Välj ett alternativ",
+        "text": "Välj alternativet som beskriver aktiviteten."
+      },
+      "needsText": {
+        "title": "Beskriv vad du gjorde",
+        "text": "Skriv några ord."
+      },
+      "submitted": {
+        "title": "Dagboken är inlämnad",
+        "text": "Den kan inte längre ändras."
+      },
+      "unavailable": {
+        "title": "Studien är inte tillgänglig",
+        "text": "Försök igen senare."
+      }
     }
   }
 }

@@ -1,138 +1,290 @@
 // @ts-check
 /**
  * Composition root. The only file that knows about every layer: it reads the
- * deployment config, loads the locale, hands the translator to the UI, and
- * hosts the activity panel in the desktop column or the mobile dialog.
+ * deployment config, loads the locale, creates the API client and the store,
+ * mounts the components and connects them.
  *
- * It owns no application state. Domain rules live in js/domain, persistence in
- * js/data, and components in js/ui; when they exist they are mounted from here
- * with explicit inputs (D36, seam C).
+ * It owns no application state: the store does. Everything here is wiring, and it
+ * stays under the same size cap so "wiring" cannot become the next god module.
  */
 import { config } from './config.js';
+import { createApi } from './data/api.js';
 import { createTranslator, loadLocale } from './data/i18n.js';
+import { STEP_MINUTES } from './domain/time.js';
+import { createDiaryActions } from './state/diary.js';
+import { createStore } from './state/store.js';
+import { createActivityPanel } from './ui/activityPanel.js';
+import { createDiaryView } from './ui/diaryView.js';
+import { createPanelHost } from './ui/panelHost.js';
+import { createReviewModal } from './ui/reviewModal.js';
+import { readShell } from './ui/shell.js';
 import { applyTranslations } from './ui/i18n-dom.js';
+import { scrollToDay } from './ui/timeline.js';
+import { createToast } from './ui/toast.js';
 
 /**
- * @typedef {Object} MountInputs
- * @property {HTMLElement} root
- * @property {URLSearchParams} params
- */
-
-/**
- * @param {MountInputs} inputs
+ * @param {{ root: HTMLElement, params: URLSearchParams }} inputs
  * @returns {{ destroy: () => void }}
  */
 export function mount({ root, params }) {
-  const languageFromUrl = params.get('lang');
-  const initialLanguage =
-    languageFromUrl && config.supportedLanguages.includes(languageFromUrl)
-      ? languageFromUrl
+  const paramLanguage = params.get('lang');
+  const language =
+    paramLanguage && config.supportedLanguages.includes(paramLanguage)
+      ? paramLanguage
       : config.defaultLanguage;
 
+  const studyName = params.get('study') || config.studyName;
+  const participantId = params.get('pid') || config.participantId;
+
+  /** @type {import('./state/store.js').DiaryState} */
+  const initial = {
+    status: 'idle',
+    error: null,
+    diary: null,
+    catalogue: null,
+    currentDay: 0,
+    saveState: 'idle',
+    language,
+    revision: 0,
+  };
+  const store = createStore(initial);
   let translator = createTranslator({});
 
-  const t = (/** @type {string} */ key, /** @type {Record<string, string | number>} */ paramsForText) =>
-    translator.t(key, paramsForText);
-  const tCount = (/** @type {string} */ key, /** @type {number} */ count) => translator.tCount(key, count);
+  /** @type {(key: string, values?: Record<string, string | number>) => string} */
+  const t = (key, values) => translator.t(key, values);
 
-  // One breakpoint, the same 1200px as the media queries in layout.css (D12).
+  const {
+    topbar,
+    daysHost,
+    noticesHost,
+    railList,
+    progressNote,
+    fab,
+    submitBtn,
+    toastRegion,
+    sectionHost,
+    dialogHost,
+    template,
+    languageSelect,
+    nav,
+  } = readShell(root);
+
+  const toast = createToast(toastRegion, {
+    undo: t('diary.toast.undo'),
+    dismiss: t('diary.toast.dismiss'),
+  });
+
   const wide = window.matchMedia('(min-width: 1200px)');
-  const topbar = /** @type {HTMLElement | null} */ (root.querySelector('#topbar'));
-  const sectionHost = root.querySelector('#panel-host');
-  const dialogHost = /** @type {HTMLDialogElement | null} */ (root.querySelector('#dialog-host'));
-  const template = /** @type {HTMLTemplateElement | null} */ (root.querySelector('#activity-panel-tpl'));
-  const fab = root.querySelector('#fab');
-  const languageSelect = /** @type {HTMLSelectElement | null} */ (root.querySelector('#language-select'));
+  /** @type {ReturnType<typeof createActivityPanel> | null} */
+  let panel = null;
+  let lockedRendered = false;
 
-  /**
-   * The same markup is hosted twice: a sticky column on desktop, a modal dialog
-   * on phones (D29). Only one host ever holds content.
-   *
-   * @returns {Element | null}
-   */
-  function hostPanel() {
-    const isWide = wide.matches;
-    const target = isWide ? sectionHost : dialogHost;
-    const other = isWide ? dialogHost : sectionHost;
-    if (!target || !other || !template) return null;
+  const api =
+    studyName && participantId ? createApi(config.apiBaseUrl, studyName, participantId) : null;
+  const actions = api
+    ? createDiaryActions({ store, api, getLanguage: () => store.get().language })
+    : null;
 
-    other.replaceChildren();
-    if (isWide && dialogHost?.open) dialogHost.close();
+  const { hostPanel } = createPanelHost({
+    section: sectionHost,
+    dialog: dialogHost,
+    template,
+    isWide: () => wide.matches,
+    translate: (host) => applyTranslations(host, translator),
+  });
 
-    if (!target.firstElementChild) {
-      target.append(template.content.cloneNode(true));
-      applyTranslations(target, translator);
+  /** @returns {boolean} */
+  function isLocked() {
+    return Boolean(store.get().diary?.study.submitted_at);
+  }
 
-      const title = /** @type {HTMLElement | null} */ (target.querySelector('[data-slot="title"]'));
-      if (title) {
-        if (!title.id) title.id = `${target.id}-title`;
-        // A dialog needs an accessible name; a section is named by its heading.
-        if (target === dialogHost) target.setAttribute('aria-labelledby', title.id);
+  function createPanel() {
+    if (isLocked()) {
+      // A submitted diary keeps its timeline, not its editor.
+      panel = null;
+      if (dialogHost?.open) dialogHost.close();
+      if (sectionHost) {
+        const note = document.createElement('p');
+        note.className = 't-hint';
+        note.setAttribute('data-i18n', 'diary.notice.locked');
+        note.textContent = t('diary.notice.locked');
+        sectionHost.replaceChildren(note);
       }
-
-      target.querySelector('[data-slot="close"]')?.addEventListener('click', () => {
-        if (dialogHost?.open) dialogHost.close();
-      });
+      return;
     }
-    return target;
+
+    const host = hostPanel();
+    if (!host || !actions) {
+      panel = null;
+      return;
+    }
+    panel = createActivityPanel({
+      host,
+      t,
+      language: store.get().language,
+      getDiary: () => /** @type {import('./domain/diary.js').ApiDiary} */ (store.get().diary),
+      getCatalogue: () => store.get().catalogue,
+      onCreate: (body) => actions.create(body),
+      onUpdate: (uuid, changes) => actions.update(uuid, changes),
+      onDelete: async (activity) => {
+        const undo = await actions.removeWithUndo(activity);
+        toast.show(t('diary.toast.deleted', { name: activity.activity_name }), {
+          label: t('diary.toast.undo'),
+          run: undo,
+        });
+      },
+      toast,
+    });
+    panel.showCatalogue();
   }
 
-  function openPanel() {
-    const panel = hostPanel();
-    if (!panel) return;
-    if (dialogHost && !wide.matches) {
-      if (!dialogHost.open) dialogHost.showModal();
-    }
-    /** @type {HTMLElement | null} */
-    const search = panel.querySelector('input[type="search"]');
-    search?.focus();
+  /** @param {number} dayIndex @param {number} startRelative @param {number} endRelative */
+  function openPanelAt(dayIndex, startRelative, endRelative) {
+    if (!panel || isLocked()) return;
+    if (!wide.matches && dialogHost && !dialogHost.open) dialogHost.showModal();
+    panel.open({ dayIndex, startMinutes: startRelative, endMinutes: endRelative });
   }
 
-  /** @param {string} language */
-  async function setLanguage(language) {
-    const messages = await loadLocale(language);
+  const view = createDiaryView({
+    root,
+    timelineHost: daysHost,
+    railList,
+    nav,
+    noticesHost,
+    progressNote,
+    topbar,
+    t,
+    onDayInView: (index) => {
+      if (index !== store.get().currentDay) store.set({ currentDay: index });
+    },
+    onTimelineRendered: () => panel?.refresh(),
+  });
+
+  /** @param {number} dayIndex */
+  function goToDay(dayIndex) {
+    const day = store.get().diary?.days[dayIndex];
+    store.set({ currentDay: dayIndex });
+    if (day) scrollToDay(view.sections(), day.name);
+  }
+
+  const reviewModal = createReviewModal({
+    root,
+    t,
+    onEdit: goToDay,
+    onSubmit: () => (actions ? actions.submit() : Promise.reject(new Error('no participant'))),
+  });
+
+  /** @param {import('./state/store.js').DiaryState} state */
+  function render(state) {
+    if (!state.diary) return;
+    const locked = isLocked();
+    submitBtn.hidden = locked;
+    fab.hidden = locked;
+    view.render({
+      diary: state.diary,
+      language: state.language,
+      revision: state.revision,
+      currentDay: state.currentDay,
+      locked,
+    });
+    if (locked !== lockedRendered) {
+      lockedRendered = locked;
+      createPanel();
+    }
+  }
+
+  /** @param {string} next */
+  async function setLanguage(next) {
+    if (!config.supportedLanguages.includes(next)) return;
+    const messages = await loadLocale(next);
     translator = createTranslator(messages);
-    document.documentElement.lang = language;
+    document.documentElement.lang = next;
     applyTranslations(document, translator);
-    if (languageSelect) languageSelect.value = language;
+    store.set({ language: next });
+    if (languageSelect) languageSelect.value = next;
   }
 
-  const onFabClick = () => openPanel();
+  const onFab = () => {
+    if (isLocked()) return;
+    const dayIndex = store.get().currentDay;
+    const start = view.minutesAtTop(dayIndex);
+    openPanelAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
+  };
+
+  /** @param {Event} event */
+  const onTimelineClick = (event) => {
+    if (isLocked()) return;
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const gap = target.closest('.t-gap__btn');
+    if (gap instanceof HTMLElement) {
+      openPanelAt(Number(gap.dataset.day), Number(gap.dataset.start), Number(gap.dataset.end));
+      return;
+    }
+    const button = target.closest('.t-event__btn');
+    const uuid = button instanceof HTMLElement ? button.dataset.uuid : null;
+    if (!uuid) return;
+    const diary = store.get().diary;
+    const activity = diary?.activities.find((item) => item.client_uuid === uuid);
+    if (!activity || !panel) return;
+    if (!wide.matches && dialogHost && !dialogHost.open) dialogHost.showModal();
+    panel.openEdit(activity);
+  };
+
+  const onSubmitClick = () => {
+    const diary = store.get().diary;
+    if (isLocked() || !diary) return;
+    reviewModal.open(diary, store.get().language);
+  };
+
   const onLanguageChange = () => {
     const next = languageSelect?.value;
-    if (next && config.supportedLanguages.includes(next)) {
-      void setLanguage(next);
-    }
+    if (next) void setLanguage(next);
   };
-  const onBreakpointChange = () => {
-    hostPanel();
-  };
+  const onBreakpoint = () => createPanel();
 
-  fab?.addEventListener('click', onFabClick);
+  fab.addEventListener('click', onFab);
+  submitBtn.addEventListener('click', onSubmitClick);
+  daysHost.addEventListener('click', onTimelineClick);
   languageSelect?.addEventListener('change', onLanguageChange);
-  wide.addEventListener('change', onBreakpointChange);
+  wide.addEventListener('change', onBreakpoint);
 
   let observer = null;
-  if (topbar && typeof ResizeObserver !== 'undefined') {
+  if (typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver(() => {
       root.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
     });
     observer.observe(topbar);
   }
 
-  hostPanel();
-  void setLanguage(initialLanguage).catch((error) => {
-    // The markup carries English fallbacks, so a failed locale fetch degrades
-    // to a usable page rather than a blank one.
-    console.error('[i18n] falling back to the markup text:', error);
-  });
+  const unsubscribe = store.subscribe(render);
+  createPanel();
+
+  void (async () => {
+    try {
+      await setLanguage(language);
+    } catch (error) {
+      console.error('[i18n] falling back to the markup text:', error);
+    }
+    if (!actions) {
+      progressNote.hidden = false;
+      progressNote.textContent = t('diary.error.noParticipant');
+      return;
+    }
+    await actions.load();
+  })();
 
   return {
     destroy() {
-      fab?.removeEventListener('click', onFabClick);
-      languageSelect?.removeEventListener('change', onLanguageChange);
-      wide.removeEventListener('change', onBreakpointChange);
+      unsubscribe();
+      view.destroy();
       observer?.disconnect();
+      fab.removeEventListener('click', onFab);
+      submitBtn.removeEventListener('click', onSubmitClick);
+      daysHost.removeEventListener('click', onTimelineClick);
+      reviewModal.destroy();
+      languageSelect?.removeEventListener('change', onLanguageChange);
+      wide.removeEventListener('change', onBreakpoint);
     },
   };
 }

@@ -41,6 +41,7 @@ from .parsers.studies_config import (
 )
 import secrets
 from .logging_config import setup_logging, get_admin_audit_logger
+from .utils import coerce_utc_aware as _coerce_utc_aware, to_utc_naive as _to_utc_naive
 
 
 from .settings import settings
@@ -71,6 +72,18 @@ import hashlib
 import html
 import hmac as hmac_lib
 from .api_deps.activities import get_study_activity_codes
+from .api_deps.frequency import (
+    allowed_frequency_keys_by_code,
+    frequency_key_errors,
+)
+from .api_deps.diary_access import ensure_study_is_currently_available
+from .api_diary import router as diary_router
+from .coverage import (
+    TimedActivity,
+    coverage_by_day_and_timeline,
+    day_meets_requirements,
+    required_coverage_by_timeline,
+)
 from .api_deps.available_activities import (
     get_activities_cfg_text_for_config,
     get_num_activities_in_cfg_per_timeline,
@@ -81,7 +94,7 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, update, exc as sa_exc
 from sqlalchemy import and_ as sa_and_, or_ as sa_or_
 from io import StringIO, BytesIO
-from pydantic import BaseModel, Field, model_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 import o_timeusediary_backend
 
 from .api_deps.admin_auth import (
@@ -629,17 +642,13 @@ def _get_days_meeting_min_coverage(
     """Return display_order indices for days that are complete *according to
     min coverage*.
 
-    A day is considered complete when, for every timeline of the study that
-    has a ``min_coverage > 0``, the sum of submitted activity minutes on that
-    day reaches or exceeds the timeline's min_coverage.  Timelines without a
-    min_coverage (None or <= 0) impose no requirement.
+    A day is complete when, for every timeline that sets ``min_coverage > 0``,
+    the *union* of activity minutes on that day reaches the requirement (D20).
+    Parallel activities therefore count once, and the tail of a cross-midnight
+    activity counts towards the day it runs into (D6).
 
-    This mirrors the backend submit validation (_validate_timeline_min_coverage)
-    so the frontend "Finish Study" gate can rely on the exact same notion of
-    completion as a successful submission.  It intentionally differs from
-    _get_completed_day_indices(), which only checks that a day has *any* data
-    and is still needed to protect against overwriting non-empty days when
-    copying.
+    The arithmetic lives in ``coverage.py``, which the admin progress view uses
+    as well, so the submit gate and the progress bar cannot drift apart.
     """
     if not participant_id:
         return set()
@@ -647,11 +656,7 @@ def _get_days_meeting_min_coverage(
     timelines = session.exec(
         select(Timeline).where(Timeline.study_id == study.id)
     ).all()
-    required_by_timeline_id = {
-        timeline.id: int(timeline.min_coverage or 0)
-        for timeline in timelines
-        if (timeline.min_coverage or 0) > 0
-    }
+    required_by_timeline_id = required_coverage_by_timeline(timelines)
 
     if not required_by_timeline_id:
         # No timeline imposes a min-coverage requirement: every day with any
@@ -661,6 +666,10 @@ def _get_days_meeting_min_coverage(
     day_labels = session.exec(
         select(DayLabel).where(DayLabel.study_id == study.id)
     ).all()
+    day_labels_in_order = [
+        day_label.id
+        for day_label in sorted(day_labels, key=lambda item: item.display_order)
+    ]
     display_order_by_id = {
         day_label.id: day_label.display_order for day_label in day_labels
     }
@@ -672,22 +681,23 @@ def _get_days_meeting_min_coverage(
         )
     ).all()
 
-    # covered_minutes[day_label_id][timeline_id] = sum of activity minutes
-    covered_minutes: Dict[int, Dict[int, int]] = {}
-    for activity in activities:
-        day_coverage = covered_minutes.setdefault(activity.day_label_id, {})
-        duration = activity.end_minutes - activity.start_minutes
-        day_coverage[activity.timeline_id] = (
-            day_coverage.get(activity.timeline_id, 0) + duration
-        )
+    covered = coverage_by_day_and_timeline(
+        (
+            TimedActivity(
+                day_label_id=activity.day_label_id,
+                timeline_id=activity.timeline_id,
+                start_minutes=activity.start_minutes,
+                end_minutes=activity.end_minutes,
+            )
+            for activity in activities
+        ),
+        day_labels_in_order=day_labels_in_order,
+        day_start_minutes=study.day_start_minutes,
+    )
 
     meeting_days: set[int] = set()
-    for day_label_id, day_coverage in covered_minutes.items():
-        meets_all = all(
-            day_coverage.get(timeline_id, 0) >= required
-            for timeline_id, required in required_by_timeline_id.items()
-        )
-        if meets_all:
+    for day_label_id, per_timeline in covered.items():
+        if day_meets_requirements(per_timeline, required_by_timeline_id):
             display_order = display_order_by_id.get(day_label_id)
             if display_order is not None:
                 meeting_days.add(display_order)
@@ -916,25 +926,34 @@ def _build_participant_completion_map(
         timelines = session.exec(
             select(Timeline).where(Timeline.study_id == study.id)
         ).all()
-        required_by_timeline_id = {
-            t.id: int(t.min_coverage or 0)
-            for t in timelines
-            if (t.min_coverage or 0) > 0
-        }
+        required_by_timeline_id = required_coverage_by_timeline(timelines)
 
-        # Group activities by (pid, day_label_id)
-        pid_day_covered: Dict[str, Dict[int, Dict[int, int]]] = {}
-        for a in activities:
-            pid_day_covered.setdefault(a.participant_id, {}).setdefault(
-                a.day_label_id, {}
-            )
-            dur = a.end_minutes - a.start_minutes
-            pid_day_covered[a.participant_id][a.day_label_id][a.timeline_id] = (
-                pid_day_covered[a.participant_id][a.day_label_id].get(a.timeline_id, 0)
-                + dur
-            )
-
+        # Covered minutes per day and timeline, from the one coverage helper
+        # (D20). Summation used to live here and in the submit gate, which is
+        # how the progress view and the gate could disagree.
         day_label_order = {dl.id: dl.display_order for dl in day_labels}
+        day_label_ids_in_order = [
+            dl.id for dl in sorted(day_labels, key=lambda item: item.display_order)
+        ]
+        activities_by_pid: Dict[str, List[Activity]] = {}
+        for activity in activities:
+            activities_by_pid.setdefault(activity.participant_id, []).append(activity)
+
+        pid_day_covered: Dict[str, Dict[int, Dict[int, int]]] = {}
+        for pid, pid_activities in activities_by_pid.items():
+            pid_day_covered[pid] = coverage_by_day_and_timeline(
+                (
+                    TimedActivity(
+                        day_label_id=activity.day_label_id,
+                        timeline_id=activity.timeline_id,
+                        start_minutes=activity.start_minutes,
+                        end_minutes=activity.end_minutes,
+                    )
+                    for activity in pid_activities
+                ),
+                day_labels_in_order=day_label_ids_in_order,
+                day_start_minutes=study.day_start_minutes,
+            )
 
         for pid in result:
             sp = sp_by_pid.get(pid)
@@ -952,13 +971,9 @@ def _build_participant_completion_map(
                     day_status[dl_order] = "empty"
                 else:
                     coverage = covered_by_day[dl_id]
-                    if required_by_timeline_id:
-                        meets_all = all(
-                            coverage.get(tid, 0) >= req
-                            for tid, req in required_by_timeline_id.items()
-                        )
-                    else:
-                        meets_all = True  # no min_coverage → any data is complete
+                    meets_all = day_meets_requirements(
+                        coverage, required_by_timeline_id
+                    )
                     day_status[dl_order] = "complete" if meets_all else "partial"
                     if meets_all:
                         days_meeting += 1
@@ -1013,6 +1028,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(diary_router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -1037,69 +1054,13 @@ async def favicon():
     return Response(status_code=204)
 
 
-def _coerce_utc_aware(value: datetime) -> datetime:
-    """Coerce DB datetimes to UTC-aware values for safe cross-dialect comparisons."""
-    # Some DB/driver combinations can attach tzinfo objects that still behave as
-    # offset-naive (`utcoffset()` is None). Treat them as UTC-naive values.
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-
-    try:
-        offset = value.tzinfo.utcoffset(value)
-    except Exception:
-        return value.replace(tzinfo=timezone.utc)
-
-    if offset is None:
-        return value.replace(tzinfo=timezone.utc)
-
-    try:
-        return value.astimezone(timezone.utc)
-    except Exception:
-        return value.replace(tzinfo=timezone.utc)
-
-
-def _to_utc_naive(value: datetime) -> datetime:
-    """Normalize datetimes to naive values for cross-dialect-safe comparisons/arithmetic.
-
-    For this backend all persisted timestamps are expected in UTC. Some DB drivers may
-    attach tzinfo objects that are not stable for arithmetic/conversion operations.
-    Stripping tzinfo avoids those driver-specific pitfalls while preserving wall time.
-    """
-    return value.replace(tzinfo=None)
-
-
 def _ensure_study_is_currently_available(study: Study) -> None:
-    """Raise 403 when a study cannot currently be filled in by participants."""
-    now = _coerce_utc_aware(utc_now())
-    collection_start = _coerce_utc_aware(study.data_collection_start)
-    collection_end = _coerce_utc_aware(study.data_collection_end)
+    """Raise 403 when a study cannot currently be filled in by participants.
 
-    if now < collection_start:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "study_unavailable",
-                "message": "Diese Studie ist momentan nicht verfügbar.",
-            },
-        )
-
-    if now > collection_end:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "study_unavailable",
-                "message": "Diese Studie ist momentan nicht verfügbar.",
-            },
-        )
-
-    if study.is_paused:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "study_unavailable",
-                "message": "Diese Studie ist momentan nicht verfügbar.",
-            },
-        )
+    Delegates to api_deps/diary_access.py so the old and the new write paths
+    answer this identically.
+    """
+    ensure_study_is_currently_available(study)
 
 
 @app.exception_handler(Exception)
@@ -1472,19 +1433,12 @@ def compute_activity_path(activity_item: ActivitySubmitItem) -> str:
 def _build_allowed_frequency_keys_by_code(
     activities_config: ActivitiesConfig,
 ) -> Dict[int, Set[str]]:
-    """Map activity code to allowed frequency keys from activities config."""
-    allowed_by_code: Dict[int, Set[str]] = {}
-    activity_info = get_all_activity_codes(activities_config)
+    """Map activity code to allowed frequency keys from activities config.
 
-    for code, metadata in activity_info.items():
-        frequency_options = metadata.get("frequency_options") or []
-        allowed_by_code[code] = {
-            str(option.get("key")).strip()
-            for option in frequency_options
-            if option.get("key") is not None and str(option.get("key")).strip()
-        }
-
-    return allowed_by_code
+    The rule itself lives in api_deps/frequency.py so the incremental diary API
+    applies the same one.
+    """
+    return allowed_frequency_keys_by_code(activities_config)
 
 
 def _validate_frequency_key_for_codes(
@@ -1492,77 +1446,14 @@ def _validate_frequency_key_for_codes(
     candidate_codes: List[int],
     allowed_frequency_keys_by_code: Dict[int, Set[str]],
 ) -> List[Dict[str, object]]:
-    """Return validation errors for a submitted frequency_key against one or more activity codes."""
-    if activity_item.frequency_key is None:
-        return []
-
-    errors: List[Dict[str, object]] = []
-    frequency_key = activity_item.frequency_key
-
-    for code in candidate_codes:
-        allowed_keys = allowed_frequency_keys_by_code.get(code, set())
-
-        if not allowed_keys:
-            errors.append(
-                {
-                    "code": code,
-                    "timeline": activity_item.timeline_key,
-                    "activity_name": activity_item.activity,
-                    "frequency_key": frequency_key,
-                    "reason": "no_frequency_options_for_activity",
-                    "allowed_frequency_keys": [],
-                }
-            )
-            continue
-
-        if frequency_key not in allowed_keys:
-            errors.append(
-                {
-                    "code": code,
-                    "timeline": activity_item.timeline_key,
-                    "activity_name": activity_item.activity,
-                    "frequency_key": frequency_key,
-                    "reason": "frequency_key_not_allowed",
-                    "allowed_frequency_keys": sorted(allowed_keys),
-                }
-            )
-
-    return errors
-
-
-def _validate_timeline_min_coverage(
-    *,
-    submitted_activities: List[ActivitySubmitItem],
-    required_min_coverage_by_timeline: Dict[str, int],
-) -> List[Dict[str, object]]:
-    """Return validation errors when submitted timeline coverage is below minimum."""
-    covered_minutes_by_timeline: Dict[str, int] = {}
-    for activity_item in submitted_activities:
-        duration = activity_item.end_minutes - activity_item.start_minutes
-        covered_minutes_by_timeline[activity_item.timeline_key] = (
-            covered_minutes_by_timeline.get(activity_item.timeline_key, 0) + duration
-        )
-
-    insufficient_timeline_coverage: List[Dict[str, object]] = []
-    for (
-        timeline_key,
-        required_min_coverage,
-    ) in required_min_coverage_by_timeline.items():
-        if required_min_coverage <= 0:
-            continue
-
-        covered_minutes = covered_minutes_by_timeline.get(timeline_key, 0)
-        if covered_minutes < required_min_coverage:
-            insufficient_timeline_coverage.append(
-                {
-                    "timeline": timeline_key,
-                    "covered_minutes": covered_minutes,
-                    "required_min_coverage": required_min_coverage,
-                    "missing_minutes": required_min_coverage - covered_minutes,
-                }
-            )
-
-    return insufficient_timeline_coverage
+    """Return validation errors for a submitted frequency_key against activity codes."""
+    return frequency_key_errors(
+        frequency_key=activity_item.frequency_key,
+        candidate_codes=candidate_codes,
+        allowed_by_code=allowed_frequency_keys_by_code,
+        timeline_key=activity_item.timeline_key,
+        activity_name=activity_item.activity,
+    )
 
 
 @app.post(
@@ -1859,13 +1750,35 @@ def submit_activities(
             },
         )
 
-    # NOTE: min_coverage validation intentionally removed (Copy Days feature).
-    # Saving is always allowed regardless of timeline coverage. The frontend
-    # day buttons show green/gray status and the submit-study endpoint enforces
-    # completion as the final gate. See dev_tools/copy_days_plan/.
-    #   required_min_coverage_by_timeline = { ... }
-    #   insufficient_timeline_coverage = _validate_timeline_min_coverage(...)
-    #   if insufficient_timeline_coverage: raise HTTPException(400, ...)
+    # NOTE: min_coverage is deliberately not enforced while saving (Copy Days
+    # feature). Saving is always allowed; the submit-study endpoint enforces
+    # completion as the final gate, using coverage.py - the same helper the
+    # admin progress view uses.
+
+    # Slot uniqueness is a database constraint (D8). Checking it here as well
+    # turns what would be an IntegrityError into a clear 4xx for the snapshot
+    # writer, which is the only writer that could still send a duplicate.
+    seen_slots: Set[Tuple[int, int, int]] = set()
+    for activity_item in activities_data.activities:
+        codes = (
+            [activity_item.code]
+            if activity_item.mode == "single-choice"
+            else (activity_item.codes or [])
+        )
+        for code in codes:
+            slot = (code, activity_item.start_minutes, activity_item.end_minutes)
+            if slot in seen_slots:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "activity.duplicate",
+                        "message": "The same activity was submitted twice for the same time.",
+                        "activity_code": code,
+                        "start_minutes": activity_item.start_minutes,
+                        "end_minutes": activity_item.end_minutes,
+                    },
+                )
+            seen_slots.add(slot)
 
     # PHASE 2: Check if activities already exist for this user-study-day_label
     # Counted, not loaded: the rows themselves are replaced wholesale below, so
@@ -2791,12 +2704,22 @@ class ImportStudiesConfigStudy(BaseModel):
     study_text_instructions_title: Optional[Dict[str, str]] = None
     data_collection_start: datetime
     data_collection_end: datetime
+    # Where the reporting day starts (D26). 0 = midnight; 240 keeps the legacy
+    # 04:00 convention for a study that was designed around it.
+    day_start_minutes: int = 0
     inactivity_timeout_minutes: int = 0
     inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
     footer_links: Optional[List[Dict[str, Any]]] = None
     hide_server_wide_links: bool = False
     save_browser_identification: bool = False
+
+    @field_validator("day_start_minutes")
+    @classmethod
+    def validate_day_start_minutes(cls, v: int) -> int:
+        if v < 0 or v > 1439:
+            raise ValueError(f"day_start_minutes must be between 0 and 1439, got {v}")
+        return v
 
 
 class UpdateConsentRequest(BaseModel):
@@ -3771,6 +3694,7 @@ def _create_study_from_import_payload(
         activities_json_url=f"db_blob://{study_payload.name_short}/{default_language}",
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
+        day_start_minutes=study_payload.day_start_minutes,
         inactivity_timeout_minutes=study_payload.inactivity_timeout_minutes,
         inactivity_timeout_stress_time_left=study_payload.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
@@ -3834,6 +3758,9 @@ def _create_study_from_import_payload(
                 min_coverage=int(timeline_cfg.min_coverage)
                 if timeline_cfg.min_coverage is not None
                 else None,
+                max_overlap=int(timeline_cfg.max_overlap)
+                if timeline_cfg.max_overlap is not None
+                else 2,
             )
         )
 
@@ -7597,6 +7524,16 @@ async def export_study_activities(
             "end_minutes": activity.end_minutes,
             "duration_minutes": duration_minutes,
             "category": activity.category,
+            # Row identity and provenance (D17). Additive columns: existing
+            # analyses are unaffected, and the new frontend can be reconciled
+            # against an export.
+            "client_uuid": activity.client_uuid,
+            "group_id": activity.group_id or "",
+            "catalogue_version": activity.catalogue_version or "",
+            "copy_source_uuid": activity.copy_source_uuid or "",
+            "activity_updated_at": (
+                activity.updated_at.isoformat() if activity.updated_at else None
+            ),
             # Context data
             "participant_id": participant.id,
             "day_label": day_label.name,
@@ -7626,9 +7563,7 @@ async def export_study_activities(
         # activity row, consistent with the other participant columns above. The
         # study-level marker lets researchers tell "not collected by design"
         # apart from "collected but missing".
-        record["study_save_browser_identification"] = (
-            study.save_browser_identification
-        )
+        record["study_save_browser_identification"] = study.save_browser_identification
         record.update(_client_info_export_columns(study_participant))
 
         if study.require_consent:
@@ -8031,7 +7966,9 @@ def _parse_activity_cursor(cursor: str) -> Tuple[int, str]:
     )
 
 
-def _key_after(study_id_column, participant_id_column, study_id: int, participant_id: str):
+def _key_after(
+    study_id_column, participant_id_column, study_id: int, participant_id: str
+):
     """SQL predicate for ``(study_id, participant_id)`` keys strictly after the given one.
 
     Extraction pages are half-open key ranges ordered by
@@ -8048,7 +7985,9 @@ def _key_after(study_id_column, participant_id_column, study_id: int, participan
     )
 
 
-def _key_before(study_id_column, participant_id_column, study_id: int, participant_id: str):
+def _key_before(
+    study_id_column, participant_id_column, study_id: int, participant_id: str
+):
     """SQL predicate for ``(study_id, participant_id)`` keys strictly before the given one."""
     return sa_or_(
         study_id_column < study_id,
@@ -8367,7 +8306,9 @@ async def admin_extract_participants(
         ),
     )
 
-    return _extract_response(records, f"admin_participants_{timestamp}", normalized_format)
+    return _extract_response(
+        records, f"admin_participants_{timestamp}", normalized_format
+    )
 
 
 @app.get("/api/admin/activities")
@@ -8535,9 +8476,7 @@ async def admin_extract_activities(
             )
             if cursor_key:
                 activities_query = activities_query.where(
-                    _key_after(
-                        Activity.study_id, Activity.participant_id, *cursor_key
-                    )
+                    _key_after(Activity.study_id, Activity.participant_id, *cursor_key)
                 )
             if has_more:
                 # rows[limit] is the first key of the NEXT page; excluding it
@@ -8670,9 +8609,7 @@ def _client_info_export_columns(
         else {}
     )
     captured_at = (
-        study_participant.client_info_captured_at
-        if study_participant
-        else None
+        study_participant.client_info_captured_at if study_participant else None
     )
 
     columns: Dict[str, Any] = {
@@ -8681,13 +8618,9 @@ def _client_info_export_columns(
             study_participant.user_agent if study_participant else None
         ),
         "participant_browser_name": _client_info_lookup(blob, "browser", "name"),
-        "participant_browser_version": _client_info_lookup(
-            blob, "browser", "version"
-        ),
+        "participant_browser_version": _client_info_lookup(blob, "browser", "version"),
         "participant_engine_name": _client_info_lookup(blob, "engine", "name"),
-        "participant_engine_version": _client_info_lookup(
-            blob, "engine", "version"
-        ),
+        "participant_engine_version": _client_info_lookup(blob, "engine", "version"),
         "participant_os_name": _client_info_lookup(blob, "os", "name"),
         "participant_os_version": _client_info_lookup(blob, "os", "version"),
         "participant_device_type": _client_info_lookup(blob, "device", "type"),
@@ -8698,18 +8631,12 @@ def _client_info_export_columns(
         ),
         "participant_screen_width": _client_info_lookup(blob, "screen", "width"),
         "participant_screen_height": _client_info_lookup(blob, "screen", "height"),
-        "participant_viewport_width": _client_info_lookup(
-            blob, "viewport", "width"
-        ),
-        "participant_viewport_height": _client_info_lookup(
-            blob, "viewport", "height"
-        ),
+        "participant_viewport_width": _client_info_lookup(blob, "viewport", "width"),
+        "participant_viewport_height": _client_info_lookup(blob, "viewport", "height"),
         "participant_device_pixel_ratio": _client_info_lookup(
             blob, "device_pixel_ratio"
         ),
-        "participant_max_touch_points": _client_info_lookup(
-            blob, "max_touch_points"
-        ),
+        "participant_max_touch_points": _client_info_lookup(blob, "max_touch_points"),
         "participant_platform": _client_info_lookup(blob, "platform"),
         "participant_client_timezone": _client_info_lookup(blob, "timezone"),
         "participant_client_language": _client_info_lookup(blob, "language"),
@@ -10501,9 +10428,7 @@ def submit_participant_client_info(
     except (TypeError, ValueError):
         capture_count = 1
     stored_blob["capture_count"] = capture_count
-    stored_blob["first_captured_at"] = (
-        existing_first_captured_at or now.isoformat()
-    )
+    stored_blob["first_captured_at"] = existing_first_captured_at or now.isoformat()
     stored_blob["server_user_agent_header"] = server_user_agent
 
     association.user_agent = payload.user_agent or server_user_agent

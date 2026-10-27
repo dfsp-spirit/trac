@@ -26,3 +26,27 @@ def get_time_for_minutes_from_midnight(minutes_from_midnight: int) -> time:
     minutes = minutes_from_midnight % 60
 
     return time(hours, minutes)
+
+
+def coerce_utc_aware(value: datetime) -> datetime:
+    """Coerce DB datetimes to UTC-aware values for safe cross-dialect comparisons."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    try:
+        offset = value.tzinfo.utcoffset(value)
+    except Exception:
+        return value.replace(tzinfo=timezone.utc)
+
+    if offset is None:
+        return value.replace(tzinfo=timezone.utc)
+
+    try:
+        return value.astimezone(timezone.utc)
+    except Exception:
+        return value.replace(tzinfo=timezone.utc)
+
+
+def to_utc_naive(value: datetime) -> datetime:
+    """Normalize datetimes to naive UTC values for cross-dialect arithmetic."""
+    return value.replace(tzinfo=None)

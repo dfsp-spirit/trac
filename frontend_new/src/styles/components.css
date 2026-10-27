@@ -161,7 +161,7 @@ html:has(dialog[open]) { overflow: hidden; }
   height: calc(var(--dur-min) * var(--minute));
   padding: 2px; }
 .t-event { --lane: 0; --lanes: 1; inset-inline-start: calc(var(--lane) * 100% / var(--lanes)); width: calc(100% / var(--lanes)); }
-.t-event__btn { display: flex; flex-direction: column; justify-content: flex-start; gap: 0; width: 100%; height: 100%; overflow: hidden; padding: 6px var(--space-2); border: 1.5px solid var(--ink); border-radius: var(--radius-sm); background: var(--surface-100); color: var(--ink); text-align: start; cursor: pointer; }
+.t-event__btn { display: flex; flex-direction: column; justify-content: flex-start; gap: 0; width: 100%; height: 100%; overflow: hidden; padding: 6px var(--space-2); border: 1.5px solid var(--event-line, var(--ink)); border-radius: var(--radius-sm); background: var(--event-fill, var(--surface-100)); color: var(--event-ink, var(--ink)); text-align: start; cursor: pointer; }
 .t-event__btn:active { background: var(--surface-300); }
 .t-event__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .t-event__title { min-width: 0; font-size: 0.875rem; line-height: 1.125rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

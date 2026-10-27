@@ -138,6 +138,26 @@ test('plural references have both _one and _other in every locale', () => {
   assert.deepEqual(missing, []);
 });
 
+test('every error code maps to a title and a text in every locale', () => {
+  const messagesSource = readFileSync(join(SRC_DIR, 'js', 'ui', 'messages.js'), 'utf8');
+  const codes = [
+    ...messagesSource.matchAll(/'(diary\.error\.[A-Za-z]+)'/g),
+  ].map((match) => match[1]);
+  assert.ok(codes.length >= 10, `expected the code map to be found, got ${codes.length}`);
+
+  const missing = [];
+  for (const prefix of new Set(codes)) {
+    for (const suffix of ['.title', '.text']) {
+      for (const file of localeFiles) {
+        if (typeof lookup(locales[file], `${prefix}${suffix}`) !== 'string') {
+          missing.push(`${file}: ${prefix}${suffix}`);
+        }
+      }
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
 test('the new UI never renders translations as HTML', () => {
   const offenders = sourceFiles.filter((file) => readFileSync(file, 'utf8').includes('data-i18n-html'));
   assert.deepEqual(offenders.map((file) => file.slice(SRC_DIR.length)), []);

@@ -27,3 +27,35 @@
 - The owner UI is the "Study Owners" block in the danger zone of the study detail page (inside the locked `edit-section-body`; `toggleEditSection()` re-renders it so the self-lock survives unlocking). JS entry points: `addStudyOwner`, `removeStudyOwner`, `makeStudyUnowned`. Super admins cannot be owners (they already have full access), so only the configured scientists are offered.
 - `tests/integration/test_admin_scientist_scope.py` contains an exhaustive endpoint matrix that fails when a study-scoped route is added without protection.
 - See README.md, section "Study ownership and scientist accounts", for the user-facing behaviour and the explicit non-goals of this isolation.
+
+## Participant diary API (incremental)
+
+`backend/src/o_timeusediary_backend/api_diary.py` is the participant-facing write
+path of the frontend rewrite. It replaces "delete the whole day, insert a
+snapshot" with one row per activity, addressed by `client_uuid`.
+
+| Method | Path (under `/api/studies/{study}/participants/{participant}`) | Purpose |
+| --- | --- | --- |
+| `GET` | `/diary` | Days, per-day coverage, activities and limits in one request |
+| `POST` | `/activities` | Create one activity on one or more days (`day_label_indexes`) |
+| `PATCH` | `/activities/{client_uuid}` | Change one row |
+| `DELETE` | `/activities/{client_uuid}` | Remove one row |
+| `DELETE` | `/activity-groups/{group_id}` | Remove every row one create produced |
+| `POST` | `/diary/submit` | Lock the diary; idempotent |
+
+Rules that must not drift:
+
+- **Row identity** is `"<client_uuid>:<day_index>"`, so a retried create finds its
+  own rows instead of duplicating them.
+- **Coverage** comes from `coverage.py` only. The submit gate, the admin progress
+  view and `GET /diary` all call it, so the day rail cannot promise something the
+  gate then rejects.
+- **Access** is decided once, in `api_deps/diary_access.py`: open studies create
+  the participant row on first write, and a submitted diary is readable but not
+  writable (`study_already_submitted`).
+- **`POST /diary/submit` is not `POST .../submit`.** The latter is the old
+  whole-day writer's route and stays until cutover; the new one sits under
+  `/diary` so the two cannot shadow each other.
+- Errors carry a machine-readable `detail.code` (`overlap.limit_reached`,
+  `activity.duplicate`, `day.ends_at_midnight`, `days.incomplete`, ...); the
+  frontend maps those codes to translations and never parses message text.

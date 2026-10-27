@@ -73,6 +73,9 @@ class TimelineConfig(BaseModel):
     description: Optional[str] = None
     mode: str  # "single-choice" or "multiple-choice"
     min_coverage: Optional[int] = None
+    # How many activities may cover the same minute (D27, PI answer to Q1).
+    # Unset means the database default of 2.
+    max_overlap: Optional[int] = None
     categories: List[ActivityCategory]
 
     @field_validator("mode")
@@ -90,6 +93,13 @@ class TimelineConfig(BaseModel):
             raise ValueError(
                 f"min_coverage must be between 0 and 1440, got {v}"
             )  # day has 1440 minutes
+        return v
+
+    @field_validator("max_overlap")
+    @classmethod
+    def validate_max_overlap(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and (v < 1 or v > 10):
+            raise ValueError(f"max_overlap must be between 1 and 10, got {v}")
         return v
 
 

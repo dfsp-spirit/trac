@@ -427,6 +427,13 @@ class CfgFileStudy(BaseModel):
         Field(default_factory=dict)
     )
     # Inactivity timeout configuration
+    day_start_minutes: int = Field(
+        default=0,
+        description=(
+            "Where the reporting day starts, in minutes after midnight. 0 = midnight, "
+            "240 = the 04:00 convention of the legacy frontend."
+        ),
+    )
     inactivity_timeout_minutes: int = Field(
         default=0,
         description="Minutes of user inactivity before session timeout. Set to 0 to disable.",

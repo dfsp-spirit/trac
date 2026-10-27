@@ -1,7 +1,8 @@
+import uuid
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from sqlalchemy import DateTime, UniqueConstraint, Column, String
+from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint, Column, String
 
 from .utils import utc_now
 
@@ -83,6 +84,11 @@ class Study(SQLModel, table=True):
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+    # Where the reporting day starts, in minutes after midnight. 0 for new
+    # studies; legacy 04:00 studies are imported with 240 (D26). Data is stored
+    # as clock minutes and clipped to [day_start, day_start + 24h), so this is
+    # the only place the window is defined.
+    day_start_minutes: int = Field(default=0)
     # Inactivity timeout configuration
     inactivity_timeout_minutes: int = Field(default=0)
     inactivity_timeout_stress_time_left: int = Field(default=5)
@@ -397,6 +403,9 @@ class Timeline(SQLModel, table=True):
         index=True, sa_type=String(64)
     )  # "single-choice", "multiple-choice"
     min_coverage: Optional[int] = None
+    # How many activities may cover the same minute. PI answer to Q1: 2. It is a
+    # study setting, not a constant, so a study that needs three can say so.
+    max_overlap: int = Field(default=2)
 
     # Relationships
     study: Study = Relationship(back_populates="timelines")
@@ -453,6 +462,31 @@ class StudyParticipant(SQLModel, table=True):
 
 class Activity(SQLModel, table=True):
     __tablename__ = "activities"
+    __table_args__ = (
+        # Row identity for incremental writes and for idempotent retries: a
+        # save retried after a lost response must not create a second row.
+        UniqueConstraint(
+            "study_id", "participant_id", "client_uuid", name="uq_activity_client_uuid"
+        ),
+        # D8: the same activity at the same time on the same day is a duplicate,
+        # enforced by the database and not only by a check in the endpoint.
+        UniqueConstraint(
+            "study_id",
+            "participant_id",
+            "day_label_id",
+            "activity_code",
+            "start_minutes",
+            "end_minutes",
+            name="uq_activity_slot",
+        ),
+        # D21: cross-midnight is explicit, and no single record may exceed a day.
+        CheckConstraint(
+            "end_minutes > start_minutes", name="ck_activity_end_after_start"
+        ),
+        CheckConstraint(
+            "end_minutes - start_minutes <= 1440", name="ck_activity_duration_max"
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
@@ -481,8 +515,28 @@ class Activity(SQLModel, table=True):
     # Hierarchy information
     parent_activity_code: Optional[int] = Field(default=None, index=True)
 
+    # Row identity (D17). `client_uuid` is generated here when a caller does not
+    # supply one, which is what lets the old whole-day writer keep working
+    # unchanged (D25).
+    # The (study, participant, client_uuid) unique constraint below serves the
+    # lookups, so the column needs no index of its own.
+    client_uuid: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), sa_type=String(64)
+    )
+    # Activities created together (one multi-day save) share a group id, so one
+    # undo reverses the whole action (D19).
+    group_id: Optional[str] = Field(default=None, index=True, sa_type=String(64))
+    # Which catalogue produced this row, for detecting stale frontends (D17).
+    catalogue_version: Optional[str] = Field(default=None, sa_type=String(64))
+    # Set when the row was created by copying another row. Nullable because the
+    # PI has not decided whether provenance should be recorded (D27, Q5).
+    copy_source_uuid: Optional[str] = Field(default=None, sa_type=String(64))
     # Metadata
     created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )

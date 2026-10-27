@@ -495,6 +495,9 @@ def _ensure_timelines_for_study(
             min_coverage=int(timeline_config.min_coverage)
             if timeline_config.min_coverage
             else None,
+            max_overlap=int(timeline_config.max_overlap)
+            if timeline_config.max_overlap
+            else 2,
         )
         session.add(new_timeline)
         timelines_by_name[new_timeline.name] = new_timeline
@@ -922,6 +925,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     activities_json_url=default_activities_url,
                     data_collection_start=study_config.data_collection_start,
                     data_collection_end=study_config.data_collection_end,
+                    day_start_minutes=study_config.day_start_minutes,
                     inactivity_timeout_minutes=study_config.inactivity_timeout_minutes,
                     inactivity_timeout_stress_time_left=study_config.inactivity_timeout_stress_time_left,
                     inactivity_page_custom_text=study_config.inactivity_page_custom_text,

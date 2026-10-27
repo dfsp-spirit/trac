@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/components.css">
   <link rel="stylesheet" href="styles/panel.css">
+  <link rel="stylesheet" href="styles/review.css">
   <link rel="stylesheet" href="styles/layout.css">
 </head>
 <body>
@@ -24,7 +25,7 @@
         <h1 class="t-topbar__name" id="app-title">Time Diary</h1>
       </div>
       <p class="t-topbar__note" id="progress-note" hidden></p>
-      <button class="t-btn t-btn--secondary t-btn--sm" type="button" id="submit-btn" aria-disabled="true">
+      <button class="t-btn t-btn--secondary t-btn--sm" type="button" id="submit-btn" hidden>
         <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
         <span data-i18n="diary.shell.submit">Submit</span>
       </button>
@@ -116,6 +117,7 @@
           <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
+      <p class="t-hint" data-slot="context" hidden></p>
       <div class="t-search" data-slot="search">
         <label class="t-search__field">
           <span class="t-vh" data-i18n="diary.shell.searchActivities">Search activities</span>
