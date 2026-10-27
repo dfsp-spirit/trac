@@ -1,0 +1,293 @@
+/* Design-system component styles, copied from the Alex Horre prototype
+   (design-system/components/bundle.css) under D23.
+
+   Two changes from the source: the `td-` prefix became `t-` (one prefix in this
+   codebase, D33 rule 5), and the timeline is minutes-based instead of quarter-hour
+   based (D24). Component blocks are one per section; this file is exempt from the
+   150-line cap until the components are built and each block moves next to its
+   component (tracked in tools/check-architecture.mjs). */
+
+/* ---------- Button ---------- */
+.t-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: var(--tap-min); min-width: var(--tap-min); padding: 0 var(--space-5); border: 2px solid transparent; border-radius: var(--radius-md); font-weight: 600; font-size: 1rem; line-height: 1.2; text-align: center; text-decoration: none; cursor: pointer; }
+.t-btn--primary { background: var(--inverse-bg); color: var(--inverse-ink); }
+.t-btn--secondary { background: var(--bg); color: var(--ink); border-color: var(--line-strong); }
+.t-btn--ghost { background: transparent; color: var(--ink); }
+.t-btn:active { transform: translateY(1px); }
+.t-btn--secondary:active, .t-btn--ghost:active { background: var(--surface-300); }
+/* Not available yet: still focusable and clickable; explains itself on press. */
+.t-btn[aria-disabled="true"] { background: transparent; color: var(--ink); border: 2px dashed var(--line-strong); box-shadow: none; }
+.t-btn--block { width: 100%; }
+.t-btn--sm { min-height: 40px; padding: 0 var(--space-4); font-size: 0.875rem; }
+.t-icon-btn { display: inline-grid; place-items: center; width: var(--tap-min); height: var(--tap-min); padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); cursor: pointer; }
+.t-icon-btn:active { background: var(--surface-300); }
+
+/* ---------- Floating action button ---------- */
+.t-fab { position: fixed; inset-inline-end: max(var(--space-4), env(safe-area-inset-right)); inset-block-end: max(var(--space-4), env(safe-area-inset-bottom)); z-index: var(--z-fab); display: inline-flex; align-items: center; gap: var(--space-2); height: var(--fab); min-width: var(--fab); padding: 0 var(--space-5) 0 var(--space-4); border: 0; border-radius: var(--radius-pill); background: var(--inverse-bg); color: var(--inverse-ink); box-shadow: var(--shadow-2); font-weight: 600; font-size: 1rem; cursor: pointer; }
+.t-fab:focus-visible { outline-offset: 3px; }
+.t-fab--icon { padding: 0; justify-content: center; width: var(--fab); }
+.t-fab--static { position: static; }
+
+/* ---------- Category pattern swatch ---------- */
+.t-pat { display: inline-block; flex: none; width: var(--swatch); height: var(--swatch); border: 1.5px solid var(--ink); border-radius: var(--radius-sm); background-color: var(--bg); }
+.t-pat--general { background-color: var(--ink); }
+.t-pat--travel { background-image: repeating-linear-gradient(45deg, var(--ink) 0 2px, transparent 2px 6px); }
+.t-pat--work { background-image: repeating-linear-gradient(0deg, var(--ink) 0 2px, transparent 2px 6px); }
+.t-pat--home { background-image: radial-gradient(var(--ink) 1.4px, transparent 1.8px); background-size: 6px 6px; background-position: 1px 1px; }
+.t-pat--out { background-image: repeating-linear-gradient(45deg, var(--ink) 0 1.5px, transparent 1.5px 7px), repeating-linear-gradient(-45deg, var(--ink) 0 1.5px, transparent 1.5px 7px); }
+.t-pat--digital { background-image: repeating-linear-gradient(90deg, var(--ink) 0 2px, transparent 2px 6px); }
+.t-pat--other { background-color: var(--bg); }
+.t-pat--sm { width: 16px; height: 16px; border-width: 1px; }
+
+/* ---------- Activity list & card ---------- */
+.t-activity-list { display: grid; gap: var(--space-6); margin: 0; padding: 0; }
+.t-activity-group { display: grid; gap: var(--space-2); }
+.t-activity-group > h3 { position: sticky; top: calc(-1 * var(--space-5)); z-index: 1; margin: 0 0 var(--space-1); padding: var(--space-2) 0; background: var(--bg); font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; color: var(--ink-muted); letter-spacing: 0.02em; text-transform: uppercase; }
+.t-activity-group > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
+.t-activity { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-md); background: var(--surface-100); color: var(--ink); text-align: start; cursor: pointer; }
+.t-activity:active { background: var(--surface-300); }
+.t-activity__body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.t-activity__title { font-weight: 600; font-size: 1rem; line-height: 1.375rem; }
+.t-activity__hint { font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
+.t-activity__end { flex: none; display: inline-flex; align-items: center; gap: var(--space-1); color: var(--ink-muted); font-size: 0.875rem; }
+
+/* ---------- Option list (sub-activities) ---------- */
+.t-options { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); min-width: 0; }
+.t-options > legend { padding: 0; margin-bottom: var(--space-3); font-size: 1.375rem; line-height: 1.75rem; font-weight: 700; }
+.t-option { position: relative; display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: var(--space-3) var(--space-4); border: 2px solid var(--line-strong); border-radius: var(--radius-md); background: var(--bg); cursor: pointer; font-weight: 600; line-height: 1.375rem; }
+.t-option input { appearance: none; -webkit-appearance: none; flex: none; width: 24px; height: 24px; margin: 0; border: 2px solid var(--ink); border-radius: 50%; background: var(--bg); display: grid; place-items: center; }
+.t-option input::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--ink); transform: scale(0); }
+.t-option input:checked::before { transform: scale(1); }
+.t-option input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* Headings and notices that receive focus from script (to be announced) aren't controls: no ring */
+[tabindex="-1"]:focus { outline: none; }
+.t-option:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--surface-100); }
+
+/* ---------- Fields ---------- */
+.t-field { display: grid; gap: var(--space-1); min-width: 0; }
+.t-field > label, .t-label { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; }
+.t-hint { font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); margin: 0; }
+.t-select, .t-input { width: 100%; min-height: var(--tap-min); padding: 0 var(--space-4); border: 2px solid var(--line-strong); border-radius: var(--radius-md); background-color: var(--bg); color: var(--ink); font-size: 1rem; }
+.t-select { appearance: none; -webkit-appearance: none; padding-inline-end: 44px; font-family: var(--font-mono); font-weight: 500; background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%); background-position: calc(100% - 22px) 52%, calc(100% - 16px) 52%; background-size: 6px 6px; background-repeat: no-repeat; }
+.t-select--text { font-family: var(--font-sans); }
+.t-time-range { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-4); min-width: 0; }
+.t-time-range > legend { padding: 0; margin-bottom: var(--space-3); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+.t-time-range__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.t-duration { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-family: var(--font-mono); font-size: 1rem; color: var(--ink); }
+.t-duration::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+
+/* ---------- Day chips ---------- */
+.t-days { border: 0; margin: 0; padding: 0; min-width: 0; }
+.t-days > legend { padding: 0; margin-bottom: var(--space-1); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+.t-days__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
+.t-day-chip { position: relative; display: grid; place-items: center; gap: 0; min-height: 56px; padding: var(--space-1) 0; border: 2px solid var(--line-strong); border-radius: var(--radius-md); background: var(--bg); cursor: pointer; text-align: center; }
+.t-day-chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.t-day-chip__wd { font-size: 0.75rem; line-height: 1rem; font-weight: 500; }
+.t-day-chip__d { font-size: 1rem; line-height: 1.25rem; font-weight: 700; font-family: var(--font-mono); }
+.t-day-chip:has(input:checked) { background: var(--inverse-bg); color: var(--inverse-ink); border-color: var(--inverse-bg); }
+.t-day-chip:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+.t-day-chip--current { border-style: dashed; }
+.t-day-chip--current:has(input:checked) { border-style: solid; }
+
+/* ---------- Modal (full-screen dialog) ---------- */
+.t-modal { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
+.t-modal:not([open]) { display: none; }
+.t-modal::backdrop { background: var(--overlay); }
+.t-modal--inline { position: relative; height: auto; }
+.t-modal__head { display: flex; align-items: center; gap: var(--space-2); min-height: 64px; padding: max(var(--space-2), env(safe-area-inset-top)) var(--space-1) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+.t-modal__head:has(> .t-icon-btn:first-child:not([hidden])) { padding-inline-start: var(--space-1); }
+.t-modal__count { flex: none; padding: 2px var(--space-3); border-radius: var(--radius-pill); background: var(--surface-100); font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; white-space: nowrap; }
+html:has(dialog[open]) { overflow: hidden; }
+.t-modal__head h2 { flex: 1; margin: 0; font-size: 1.75rem; line-height: 2.125rem; font-weight: 700; letter-spacing: -0.01em; }
+.t-modal__step { display: block; font-size: 0.75rem; line-height: 1rem; font-weight: 500; color: var(--ink-muted); letter-spacing: 0; }
+.t-modal__body { flex: 1; overflow: auto; padding: var(--space-5) var(--space-4); display: grid; align-content: start; gap: var(--space-6); }
+.t-modal__foot { display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+.t-modal__foot--pair { grid-template-columns: 1fr 1fr; }
+.t-modal__body--flush { padding: 0; gap: 0; }
+.t-chosen { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface-100); }
+.t-chosen__text { flex: 1; min-width: 0; font-weight: 600; }
+
+/* ---------- Top bar & day strip ---------- */
+.t-topbar { position: fixed; top: 0; inset-inline: 0; margin-inline: auto; max-width: var(--content-max); z-index: var(--z-topbar); padding-top: env(safe-area-inset-top); padding-inline: env(safe-area-inset-left) env(safe-area-inset-right); background: var(--bg); border-bottom: 1px solid var(--line); }
+.t-topbar__row { display: flex; align-items: center; gap: var(--space-2); min-height: 64px; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-1); }
+.t-topbar__title { flex: 1; min-width: 0; display: grid; }
+.t-topbar__name { margin: 0; font-size: 1.125rem; line-height: 1.375rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-topbar__period { font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-daynav { display: flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1) var(--space-2); }
+.t-daynav__label { flex: 1; min-width: 0; text-align: center; display: grid; }
+/* On the first and last day the missing arrow keeps its space, so the day stays centred */
+/* First and last day: the missing arrow keeps its space, and inert keeps it out of reach of taps, keyboards and screen readers */
+.t-daynav > [inert] { visibility: hidden; }
+.t-daynav__day { margin: 0; font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+.t-daynav__meta { margin: 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
+/* Native popover: Submit explains itself with no script */
+.t-popover { inset: auto; position: fixed; top: calc(env(safe-area-inset-top) + 72px); left: var(--space-4); right: var(--space-4); width: auto; max-width: 480px; margin: 0 auto; padding: var(--space-4); border: 2px solid var(--ink); border-radius: var(--radius-md); background: var(--bg); color: var(--ink); box-shadow: var(--shadow-2); }
+.t-popover::backdrop { background: var(--overlay); }
+.t-popover h2 { margin: 0 0 var(--space-1); font-size: 1rem; line-height: 1.375rem; font-weight: 700; }
+.t-popover p { margin: 0 0 var(--space-3); font-size: 0.875rem; line-height: 1.25rem; }
+.t-popover__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.t-popover--inline { position: static; display: block; margin-top: var(--space-3); box-shadow: none; }
+/* Bottom sheet: confirmation steps, within thumb reach */
+.t-popover--sheet { top: auto; bottom: max(var(--space-4), env(safe-area-inset-bottom)); padding: var(--space-5) var(--space-4) var(--space-4); }
+.t-popover--sheet h2 { font-size: 1.375rem; line-height: 1.75rem; margin-bottom: var(--space-2); }
+.t-popover--sheet p { font-size: 1rem; line-height: 1.5rem; margin-bottom: var(--space-5); }
+.t-popover--sheet.t-popover--inline { margin: 0; }
+.t-popover__stack { display: grid; gap: var(--space-2); }
+
+/* ---------- Navigation drawer ---------- */
+.t-drawer { position: fixed; inset: 0 auto 0 0; width: min(320px, 86vw); height: 100dvh; max-height: none; margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); border: 0; border-inline-end: 1px solid var(--line); background: var(--bg); color: var(--ink); box-shadow: var(--shadow-2); overflow-y: auto; overscroll-behavior: contain; }
+.t-drawer::backdrop { background: var(--overlay); }
+.t-drawer--inline { position: relative; inset: auto; display: block; width: 300px; height: auto; padding: 0; box-shadow: var(--shadow-2); }
+.t-drawer__head { display: flex; align-items: center; gap: var(--space-2); min-height: 64px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
+.t-drawer__head h2 { flex: 1; margin: 0; font-size: 1.125rem; line-height: 1.5rem; font-weight: 700; }
+.t-drawer ul { list-style: none; margin: 0; padding: var(--space-2) 0; }
+.t-drawer__item { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap-min); padding: 0 var(--space-4); border: 0; background: transparent; color: var(--ink); font-size: 1rem; line-height: 1.375rem; text-align: start; text-decoration: none; cursor: pointer; }
+.t-drawer__item:active { background: var(--surface-300); }
+.t-drawer__item[aria-current="page"] { font-weight: 700; box-shadow: inset 4px 0 0 var(--ink); }
+.t-drawer__meta { margin-inline-start: auto; font-size: 0.875rem; color: var(--ink-muted); font-weight: 400; }
+.t-drawer hr { margin: var(--space-1) var(--space-4); border: 0; border-top: 1px solid var(--line); }
+.t-drawer__section { margin: var(--space-3) var(--space-4) 0; font-size: 0.75rem; line-height: 1rem; font-weight: 500; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+/* ---------- Timeline ---------- */
+.t-timeline { position: relative; z-index: 0; padding-bottom: calc(var(--fab) + var(--space-8)); }
+.t-timeline-day { position: relative; }
+.t-timeline-day__head { margin: 0; padding: var(--space-2) var(--space-4); background: var(--bg); border-top: 2px solid var(--ink); border-bottom: 1px solid var(--line); font-size: 1rem; line-height: 1.375rem; font-weight: 700; }
+.t-timeline-grid { --from-min: 0; position: relative; display: grid; grid-template-columns: var(--gutter-time) 1fr; padding-top: var(--space-2); }
+.t-timeline-hours { list-style: none; margin: 0; padding: 0; }
+.t-timeline-hours li { height: var(--hour-row); padding: 0 var(--space-2) 0 var(--space-4); font-family: var(--font-mono); font-size: 0.8125rem; line-height: 1rem; font-weight: 500; color: var(--ink-muted); }
+.t-timeline-hours time { display: block; position: relative; top: -8px; }
+.t-timeline-track { position: relative; list-style: none; margin: 0 var(--space-4) 0 0; padding: 0; background-image: linear-gradient(var(--line) 1px, transparent 1px); background-size: 100% var(--hour-row); border-inline-start: 1px solid var(--line); }
+.t-event, .t-gap { position: absolute;
+  top: calc((var(--start-min, 0) - var(--from-min, 0)) * var(--minute));
+  height: calc(var(--dur-min) * var(--minute));
+  padding: 2px; }
+.t-event { --lane: 0; --lanes: 1; inset-inline-start: calc(var(--lane) * 100% / var(--lanes)); width: calc(100% / var(--lanes)); }
+.t-event__btn { display: flex; flex-direction: column; justify-content: flex-start; gap: 0; width: 100%; height: 100%; overflow: hidden; padding: 6px var(--space-2); border: 1.5px solid var(--ink); border-radius: var(--radius-sm); background: var(--surface-100); color: var(--ink); text-align: start; cursor: pointer; }
+.t-event__btn:active { background: var(--surface-300); }
+.t-event__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.t-event__title { min-width: 0; font-size: 0.875rem; line-height: 1.125rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-event__time { padding-inline-start: 22px; font-family: var(--font-mono); font-size: 0.75rem; line-height: 1rem; color: var(--ink-muted); white-space: nowrap; }
+/* 45 minutes or less: one line */
+.t-event--short .t-event__btn { flex-direction: row; align-items: center; gap: 6px; padding-block: 0; }
+.t-event--short .t-event__time { margin-inline-start: auto; padding-inline-start: 0; }
+.t-event--short.t-event--narrow .t-event__time { display: none; }
+/* Crosses midnight: square, dashed edge where it continues */
+.t-event--cont-after .t-event__btn { border-bottom-style: dashed; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.t-event--cont-before .t-event__btn { border-top-style: dashed; border-top-left-radius: 0; border-top-right-radius: 0; }
+.t-gap { inset-inline: 0; }
+.t-gap__btn { display: flex; align-items: center; justify-content: flex-start; gap: 6px; padding: 0 var(--space-2); width: 100%; height: 100%; min-height: 28px; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-sm); background: transparent; color: var(--ink-muted); font-size: 0.875rem; line-height: 1.125rem; cursor: pointer; }
+.t-gap__btn .t-icon { width: 16px; height: 16px; }
+.t-gap__btn:active { background: var(--surface-300); color: var(--ink); }
+.t-now { position: absolute; inset-inline: 0; top: calc((var(--at-min, 0) - var(--from-min, 0)) * var(--minute)); height: 0; border-top: 2px solid var(--ink); pointer-events: none; }
+.t-now::before { content: ""; position: absolute; inset-inline-start: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+
+/* ---------- Notice ---------- */
+.t-notice { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); border: 2px solid var(--line-strong); border-radius: var(--radius-md); background: var(--bg); color: var(--ink); font-size: 1rem; line-height: 1.5rem; }
+.t-notice > .t-icon { margin-top: 0; }
+.t-notice__body { flex: 1; min-width: 0; display: grid; gap: var(--space-1); }
+.t-notice__title { font-size: 1rem; line-height: 1.5rem; font-weight: 700; margin: 0; }
+.t-notice p { margin: 0; }
+.t-notice a, .t-link { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.t-notice__actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+/* Needs action: heavier edge, a bar down the start side */
+.t-notice--attention { border-color: var(--ink); box-shadow: inset 6px 0 0 var(--ink); padding-inline-start: calc(var(--space-4) + 6px); }
+/* Read-only: quiet, dashed */
+.t-notice--readonly { background: var(--surface-100); border-style: dashed; }
+/* Toast: short confirmation over the timeline */
+.t-toast { display: flex; align-items: center; gap: var(--space-3); min-height: var(--tap-min); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4); border-radius: var(--radius-md); background: var(--inverse-bg); color: var(--inverse-ink); box-shadow: var(--shadow-2); font-size: 1rem; line-height: 1.375rem; }
+.t-toast__text { flex: 1; min-width: 0; margin: 0; }
+.t-toast__action { flex: none; min-height: var(--tap-min); padding: 0 var(--space-4); border: 0; border-radius: var(--radius-md); background: transparent; color: var(--inverse-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.t-toast__action:focus-visible { outline-color: var(--inverse-ink); outline-offset: -4px; }
+.t-toast-region { position: fixed; inset-inline: var(--space-4); bottom: calc(max(var(--space-4), env(safe-area-inset-bottom)) + var(--fab) + var(--space-3)); z-index: var(--z-fab); display: grid; gap: var(--space-2); pointer-events: none; }
+.t-toast-region > * { pointer-events: auto; }
+/* A toast shown as a manual popover sits above everything, open dialogs included */
+.t-toast[popover] { position: fixed; inset: auto max(var(--space-4), env(safe-area-inset-right)) calc(max(var(--space-4), env(safe-area-inset-bottom)) + var(--fab) + var(--space-3)) max(var(--space-4), env(safe-area-inset-left)); width: auto; max-width: 480px; margin: 0 auto; border: 0; }
+.t-toast[popover]:not(:popover-open) { display: none; }
+/* No floating button on screen (menu pages, a locked diary): the toast sits at the bottom */
+.t-fab[hidden] ~ .t-toast[popover] { bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
+/* Add activity open: above its two stacked buttons */
+html:has(.t-modal[open] > form > .t-modal__foot:not([hidden])) .t-toast[popover] { bottom: calc(var(--space-3) + 2 * var(--tap-min) + var(--space-2) + max(var(--space-3), env(safe-area-inset-bottom)) + 1px + var(--space-3)); }
+
+/* ---------- Save status ---------- */
+.t-save { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 0 var(--space-3); border: 1.5px solid var(--line-strong); border-radius: var(--radius-pill); font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; color: var(--ink); background: var(--bg); }
+.t-save .t-icon { width: 18px; height: 18px; }
+.t-save--pending { border-style: dashed; }
+.t-save--problem { background: var(--inverse-bg); color: var(--inverse-ink); border-color: var(--inverse-bg); }
+
+/* ---------- Review list ---------- */
+.t-page-head { display: grid; gap: var(--space-1); padding: var(--space-5) var(--space-4) var(--space-4); }
+.t-page-head h1 { margin: 0; font-size: 1.75rem; line-height: 2.125rem; font-weight: 700; letter-spacing: -0.01em; }
+.t-page-head p { margin: 0; color: var(--ink-muted); }
+.t-review { display: grid; gap: var(--space-6); padding: 0 var(--space-4) var(--space-6); }
+.t-review__day { display: grid; gap: 0; }
+.t-review__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-1); border-bottom: 2px solid var(--ink); }
+.t-review__head h2 { margin: 0; font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+.t-review__edit { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 var(--space-2); margin-inline-end: calc(var(--space-2) * -1); color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.t-review ol { list-style: none; margin: 0; padding: 0; }
+.t-review li { display: grid; grid-template-columns: 16px 8.75rem 1fr; align-items: start; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.t-review li .t-pat { margin-top: 4px; }
+.t-review__time { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.5rem; font-weight: 500; white-space: nowrap; }
+.t-review__time small { font-size: 0.75rem; color: var(--ink-muted); }
+.t-review__what { min-width: 0; font-size: 1rem; line-height: 1.5rem; }
+.t-review__what small { display: block; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
+.t-review__more { margin: 0; padding: 0 var(--space-4); color: var(--ink-muted); font-size: 0.875rem; }
+.t-sticky-foot { position: sticky; bottom: 0; display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--bg); }
+.t-sticky-foot p { margin: 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); text-align: center; }
+
+/* ---------- Page: a full screen reached from the menu ---------- */
+.t-pages { max-width: var(--content-max); margin: 0 auto; }
+.t-page__head { position: sticky; top: 0; z-index: var(--z-topbar); display: flex; align-items: center; gap: var(--space-2); min-height: 64px; padding: max(var(--space-2), env(safe-area-inset-top)) var(--space-4) var(--space-2) var(--space-1); background: var(--bg); border-bottom: 1px solid var(--line); }
+.t-page__head h1 { margin: 0; font-size: 1.375rem; line-height: 1.75rem; font-weight: 700; }
+.t-page__body { display: grid; gap: var(--space-4); padding: var(--space-5) var(--space-4) calc(var(--space-7) + env(safe-area-inset-bottom)); }
+.t-prose { max-width: 65ch; }
+.t-prose p, .t-prose ol, .t-prose ul { margin: 0; }
+.t-prose ol, .t-prose ul { display: grid; gap: var(--space-3); padding-inline-start: 1.25rem; }
+.t-placeholder { padding: var(--space-3) var(--space-4); border: 2px dashed var(--line-strong); border-radius: var(--radius-md); color: var(--ink-muted); }
+.t-facts { display: grid; gap: var(--space-1); margin: 0; }
+.t-facts dt { font-weight: 600; }
+.t-facts dd { margin: 0 0 var(--space-3); min-width: 0; }
+.t-facts dd.t-placeholder { padding: var(--space-2) var(--space-3); border-width: 1.5px; }
+
+
+/* ---------- Confirmation ---------- */
+.t-confirm { display: grid; justify-items: center; gap: var(--space-4); padding: var(--space-7) var(--space-4); text-align: center; }
+.t-confirm__mark { display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--inverse-bg); color: var(--inverse-ink); }
+.t-confirm__mark .t-icon { width: 36px; height: 36px; stroke-width: 2.5; }
+.t-confirm h2 { margin: 0; font-size: 1.75rem; line-height: 2.125rem; font-weight: 700; }
+.t-confirm p { margin: 0; max-width: 34ch; color: var(--ink); }
+.t-confirm p.t-confirm__receipt { max-width: none; }
+.t-confirm__receipt span { white-space: nowrap; }
+/* Waiting for the next diary: one message, one date, one way to see what was sent */
+.t-waiting { padding-top: calc(var(--space-7) * 2); }
+.t-waiting h1 { max-width: 16ch; text-wrap: balance; }
+.t-waiting p { color: var(--ink-muted); }
+.t-confirm__receipt { font-family: var(--font-mono); font-size: 0.875rem; color: var(--ink-muted); }
+
+/* ---------- Hover: only on devices with a real pointer, so styles never stick after a tap ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .t-btn--primary:hover { box-shadow: inset 0 0 0 2px var(--inverse-bg), inset 0 0 0 4px var(--inverse-ink); }
+  .t-btn--secondary:hover, .t-btn--ghost:hover { background: var(--surface-100); }
+  .t-btn[aria-disabled="true"]:hover { background: var(--surface-100); }
+  .t-icon-btn:hover { background: var(--surface-100); }
+  .t-fab:hover { box-shadow: var(--shadow-2), inset 0 0 0 2px var(--inverse-bg), inset 0 0 0 4px var(--inverse-ink); }
+  .t-activity:hover { background: var(--surface-200); }
+  .t-option:hover { background: var(--surface-100); }
+  .t-input:hover, .t-select:hover { border-color: var(--ink); }
+  .t-day-chip:hover { background: var(--surface-100); }
+  .t-drawer__item:hover { background: var(--surface-100); }
+  .t-event__btn:hover { background: var(--surface-200); }
+  .t-gap__btn:hover { background: var(--surface-100); color: var(--ink); border-color: var(--ink); }
+}
+
+/* The lock icon on Submit belongs to the unavailable state only */
+.t-topbar .t-btn:not([aria-disabled="true"]) > svg { display: none; }
+
+/* The top bar is fixed, not sticky: phones can draw one frame of a long jump before re-pinning a sticky bar,
+   which flashed the hours behind it. The timeline starts below it (--topbar-h is set from the bar's real height),
+   sits on its own layer under the bar, and hour labels are offset with top, not transform. */
+.t-topbar ~ .t-timeline { padding-top: var(--topbar-h, 121px); }
+
+/* Layout helpers that used to be inline styles */
+.t-timeline__notice { margin: var(--space-3) var(--space-4); }
+.t-modal > form { display: contents; }
+.t-confirm--fill { flex: 1; align-content: center; }
+.t-btn--sm .t-icon { width: 18px; height: 18px; }

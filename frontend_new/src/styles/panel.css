@@ -1,0 +1,68 @@
+/* Activity panel frame (D29): a fixed-height column whose content swaps
+   between the catalogue and the form. Head and foot are flex children, so they
+   never scroll - the body does. The same component is mounted into the desktop
+   section or the mobile dialog; only the host differs.
+
+   Styles for the panel content itself (search results, the form) belong to the
+   components that render them, not here. */
+
+/* Panel frame. Content is supplied by the ActivityPanel component. */
+.t-activity-panel__head,
+.t-activity-dialog__head {
+  flex: none;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.t-activity-panel__body,
+.t-activity-dialog__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.t-activity-panel__foot,
+.t-activity-dialog__foot {
+  flex: none;
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) max(var(--space-3), env(safe-area-inset-bottom));
+  border-block-start: 1px solid var(--line);
+  background: var(--bg);
+}
+
+@media (min-width: 1200px) {
+  /* The dialog host is never used at this width; hide it even if a phone
+     window was rotated or the breakpoint changed with the dialog open. */
+  .t-activity-dialog[open] { display: none; }
+}
+
+/* Title row: target day and time, plus back/close (D29). */
+.t-activity-panel__titlebar,
+.t-activity-dialog__titlebar { display: flex; align-items: center; gap: var(--space-2); }
+.t-activity-panel__titlebar h2,
+.t-activity-dialog__titlebar h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.375rem;
+  font-weight: 700;
+}
+
+/* Pinned search (D30). Only the result list below it scrolls. */
+.t-search { display: flex; align-items: center; gap: var(--space-2); }
+.t-search .t-input { flex: 1; min-width: 0; }
+
+.t-search__field { flex: 1; min-width: 0; display: block; }
+.t-search__field .t-input { width: 100%; }
+
+@media (min-width: 1200px) {
+  /* The desktop panel is always open, so it has nothing to close. The mobile
+     dialog hosts the same markup and keeps the button. */
+  .t-activity-panel [data-slot="close"] { display: none; }
+}

@@ -43,11 +43,8 @@ const LANGUAGE_NEUTRAL_VALUES = new Set([
   'TRAC', // app name
   '✓', // symbol (timelineCoverageMet)
   'Start', // de/sv: "Start" is the natural word
-  'No', // es: Spanish for "No"
   'Name', // de: German for "Name"
-  'Code', // de/fr: "Code" is the same word
-  'Description', // fr: French for "Description"
-  'Error', // es: Spanish for "Error"
+  'Code', // de: "Code" is the same word
   // The shared "<study> - <page>" title pattern: pure placeholder glue, no
   // words of its own, and every locale orders these two the same way.
   '{{study}} - {{page}}',

@@ -1,0 +1,124 @@
+/* Shell layout: one column below 1200px, three columns above (D12). This file
+   owns page structure, never a component's looks. Tokens only, no colour
+   literals, no id selectors.
+
+   The top bar is sticky inside .t-app (a flex column spanning the page), so no
+   fixed positioning and no viewport measurement is needed for it. main.js does
+   keep --topbar-h in sync on the app root, because day headings stick below the
+   bar and anchors need the same offset. */
+
+.t-app {
+  --topbar-h: 121px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.t-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  background: var(--bg);
+  border-block-end: 1px solid var(--line);
+}
+
+/* Phone: the day selector sits in the bar, the rail and panel are not shown,
+   and the activity panel lives in a modal dialog instead (D29). */
+.t-shell { display: block; }
+.t-rail,
+.t-activity-panel,
+.t-topbar__note { display: none; }
+.t-activity-dialog[open] { display: block; }
+
+.t-timeline { padding-bottom: calc(var(--fab) + var(--space-8)); }
+.t-timeline-day { scroll-margin-top: var(--topbar-h); }
+
+@media (min-width: 1200px) {
+  .t-topbar__note { display: block; }
+  .t-daynav { display: none; }
+
+  .t-shell {
+    display: grid;
+    grid-template-columns: var(--rail-width) minmax(0, 1fr) var(--panel-width);
+    align-items: start;
+  }
+
+  .t-rail {
+    display: block;
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100dvh - var(--topbar-h));
+    overflow: auto;
+    padding: var(--space-4) var(--space-3) var(--space-6) var(--space-4);
+    border-inline-end: 1px solid var(--line);
+  }
+
+  .t-timeline { padding-bottom: var(--space-8); }
+  .t-timeline-day__head {
+    position: sticky;
+    top: var(--topbar-h);
+    z-index: 1;
+    background: var(--bg);
+  }
+
+  /* Column 3: fixed height, head and foot do not scroll, the content does (D29). */
+  .t-activity-panel {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: var(--topbar-h);
+    height: calc(100dvh - var(--topbar-h));
+    overflow: hidden;
+    border-inline-start: 1px solid var(--line);
+    background: var(--bg);
+  }
+
+  .t-fab { display: none; }
+
+  /* Toast belongs to the panel it reports on, not to the viewport edge (D28). */
+  .t-toast-region {
+    inset-inline: auto;
+    inset-inline-end: max(var(--space-4), calc((100vw - var(--shell-max)) / 2));
+    width: min(var(--panel-width), calc(100vw - 2 * var(--space-4)));
+    bottom: var(--space-4);
+  }
+}
+
+/* Day rail: real coverage per day, plus the day currently under the bar. */
+.t-rail__title {
+  margin: 0 0 var(--space-2);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.t-rail__list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.t-rail__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  text-decoration: none;
+}
+.t-rail__row:hover { background: var(--surface-100); }
+.t-rail__row[aria-current="true"] { border-color: var(--ink); }
+.t-rail__day { font-weight: 600; }
+.t-rail__min { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-muted); }
+.t-rail__bar {
+  grid-column: 1 / -1;
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-200);
+  overflow: hidden;
+}
+.t-rail__fill { display: block; height: 100%; width: var(--fill, 0); background: var(--ink); }

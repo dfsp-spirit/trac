@@ -209,6 +209,7 @@ __marimo__/
 frontend/node_modules/
 frontend/test-results/
 frontend/playwright-report/
+frontend_new/node_modules/
 
 # this will be generated from template by the dev startup scripts
 dev_tools/local_nginx/webserver_config/dev.nginx.conf

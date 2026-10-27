@@ -1,0 +1,19 @@
+/* Time Diary components. Plain CSS on the tokens; no framework. Class prefix: t- */
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 1rem; line-height: 1.5; -webkit-text-size-adjust: 100%; }
+:where(button, input, select, textarea) { font: inherit; color: inherit; }
+:where(button, a, label, select, input) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+html { height: 100%; -webkit-text-size-adjust: 100%; overscroll-behavior-y: none; }
+/* Type is in rem, so it follows the phone's text-size setting. On iPhone, this hands the root size to Dynamic Type (17px at the default setting). */
+@supports (font: -apple-system-body) { html { font: -apple-system-body; } }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* Headings and notices that receive focus from script (to be announced) aren't controls: no ring */
+[tabindex="-1"]:focus { outline: none; }
+/* Components set display; this keeps the hidden attribute working on all of them.
+   This file is the only place !important is allowed (the architecture check
+   enforces that): it is the global layer, not a component. */
+[hidden] { display: none !important; }
+.t-vh { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.t-icon { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }

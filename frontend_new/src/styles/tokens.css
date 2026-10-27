@@ -1,0 +1,59 @@
+/* Design tokens, copied from the Alex Horré prototype (tokens.css) under D23.
+   Light theme only: the rewrite ships no dark mode (D11), so the prototype's
+   `prefers-color-scheme` and `[data-theme="dark"]` blocks are dropped rather
+   than carried untested. Colour for activities comes from study config, never
+   from here. */
+:root {
+  color-scheme: light;
+  --bg: #ffffff;
+  --surface-100: #f5f5f5;
+  --surface-200: #e8e8e8;
+  --surface-300: #d4d4d4;
+  --line: #d4d4d4;
+  --line-strong: #737373;
+  --ink: #111111;
+  --ink-muted: #525252;
+  --inverse-bg: #111111;
+  --inverse-ink: #ffffff;
+  --focus: #000000;
+  --overlay: rgba(0, 0, 0, 0.5);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.24);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --radius-0: 0px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+  --tap-min: 48px;
+  --fab: 56px;
+
+  /* Timeline scale. One hour is --hour-row; one minute therefore --minute,
+     which is what the machine-supplied --start-min/--dur-min/--at-min values
+     are multiplied with (D24: 10-minute steps, set in domain/geometry.js). */
+  --hour-row: 64px;
+  --minute: calc(var(--hour-row) / 60);
+  --gutter-time: 64px;
+  --swatch: 28px;
+
+  /* Shell. The single breakpoint is 1200px (D12); below it the app is one
+     column and the activity panel is a modal (D29). */
+  --content-max: 640px;
+  --shell-max: 1360px;
+  --rail-width: 260px;
+  --panel-width: 380px;
+
+  --z-topbar: 10;
+  --z-fab: 20;
+  --z-modal: 30;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}

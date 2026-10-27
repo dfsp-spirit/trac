@@ -214,5 +214,30 @@
     "noStudies": "Keine offenen Studien verfügbar.",
     "loadError": "Offene Studien konnten nicht geladen werden: {{message}}",
     "accessStudy": "Studie „{{study}}“ aufrufen"
+  },
+  "diary": {
+    "shell": {
+      "menu": "Menü",
+      "menuTitle": "Menü",
+      "menuActions": "Aktionen",
+      "menuPages": "Seiten",
+      "submit": "Absenden",
+      "dayNav": "Tag",
+      "previousDay": "Vorheriger Tag",
+      "nextDay": "Nächster Tag",
+      "days": "Tage",
+      "addActivity": "Aktivität hinzufügen",
+      "activities": "Aktivitäten",
+      "back": "Zurück",
+      "close": "Schließen",
+      "searchActivities": "Aktivitäten suchen",
+      "clearSearch": "Suche löschen",
+      "keyboardShortcuts": "Tastaturkürzel",
+      "studyInformation": "Informationen zur Studie",
+      "dataProtection": "Datenschutz",
+      "contact": "Kontakt",
+      "language": "Sprache",
+      "noScript": "Diese Seite benötigt JavaScript, um Ihr Tagebuch anzuzeigen."
+    }
   }
 }

@@ -214,5 +214,30 @@
     "noStudies": "Inga öppna studier tillgängliga.",
     "loadError": "Kunde inte ladda öppna studier: {{message}}",
     "accessStudy": "Öppna studien '{{study}}'"
+  },
+  "diary": {
+    "shell": {
+      "menu": "Meny",
+      "menuTitle": "Meny",
+      "menuActions": "Åtgärder",
+      "menuPages": "Sidor",
+      "submit": "Skicka in",
+      "dayNav": "Dag",
+      "previousDay": "Föregående dag",
+      "nextDay": "Nästa dag",
+      "days": "Dagar",
+      "addActivity": "Lägg till aktivitet",
+      "activities": "Aktiviteter",
+      "back": "Tillbaka",
+      "close": "Stäng",
+      "searchActivities": "Sök aktiviteter",
+      "clearSearch": "Rensa sökningen",
+      "keyboardShortcuts": "Tangentbordsgenvägar",
+      "studyInformation": "Information om studien",
+      "dataProtection": "Dataskydd",
+      "contact": "Kontakt",
+      "language": "Språk",
+      "noScript": "Den här sidan behöver JavaScript för att visa din dagbok."
+    }
   }
 }

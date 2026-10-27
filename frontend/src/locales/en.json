@@ -214,5 +214,30 @@
     "noStudies": "No open studies available.",
     "loadError": "Could not load open studies: {{message}}",
     "accessStudy": "Access study '{{study}}'"
+  },
+  "diary": {
+    "shell": {
+      "menu": "Menu",
+      "menuTitle": "Menu",
+      "menuActions": "Actions",
+      "menuPages": "Pages",
+      "submit": "Submit",
+      "dayNav": "Day",
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "days": "Days",
+      "addActivity": "Add activity",
+      "activities": "Activities",
+      "back": "Back",
+      "close": "Close",
+      "searchActivities": "Search activities",
+      "clearSearch": "Clear search",
+      "keyboardShortcuts": "Keyboard shortcuts",
+      "studyInformation": "Study information",
+      "dataProtection": "Data protection",
+      "contact": "Contact",
+      "language": "Language",
+      "noScript": "This page needs JavaScript to show your diary."
+    }
   }
 }

@@ -35,3 +35,26 @@ jobs:
     # `node --test` with the global shim.
     - name: Run frontend unit tests
       run: sh test_frontend_unit.sh
+
+  # The rewrite in frontend_new/ has its own gates: unit tests, the
+  # architecture check (D33) and the type check. Kept as a separate job so a
+  # failure names the frontend it came from.
+  test_new_frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v7
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: '24'
+
+    - name: Install dependencies
+      working-directory: frontend_new
+      run: npm ci
+
+    - name: Run frontend_new checks
+      run: sh test_frontend_new.sh

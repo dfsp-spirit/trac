@@ -1,0 +1,16 @@
+{
+  "name": "trac-frontend-new",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Participant diary frontend (rewrite). No bundler: ES modules and plain CSS, served statically.",
+  "scripts": {
+    "test:unit": "node --test \"tests/unit/*.test.js\"",
+    "check:architecture": "node tools/check-architecture.mjs",
+    "typecheck": "tsc -p jsconfig.json",
+    "test": "npm run test:unit && npm run check:architecture && npm run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}
