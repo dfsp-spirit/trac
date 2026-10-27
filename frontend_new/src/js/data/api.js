@@ -89,6 +89,36 @@ export function createApi(baseUrl, studyName, participantId) {
       ),
 
     /**
+     * Everything the client needs to know about this participant's study,
+     * including `stage` and `done_reason` (D37).
+     *
+     * @param {string} language
+     * @returns {Promise<any>}
+     */
+    getStudyConfig: (language) =>
+      request(
+        `${studyRoot}/study-config?participant_id=${encodeURIComponent(participantId)}` +
+          `&lang=${encodeURIComponent(language)}`
+      ),
+
+    /**
+     * @param {boolean} given
+     * @returns {Promise<{ stage: string }>}
+     */
+    giveConsent: (given) =>
+      request(`${diaryRoot}/consent`, {
+        method: 'POST',
+        body: JSON.stringify({ consent_given: given }),
+      }),
+
+    /** @returns {Promise<{ stage: string }>} */
+    completeInstructions: () =>
+      request(`${diaryRoot}/instructions/complete`, {
+        method: 'POST',
+        body: JSON.stringify({ completed: true }),
+      }),
+
+    /**
      * @param {{ items: any[], group_id?: string, catalogue_version?: string }} body
      * @returns {Promise<any>}
      */
@@ -124,7 +154,7 @@ export function createApi(baseUrl, studyName, participantId) {
     /**
      * Lock the diary. Idempotent, so a retry after a lost response is harmless.
      *
-     * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean }>}
+     * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean, stage: string }>}
      */
     submitDiary: () => request(`${diaryRoot}/diary/submit`, { method: 'POST' }),
   };

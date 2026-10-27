@@ -192,7 +192,7 @@ export function createDiaryActions({ store, api, getLanguage }) {
    * complete; when it refuses, its `days.incomplete` code lets the UI point at
    * the days instead of showing a generic failure.
    *
-   * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean }>}
+   * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean, stage: string }>}
    */
   async function submit() {
     store.set({ saveState: 'saving' });

@@ -287,6 +287,26 @@
       "delete": "Delete the activity that is selected",
       "list": "This list"
     },
+    "stage": {
+      "consentTitle": "Before you start",
+      "consentLead": "Please read this and decide whether you want to take part.",
+      "consentAgree": "I agree",
+      "consentDecline": "I do not agree",
+      "instructionsTitle": "Instructions",
+      "instructionsDone": "I have read this",
+      "thanksTitle": "Thank you",
+      "thanksFallback": "Your diary has been sent to the research team.",
+      "declinedTitle": "Thank you for your time",
+      "tasksTitle": "One thing left",
+      "tasksLead": "The research team needs these to finish your participation.",
+      "taskOpen": "Open",
+      "taskDone": "Done",
+      "tasksRefresh": "Check again",
+      "unavailableTitle": "This study is not available right now",
+      "unavailableText": "It is either paused or no longer collecting. Please contact the research team if you expected to take part.",
+      "failedTitle": "That did not work",
+      "failedText": "Please check your connection and try again."
+    },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"
     },

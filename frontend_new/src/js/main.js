@@ -10,32 +10,35 @@
 import { config } from './config.js';
 import { createApi } from './data/api.js';
 import { createTranslator, loadLocale } from './data/i18n.js';
+import { parseIdentity } from './domain/router.js';
 import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
 import { createStore } from './state/store.js';
 import { createDiaryView } from './ui/diaryView.js';
 import { createPanelController } from './ui/panelController.js';
 import { createPanelHost } from './ui/panelHost.js';
+import { createRouter } from './ui/router.js';
+import { createStageMachine } from './ui/stageMachine.js';
+import { loadFirstStage } from './ui/boot.js';
 import { createReviewModal } from './ui/reviewModal.js';
 import { readShell } from './ui/shell.js';
 import { createShortcuts } from './ui/shortcuts.js';
 import { applyTranslations } from './ui/i18n-dom.js';
 import { scrollToDay } from './ui/timeline.js';
-import { createToast } from './ui/toast.js';
 
 /**
  * @param {{ root: HTMLElement, params: URLSearchParams }} inputs
  * @returns {{ destroy: () => void }}
  */
 export function mount({ root, params }) {
-  const paramLanguage = params.get('lang');
+  // Identity only - never progress (D37).
+  const identity = parseIdentity(params.toString());
   const language =
-    paramLanguage && config.supportedLanguages.includes(paramLanguage)
-      ? paramLanguage
+    identity.language && config.supportedLanguages.includes(identity.language)
+      ? identity.language
       : config.defaultLanguage;
-
-  const studyName = params.get('study') || config.studyName;
-  const participantId = params.get('pid') || config.participantId;
+  const studyName = identity.study || config.studyName;
+  const participantId = identity.participant || config.participantId;
 
   /** @type {import('./state/store.js').DiaryState} */
   const initial = {
@@ -58,6 +61,9 @@ export function mount({ root, params }) {
   const {
     topbar,
     daysHost,
+    stageHost,
+    shell,
+    dayNav,
     noticesHost,
     railList,
     progressNote,
@@ -72,11 +78,6 @@ export function mount({ root, params }) {
     menuShortcuts,
     nav,
   } = readShell(root);
-
-  const toast = createToast(toastRegion, {
-    undo: t('diary.toast.undo'),
-    dismiss: t('diary.toast.dismiss'),
-  });
 
   const wide = window.matchMedia('(min-width: 1200px)');
 
@@ -113,8 +114,22 @@ export function mount({ root, params }) {
       update: () => Promise.reject(new Error('no participant')),
       removeWithUndo: () => Promise.reject(new Error('no participant')),
     },
-    toast,
+    toastRegion,
+    toastLabels: { undo: t('diary.toast.undo'), dismiss: t('diary.toast.dismiss') },
     t,
+  });
+
+  const router = createRouter({ onChange: () => {} });
+
+  const stageMachine = createStageMachine({
+    router,
+    host: stageHost,
+    // Everything that only makes sense inside the diary.
+    diaryChrome: [dayNav, progressNote, submitBtn, fab, shell],
+    t,
+    api,
+    getLanguage: () => store.get().language,
+    onEnterDiary: () => void actions?.load(),
   });
 
   const view = createDiaryView({
@@ -143,15 +158,18 @@ export function mount({ root, params }) {
     root,
     t,
     onEdit: goToDay,
-    onSubmit: () => (actions ? actions.submit() : Promise.reject(new Error('no participant'))),
+    onSubmit: async () => {
+      if (!actions) throw new Error('no participant');
+      const result = await actions.submit();
+      stageMachine.applyStage(result.stage);
+    },
   });
 
   /** @param {import('./state/store.js').DiaryState} state */
   function render(state) {
     if (!state.diary) return;
     const locked = isLocked();
-    submitBtn.hidden = locked;
-    fab.hidden = locked;
+    stageMachine.setLocked(locked);
     view.render({
       diary: state.diary,
       language: state.language,
@@ -252,12 +270,9 @@ export function mount({ root, params }) {
     } catch (error) {
       console.error('[i18n] falling back to the markup text:', error);
     }
-    if (!actions) {
-      progressNote.hidden = false;
-      progressNote.textContent = t('diary.error.noParticipant');
-      return;
-    }
-    await actions.load();
+    // One question, one answer: the server says which stage this participant is
+    // in, and the stage machine routes to it (D37).
+    await loadFirstStage({ api, store, stageMachine, t });
   })();
 
   return {

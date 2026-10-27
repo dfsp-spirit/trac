@@ -287,6 +287,26 @@
       "delete": "Die gewählte Aktivität löschen",
       "list": "Diese Liste"
     },
+    "stage": {
+      "consentTitle": "Bevor Sie beginnen",
+      "consentLead": "Bitte lesen Sie dies und entscheiden Sie, ob Sie teilnehmen möchten.",
+      "consentAgree": "Ich stimme zu",
+      "consentDecline": "Ich stimme nicht zu",
+      "instructionsTitle": "Anleitung",
+      "instructionsDone": "Ich habe das gelesen",
+      "thanksTitle": "Vielen Dank",
+      "thanksFallback": "Ihr Tagebuch wurde an das Forschungsteam gesendet.",
+      "declinedTitle": "Danke für Ihre Zeit",
+      "tasksTitle": "Noch ein Schritt",
+      "tasksLead": "Das Forschungsteam braucht dies, um Ihre Teilnahme abzuschließen.",
+      "taskOpen": "Öffnen",
+      "taskDone": "Erledigt",
+      "tasksRefresh": "Erneut prüfen",
+      "unavailableTitle": "Diese Studie ist derzeit nicht verfügbar",
+      "unavailableText": "Sie ist pausiert oder nimmt keine Daten mehr auf. Bitte wenden Sie sich an das Forschungsteam, wenn Sie eine Teilnahme erwartet haben.",
+      "failedTitle": "Das hat nicht geklappt",
+      "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+    },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"
     },

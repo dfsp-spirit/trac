@@ -8,6 +8,7 @@
  * That is a component's job, so it lives here and main.js only calls it.
  */
 import { createActivityPanel } from './activityPanel.js';
+import { createToast } from './toast.js';
 
 /**
  * @param {{
@@ -24,7 +25,8 @@ import { createActivityPanel } from './activityPanel.js';
  *     update: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *     removeWithUndo: (activity: import('../domain/diary.js').ApiActivity) => Promise<() => Promise<void>>,
  *   },
- *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
+ *   toastRegion: HTMLElement,
+ *   toastLabels: { undo: string, dismiss: string },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  * }} deps
  */
@@ -38,12 +40,15 @@ export function createPanelController({
   getCatalogue,
   getLanguage,
   actions,
-  toast,
+  toastRegion,
+  toastLabels,
   t,
 }) {
   /** @type {ReturnType<typeof createActivityPanel> | null} */
   let panel = null;
   let lockedRendered = false;
+  // The toast belongs to the panel it reports on, so the panel owner builds it.
+  const toast = createToast(toastRegion, toastLabels);
 
   /** @param {import('../domain/diary.js').ApiActivity} activity */
   async function deleteWithUndo(activity) {

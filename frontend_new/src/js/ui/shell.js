@@ -28,6 +28,9 @@ export function readShell(root) {
   return {
     topbar: must('#topbar'),
     daysHost: must('#days'),
+    stageHost: must('#stage-host'),
+    shell: must('.t-shell'),
+    dayNav: must('.t-daynav'),
     noticesHost: must('#timeline-notices'),
     railList: must('#rail-list'),
     progressNote: must('#progress-note'),

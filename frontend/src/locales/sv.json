@@ -287,6 +287,26 @@
       "delete": "Ta bort den valda aktiviteten",
       "list": "Den här listan"
     },
+    "stage": {
+      "consentTitle": "Innan du börjar",
+      "consentLead": "Läs det här och bestäm om du vill delta.",
+      "consentAgree": "Jag samtycker",
+      "consentDecline": "Jag samtycker inte",
+      "instructionsTitle": "Instruktioner",
+      "instructionsDone": "Jag har läst detta",
+      "thanksTitle": "Tack",
+      "thanksFallback": "Din dagbok har skickats till forskargruppen.",
+      "declinedTitle": "Tack för din tid",
+      "tasksTitle": "En sak kvar",
+      "tasksLead": "Forskargruppen behöver detta för att slutföra ditt deltagande.",
+      "taskOpen": "Öppna",
+      "taskDone": "Klar",
+      "tasksRefresh": "Kontrollera igen",
+      "unavailableTitle": "Studien är inte tillgänglig just nu",
+      "unavailableText": "Den är pausad eller tar inte längre emot data. Kontakta forskargruppen om du hade väntat dig att delta.",
+      "failedTitle": "Det gick inte",
+      "failedText": "Kontrollera din anslutning och försök igen."
+    },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"
     },

@@ -1,0 +1,92 @@
+/* The stages around the diary (D37): consent, instructions, tasks, thank-you and
+   the unavailable notice. One centred column, no diary chrome. Tokens only, no
+   id selectors, no colour literals. */
+
+.t-stage {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-5) var(--space-4) var(--space-8);
+}
+
+.t-stage__page {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: var(--content-max);
+}
+
+.t-stage__actions {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* The study's own text, rendered from Markdown. Same measure as the diary. */
+.t-prose > :first-child {
+  margin-top: 0;
+}
+.t-prose > :last-child {
+  margin-bottom: 0;
+}
+.t-prose h1,
+.t-prose h2,
+.t-prose h3 {
+  margin: 0 0 var(--space-3);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+.t-prose h1 {
+  font-size: 1.5rem;
+}
+.t-prose h2 {
+  font-size: 1.25rem;
+}
+.t-prose h3 {
+  font-size: 1.125rem;
+}
+.t-prose p,
+.t-prose ul,
+.t-prose ol {
+  margin: 0 0 var(--space-3);
+}
+.t-prose ul,
+.t-prose ol {
+  padding-inline-start: var(--space-5);
+}
+
+/* Tasks: name and description on the left, one action on the right. */
+.t-task-list {
+  display: grid;
+  gap: var(--space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.t-task {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1.5px solid var(--line-strong);
+  border-radius: var(--radius-md);
+}
+.t-task__body {
+  display: grid;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+.t-task__name {
+  font-weight: 600;
+}
+.t-task__hint {
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+.t-task__done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--ink-muted);
+}
