@@ -38,7 +38,7 @@ BASELINE_TABLES = (
 REVISIONS = all_revisions()  # head first
 HEAD = REVISIONS[0]
 
-# Columns that migrations 0005-0011 add, i.e. the difference between a database
+# Columns that migrations 0005-0013 add, i.e. the difference between a database
 # created by create_all() before Alembic existed (which is what `stamp
 # 0003_add_study_footer_links` assumes) and the current models.
 COLUMNS_ADDED_AFTER_0003 = (
@@ -46,11 +46,29 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "study_text_instructions_title"),
     ("studies", "owner_usernames"),
     ("studies", "save_browser_identification"),
+    ("studies", "day_start_minutes"),
     ("day_labels", "display_names"),
     ("study_participants", "study_submitted_at"),
     ("study_participants", "user_agent"),
     ("study_participants", "client_info"),
     ("study_participants", "client_info_captured_at"),
+    ("timelines", "max_overlap"),
+    ("activities", "client_uuid"),
+    ("activities", "group_id"),
+    ("activities", "catalogue_version"),
+    ("activities", "copy_source_uuid"),
+    ("activities", "updated_at"),
+)
+
+# Constraints and indexes that 0013 adds. They exist in the create_all() schema
+# too, so an adopted database has to have them dropped before the upgrade - a
+# column cannot be dropped while a multi-column constraint still needs it.
+CONSTRAINTS_ADDED_AFTER_0003 = (
+    ("activities", "ix_activities_group_id"),
+    ("activities", "uq_activity_client_uuid"),
+    ("activities", "uq_activity_slot"),
+    ("activities", "ck_activity_end_after_start"),
+    ("activities", "ck_activity_duration_max"),
 )
 
 
@@ -162,7 +180,10 @@ def test_pre_alembic_database_can_be_adopted(scratch_database):
     SQLModel.metadata.create_all(scratch_database.engine)
 
     # Turn that database into a 0003-era one: drop what the later migrations
-    # added, and give description the legacy text type.
+    # added, and give description the legacy text type. Constraints go first:
+    # they cover columns that the 0003 schema keeps.
+    for table, name in CONSTRAINTS_ADDED_AFTER_0003:
+        scratch_database.drop_constraint(table, name)
     for table, column in COLUMNS_ADDED_AFTER_0003:
         if column in scratch_database.columns(table):
             scratch_database.execute(f"ALTER TABLE {table} DROP COLUMN {column}")

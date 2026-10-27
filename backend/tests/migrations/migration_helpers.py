@@ -21,7 +21,8 @@ from typing import Any
 
 import pytest
 from alembic.config import Config as AlembicConfig
-from sqlalchemy import MetaData, create_engine, insert, inspect, text
+from sqlalchemy import Index, MetaData, create_engine, insert, inspect, text
+from sqlalchemy.schema import DropConstraint, DropIndex
 
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -184,6 +185,25 @@ class ScratchDatabase:
     def execute(self, sql: str) -> None:
         with self.engine.begin() as conn:
             conn.execute(text(sql))
+
+    def drop_constraint(self, table: str, name: str) -> None:
+        """Drop a named constraint or index, spelled the way this dialect does.
+
+        PostgreSQL wants ``DROP CONSTRAINT``, MySQL/MariaDB want ``DROP INDEX``
+        for a unique constraint and ``DROP CHECK`` for a check. Reflecting the
+        table and letting SQLAlchemy render the drop keeps the caller free of
+        three hand-written statements per object.
+        """
+        metadata = MetaData()
+        metadata.reflect(bind=self.engine, only=[table])
+        target = metadata.tables[table]
+        candidates = list(target.constraints) + list(target.indexes)
+        match = next((item for item in candidates if item.name == name), None)
+        if match is None:
+            raise AssertionError(f"{table} has no constraint or index named {name}")
+        ddl = DropIndex(match) if isinstance(match, Index) else DropConstraint(match)
+        with self.engine.begin() as conn:
+            conn.execute(ddl)
 
     # ── Data ───────────────────────────────────────────────────────────────
     def seed(self, table: str, **overrides: Any) -> dict[str, Any]:
