@@ -3,6 +3,7 @@
     {
       "name": "Default Weekly Study for Adults",
       "name_short": "default",
+      "day_start_minutes": 240,
       "description": {
         "en": "Default Study for Adults at KI, filled out by themselves",
         "sv": "Standardstudie för vuxna vid KI, ifylld av deltagarna själva",
@@ -142,6 +143,7 @@
     {
       "name": "Weekly Study for 15 year olds",
       "name_short": "15yearolds",
+      "day_start_minutes": 240,
       "description": {
         "en": "Weekly Study for 15 year olds at KI, filled out by themselves.",
         "sv": "Veckostudie för 15-åringar vid KI, ifylld av deltagarna själva.",
@@ -267,6 +269,7 @@
     {
       "name": "Weekly Study for 9 year olds",
       "name_short": "9yearolds",
+      "day_start_minutes": 240,
       "description": {
         "en": "Weekly Study for 9 year olds at KI, filled out by their parents.",
         "sv": "Veckostudie för 9-åringar vid KI, ifylld av deras föräldrar.",
@@ -382,6 +385,7 @@
     {
       "name": "Pilotstudie Erwachsene Deutsch MPIAE",
       "name_short": "adult_pilot_de",
+      "day_start_minutes": 240,
       "description": {
         "de": "Pilotstudie TimeUse für Erwachsene am MPIAE."
       },
@@ -556,6 +560,7 @@
     {
       "name": "Pilotstudie Erwachsene Deutsch MPIAE2",
       "name_short": "adult_pilot_de2",
+      "day_start_minutes": 240,
       "description": {
         "de": "Pilotstudie TimeUse für Erwachsene am MPIAE2."
       },
@@ -691,6 +696,7 @@
     {
       "name": "Pilotstudie Erwachsene Deutsch MPIAE Offen",
       "name_short": "adult_pilot_de3",
+      "day_start_minutes": 240,
       "description": {
         "de": "Pilotstudie TimeUse für Erwachsene am MPIAE, offen."
       },

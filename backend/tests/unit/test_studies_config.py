@@ -580,9 +580,7 @@ def test_load_studies_config_accepts_study_text_instructions_title(tmp_path):
     config = load_studies_config(str(config_file))
     study = config.studies[0]
 
-    assert (
-        study.get_study_text("study_text_instructions_title", "sv") == "Svensk titel"
-    )
+    assert study.get_study_text("study_text_instructions_title", "sv") == "Svensk titel"
     assert (
         study.get_study_text("study_text_instructions_title", "en") == "English title"
     )
@@ -808,3 +806,61 @@ def test_load_studies_config_rejects_unknown_nested_day_label_field(tmp_path):
 
     with pytest.raises(ValueError, match="Unknown field 'display_namess'"):
         load_studies_config(str(config_file))
+
+
+def test_load_studies_config_day_start_minutes_defaults_to_midnight(tmp_path):
+    """New studies start their reporting day at midnight (D26)."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].day_start_minutes == 0
+
+
+def test_shipped_studies_declare_their_reporting_day():
+    """Every seeded study must say where its day starts, not inherit a default.
+
+    The pilot studies in `studies_config.json` were filled in through the old
+    frontend, whose reporting day runs 04:00-04:00 and whose participants enter
+    one 04:00-01:00 record per day. Under the midnight default that record covers
+    20 hours of its own day, so a study with `min_coverage: 1440` would look
+    incomplete and reject the submission - which is exactly what happened on a
+    freshly imported database while a migrated one (where the migration sets 240)
+    was fine. Requiring the field makes the decision explicit for every study.
+    """
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "studies_config.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    missing = [
+        study["name_short"]
+        for study in payload["studies"]
+        if "day_start_minutes" not in study
+    ]
+    assert not missing, (
+        "these studies in studies_config.json do not declare day_start_minutes: "
+        f"{missing}"
+    )
+
+
+def test_shipped_legacy_studies_use_the_04_00_reporting_day():
+    """The seeded studies belong to the old frontend, so they keep its day window."""
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[2] / "studies_config.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+
+    wrong = [
+        study["name_short"]
+        for study in payload["studies"]
+        if study["day_start_minutes"] != 240
+    ]
+    assert not wrong, (
+        "a study written for the old frontend must keep the 04:00 day window "
+        f"(the migration sets 240 for existing databases too): {wrong}"
+    )
