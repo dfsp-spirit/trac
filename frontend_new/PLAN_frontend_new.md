@@ -672,3 +672,77 @@ Explicitly rejected for v1: a storage-driver abstraction (REDCap/JATOS have diff
 bulk record overwrite and one result blob), offline sync, a plugin system, and in-page JS-widget
 embedding (would require a contained layout mode; an iframe reaches the same platforms for a
 fraction of the cost).
+
+---
+
+## 8. Decisions after the build started
+
+### D37 — Navigation is a stage machine, not a set of redirects
+
+The old frontend decides "where does this participant belong now?" in five places: ~25
+`location.href` assignments across `script.js`, `consent.html`, `instructions.js`, `tasks.html` and
+`ui.js`, a whitelist of page names (`getSafeRedirectUrl('instructions.html')`), path sniffing
+(`isInstructionsPagePath()`), a `completion_status` flag copied through the query string so one page
+can tell the next what it decided, and a second copy of the same facts in `CURRENT_STUDY_CACHE`
+(`localStorage`). Each page re-derives the rules on load, so a stale cache produces a wrong redirect.
+The root cause is one thing: **progress was carried in the URL and the decisions were made in the
+browser.**
+
+A participant has exactly one stage:
+
+| Stage | When |
+| --- | --- |
+| `unavailable` | study paused, closed, or outside its collection window |
+| `consent` | study requires consent and it has not been given |
+| `instructions` | instructions required and not completed |
+| `tasks` | external tasks pending, or the diary is done and `require_diary_before_external_tasks` is satisfied |
+| `done` | submitted (or otherwise finished); thank-you, nothing editable |
+| `diary` | everything else |
+
+- **The server computes it**, in one function, from what it already knows (`require_consent`,
+  `consent_given`, `instructions_completed`, `study_submitted_at`, pending external tasks,
+  `ensure_study_is_currently_available`). One test per row of that table. The client renders; it does
+  not decide.
+- **Every mutation returns the next stage** in its response body. Consent → `instructions`,
+  instructions complete → `diary`, submit → `done` or `tasks`. No reload to learn what happened, no
+  flag in the URL.
+- **The URL carries identity only** — `study`, `pid`, `lang` — never progress. That rule alone
+  removes `completion_status` and the page-name whitelist.
+- **The client router maps URL → view, and the only redirect is a guard**: on load it asks for the
+  stage and, if the URL names a different one, `router.replace(stageRoute(stage))`. One function, one
+  redirect.
+- **Route style: hash (`#/consent`) for now**, behind a `domain/router.js` seam so path routes
+  (`/consent` + `try_files $uri /index.html` + `<base>`) are a change in one file later. The app is
+  served from at least three places with different path prefixes (dev nginx, CI, the GH-Pages demo),
+  the assets in `index.html` are relative, and none of that has to be solved before the pilot.
+- **Returning from an external task** re-asks for the stage on `visibilitychange`/focus instead of
+  trusting a cached flag.
+- `CURRENT_STUDY_CACHE` is replaced by the store, re-derived from one endpoint on load — which also
+  keeps D33's no-device-storage rule intact.
+
+Not adopted: server-side 302 chains (that is the current design), per-route guard logic duplicated in
+JS, and any router dependency. `hashchange`/`popstate` plus a parse function is ~100 lines.
+
+### D38 — Consent is a one-way latch
+
+Once recorded, `consent_given` does not go back to false inside this application. Withdrawal happens
+through other means, outside the app, so the consent stage is a latch and not a state that can be
+re-entered by the participant. This is what makes the `consent` row of the D37 table a simple
+one-shot check rather than a review screen.
+
+### Open, deferred: idle timeout that tears down the session
+
+Stakeholders asked for the idle timeout to *"prevent other family members from continuing in an open
+browser session"*. The old implementation pursued that by `location.replace`ing to `timeout.html` with
+the participant id stripped from the URL, which is a URL trick standing in for a session, and it costs
+a real feature (a participant returning to their own open browser is locked out).
+
+Recorded, not built. Priority Z: it is a request to make the app work worse on purpose for a threat
+this application does not really face (writing someone else's time-use diary is not an attack worth
+mounting), and it must not be paid for out of the pilot budget. If it is ever built, the honest form
+is a server-side session token with an expiry — not URL manipulation — and the participant's own
+return is then the thing that must keep working.
+
+What the new frontend does instead, and what D37 already gives us: the stage is re-verified from the
+server on every load, so a stale tab cannot act on stale permissions. A blank-screen "continue"
+overlay is all the idle behaviour we ship until a decision is made.
