@@ -38,6 +38,8 @@ export function readShell(root) {
     dialogHost: /** @type {HTMLDialogElement | null} */ (maybe('#dialog-host')),
     template: /** @type {HTMLTemplateElement | null} */ (maybe('#activity-panel-tpl')),
     languageSelect: /** @type {HTMLSelectElement | null} */ (maybe('#language-select')),
+    menu: maybe('#menu'),
+    menuShortcuts: maybe('#menu-shortcuts'),
     nav: {
       prev: /** @type {HTMLAnchorElement | null} */ (maybe('#day-prev')),
       next: /** @type {HTMLAnchorElement | null} */ (maybe('#day-next')),

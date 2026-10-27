@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="styles/base.css">
   <link rel="stylesheet" href="styles/components.css">
   <link rel="stylesheet" href="styles/panel.css">
-  <link rel="stylesheet" href="styles/review.css">
+  <link rel="stylesheet" href="styles/dialogs.css">
   <link rel="stylesheet" href="styles/layout.css">
 </head>
 <body>
@@ -32,7 +32,7 @@
     </div>
 
     <nav class="t-daynav" aria-label="Day" data-i18n-aria-label="diary.shell.dayNav">
-      <a class="t-icon-btn" id="day-prev" href="#"
+      <a class="t-icon-btn" id="day-prev" href="#" aria-keyshortcuts="PageUp"
          aria-label="Previous day" data-i18n-aria-label="diary.shell.previousDay">
         <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
       </a>
@@ -40,7 +40,7 @@
         <p class="t-daynav__day" id="day-label"></p>
         <p class="t-daynav__meta" id="day-meta"></p>
       </div>
-      <a class="t-icon-btn" id="day-next" href="#"
+      <a class="t-icon-btn" id="day-next" href="#" aria-keyshortcuts="PageDown"
          aria-label="Next day" data-i18n-aria-label="diary.shell.nextDay">
         <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
       </a>
@@ -64,7 +64,7 @@
     <section class="t-activity-panel" id="panel-host"></section>
   </div>
 
-  <button class="t-fab" type="button" id="fab">
+  <button class="t-fab" type="button" id="fab" aria-keyshortcuts="n">
     <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     <span data-i18n="diary.shell.addActivity">Add activity</span>
   </button>
@@ -83,14 +83,12 @@
       </button>
     </div>
     <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
-      <li><button class="t-drawer__item" type="button" id="menu-shortcuts" data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
+      <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
+                  data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
     </ul>
-    <hr>
-    <ul class="t-drawer__section" aria-label="Pages" data-i18n-aria-label="diary.shell.menuPages">
-      <li><a class="t-drawer__item" href="#" id="menu-study" data-i18n="diary.shell.studyInformation">Study information</a></li>
-      <li><a class="t-drawer__item" href="#" id="menu-privacy" data-i18n="diary.shell.dataProtection">Data protection</a></li>
-      <li><a class="t-drawer__item" href="#" id="menu-contact" data-i18n="diary.shell.contact">Contact</a></li>
-    </ul>
+    <!-- The instruction pages (study information, data protection, contact) get
+         their menu entries back when the pages exist. An entry that does nothing
+         is worse than no entry (D28: less is more). -->
     <hr>
     <div class="t-drawer__section">
       <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
@@ -121,7 +119,7 @@
       <div class="t-search" data-slot="search">
         <label class="t-search__field">
           <span class="t-vh" data-i18n="diary.shell.searchActivities">Search activities</span>
-          <input class="t-input" type="search" autocomplete="off"
+          <input class="t-input" type="search" autocomplete="off" aria-keyshortcuts="/"
                  placeholder="Search activities" data-i18n-placeholder="diary.shell.searchActivities">
         </label>
         <button class="t-icon-btn" type="button" data-slot="search-clear" hidden

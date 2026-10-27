@@ -276,6 +276,17 @@
       "confirmNo": "Not yet, keep checking",
       "sending": "Sending…"
     },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "enable": "Use keyboard shortcuts",
+      "days": "Previous or next day",
+      "new": "Add an activity at the time in view",
+      "search": "Search the activity list",
+      "escape": "Back, or clear the search",
+      "confirm": "Save the activity",
+      "delete": "Delete the activity that is selected",
+      "list": "This list"
+    },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"
     },

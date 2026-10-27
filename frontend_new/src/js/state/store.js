@@ -10,6 +10,7 @@
  * @property {number} currentDay
  * @property {'idle' | 'saving' | 'saved' | 'error'} saveState
  * @property {string} language
+ * @property {boolean} shortcuts Whether the keyboard shortcuts respond (D31).
  * @property {number} revision Bumped by every change to the diary.
  */
 

@@ -276,6 +276,17 @@
       "confirmNo": "Noch nicht, weiter prüfen",
       "sending": "Wird gesendet …"
     },
+    "shortcuts": {
+      "title": "Tastenkürzel",
+      "enable": "Tastenkürzel verwenden",
+      "days": "Vorheriger oder nächster Tag",
+      "new": "Aktivität zur sichtbaren Uhrzeit eintragen",
+      "search": "Die Aktivitätenliste durchsuchen",
+      "escape": "Zurück oder Suche leeren",
+      "confirm": "Aktivität speichern",
+      "delete": "Die gewählte Aktivität löschen",
+      "list": "Diese Liste"
+    },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"
     },

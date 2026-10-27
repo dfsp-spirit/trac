@@ -56,7 +56,7 @@ function icon(path) {
  * }} deps
  */
 export function createReviewModal({ root, t, onEdit, onSubmit }) {
-  const dialog = el('dialog', 't-modal t-review-modal');
+  const dialog = el('dialog', 't-modal t-modal--centred');
   dialog.id = 'review-dialog';
 
   const head = el('div', 't-modal__head');

@@ -74,6 +74,9 @@ export function createFormController(deps) {
     if (activity) {
       const remove = el('button', 't-btn t-btn--ghost t-btn--block', t('diary.panel.delete'));
       remove.type = 'button';
+      // Marks the control `Delete` presses while it has focus (D31).
+      remove.dataset.shortcut = 'delete';
+      remove.setAttribute('aria-keyshortcuts', 'Delete');
       remove.addEventListener('click', async () => {
         await onDelete(activity);
         onDone();
@@ -197,6 +200,17 @@ export function createFormController(deps) {
         maxOverlap: diary.timeline.max_overlap,
         mode: activity ? 'edit' : 'create',
         activity,
+      });
+      // Enter saves (D31). Two reasons it is spelled out rather than left to the
+      // browser: there is no submit button to be the default action, so implicit
+      // submission would reload the diary, and a <select> - which is what most of
+      // this form is - does not fire implicit submission at all.
+      form.form.addEventListener('submit', (event) => event.preventDefault());
+      form.form.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' || event.isComposing) return;
+        if (event.target instanceof HTMLTextAreaElement) return;
+        event.preventDefault();
+        void submit('close');
       });
       renderFoot(activity);
     },

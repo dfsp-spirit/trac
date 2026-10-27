@@ -477,6 +477,21 @@ the "how do we teach it" question:
   onboarding step. Controls that have shortcuts carry `aria-keyshortcuts`.
 - Desktop only (`pointer: fine`); nothing here is reachable on touch.
 
+Built in `src/js/ui/keyboard.js` (rules, pure) + `ui/shortcuts.js` (binding + menu entry) +
+`ui/shortcutsDialog.js` (the list and the switch). Three findings from building it:
+
+- **Paging is not a single-key shortcut**, so `PageUp`/`PageDown` work outside the diary region;
+  they are suppressed only inside a control that pages its own content (`<select>`, `<textarea>`).
+  Confinement applies to `n`, `/`, `?` and `Delete`.
+- **The switch remembers for the session only.** D33 forbids device storage and there is no
+  participant profile to hang a preference on yet; a server-side preference is a later decision.
+- **Enter had to be spelled out.** The form has no submit button, so implicit submission reloaded
+  the diary, and a `<select>` never fires it. `Enter` now saves (except in a textarea), which is
+  what the list promises.
+
+The menu's instruction-page entries (study information, data protection, contact) are removed
+until the pages exist: an entry that does nothing is worse than no entry.
+
 ### D32 — Review is a modal
 
 Review keeps the prototype's presentation: a centred modal, max-width ~720 px, sticky head and foot,

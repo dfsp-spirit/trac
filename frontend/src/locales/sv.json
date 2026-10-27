@@ -276,6 +276,17 @@
       "confirmNo": "Inte än, fortsätt kontrollera",
       "sending": "Skickar …"
     },
+    "shortcuts": {
+      "title": "Tangentbordsgenvägar",
+      "enable": "Använd tangentbordsgenvägar",
+      "days": "Föregående eller nästa dag",
+      "new": "Lägg till en aktivitet vid tiden i vyn",
+      "search": "Sök i aktivitetslistan",
+      "escape": "Tillbaka, eller rensa sökningen",
+      "confirm": "Spara aktiviteten",
+      "delete": "Ta bort den valda aktiviteten",
+      "list": "Den här listan"
+    },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"
     },

@@ -11,7 +11,7 @@
 import { createFormController } from './activityPanelForm.js';
 import { renderActivityList } from './activityList.js';
 import { flattenCatalogue } from './activitySearch.js';
-import { daySummaries } from '../domain/diary.js';
+import { dayLabel, daySummaries } from '../domain/diary.js';
 import { describeError } from './messages.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
@@ -90,7 +90,7 @@ export function createActivityPanel(deps) {
       : summary.hasData
         ? t('diary.panel.toGo', { minutes: Math.max(0, required - summary.coverage) })
         : t('diary.panel.emptyDay');
-    contextLine.textContent = `${summary.displayName}: ${state}`;
+    contextLine.textContent = `${dayLabel(summary, language)}: ${state}`;
     contextLine.hidden = false;
   }
 
@@ -123,6 +123,11 @@ export function createActivityPanel(deps) {
     if (backButton) backButton.hidden = false;
     formController.show(entry, activity);
     updateContext();
+    // The list item that was just clicked is gone, so focus would fall back to
+    // the body; move it to the first field so the form is where the next key
+    // press lands.
+    const first = content.querySelector('input, select, textarea');
+    if (first instanceof HTMLElement) first.focus();
   }
 
   const formController = createFormController({
@@ -195,6 +200,32 @@ export function createActivityPanel(deps) {
     refresh() {
       if (mode === 'catalogue') showCatalogue({ preserveScroll: true });
       else updateContext();
+    },
+
+    /** `/`: the catalogue, with the search field ready to type into. */
+    focusSearch() {
+      if (mode !== 'catalogue') showCatalogue();
+      searchInput.focus();
+      searchInput.select();
+    },
+
+    /**
+     * `Esc`: leave the form, or clear the search. Reports whether it did
+     * anything, so the caller can fall back to closing the dialog.
+     *
+     * @returns {boolean}
+     */
+    escape() {
+      if (mode === 'form') {
+        showCatalogue({ preserveScroll: true });
+        backButton.focus();
+        return true;
+      }
+      if (query) {
+        searchClear?.click();
+        return true;
+      }
+      return false;
     },
 
     showCatalogue,

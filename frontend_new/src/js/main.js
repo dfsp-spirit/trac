@@ -13,11 +13,12 @@ import { createTranslator, loadLocale } from './data/i18n.js';
 import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
 import { createStore } from './state/store.js';
-import { createActivityPanel } from './ui/activityPanel.js';
 import { createDiaryView } from './ui/diaryView.js';
+import { createPanelController } from './ui/panelController.js';
 import { createPanelHost } from './ui/panelHost.js';
 import { createReviewModal } from './ui/reviewModal.js';
 import { readShell } from './ui/shell.js';
+import { createShortcuts } from './ui/shortcuts.js';
 import { applyTranslations } from './ui/i18n-dom.js';
 import { scrollToDay } from './ui/timeline.js';
 import { createToast } from './ui/toast.js';
@@ -45,6 +46,7 @@ export function mount({ root, params }) {
     currentDay: 0,
     saveState: 'idle',
     language,
+    shortcuts: true,
     revision: 0,
   };
   const store = createStore(initial);
@@ -66,6 +68,8 @@ export function mount({ root, params }) {
     dialogHost,
     template,
     languageSelect,
+    menu,
+    menuShortcuts,
     nav,
   } = readShell(root);
 
@@ -75,9 +79,6 @@ export function mount({ root, params }) {
   });
 
   const wide = window.matchMedia('(min-width: 1200px)');
-  /** @type {ReturnType<typeof createActivityPanel> | null} */
-  let panel = null;
-  let lockedRendered = false;
 
   const api =
     studyName && participantId ? createApi(config.apiBaseUrl, studyName, participantId) : null;
@@ -98,52 +99,23 @@ export function mount({ root, params }) {
     return Boolean(store.get().diary?.study.submitted_at);
   }
 
-  function createPanel() {
-    if (isLocked()) {
-      // A submitted diary keeps its timeline, not its editor.
-      panel = null;
-      if (dialogHost?.open) dialogHost.close();
-      if (sectionHost) {
-        const note = document.createElement('p');
-        note.className = 't-hint';
-        note.setAttribute('data-i18n', 'diary.notice.locked');
-        note.textContent = t('diary.notice.locked');
-        sectionHost.replaceChildren(note);
-      }
-      return;
-    }
-
-    const host = hostPanel();
-    if (!host || !actions) {
-      panel = null;
-      return;
-    }
-    panel = createActivityPanel({
-      host,
-      t,
-      language: store.get().language,
-      getDiary: () => /** @type {import('./domain/diary.js').ApiDiary} */ (store.get().diary),
-      getCatalogue: () => store.get().catalogue,
-      onCreate: (body) => actions.create(body),
-      onUpdate: (uuid, changes) => actions.update(uuid, changes),
-      onDelete: async (activity) => {
-        const undo = await actions.removeWithUndo(activity);
-        toast.show(t('diary.toast.deleted', { name: activity.activity_name }), {
-          label: t('diary.toast.undo'),
-          run: undo,
-        });
-      },
-      toast,
-    });
-    panel.showCatalogue();
-  }
-
-  /** @param {number} dayIndex @param {number} startRelative @param {number} endRelative */
-  function openPanelAt(dayIndex, startRelative, endRelative) {
-    if (!panel || isLocked()) return;
-    if (!wide.matches && dialogHost && !dialogHost.open) dialogHost.showModal();
-    panel.open({ dayIndex, startMinutes: startRelative, endMinutes: endRelative });
-  }
+  const panels = createPanelController({
+    hostPanel,
+    sectionHost,
+    dialogHost,
+    isWide: () => wide.matches,
+    isLocked,
+    getDiary: () => /** @type {import('./domain/diary.js').ApiDiary} */ (store.get().diary),
+    getCatalogue: () => store.get().catalogue,
+    getLanguage: () => store.get().language,
+    actions: actions ?? {
+      create: () => Promise.reject(new Error('no participant')),
+      update: () => Promise.reject(new Error('no participant')),
+      removeWithUndo: () => Promise.reject(new Error('no participant')),
+    },
+    toast,
+    t,
+  });
 
   const view = createDiaryView({
     root,
@@ -157,7 +129,7 @@ export function mount({ root, params }) {
     onDayInView: (index) => {
       if (index !== store.get().currentDay) store.set({ currentDay: index });
     },
-    onTimelineRendered: () => panel?.refresh(),
+    onTimelineRendered: () => panels.refresh(),
   });
 
   /** @param {number} dayIndex */
@@ -187,10 +159,7 @@ export function mount({ root, params }) {
       currentDay: state.currentDay,
       locked,
     });
-    if (locked !== lockedRendered) {
-      lockedRendered = locked;
-      createPanel();
-    }
+    panels.sync(locked);
   }
 
   /** @param {string} next */
@@ -208,28 +177,19 @@ export function mount({ root, params }) {
     if (isLocked()) return;
     const dayIndex = store.get().currentDay;
     const start = view.minutesAtTop(dayIndex);
-    openPanelAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
+    panels.openAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
+  };
+
+  /** @returns {number} */
+  const dayCount = () => store.get().diary?.days.length ?? 0;
+
+  const onEscape = () => {
+    if (panels.escape()) return;
+    if (dialogHost?.open) dialogHost.close();
   };
 
   /** @param {Event} event */
-  const onTimelineClick = (event) => {
-    if (isLocked()) return;
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const gap = target.closest('.t-gap__btn');
-    if (gap instanceof HTMLElement) {
-      openPanelAt(Number(gap.dataset.day), Number(gap.dataset.start), Number(gap.dataset.end));
-      return;
-    }
-    const button = target.closest('.t-event__btn');
-    const uuid = button instanceof HTMLElement ? button.dataset.uuid : null;
-    if (!uuid) return;
-    const diary = store.get().diary;
-    const activity = diary?.activities.find((item) => item.client_uuid === uuid);
-    if (!activity || !panel) return;
-    if (!wide.matches && dialogHost && !dialogHost.open) dialogHost.showModal();
-    panel.openEdit(activity);
-  };
+  const onTimelineClick = (event) => panels.openFromEvent(event);
 
   const onSubmitClick = () => {
     const diary = store.get().diary;
@@ -241,7 +201,33 @@ export function mount({ root, params }) {
     const next = languageSelect?.value;
     if (next) void setLanguage(next);
   };
-  const onBreakpoint = () => createPanel();
+
+  const finePointer = window.matchMedia('(pointer: fine)');
+  const shortcuts = createShortcuts({
+    root,
+    menu,
+    menuEntry: menuShortcuts,
+    // Single-key shortcuts only trust focus that is already in the diary (D31).
+    regions: [daysHost, sectionHost, dialogHost, railList],
+    t,
+    isEnabled: () => store.get().shortcuts && !isLocked(),
+    isFinePointer: () => finePointer.matches,
+    // Any open dialog owns the keyboard: Esc, Enter and Tab mean what the dialog
+    // says they mean, not what the diary behind it says (which is also why the
+    // review and shortcut lists can close on Esc at all).
+    isBlocked: () =>
+      store.get().status !== 'ready' || root.querySelector('dialog[open]') !== null,
+    onToggle: (enabled) => store.set({ shortcuts: enabled }),
+    actions: {
+      nextDay: () => goToDay(Math.min(store.get().currentDay + 1, dayCount() - 1)),
+      prevDay: () => goToDay(Math.max(store.get().currentDay - 1, 0)),
+      newActivity: onFab,
+      search: () => panels.focusSearch(),
+      escape: onEscape,
+    },
+  });
+
+  const onBreakpoint = () => panels.create();
 
   fab.addEventListener('click', onFab);
   submitBtn.addEventListener('click', onSubmitClick);
@@ -258,7 +244,7 @@ export function mount({ root, params }) {
   }
 
   const unsubscribe = store.subscribe(render);
-  createPanel();
+  panels.create();
 
   void (async () => {
     try {
@@ -282,6 +268,7 @@ export function mount({ root, params }) {
       fab.removeEventListener('click', onFab);
       submitBtn.removeEventListener('click', onSubmitClick);
       daysHost.removeEventListener('click', onTimelineClick);
+      shortcuts.destroy();
       reviewModal.destroy();
       languageSelect?.removeEventListener('change', onLanguageChange);
       wide.removeEventListener('change', onBreakpoint);
