@@ -74,6 +74,19 @@ export function createStageMachine({
     render(route);
   }
 
+  /**
+   * Ask the server for the participant's state again and render it.
+   *
+   * Used after a mutation: the stage alone is not enough to render the next page
+   * (`done_reason` decides whether the thank-you text is "completed" or "you
+   * declined"), and re-asking keeps one source of truth instead of patching the
+   * cached payload from several responses.
+   */
+  async function refresh() {
+    session = await requireApi().getStudyConfig(getLanguage());
+    applyStage(session.stage);
+  }
+
   /** @param {string} route */
   function render(route) {
     shownRoute = route;
@@ -93,8 +106,8 @@ export function createStageMachine({
         session,
         t,
         onDecide: async (given) => {
-          const result = await requireApi().giveConsent(given);
-          applyStage(result.stage);
+          await requireApi().giveConsent(given);
+          await refresh();
         },
       });
     } else if (route === 'instructions') {
@@ -102,18 +115,15 @@ export function createStageMachine({
         session,
         t,
         onComplete: async () => {
-          const result = await requireApi().completeInstructions();
-          applyStage(result.stage);
+          await requireApi().completeInstructions();
+          await refresh();
         },
       });
     } else if (route === 'tasks') {
       renderTasks(host, {
         session,
         t,
-        onRefresh: async () => {
-          session = await requireApi().getStudyConfig(getLanguage());
-          applyStage(session.stage);
-        },
+        onRefresh: refresh,
       });
     } else if (route === 'thanks') {
       renderThanks(host, { session, t });

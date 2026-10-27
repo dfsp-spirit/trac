@@ -723,6 +723,19 @@ A participant has exactly one stage:
 Not adopted: server-side 302 chains (that is the current design), per-route guard logic duplicated in
 JS, and any router dependency. `hashchange`/`popstate` plus a parse function is ~100 lines.
 
+**Built.** Three refinements to the sketch above, all of them simplifications found while building it:
+
+- **No separate `GET /session`.** `GET …/study-config` already returns the participant's consent,
+  instruction and submission state plus every study text the views need, so it gained `stage` and
+  `done_reason` instead of a second endpoint duplicating 90 % of its payload. Consent,
+  instructions-complete and both submit endpoints answer with the next stage.
+- **`done` carries a reason** (`completed` or `noconsent`), because the thank-you text differs. A
+  declined consent wins over `unavailable`: telling someone "try later" would invite them back to a
+  decision they already made.
+- **After any step the client re-asks.** The stage alone is not enough to render the next page
+  (`done_reason` decides the text), so `ui/stageMachine.js` refetches once per transition rather than
+  patching its cached payload from several responses.
+
 ### D38 — Consent is a one-way latch
 
 Once recorded, `consent_given` does not go back to false inside this application. Withdrawal happens
