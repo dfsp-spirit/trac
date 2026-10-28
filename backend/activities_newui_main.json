@@ -1,0 +1,451 @@
+{
+  "general": {
+    "language": "de"
+  },
+  "timeline": {
+    "primary": {
+      "name": "Hauptaktivität",
+      "description": "Bitte füllen Sie die gesamte Zeitleiste aus.",
+      "mode": "single-choice",
+      "min_coverage": 1440,
+      "categories": [
+        {
+          "name": "1. Allgemeine Aktivitäten & Tägliches Leben",
+          "activities": [
+            {
+              "name": "Schlafen",
+              "code": 1101,
+              "label": "Schlafen",
+              "color": "#A8D8EA",
+              "childItems": []
+            },
+            {
+              "name": "Ausruhen",
+              "examples": "Mittagspause, Entspannungsphasen",
+              "code": 1102,
+              "label": "Ausruhen",
+              "color": "#B0E0E6",
+              "childItems": []
+            },
+            {
+              "name": "Aktivitäten des täglichen Lebens",
+              "examples": "Essen, Kochen, Haushalt, Pflege von sich und anderen",
+              "code": 1104,
+              "label": "Aktivitäten des täglichen Lebens",
+              "color": "#87CEEB",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "2. Arbeit & Studium",
+          "activities": [
+            {
+              "name": "Bezahlte Arbeit",
+              "examples": "Bitte Tätigkeit angeben.",
+              "code": 1120,
+              "label": "bezahlte arbeit",
+              "color": "#FFB6C1",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Schule",
+              "code": 1121,
+              "label": "schule",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "Oberstufe / Gymnasium",
+                  "code": 1124,
+                  "label": "gymnasium",
+                  "color": "#FFA07A"
+                }
+              ]
+            },
+            {
+              "name": "Universität",
+              "code": 1127,
+              "label": "universität",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "Bachelor",
+                  "code": 1128,
+                  "label": "bachelor",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Master",
+                  "code": 1129,
+                  "label": "master",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "PhD",
+                  "code": 1130,
+                  "label": "phd",
+                  "color": "#FFA07A"
+                }
+              ]
+            },
+            {
+              "name": "Andere Kurse/Ausbildung",
+              "examples": "Bitte Kurs oder Ausbildung angeben.",
+              "code": 1131,
+              "label": "andere kurse ausbildung",
+              "color": "#FFA07A",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "3. Wege & Verkehr",
+          "activities": [
+            {
+              "name": "Unterwegs (Transit)",
+              "code": 1110,
+              "label": "unterwegs",
+              "color": "#98FB98",
+              "childItems": [
+                {
+                  "name": "Gehen",
+                  "code": 1111,
+                  "label": "gehen",
+                  "color": "#98FB98"
+                },
+                {
+                  "name": "Radfahren",
+                  "code": 1112,
+                  "label": "radfahren",
+                  "color": "#90EE90"
+                },
+                {
+                  "name": "Joggen",
+                  "code": 1113,
+                  "label": "joggen",
+                  "color": "#9ACD32"
+                },
+                {
+                  "name": "Motorisiert (z.B. ÖPNV, Auto)",
+                  "code": 1114,
+                  "label": "motorisiert",
+                  "color": "#7CFC00"
+                },
+                {
+                  "name": "Sonstiges",
+                  "code": 1116,
+                  "label": "sonstiges unterwegs",
+                  "color": "#00FA9A",
+                  "is_custom_input": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "4. Sport & körperliche Aktivität",
+          "activities": [
+            {
+              "name": "Sport & Bewegung (Außer Haus)",
+              "code": 1166,
+              "label": "sport außer haus",
+              "color": "#9370DB",
+              "childItems": [
+                {
+                  "name": "Gehen: Draußen alleine",
+                  "code": 1168,
+                  "label": "gehen draußen alleine",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Gehen: Draußen mit anderen",
+                  "code": 1169,
+                  "label": "gehen draußen mit anderen",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Joggen: Draußen alleine",
+                  "code": 1171,
+                  "label": "joggen draußen alleine",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Joggen: Draußen mit anderen",
+                  "code": 1172,
+                  "label": "joggen draußen mit anderen",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Sport in Innenräumen (z.B. Schwimmen, Kurse)",
+                  "code": 1173,
+                  "label": "sport innenräume",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Sport im Freien (z.B. Radfahren, Mannschaftssport)",
+                  "code": 1174,
+                  "label": "sport im freien",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Sport & Bewegung (Zuhause)",
+              "code": 1175,
+              "label": "sport zuhause",
+              "color": "#8A2BE2",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "5. Soziales, Freizeit, Hobbies (nicht digital)",
+          "activities": [
+            {
+              "name": "Aktivitäten (Zuhause)",
+              "code": 1140,
+              "label": "aktivitäten zuhause",
+              "color": "#DDA0DD",
+              "childItems": [
+                {
+                  "name": "Soziale Kontakte (Familie/Freunde treffen)",
+                  "code": 1141,
+                  "label": "soziale kontakte zuhause",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "Religiöse/Spirituelle Praxis, Meditation",
+                  "code": 1142,
+                  "label": "religion meditation zuhause",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "Lesen",
+                  "code": 1143,
+                  "label": "lesen zuhause",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "Freizeit / Hobby (Bitte angeben)",
+                  "code": 1144,
+                  "label": "hobby zuhause",
+                  "color": "#DDA0DD",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
+                    { "key": "monthly", "label": "Monatlich" },
+                    { "key": "yearly", "label": "Jährlich" }
+                  ]
+                },
+                {
+                  "name": "Sonstiges (Bitte angeben)",
+                  "code": 1145,
+                  "label": "sonstiges zuhause",
+                  "color": "#DDA0DD",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Aktivitäten (Außer Haus)",
+              "code": 1160,
+              "label": "aktivitäten außer haus",
+              "color": "#DA70D6",
+              "childItems": [
+                {
+                  "name": "Soziale Kontakte (Familie/Freunde treffen)",
+                  "code": 1161,
+                  "label": "soziale kontakte außer haus",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Religiöse/Spirituelle Praxis, Meditation",
+                  "code": 1162,
+                  "label": "religion meditation außer haus",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Lesen",
+                  "code": 1163,
+                  "label": "lesen außer haus",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Freizeit / Hobby (Bitte angeben)",
+                  "code": 1164,
+                  "label": "hobby außer haus",
+                  "color": "#DA70D6",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
+                    { "key": "monthly", "label": "Monatlich" },
+                    { "key": "yearly", "label": "Jährlich" }
+                  ]
+                },
+                {
+                  "name": "Kulturelle Aktivität / Event (Kino, Theater, Konzert, etc.)",
+                  "code": 1165,
+                  "label": "kultur event",
+                  "color": "#DA70D6",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
+                    { "key": "monthly", "label": "Monatlich" },
+                    { "key": "yearly", "label": "Jährlich" }
+                  ]
+                },
+                {
+                  "name": "Sonstiges (Bitte angeben)",
+                  "code": 1176,
+                  "label": "sonstiges außer haus",
+                  "color": "#DA70D6",
+                  "is_custom_input": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "6. Digitale Medien",
+          "activities": [
+            {
+              "name": "Video Streaming (TV-Sendungen, YouTube)",
+              "code": 1200,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Soziale Kontakte (Telefon, Zoom, FaceTime)",
+              "code": 1201,
+              "color": "#FFE4B5",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Soziale Medien",
+              "code": 1210,
+              "color": "#FFD700",
+              "childItems": [
+                {
+                  "name": "Scrollen / Inhalte konsumieren",
+                  "code": 1211,
+                  "label": "Scrollen / Inhalte konsumieren",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Netzwerke aufbauen / Interagieren",
+                  "code": 1212,
+                  "label": "Netzwerke aufbauen / Interagieren",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / Chatten",
+                  "code": 1213,
+                  "label": "Messenger / Chatten",
+                  "color": "#FFD700"
+                }
+              ]
+            },
+            {
+              "name": "Gaming",
+              "code": 1220,
+              "color": "#FFA500",
+              "childItems": [
+                {
+                  "name": "Konsole, allein",
+                  "code": 1221,
+                  "label": "Konsolenspiel, allein",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Konsole, mit anderen",
+                  "code": 1222,
+                  "label": "Konsolenspiel, mit anderen",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computerspiel, allein",
+                  "code": 1223,
+                  "label": "Computerspiel, allein",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computerspiel, mit anderen",
+                  "code": 1224,
+                  "label": "Computerspiel, mit anderen",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobiles Spielen, allein",
+                  "code": 1225,
+                  "label": "Mobiles Spielen, allein",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobiles Spielen, mit anderen",
+                  "code": 1226,
+                  "label": "Mobiles Spielen, mit anderen",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Audio hören (Musik, Podcasts, Hörbücher)",
+              "code": 1230,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Online-Lernen (z.B. Duolingo, Online-Kurse)",
+              "code": 1233,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Lesen digital (Nachrichten, E-Books, Artikel)",
+              "code": 1231,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Web-Browsing / Lebensadministration",
+              "code": 1232,
+              "color": "#FFE4B5",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "7. Sonstiges",
+          "color": "#C0C0C0",
+          "activities": [
+            {
+              "name": "Andere Aktivität (Bitte angeben)",
+              "code": 1248,
+              "color": "#C0C0C0",
+              "is_custom_input": true,
+              "childItems": []
+            },
+            {
+              "name": "Vergessen / Nicht angegeben",
+              "code": 1249,
+              "color": "#C0C0C0",
+              "childItems": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "studies": [
+    {
+      "name": "Pilotstudie Erwachsene Deutsch MPIAE Offen",
+      "name_short": "pilot_mpiae_01_open",
+      "description": { "de": "Pilotstudie TimeUse für Erwachsene am MPIAE, offen" },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_instructions_title": {
+        "de": "Willkommen zu Ihrem 1-wöchigen Zeit-Tagebuch. Vielen Dank für Ihre Teilnahme!"
+      },
+      "study_text_instructions": {
+        "de": "In dieser Studie möchten wir verstehen, wie Sie Ihre Zeit im Laufe des Tages verbringen – wir sind besonders an Ihrer Freizeit interessiert.\n\nBitte tragen Sie für jeden Tag der letzten Woche (von Montag bis Sonntag) ein, welche Aktivitäten Sie wann ausgeübt haben (z. B. Schlafen, Arbeiten, Essen, Sport oder Freizeitaktivitäten).\n\n#### So füllen Sie das Tagebuch aus\n\n1. Beim Eintragen einer neuen Aktivität können Sie diese direkt für mehrere Tage anlegen.\n\nSie können eingetragene Aktivitäten problemlos im Nachhinein ändern.\n\nBevor Sie die Daten abschicken, habe Sie die Möglichkeit, die Daten noch einmal in einer Übersicht zu prüfen.\n\nBitte versuchen Sie, Ihren Tag möglichst lückenlos abzubilden, sodass alle Zeiten des Tages einer Aktivität zugeordnet sind."
+      },
+      "study_text_end_completed": {
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
+      },
+      "study_text_end_skipped": {
+        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
+      },
+      "require_consent": true,
+      "study_text_consent": {
+        "de": "# Time-Use und Wohlbefinden\n\nVielen Dank für Ihr Interesse an unserer Studie. Bitte lesen Sie sich den folgenden Text aufmerksam und in Ruhe durch. Abschließend können Sie bestätigen, dass Sie die Informationen zur Kenntnis genommen haben und bereit sind, an der Studie teilzunehmen.\n\nBei dieser Studie handelt es sich um ein Forschungsvorhaben des Max-Planck-Instituts für Empirische Ästhetik. Ziel der Studie ist es zu untersuchen, wie Sie in der vergangenen Woche Ihre Zeit verbracht haben und ob dies möglicherweise im Zusammenhang mit Ihrem allgemeinen Wohlbefinden steht.\n\nIhre Teilnahme an der Studie ist anonym. Die im Rahmen der Studie erhobenen Daten werden so verarbeitet, dass keine Rückschlüsse auf Ihre Person möglich sind.\n\n## Ablauf\n\nZunächst bitten wir Sie, ein sogenanntes „Time-Use Diary“ auszufüllen. Insgesamt beträgt der Zeitaufwand etwa 20–40 Minuten. Eine Vergütung erfolgt nicht.\n\n## Datenschutz und Freiwilligkeit\n\nDie Teilnahme an dieser Studie ist freiwillig. Sie können die Umfrage jederzeit abbrechen, ohne dass Ihnen daraus Nachteile entstehen.\n\nIhre Daten werden ausschließlich am Max-Planck-Institut für Empirische Ästhetik gespeichert, nur von einem klar definierten Kreis von Mitarbeitenden zu wissenschaftlichen Zwecken ausgewertet und in anonymisierter Form publiziert. Die erhobenen Daten werden für die Dauer des Forschungsvorhabens gespeichert und anschließend gelöscht. Der genaue Zeitpunkt der Löschung richtet sich nach den wissenschaftlichen und rechtlichen Anforderungen des Projekts und wird nach Abschluss der Datenauswertung bzw. Veröffentlichung der Forschungsergebnisse festgelegt.\n\nBei Fragen zur Studie oder zum Datenschutz können Sie sich an folgende Ansprechpartnerinnen wenden:\n\n**Person A (Studienkoordinatorin)**\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\nana.henriques.fuerst@ae.mpg.de\n\n**Dr. Christine A. Knoop (Lokale Datenschutzkoordinatorin)**\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\ndataprotect@ae.mpg.de\n\n**Heidi Schuster (Datenschutzbeauftragte der Max-Planck-Gesellschaft)**\nHofgartenstraße 8\n80539 München\nTelefon: +49 (89) 2108-1554\ndatenschutz@mpg.de\n\n## Einwilligungserklärung\n\n- Ich habe die Studieninformationen gelesen, verstanden und hatte die Gelegenheit, offene Fragen zu klären.\n- Ich nehme freiwillig an dieser Studie teil.\n- Ich willige in die Erhebung, Verarbeitung, wissenschaftliche Auswertung und Veröffentlichung meiner Daten durch das Max-Planck-Institut für Empirische Ästhetik ein."
+      },
+      "study_text_end_noconsent": {
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
+      },
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_files": {
+        "de": "activities_newui_main.json"
+      },
+      "data_collection_start": "2026-06-18T00:00:00Z",
+      "data_collection_end": "2027-08-01T23:59:59Z",
+      "is_paused": false,
+      "inactivity_timeout_minutes": 20,
+      "inactivity_timeout_stress_time_left": 5,
+      "inactivity_page_custom_text": {
+        "de": "Ihre Sitzung wurde beendet, weil Sie zu lange inaktiv waren. Bitte nutzen Sie Ihren Einladungslink erneut, um mit der Eingabe fortzufahren."
+       }
+    }
+  ]
+}
