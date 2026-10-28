@@ -123,9 +123,9 @@ repeats and the import creates the `Participant`/`StudyParticipant` rows for eve
 | `name_short` | lands in | ids | note |
 | --- | --- | --- | --- |
 | `pilot_mpiae_01_open` | `consent` | any (`open`) | the real pilot study, open enrolment |
-| `newui_02_paused` | `unavailable` | `paused_01` | `is_paused` |
-| `newui_03_ended` | `unavailable` | `ended_01` | collection window is over |
-| `newui_04_not_started` | `unavailable` | `notstarted_01` | collection window not open yet |
+| `newui_02_paused` | `unavailable` (`paused`) | `paused_01` | `is_paused`; the page says the study is paused |
+| `newui_03_ended` | `unavailable` (`ended`) | `ended_01` | window over; the page names the end date |
+| `newui_04_not_started` | `unavailable` (`not_started`) | `notstarted_01` | window opens in 2030; the page names the start date |
 | `newui_05_instructions` | `instructions` | `instructions_01/02` | `require_consent: false` + instructions text |
 | `newui_06_diary` | `diary` | `diary_01/02` | no consent, no instructions |
 | `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
@@ -138,6 +138,11 @@ state, not config, so `done` is one call away from a prefilled fixture — `POST
 call for `tasks_01` → `tasks` → confirm with the token → `done`. Seeds and `study_participant_ids`
 apply when the study is **created**, so reseeding means deleting the study and re-importing; the
 fixtures expect a fresh database (as CI has) or a manual reset.
+
+The three `unavailable` fixtures only reach the page because the rewrite asks for
+`GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 — that
+is the old frontend's signal — and the client would show its generic failure text instead of the
+reason.
 
 ### 3.1 Committed Playwright specs for the rewrite (D33 rule 8)
 

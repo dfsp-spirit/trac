@@ -98,7 +98,10 @@ export function createApi(baseUrl, studyName, participantId) {
     getStudyConfig: (language) =>
       request(
         `${studyRoot}/study-config?participant_id=${encodeURIComponent(participantId)}` +
-          `&lang=${encodeURIComponent(language)}`
+          `&lang=${encodeURIComponent(language)}` +
+          // Answer with stage "unavailable" and a reason instead of a 403, so the
+          // participant is told why the study is not collecting (D39).
+          `&include_unavailable=true`
       ),
 
     /**

@@ -752,6 +752,37 @@ through other means, outside the app, so the consent stage is a latch and not a 
 re-entered by the participant. This is what makes the `consent` row of the D37 table a simple
 one-shot check rather than a review screen.
 
+### D39 — "Unavailable" says why, and a submitted diary outranks a closed window
+
+Found while building the fixture studies, and fixed in three parts.
+
+**One page, three situations, one sentence.** Paused, not started yet and already over all resolved
+to `available = False` and the same copy, which told a participant who arrived a week early to
+"contact the research team" - the wrong advice for every situation except the last. The server now
+reports `unavailable_reason` (`paused` | `not_started` | `ended`) next to `stage`, computed by one
+function (`study_availability` in `api_deps/diary_access.py`) that the 403, the stage machine and the
+page all share. The page names the date for the two window reasons. Precedence is `ended` →
+`not_started` → `paused`: the date is what the participant can act on, so it wins over the pause
+switch, and "paused" only describes a study that would otherwise be open. Dates come from the study
+payload and are formatted in **UTC** (`formatStudyDate`), because the collection window is a study
+administrative boundary, not a local appointment - and it keeps the four timezone legs of the e2e
+suite deterministic.
+
+**The read endpoint refused to answer.** `GET …/study-config` raised 403 for an unavailable study
+*before* computing the placement, so the rewrite could never render the page at all: it landed in its
+generic failure text instead. The endpoint gained `include_unavailable=true`, off by default. The
+rewrite passes it and receives `stage=unavailable` plus the reason; the old frontend keeps its 403
+signal until cutover (D25), and every write endpoint still refuses with `study_unavailable`.
+
+**Submitted outranks availability.** `resolve_placement` checked availability before submission, so a
+participant who had handed in a diary saw "study not available" on any revisit after the window
+closed, and could not reach an external task they still owed. The order is now
+`declined → submitted (tasks / done) → unavailable → consent → instructions → diary`: a finished
+participant is finished, for the same reason D38 gives for consent, and outstanding tasks stay
+reachable after the window so they can be completed. This is a change to the D37 table and is pinned
+per row in `tests/unit/test_stages.py`; the seam between old and new client is covered by
+`tests/integration/test_study_config_unavailable.py`.
+
 ### Open, deferred: idle timeout that tears down the session
 
 Stakeholders asked for the idle timeout to *"prevent other family members from continuing in an open

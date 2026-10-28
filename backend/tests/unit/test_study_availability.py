@@ -15,7 +15,6 @@ from o_timeusediary_backend.api_deps.diary_access import (
     UNAVAILABLE_NOT_STARTED,
     UNAVAILABLE_PAUSED,
     study_availability,
-    study_is_currently_available,
 )
 
 START = datetime(2026, 6, 1, tzinfo=timezone.utc)

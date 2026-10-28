@@ -9616,6 +9616,14 @@ def get_study_config(
         None,
         description="Participant ID for authorization check. Required unless study is open for everyone.",
     ),
+    include_unavailable: bool = Query(
+        False,
+        description=(
+            "Return the configuration even when the study is not collecting right now, "
+            "with stage='unavailable' and unavailable_reason set (D39). Off by default "
+            "because the old frontend reads the 403 as its 'study unavailable' signal."
+        ),
+    ),
     session: Session = Depends(get_session),
 ):
     """
@@ -9633,6 +9641,7 @@ def get_study_config(
 
     @param study_name_short: Short name of the study to retrieve config for
     @param participant_id: (Optional) Participant ID for authorization check. Required if study is not open for everyone.
+    @param include_unavailable: (Optional) Answer with stage='unavailable' instead of a 403 when the study is paused or outside its collection window.
     @param session Database session dependency.
     @returns A JSON response containing study configuration, timelines, and day labels.
     """
@@ -9646,7 +9655,10 @@ def get_study_config(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    _ensure_study_is_currently_available(study)
+    # The old frontend needs the 403; the rewrite needs the payload so it can say
+    # *why* the study is closed (D39). Writes are refused either way.
+    if not include_unavailable:
+        _ensure_study_is_currently_available(study)
 
     # Check if participant_id is required
     if not study.allow_unlisted_participants:
