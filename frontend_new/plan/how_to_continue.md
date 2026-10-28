@@ -139,13 +139,17 @@ Check each against the old app before deciding to drop it:
   rewrite never calls it.
 - **Maintenance banner / footer links.** Backend settings exist (`footer_links`,
   `IS_MAINTENANCE_MODE` on the old app); the rewrite has neither.
-- **"Used recently"** in the activity panel (D28) — never built.
+- **"Used recently"** in the activity panel (D28) — never built. There is a prototype, which the new frontend is roughly based on, at ~/develop_mpiae/time-diary-prototype that shows how this should look in UI (basically add recently used N at top of list, below search bar, for N ~ 4).
 - **Rail consolidation** (D28): the day rail should also carry submission state and *Submit*; today
-  Submit is in the top bar.
+  Submit is in the top bar. Maybe needs discussion what is better from UI/UX perspective.
 - **Menu pages** (study information, data protection, contact): entries were removed until the pages
-  exist. The old app renders footer links instead.
+  exist. The old app renders footer links instead, but at least on mobile view, these need to go into the expandable menu to prevent mi-sclicks  and save precisous screen space. on desktio a small footer with these is better, as on desktiom people expect thing like data privaxy link in the footer.
 
-### 3.3 Cutover (plan step 5)
+### 3.3 Cutover (plan step 5) - DO NOT DO THIS WITHOUT EXPLICITELY BEING TOLD TO DO IT!
+
+DO NOT DO THIS WITHOUT EXPLICITELY BEING TOLD TO DO IT! We may want to green/blue test both!
+
+Only once we explcitiely request to delete, this is what we will need to do:
 
 - Delete the second timeline and the `2xxx` activity codes from `studies_config.json` and the
   activities JSON files (Q6/Q7: confirmed).
@@ -154,16 +158,18 @@ Check each against the old app before deciding to drop it:
 - Port or retire the ~45 old E2E specs; they pin the old interaction model.
 - Then `/report/` disappears and `/report-new/` becomes `/report/` (one nginx location block).
 
-### 3.4 Open decisions
+Until then, we need to add new studies to studies_config.json that are suitable for the frontend_new. The old frontend supported 2 or more timelines, the new ones has one timeline which can show several things in parallel (and a setting for max_parallel). We need to decide whether we want to simply display stuff from old studies, intended for several timeslines, in one as a sort of backwards-compatibility fallback. Would be limited by max_parallel setting, but no study has more than 2 timeliens, it gets too confusing for the user.
+
+### 3.4 Open decisions, answered now (oct 28)
 
 - **`copy_source_uuid`**: the column exists, the API echoes it, nothing sets it. Q5 answered "multi-day,
   no limits" without asking for provenance. Decide keep-or-drop **before** the first real data
-  collection.
+  collection. => NO LONGER OPEN: we do not store provenvance when copying activities. it does not matter whether is was copied or not. its an activitiy the user placed. we believe them, what else should we do.
 - **Keyboard switch persistence**: session-only today, because D33 forbids device storage and there is
-  no participant profile. Needs a server-side preference or an explicit "session only is fine".
+  no participant profile. Needs a server-side preference or an explicit "session only is fine". => Session only is fine, no server here please, this feature is very low priority.
 - **Idle timeout** ("prevent other family members from continuing in an open browser session"):
   recorded as open at priority Z in the plan. Do not build it with URL tricks; the honest form is a
-  server-side expiring session token, and the participant's own return must keep working.
+  server-side expiring session token, and the participant's own return (invitation link to study) must keep working.
 
 ---
 
