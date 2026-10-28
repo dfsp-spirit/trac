@@ -14,7 +14,8 @@
  * the server sends no reason (older payload) or a date cannot be formatted, the
  * generic text is used rather than a sentence with a hole in it.
  */
-import { el } from '../dom.js';
+import { renderPage } from '../page.js';
+import { notice } from '../notice.js';
 import { formatStudyDate } from '../../domain/dates.js';
 
 /**
@@ -63,21 +64,11 @@ function copyFor(session, t) {
  * }} view
  */
 export function renderUnavailable(host, { session, t }) {
-  const page = el('div', 't-stage__page');
-
-  const head = el('div', 't-page-head');
-  head.append(el('h1', null, session.study_name || t('diary.stage.unavailableTitle')));
-  page.append(head);
-
   const { title, text } = copyFor(session, t);
 
-  const notice = el('div', 't-notice t-notice--attention');
-  notice.setAttribute('role', 'status');
-  const body = el('div', 't-notice__body');
-  body.append(el('p', 't-notice__title', title));
-  body.append(el('p', null, text));
-  notice.append(body);
-  page.append(notice);
-
-  host.replaceChildren(page);
+  renderPage(host, {
+    eyebrow: session.study_name,
+    title,
+    body: [notice({ text, role: 'status' })],
+  });
 }

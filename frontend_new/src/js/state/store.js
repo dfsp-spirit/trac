@@ -15,6 +15,27 @@
  */
 
 /**
+ * The state a fresh page starts from. Lives here so the shape has one owner and
+ * the composition root only says which language it starts in.
+ *
+ * @param {{ language: string }} input
+ * @returns {DiaryState}
+ */
+export function createInitialState({ language }) {
+  return {
+    status: 'idle',
+    error: null,
+    diary: null,
+    catalogue: null,
+    currentDay: 0,
+    saveState: 'idle',
+    language,
+    shortcuts: true,
+    revision: 0,
+  };
+}
+
+/**
  * A store, not a framework: one state object, subscribers, and that is all.
  *
  * The point of the size is that components never hold application state. They

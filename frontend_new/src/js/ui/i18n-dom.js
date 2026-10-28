@@ -48,3 +48,22 @@ export function applyTranslations(root, translator, options = {}) {
     }
   }
 }
+
+/**
+ * Offer only the languages this study ships.
+ *
+ * The menu is static markup with every locale the app can render; a study that
+ * only has German must not offer English (D40). An empty list leaves the menu
+ * alone rather than emptying it.
+ *
+ * @param {HTMLSelectElement | null} select
+ * @param {string[]} languages
+ */
+export function restrictLanguageOptions(select, languages) {
+  if (!select) return;
+  const allowed = new Set(languages || []);
+  if (!allowed.size) return;
+  for (const option of select.options) {
+    option.hidden = !allowed.has(option.value);
+  }
+}

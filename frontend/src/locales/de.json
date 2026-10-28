@@ -218,6 +218,7 @@
   "diary": {
     "shell": {
       "menu": "Menü",
+      "appName": "Zeit-Tagebuch",
       "menuTitle": "Menü",
       "menuActions": "Aktionen",
       "menuPages": "Seiten",
@@ -311,7 +312,8 @@
       "unavailableEndedTitle": "Die Erhebung ist beendet",
       "unavailableEndedText": "Der Erhebungszeitraum endete am {{date}}. Bitte wenden Sie sich an das Forschungsteam, wenn Sie Fragen haben.",
       "failedTitle": "Das hat nicht geklappt",
-      "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+      "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "retry": "Erneut versuchen"
     },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"

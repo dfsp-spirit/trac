@@ -84,3 +84,32 @@ test('CRLF input behaves like LF input', () => {
 test('a heading keeps inline emphasis', () => {
   assert.equal(renderMarkdown('## **Bold** title'), '<h2><strong>Bold</strong> title</h2>');
 });
+
+test('headingOffset demotes study headings below the page h1 (D40)', () => {
+  assert.equal(renderMarkdown('# Title', { headingOffset: 1 }), '<h2>Title</h2>');
+  // Whatever level the author started at, the first heading sits one below the page.
+  assert.equal(renderMarkdown('## Title', { headingOffset: 1 }), '<h2>Title</h2>');
+  assert.equal(renderMarkdown('###### Title', { headingOffset: 1 }), '<h2>Title</h2>');
+});
+
+test('headingOffset never produces an illegal heading level', () => {
+  assert.equal(renderMarkdown('# Title', { headingOffset: 4 }), '<h5>Title</h5>');
+  assert.equal(renderMarkdown('# Title', { headingOffset: 40 }), '<h6>Title</h6>');
+  assert.equal(renderMarkdown('# Title', { headingOffset: -2 }), '<h1>Title</h1>');
+});
+
+test('with an offset, study headings never skip a level (D40)', () => {
+  const instructions = '# Anleitung\n\nText.\n\n#### Hinweis\n\nMehr Text.';
+  assert.equal(
+    renderMarkdown(instructions, { headingOffset: 1 }),
+    '<h2>Anleitung</h2><p>Text.</p><h3>Hinweis</h3><p>Mehr Text.</p>'
+  );
+});
+
+test('a study text may still nest deeper one level at a time', () => {
+  const nested = '# A\n\n## B\n\n### C\n\n#### D';
+  assert.equal(
+    renderMarkdown(nested, { headingOffset: 1 }),
+    '<h2>A</h2><h3>B</h3><h4>C</h4><h5>D</h5>'
+  );
+});

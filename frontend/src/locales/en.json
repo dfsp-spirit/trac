@@ -218,6 +218,7 @@
   "diary": {
     "shell": {
       "menu": "Menu",
+      "appName": "Time diary",
       "menuTitle": "Menu",
       "menuActions": "Actions",
       "menuPages": "Pages",
@@ -311,7 +312,8 @@
       "unavailableEndedTitle": "Data collection has ended",
       "unavailableEndedText": "The collection period ended on {{date}}. Please contact the research team if you have questions.",
       "failedTitle": "That did not work",
-      "failedText": "Please check your connection and try again."
+      "failedText": "Please check your connection and try again.",
+      "retry": "Try again"
     },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"

@@ -7,10 +7,13 @@
  * "change my mind" here - withdrawal happens through the research team, outside
  * this app.
  *
- * The server decides what happens next; this view only reports the answer.
+ * The page frame (eyebrow, heading, measure) belongs to ui/page.js (D40); this
+ * view only supplies content. The server decides what happens next; this view
+ * only reports the answer.
  */
 import { el, button } from '../dom.js';
-import { renderMarkdown } from '../../domain/markdown.js';
+import { renderPage, prose } from '../page.js';
+import { notice } from '../notice.js';
 
 /**
  * @param {HTMLElement} host
@@ -21,43 +24,32 @@ import { renderMarkdown } from '../../domain/markdown.js';
  * }} view
  */
 export function renderConsent(host, { session, t, onDecide }) {
-  const page = el('div', 't-stage__page');
-
-  const head = el('div', 't-page-head');
-  head.append(el('h1', null, session.study_name || t('diary.stage.consentTitle')));
-  head.append(el('p', null, t('diary.stage.consentLead')));
-  page.append(head);
-
-  const prose = el('div', 't-prose');
-  prose.innerHTML = renderMarkdown(session.study_text_consent);
-  page.append(prose);
-
-  const notice = el('div');
-  page.append(notice);
-
-  const actions = el('div', 't-stage__actions');
+  const failureSlot = el('div');
   const agree = button('primary', t('diary.stage.consentAgree'), () => void decide(true));
   const decline = button('secondary', t('diary.stage.consentDecline'), () => void decide(false));
-  actions.append(agree, decline);
-  page.append(actions);
 
-  host.replaceChildren(page);
+  renderPage(host, {
+    eyebrow: session.study_name,
+    title: t('diary.stage.consentTitle'),
+    lead: t('diary.stage.consentLead'),
+    body: [prose(session.study_text_consent), failureSlot],
+    actions: [agree, decline],
+  });
 
   /** @param {boolean} given */
   async function decide(given) {
     agree.disabled = true;
     decline.disabled = true;
-    notice.replaceChildren();
+    failureSlot.replaceChildren();
     try {
       await onDecide(given);
-    } catch (error) {
-      const failure = el('div', 't-notice t-notice--attention');
-      failure.setAttribute('role', 'alert');
-      const body = el('div', 't-notice__body');
-      body.append(el('p', 't-notice__title', t('diary.stage.failedTitle')));
-      body.append(el('p', null, t('diary.stage.failedText')));
-      failure.append(body);
-      notice.replaceChildren(failure);
+    } catch {
+      failureSlot.append(
+        notice({
+          title: t('diary.stage.failedTitle'),
+          text: t('diary.stage.failedText'),
+        })
+      );
       agree.disabled = false;
       decline.disabled = false;
     }

@@ -218,6 +218,7 @@
   "diary": {
     "shell": {
       "menu": "Meny",
+      "appName": "Tidsdagbok",
       "menuTitle": "Meny",
       "menuActions": "Åtgärder",
       "menuPages": "Sidor",
@@ -311,7 +312,8 @@
       "unavailableEndedTitle": "Datainsamlingen är avslutad",
       "unavailableEndedText": "Insamlingsperioden avslutades den {{date}}. Kontakta forskargruppen om du har frågor.",
       "failedTitle": "Det gick inte",
-      "failedText": "Kontrollera din anslutning och försök igen."
+      "failedText": "Kontrollera din anslutning och försök igen.",
+      "retry": "Försök igen"
     },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"

@@ -12,6 +12,8 @@
  * save state.
  */
 import { ROUTE_DIARY, routeForStage } from '../domain/router.js';
+import { button } from './dom.js';
+import { renderPage } from './page.js';
 import { renderConsent } from './views/consent.js';
 import { renderInstructions } from './views/instructions.js';
 import { renderThanks } from './views/thanks.js';
@@ -31,6 +33,7 @@ import { renderUnavailable } from './views/unavailable.js';
  *   } | null,
  *   getLanguage: () => string,
  *   onEnterDiary: () => void,
+ *   onSession?: (session: any) => void,
  * }} deps
  */
 export function createStageMachine({
@@ -41,6 +44,7 @@ export function createStageMachine({
   api,
   getLanguage,
   onEnterDiary,
+  onSession,
 }) {
   /** @type {any} */
   let session = null;
@@ -48,6 +52,19 @@ export function createStageMachine({
   let shownRoute = null;
   let diaryMounted = false;
   let locked = false;
+
+  /**
+   * Move focus to the new page's heading. Replacing the content drops the
+   * previously focused control, so without this a keyboard or screen-reader user
+   * lands on <body> and hears nothing about the page they just entered.
+   */
+  function focusPage() {
+    const title = host.querySelector('.t-page__title');
+    if (title instanceof HTMLElement) {
+      title.tabIndex = -1;
+      title.focus();
+    }
+  }
 
   function requireApi() {
     if (!api) throw new Error('no participant');
@@ -84,6 +101,7 @@ export function createStageMachine({
    */
   async function refresh() {
     session = await requireApi().getStudyConfig(getLanguage());
+    onSession?.(session);
     applyStage(session.stage);
   }
 
@@ -130,12 +148,14 @@ export function createStageMachine({
     } else {
       renderUnavailable(host, { session, t });
     }
+    focusPage();
   }
 
   return {
     /** @param {any} loaded The study-config payload, which carries `stage`. */
     show(loaded) {
       session = loaded;
+      onSession?.(session);
       const requested = router.requested();
       // A deep link is honoured only when it names the stage the server reports,
       // so a hand-typed URL can never reveal a page that is not the participant's.
@@ -151,6 +171,7 @@ export function createStageMachine({
     /** @param {any} updated */
     update(updated) {
       session = updated;
+      onSession?.(session);
       applyStage(updated.stage);
     },
 
@@ -167,11 +188,12 @@ export function createStageMachine({
       for (const node of diaryChrome) node.hidden = true;
       shownRoute = null;
       host.hidden = false;
-      host.replaceChildren();
-      const page = host.ownerDocument.createElement('p');
-      page.className = 't-hint';
-      page.textContent = message;
-      host.append(page);
+      renderPage(host, {
+        title: t('diary.stage.failedTitle'),
+        lead: message,
+        actions: [button('secondary', t('diary.stage.retry'), () => window.location.reload())],
+      });
+      focusPage();
     },
 
     /** @param {boolean} isLocked Whether the diary has been submitted. */
@@ -179,6 +201,17 @@ export function createStageMachine({
       locked = isLocked;
       applyChrome();
     },
+
+    /**
+     * Re-render the route that is on screen (used when the UI language changed).
+     * A no-op for the diary, which re-renders from the store instead.
+     */
+    rerender() {
+      if (shownRoute) render(shownRoute);
+    },
+
+    /** Ask the server again; used when the URL changes from outside the app. */
+    refresh,
 
     currentRoute: () => shownRoute,
   };

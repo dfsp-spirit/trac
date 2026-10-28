@@ -16,9 +16,10 @@
  *     fail: (message: string) => void,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
+ *   onLoaded?: (session: any) => void | Promise<void>,
  * }} deps
  */
-export async function loadFirstStage({ api, store, stageMachine, t }) {
+export async function loadFirstStage({ api, store, stageMachine, t, onLoaded }) {
   if (!api) {
     stageMachine.fail(t('diary.error.noParticipant'));
     return;
@@ -26,6 +27,13 @@ export async function loadFirstStage({ api, store, stageMachine, t }) {
   try {
     const session = await api.getStudyConfig(store.get().language);
     store.set({ status: 'ready' });
+    // The payload names the study's own language and its `supported_languages`;
+    // both have to reach the shell before the first view renders (D40).
+    try {
+      await onLoaded?.(session);
+    } catch (error) {
+      console.warn('[i18n] could not follow the study language:', error);
+    }
     stageMachine.show(session);
   } catch (error) {
     store.set({ status: 'error', error });

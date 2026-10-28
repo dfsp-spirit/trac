@@ -1,0 +1,46 @@
+/* The application header (D40). Owned here and nowhere else: it used to be
+   defined in components.css as a fixed, centred, shrink-wrapped pill, which is
+   why its border stopped mid-screen. The bar spans the app; its inner row lines
+   up with the shell columns, so header, day rail and timeline share an edge.
+   Tokens only, no id selectors, no colour literals. */
+
+.t-topbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-topbar);
+  background: var(--bg);
+  border-block-end: 1px solid var(--line);
+  padding-top: env(safe-area-inset-top);
+}
+
+/* The bar spans the app; its content lines up with the shell's columns, so the
+   header, the rail and the timeline start on the same edge. A flex item with
+   margin-inline: auto would shrink-wrap instead (D40). */
+.t-topbar__inner {
+  max-width: var(--shell-max);
+  margin-inline: auto;
+  padding-inline: max(var(--space-4), env(safe-area-inset-left))
+    max(var(--space-4), env(safe-area-inset-right));
+}
+
+.t-topbar__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 64px;
+  padding-block: var(--space-2);
+}
+.t-topbar__title {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+.t-topbar__name {
+  margin: 0;
+  font-size: 1.125rem;
+  line-height: 1.375rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

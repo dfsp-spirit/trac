@@ -8,6 +8,7 @@
  * task is done - it lists what the server reports and offers to ask again.
  */
 import { el, button, icon } from '../dom.js';
+import { renderPage } from '../page.js';
 
 /**
  * @param {HTMLElement} host
@@ -19,12 +20,6 @@ import { el, button, icon } from '../dom.js';
  */
 export function renderTasks(host, { session, t, onRefresh }) {
   const tasks = Array.isArray(session.external_tasks) ? session.external_tasks : [];
-  const page = el('div', 't-stage__page');
-
-  const head = el('div', 't-page-head');
-  head.append(el('h1', null, t('diary.stage.tasksTitle')));
-  head.append(el('p', null, t('diary.stage.tasksLead')));
-  page.append(head);
 
   const list = el('ul', 't-task-list');
   for (const task of tasks) {
@@ -48,14 +43,16 @@ export function renderTasks(host, { session, t, onRefresh }) {
 
     list.append(item);
   }
-  page.append(list);
 
-  const actions = el('div', 't-stage__actions');
   const again = button('primary', t('diary.stage.tasksRefresh'), () => void refresh());
-  actions.append(again);
-  page.append(actions);
 
-  host.replaceChildren(page);
+  renderPage(host, {
+    eyebrow: session.study_name,
+    title: t('diary.stage.tasksTitle'),
+    lead: t('diary.stage.tasksLead'),
+    body: [list],
+    actions: [again],
+  });
 
   async function refresh() {
     again.disabled = true;

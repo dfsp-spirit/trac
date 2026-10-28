@@ -7,7 +7,8 @@
  * single button that says the participant has read it.
  */
 import { el, button } from '../dom.js';
-import { renderMarkdown } from '../../domain/markdown.js';
+import { renderPage, prose } from '../page.js';
+import { notice } from '../notice.js';
 
 /**
  * @param {HTMLElement} host
@@ -18,41 +19,28 @@ import { renderMarkdown } from '../../domain/markdown.js';
  * }} view
  */
 export function renderInstructions(host, { session, t, onComplete }) {
-  const page = el('div', 't-stage__page');
-
-  const head = el('div', 't-page-head');
-  head.append(
-    el('h1', null, session.study_text_instructions_title || t('diary.stage.instructionsTitle'))
-  );
-  page.append(head);
-
-  const prose = el('div', 't-prose');
-  prose.innerHTML = renderMarkdown(session.study_text_instructions);
-  page.append(prose);
-
-  const notice = el('div');
-  page.append(notice);
-
-  const actions = el('div', 't-stage__actions');
+  const failureSlot = el('div');
   const done = button('primary', t('diary.stage.instructionsDone'), () => void complete());
-  actions.append(done);
-  page.append(actions);
 
-  host.replaceChildren(page);
+  renderPage(host, {
+    eyebrow: session.study_name,
+    title: session.study_text_instructions_title || t('diary.stage.instructionsTitle'),
+    body: [prose(session.study_text_instructions), failureSlot],
+    actions: [done],
+  });
 
   async function complete() {
     done.disabled = true;
-    notice.replaceChildren();
+    failureSlot.replaceChildren();
     try {
       await onComplete();
     } catch {
-      const failure = el('div', 't-notice t-notice--attention');
-      failure.setAttribute('role', 'alert');
-      const body = el('div', 't-notice__body');
-      body.append(el('p', 't-notice__title', t('diary.stage.failedTitle')));
-      body.append(el('p', null, t('diary.stage.failedText')));
-      failure.append(body);
-      notice.replaceChildren(failure);
+      failureSlot.append(
+        notice({
+          title: t('diary.stage.failedTitle'),
+          text: t('diary.stage.failedText'),
+        })
+      );
       done.disabled = false;
     }
   }

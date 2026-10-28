@@ -32,7 +32,13 @@ What works end to end (browser-verified, and in CI where noted):
   one guard redirect, hash routes, URL carries identity only.
 - **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `Delete`, `?`, confined to the
   diary region, with the list and its session-scoped switch under the menu.
-- **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text.
+- **Stage pages** (D40): one `Page` component (eyebrow = study name, one `h1` = stage purpose, lead,
+  body, actions), a full-width header aligned to the shell, study Markdown demoted and level-normalised
+  under the page heading, reason-aware `unavailable` copy with dates, one notice component, and a real
+  failure page with *Try again*. Verified with axe: five pages, zero violations, one `h1` each.
+- **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text. The UI
+  language follows `?lang`, then the browser, then the study's `selected_language`, and the menu only
+  offers the study's `supported_languages`.
 - **Deployment**: two nginx locations, one settings file per app, no duplicated scripts.
 
 ### Layers (the map)
@@ -42,9 +48,12 @@ src/js/
   config.js        deployment config (replaced per environment at deploy time)
   main.js          composition root, 297 lines, cap 300
   data/            api.js (only network), i18n.js (locales + translator)
-  domain/          time, geometry, validation, diary, color, review, markdown, router  (pure)
-  state/           store.js (one state object), diary.js (the only writers)
-  ui/              components; views/ holds the five stage pages
+  domain/          time, geometry, validation, diary, color, review, markdown, router,
+                   dates, language  (pure)
+  state/           store.js (one state object + the initial state), diary.js (the only writers)
+  ui/              components; page.js/notice.js are the stage-page frame, reviewFlow.js the
+                   review-then-submit seam, views/ holds the five stage pages
+  styles/          tokens, base, components (kit), page, topbar, layout (shell), stage, panel, dialogs
 tools/check-architecture.mjs   enforces D33: import direction, no globals, no device storage,
                                no network outside data/, CSS rules, file size caps
 ```
@@ -53,7 +62,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 
 | Command | Needs | Result now |
 | --- | --- | --- |
-| `sh test_frontend_new.sh` | nothing (Node 24, `npm ci` in `frontend_new/`) | 115 tests + architecture + typecheck |
+| `sh test_frontend_new.sh` | nothing (Node 24, `npm ci` in `frontend_new/`) | 142 tests + architecture + typecheck |
 | `sh test_frontend_unit.sh` | nothing | 115 old-frontend tests |
 | `sh test_backend_unit.sh` | nothing | 255 tests |
 | `sh test_backend_integration.sh` | **backend running on :8000**, `TUD_BASE_SCHEME=http://localhost:8000` | 162 passed, 2 skipped |

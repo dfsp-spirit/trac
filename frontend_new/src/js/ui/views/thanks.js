@@ -6,8 +6,8 @@
  * declined (D38), `completed` otherwise. There is nothing to do on this page and
  * nothing to edit - the diary is locked, and the server says so.
  */
-import { el, icon } from '../dom.js';
-import { renderMarkdown } from '../../domain/markdown.js';
+import { el } from '../dom.js';
+import { renderPage, prose } from '../page.js';
 
 /**
  * @param {HTMLElement} host
@@ -20,22 +20,18 @@ export function renderThanks(host, { session, t }) {
   const declined = session.done_reason === 'noconsent';
   const text = declined ? session.study_text_end_noconsent : session.study_text_end_completed;
 
-  const page = el('div', 't-stage__page');
-  const confirm = el('div', 't-confirm');
+  const body = [];
+  if (text) {
+    body.push(prose(text));
+  } else {
+    const fallback = el('p', null, t('diary.stage.thanksFallback'));
+    body.push(fallback);
+  }
 
-  const mark = el('div', 't-confirm__mark');
-  mark.append(icon([declined ? 'M6 6l12 12M18 6L6 18' : 'M5 13l4 4L19 7']));
-  confirm.append(mark);
-
-  confirm.append(
-    el('h2', null, declined ? t('diary.stage.declinedTitle') : t('diary.stage.thanksTitle'))
-  );
-
-  const prose = el('div', 't-prose');
-  if (text) prose.innerHTML = renderMarkdown(text);
-  else prose.append(el('p', null, t('diary.stage.thanksFallback')));
-  confirm.append(prose);
-
-  page.append(confirm);
-  host.replaceChildren(page);
+  renderPage(host, {
+    eyebrow: session.study_name,
+    title: declined ? t('diary.stage.declinedTitle') : t('diary.stage.thanksTitle'),
+    body,
+    mark: [declined ? 'M6 6l12 12M18 6L6 18' : 'M5 13l4 4L19 7'],
+  });
 }

@@ -7,8 +7,7 @@
    components that render them, not here. */
 
 /* Panel frame. Content is supplied by the ActivityPanel component. */
-.t-activity-panel__head,
-.t-activity-dialog__head {
+.t-activity-panel__head {
   flex: none;
   display: grid;
   gap: var(--space-2);
@@ -17,16 +16,14 @@
   background: var(--bg);
 }
 
-.t-activity-panel__body,
-.t-activity-dialog__body {
+.t-activity-panel__body {
   flex: 1;
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
 }
 
-.t-activity-panel__foot,
-.t-activity-dialog__foot {
+.t-activity-panel__foot {
   flex: none;
   display: grid;
   gap: var(--space-2);
@@ -42,10 +39,8 @@
 }
 
 /* Title row: target day and time, plus back/close (D29). */
-.t-activity-panel__titlebar,
-.t-activity-dialog__titlebar { display: flex; align-items: center; gap: var(--space-2); }
-.t-activity-panel__titlebar h2,
-.t-activity-dialog__titlebar h2 {
+.t-activity-panel__titlebar { display: flex; align-items: center; gap: var(--space-2); }
+.t-activity-panel__titlebar h2 {
   flex: 1;
   min-width: 0;
   margin: 0;

@@ -10,6 +10,14 @@
 import { createActivityPanel } from './activityPanel.js';
 import { createToast } from './toast.js';
 
+/** The panel still mounts without a participant (the stage machine shows the
+ *  failure page); its actions then explain themselves instead of throwing. */
+const NO_PARTICIPANT = {
+  create: () => Promise.reject(new Error('no participant')),
+  update: () => Promise.reject(new Error('no participant')),
+  removeWithUndo: () => Promise.reject(new Error('no participant')),
+};
+
 /**
  * @param {{
  *   hostPanel: () => HTMLElement | null,
@@ -20,13 +28,12 @@ import { createToast } from './toast.js';
  *   getDiary: () => import('../domain/diary.js').ApiDiary,
  *   getCatalogue: () => any,
  *   getLanguage: () => string,
- *   actions: {
+ *   actions?: {
  *     create: (body: { items: any[], group_id?: string }) => Promise<any>,
  *     update: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *     removeWithUndo: (activity: import('../domain/diary.js').ApiActivity) => Promise<() => Promise<void>>,
  *   },
  *   toastRegion: HTMLElement,
- *   toastLabels: { undo: () => string, dismiss: () => string },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  * }} deps
  */
@@ -39,16 +46,18 @@ export function createPanelController({
   getDiary,
   getCatalogue,
   getLanguage,
-  actions,
+  actions = NO_PARTICIPANT,
   toastRegion,
-  toastLabels,
   t,
 }) {
   /** @type {ReturnType<typeof createActivityPanel> | null} */
   let panel = null;
   let lockedRendered = false;
   // The toast belongs to the panel it reports on, so the panel owner builds it.
-  const toast = createToast(toastRegion, toastLabels);
+  const toast = createToast(toastRegion, {
+    undo: () => t('diary.toast.undo'),
+    dismiss: () => t('diary.toast.dismiss'),
+  });
 
   /** @param {import('../domain/diary.js').ApiActivity} activity */
   async function deleteWithUndo(activity) {

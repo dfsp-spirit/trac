@@ -18,14 +18,6 @@
   color: var(--ink);
 }
 
-.t-topbar {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-topbar);
-  background: var(--bg);
-  border-block-end: 1px solid var(--line);
-}
-
 /* Phone: the day selector sits in the bar, the rail and panel are not shown,
    and the activity panel lives in a modal dialog instead (D29). */
 .t-shell { display: block; }

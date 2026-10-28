@@ -10,21 +10,23 @@
 import { config } from './config.js';
 import { createApi } from './data/api.js';
 import { createTranslator, loadLocale } from './data/i18n.js';
+import { followStudyLanguage, pickInitialLanguage, studyLanguageOptions } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
 import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
-import { createStore } from './state/store.js';
+import { createInitialState, createStore } from './state/store.js';
 import { createDiaryView } from './ui/diaryView.js';
 import { createPanelController } from './ui/panelController.js';
 import { createPanelHost } from './ui/panelHost.js';
 import { createRouter } from './ui/router.js';
 import { createStageMachine } from './ui/stageMachine.js';
 import { loadFirstStage } from './ui/boot.js';
-import { createReviewModal } from './ui/reviewModal.js';
+import { createReviewFlow } from './ui/reviewFlow.js';
 import { readShell } from './ui/shell.js';
 import { createShortcuts } from './ui/shortcuts.js';
-import { applyTranslations } from './ui/i18n-dom.js';
+import { applyTranslations, restrictLanguageOptions } from './ui/i18n-dom.js';
 import { scrollToDay } from './ui/timeline.js';
+import { watchTopbarHeight } from './ui/topbarHeight.js';
 
 /**
  * @param {{ root: HTMLElement, params: URLSearchParams }} inputs
@@ -33,26 +35,16 @@ import { scrollToDay } from './ui/timeline.js';
 export function mount({ root, params }) {
   // Identity only - never progress (D37).
   const identity = parseIdentity(params.toString());
-  const language =
-    identity.language && config.supportedLanguages.includes(identity.language)
-      ? identity.language
-      : config.defaultLanguage;
+  const language = pickInitialLanguage({
+    requested: identity.language,
+    browserLanguages: navigator.languages || [navigator.language],
+    supported: config.supportedLanguages,
+    fallback: config.defaultLanguage,
+  });
   const studyName = identity.study || config.studyName;
   const participantId = identity.participant || config.participantId;
 
-  /** @type {import('./state/store.js').DiaryState} */
-  const initial = {
-    status: 'idle',
-    error: null,
-    diary: null,
-    catalogue: null,
-    currentDay: 0,
-    saveState: 'idle',
-    language,
-    shortcuts: true,
-    revision: 0,
-  };
-  const store = createStore(initial);
+  const store = createStore(createInitialState({ language }));
   let translator = createTranslator({});
 
   /** @type {(key: string, values?: Record<string, string | number>) => string} */
@@ -109,13 +101,8 @@ export function mount({ root, params }) {
     getDiary: () => /** @type {import('./domain/diary.js').ApiDiary} */ (store.get().diary),
     getCatalogue: () => store.get().catalogue,
     getLanguage: () => store.get().language,
-    actions: actions ?? {
-      create: () => Promise.reject(new Error('no participant')),
-      update: () => Promise.reject(new Error('no participant')),
-      removeWithUndo: () => Promise.reject(new Error('no participant')),
-    },
+    actions: actions ?? undefined,
     toastRegion,
-    toastLabels: { undo: () => t('diary.toast.undo'), dismiss: () => t('diary.toast.dismiss') },
     t,
   });
 
@@ -130,6 +117,11 @@ export function mount({ root, params }) {
     api,
     getLanguage: () => store.get().language,
     onEnterDiary: () => void actions?.load(),
+    onSession: (session) =>
+      restrictLanguageOptions(
+        languageSelect,
+        studyLanguageOptions(session.supported_languages, config.supportedLanguages)
+      ),
   });
 
   const view = createDiaryView({
@@ -154,15 +146,14 @@ export function mount({ root, params }) {
     if (day) scrollToDay(view.sections(), day.name);
   }
 
-  const reviewModal = createReviewModal({
+  const review = createReviewFlow({
     root,
     t,
+    actions,
+    stageMachine,
+    getState: () => store.get(),
+    isLocked,
     onEdit: goToDay,
-    onSubmit: async () => {
-      if (!actions) throw new Error('no participant');
-      const result = await actions.submit();
-      stageMachine.applyStage(result.stage);
-    },
   });
 
   /** @param {import('./state/store.js').DiaryState} state */
@@ -189,6 +180,18 @@ export function mount({ root, params }) {
     applyTranslations(document, translator);
     store.set({ language: next });
     if (languageSelect) languageSelect.value = next;
+    stageMachine.rerender();
+  }
+
+  /** @param {any} session Follow the study's language unless the URL named one (D40). */
+  async function adoptStudyLanguage(session) {
+    const next = followStudyLanguage({
+      selected: session.selected_language,
+      explicit: identity.language,
+      current: store.get().language,
+      supported: config.supportedLanguages,
+    });
+    if (next) await setLanguage(next);
   }
 
   const onFab = () => {
@@ -198,9 +201,6 @@ export function mount({ root, params }) {
     panels.openAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
   };
 
-  /** @returns {number} */
-  const dayCount = () => store.get().diary?.days.length ?? 0;
-
   const onEscape = () => {
     if (panels.escape()) return;
     if (dialogHost?.open) dialogHost.close();
@@ -209,11 +209,7 @@ export function mount({ root, params }) {
   /** @param {Event} event */
   const onTimelineClick = (event) => panels.openFromEvent(event);
 
-  const onSubmitClick = () => {
-    const diary = store.get().diary;
-    if (isLocked() || !diary) return;
-    reviewModal.open(diary, store.get().language);
-  };
+  const onSubmitClick = () => review.open();
 
   const onLanguageChange = () => {
     const next = languageSelect?.value;
@@ -237,7 +233,8 @@ export function mount({ root, params }) {
       store.get().status !== 'ready' || root.querySelector('dialog[open]') !== null,
     onToggle: (enabled) => store.set({ shortcuts: enabled }),
     actions: {
-      nextDay: () => goToDay(Math.min(store.get().currentDay + 1, dayCount() - 1)),
+      nextDay: () =>
+        goToDay(Math.min(store.get().currentDay + 1, (store.get().diary?.days.length ?? 1) - 1)),
       prevDay: () => goToDay(Math.max(store.get().currentDay - 1, 0)),
       newActivity: onFab,
       search: () => panels.focusSearch(),
@@ -245,21 +242,16 @@ export function mount({ root, params }) {
     },
   });
 
-  const onBreakpoint = () => panels.create();
-
   fab.addEventListener('click', onFab);
   submitBtn.addEventListener('click', onSubmitClick);
   daysHost.addEventListener('click', onTimelineClick);
   languageSelect?.addEventListener('change', onLanguageChange);
+  const onBreakpoint = () => panels.create();
   wide.addEventListener('change', onBreakpoint);
 
-  let observer = null;
-  if (typeof ResizeObserver !== 'undefined') {
-    observer = new ResizeObserver(() => {
-      root.style.setProperty('--topbar-h', `${topbar.offsetHeight}px`);
-    });
-    observer.observe(topbar);
-  }
+  const stopTopbarWatch = watchTopbarHeight(topbar, root);
+
+  const stopHashListener = router.onHashChange(() => void stageMachine.refresh());
 
   const unsubscribe = store.subscribe(render);
   panels.create();
@@ -271,22 +263,30 @@ export function mount({ root, params }) {
       console.error('[i18n] falling back to the markup text:', error);
     }
     // One question, one answer: the server says which stage this participant is
-    // in, and the stage machine routes to it (D37).
-    await loadFirstStage({ api, store, stageMachine, t });
+    // in, and the stage machine routes to it (D37). The same answer says which
+    // language the study speaks (D40).
+    await loadFirstStage({
+      api,
+      store,
+      stageMachine,
+      t,
+      onLoaded: adoptStudyLanguage,
+    });
   })();
 
   return {
     destroy() {
       unsubscribe();
       view.destroy();
-      observer?.disconnect();
+      stopTopbarWatch();
+      stopHashListener();
+      wide.removeEventListener('change', onBreakpoint);
       fab.removeEventListener('click', onFab);
       submitBtn.removeEventListener('click', onSubmitClick);
       daysHost.removeEventListener('click', onTimelineClick);
       shortcuts.destroy();
-      reviewModal.destroy();
+      review.destroy();
       languageSelect?.removeEventListener('change', onLanguageChange);
-      wide.removeEventListener('change', onBreakpoint);
     },
   };
 }

@@ -54,9 +54,17 @@ function inline(text) {
  * empty paragraph, so a caller can test "is there any text?".
  *
  * @param {string | null | undefined} markdown
+ * @param {{ headingOffset?: number }} [options] Shift heading levels, e.g. 1 when
+ *   the page already owns the `h1`. With an offset the output is also normalised
+ *   so it never skips a level: study texts routinely jump from `#` to `####`,
+ *   which is a heading-order failure for screen readers.
  * @returns {string}
  */
-export function renderMarkdown(markdown) {
+export function renderMarkdown(markdown, options = {}) {
+  const offset = Math.max(0, Number(options.headingOffset) || 0);
+  // The deepest level the document may use next: one step below the previous
+  // heading, and never above the page's own h1 when there is an offset.
+  let previousLevel = offset;
   const lines = String(markdown || '')
     .replace(/\r\n/g, '\n')
     .split('\n');
@@ -98,7 +106,14 @@ export function renderMarkdown(markdown) {
     if (heading) {
       flushParagraph();
       flushList();
-      const level = heading[1].length;
+      let level = Math.min(heading[1].length + offset, 6);
+      if (offset > 0) {
+        // At least one step below the page heading, and never more than one
+        // step below the heading before it.
+        const floor = Math.min(offset + 1, 6);
+        level = Math.min(Math.max(level, floor), Math.min(previousLevel + 1, 6));
+      }
+      previousLevel = level;
       chunks.push(`<h${level}>${inline(heading[2])}</h${level}>`);
       continue;
     }

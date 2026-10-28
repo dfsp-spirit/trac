@@ -799,3 +799,45 @@ return is then the thing that must keep working.
 What the new frontend does instead, and what D37 already gives us: the stage is re-verified from the
 server on every load, so a stale tab cannot act on stale permissions. A blank-screen "continue"
 overlay is all the idle behaviour we ship until a decision is made.
+
+### D40 — One `Page`, one header, study name as eyebrow
+
+The five stage pages had grown five different anatomies: the study name as `h1` on consent and
+unavailable, the study's own instructions title as `h1` on instructions, a generic title on tasks and
+no `h1` at all on thanks; three of them indented their heading 16 px relative to their own body text
+because `.t-stage` and `.t-page-head` both added page padding; the thanks page then centred everything
+inside a third layer. Measured at 1440 px: heading at x=416, prose at x=400 and buttons at x=400 with
+a 640 px width while prose stopped at 595 px. On top of that, `.t-topbar` was a flex item with
+`margin-inline: auto`, so it **shrink-wrapped to 173 px and floated centred** instead of spanning the
+app - the border under the header stopped mid-screen, and on desktop the header sat over the middle
+column only.
+
+Three decisions, implemented together because they are the same surface:
+
+1. **One `Page` component** (`ui/page.js` + `styles/page.css`) for every stage: an optional eyebrow
+   (the study name), one `h1` (the stage's own purpose), an optional lead, a body and an action
+   footer. Variants `--confirm` (thank-you: mark, centred) and a notice body (unavailable). Each view
+   now only supplies content; none of them owns padding, headings or alignment. Exactly one `h1`
+   per page, always the stage title.
+2. **Study text is content, not page structure.** The page owns the `h1`, so
+   `renderMarkdown(text, { headingOffset: 1 })` demotes study headings by one level (h1 → h2 … h6 →
+   h6). That is what removes the "three `h1`s and an `h2` → `h4` jump" axe failure without asking
+   study authors to renumber their texts. `.t-prose` gained rules for `a` (ink, underlined - the
+   browser-blue default was the only chroma on a monochrome page), `h2`–`h6` (never smaller than body
+   text) and `overflow-wrap: anywhere` (a long URL in a consent text must not scroll the page
+   sideways).
+3. **The header is a bar, not a pill.** `.t-topbar` is owned by `layout.css` alone (it was defined in
+   `components.css` too, with `position: fixed` and `margin-inline: auto`), spans the app width, and
+   carries an inner row aligned to `--shell-max`, so the header, the day rail and the timeline start on
+   the same edge. The app title stays the study name for now; a per-stage document title is a later,
+   separate change.
+
+Consequences: `.t-prose`, `.t-confirm*` and `.t-page-head` left `components.css` (one owner per
+class), the dead prototype page frame (`.t-pages`, `.t-page__head`, `.t-page__body`) and the unused
+category patterns, popovers and save chips were deleted, and the failure state is a real page with a
+title and a *Try again* action instead of one grey sentence.
+
+Same pass, same reasons: the UI language now follows the study when the URL does not name one (it
+used to fall back to `en` around German study text), switching language re-renders the stage that is
+on screen, the menu offers only the study's `supported_languages`, and a stage transition moves focus
+to the new `h1` instead of dropping it on `<body>`.
