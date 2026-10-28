@@ -184,14 +184,24 @@ export function createStageMachine({
      *
      * @param {string} message
      */
-    fail(message) {
+    /**
+     * Show a plain message instead of any stage: no participant in the URL, a
+     * stage that could not be loaded, a page that cannot exist.
+     *
+     * @param {string} message
+     * @param {{ title?: string, retry?: boolean }} [options] `retry: false` for
+     *   the cases where reloading cannot help (a missing invitation link).
+     */
+    fail(message, { title = t('diary.stage.failedTitle'), retry = true } = {}) {
       for (const node of diaryChrome) node.hidden = true;
       shownRoute = null;
       host.hidden = false;
       renderPage(host, {
-        title: t('diary.stage.failedTitle'),
+        title,
         lead: message,
-        actions: [button('secondary', t('diary.stage.retry'), () => window.location.reload())],
+        actions: retry
+          ? [button('secondary', t('diary.stage.retry'), () => window.location.reload())]
+          : [],
       });
       focusPage();
     },

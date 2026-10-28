@@ -13,7 +13,7 @@
  *   store: { set: (patch: object) => void, get: () => any },
  *   stageMachine: {
  *     show: (session: any) => void,
- *     fail: (message: string) => void,
+ *     fail: (message: string, options?: { title?: string, retry?: boolean }) => void,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   onLoaded?: (session: any) => void | Promise<void>,
@@ -21,7 +21,12 @@
  */
 export async function loadFirstStage({ api, store, stageMachine, t, onLoaded }) {
   if (!api) {
-    stageMachine.fail(t('diary.error.noParticipant'));
+    // Not a failure: the page was opened without an invitation link. Say what to
+    // do, and do not offer a reload that would land on the same page.
+    stageMachine.fail(t('diary.stage.noInvitationText'), {
+      title: t('diary.stage.noInvitationTitle'),
+      retry: false,
+    });
     return;
   }
   try {

@@ -313,7 +313,9 @@
       "unavailableEndedText": "Insamlingsperioden avslutades den {{date}}. Kontakta forskargruppen om du har frågor.",
       "failedTitle": "Det gick inte",
       "failedText": "Kontrollera din anslutning och försök igen.",
-      "retry": "Försök igen"
+      "retry": "Försök igen",
+      "noInvitationTitle": "Ingen inbjudan hittades",
+      "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie."
     },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"

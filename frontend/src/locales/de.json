@@ -313,7 +313,9 @@
       "unavailableEndedText": "Der Erhebungszeitraum endete am {{date}}. Bitte wenden Sie sich an das Forschungsteam, wenn Sie Fragen haben.",
       "failedTitle": "Das hat nicht geklappt",
       "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "noInvitationTitle": "Keine Einladung gefunden",
+      "noInvitationText": "Bitte öffnen Sie den Link aus Ihrer Einladung. Er enthält die Angaben zu Ihrer Studie."
     },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"

@@ -313,7 +313,9 @@
       "unavailableEndedText": "The collection period ended on {{date}}. Please contact the research team if you have questions.",
       "failedTitle": "That did not work",
       "failedText": "Please check your connection and try again.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "noInvitationTitle": "No invitation found",
+      "noInvitationText": "Please open the link from your invitation. It contains the details of your study."
     },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"

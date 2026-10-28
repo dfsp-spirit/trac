@@ -9,7 +9,7 @@
  */
 import { config } from './config.js';
 import { createApi } from './data/api.js';
-import { createTranslator, loadLocale } from './data/i18n.js';
+import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
 import { followStudyLanguage, pickInitialLanguage, studyLanguageOptions } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
 import { STEP_MINUTES } from './domain/time.js';
@@ -174,12 +174,12 @@ export function mount({ root, params }) {
   /** @param {string} next */
   async function setLanguage(next) {
     if (!config.supportedLanguages.includes(next)) return;
-    const messages = await loadLocale(next);
-    translator = createTranslator(messages);
-    document.documentElement.lang = next;
+    const loaded = await loadLocaleWithFallback(next, config.defaultLanguage);
+    translator = createTranslator(loaded.messages);
+    document.documentElement.lang = loaded.language;
     applyTranslations(document, translator);
-    store.set({ language: next });
-    if (languageSelect) languageSelect.value = next;
+    store.set({ language: loaded.language });
+    if (languageSelect) languageSelect.value = loaded.language;
     stageMachine.rerender();
   }
 

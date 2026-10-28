@@ -65,8 +65,10 @@ fi
 FULL_NGINX_CONF_PATH="$(pwd)/$NGINX_CONF_FILE" # nginx requires an absolute path to the configuration file, or changing its config dir.
 mkdir -p "$HOME/nginx-client-body-temp" || { echo -e "ERROR: Failed to create nginx client body temp directory"; exit 1; }
 
-# Copy frontend config file
+# Copy frontend config files: the old app's settings and the rewrite's config.
+# Both are tracked files, so they are restored from git when this script exits.
 cp "$CURRENT_DIR/dev_tools/local_nginx/frontend_settings/tud_settings.dev-nginx.js" "$CURRENT_DIR/frontend/src/settings/tud_settings.js" || { echo -e "ERROR: Failed to copy frontend config file"; exit 1; }
+cp "$CURRENT_DIR/dev_tools/local_nginx/frontend_settings/config.new.dev-nginx.js" "$CURRENT_DIR/frontend_new/src/js/config.js" || { echo -e "ERROR: Failed to copy the rewrite's config file"; exit 1; }
 
 # Copy backend config .env file
 cp "$CURRENT_DIR/dev_tools/local_nginx/backend_settings/.env.dev-nginx" "$CURRENT_DIR/backend/.env" || { echo -e "ERROR: Failed to copy backend config file"; exit 1; }
@@ -98,12 +100,24 @@ fi
 # Prepare backend DB state explicitly before starting the API server.
 cd "$CURRENT_DIR/backend/" || { echo -e "ERROR: Failed to change to backend directory"; exit 1; }
 uv run tud db upgrade || { echo -e "ERROR: Failed to apply DB migrations"; exit 1; }
-uv run tud studies import --config studies_config.json || { echo -e "ERROR: Failed to import studies config"; exit 1; }
+uv run tud studies import --config studies_config.json --config studies_config_new.json || { echo -e "ERROR: Failed to import studies config"; exit 1; }
+
+# The deployment configs above are copies over tracked files; put the repo
+# versions back so a global `git add -A` cannot commit this machine's paths.
+restore_tracked_configs() {
+    if git -C "$CURRENT_DIR" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+        git -C "$CURRENT_DIR" checkout -- \
+            frontend/src/settings/tud_settings.js \
+            frontend_new/src/js/config.js 2>/dev/null \
+            && echo "Restored frontend/src/settings/tud_settings.js and frontend_new/src/js/config.js"
+    fi
+}
 
 cleanup() {
     echo -e "\n Shutting down nginx service..."
 
     kill -QUIT $(cat $HOME/nginx-dev.pid) && echo "Cleanup complete. Goodbye!" || echo "WARNING: Failed to stop nginx. You may need to stop it manually with 'kill -QUIT \$(cat \$HOME/nginx-dev.pid)'"
+    restore_tracked_configs
 }
 
 # Set up trap for Ctrl+C
@@ -112,8 +126,11 @@ trap cleanup SIGINT SIGTERM
 nginx -c "$FULL_NGINX_CONF_PATH"
 
 if [ $? -eq 0 ]; then
-    echo -e "Started nginx successfully, frontend available at http://localhost:3000/report/"
-    echo -e "Backend API available at http://localhost:3000/tud_backend/api"
+    echo -e "Started nginx successfully"
+    echo -e "  old frontend:  http://localhost:3000/report/"
+    echo -e "  rewrite:       http://localhost:3000/report-new/"
+    echo -e "  pilot study:   http://localhost:3000/report-new/?study=pilot_mpiae_01_open&pid=test01"
+    echo -e "  backend API:   http://localhost:3000/tud_backend/api"
     if [ -n "$PHONE_URL" ]; then
         echo -e "INFO Testing from a phone on the same wifi: $PHONE_URL"
     else
@@ -131,5 +148,6 @@ fi
 # note that --reload requires the python package 'watchdog' to be installed, which is included in the dev dependencies.
 
 cd "$CURRENT_DIR/backend/" && uv run gunicorn --reload -c ../deployment/gunicorn_conf.dev.py o_timeusediary_backend.api:app || { echo -e " Failed to start FastAPI backend"; exit 1; }
+restore_tracked_configs
 
 

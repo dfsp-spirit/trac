@@ -97,3 +97,25 @@ export function createTranslator(messages) {
 
   return { t, tCount, has };
 }
+
+/**
+ * Load a locale, falling back to the deployment default once.
+ *
+ * A missing or unreachable locale file used to leave every string as its raw key
+ * - a page of `diary.stage.failedTitle` for a participant. One retry in the
+ * deployment's own language is the difference between English and gibberish; the
+ * underlying failure is still logged by the caller.
+ *
+ * @param {string} language
+ * @param {string} fallback
+ * @returns {Promise<{ messages: Messages, language: string }>}
+ */
+export async function loadLocaleWithFallback(language, fallback) {
+  try {
+    return { messages: await loadLocale(language), language };
+  } catch (error) {
+    if (language === fallback) throw error;
+    console.warn(`[i18n] ${language} failed to load, falling back to ${fallback}:`, error);
+    return { messages: await loadLocale(fallback), language: fallback };
+  }
+}
