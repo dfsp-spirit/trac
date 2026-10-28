@@ -111,7 +111,7 @@ from .utils import (
     utc_now,
 )
 from . import stages
-from .api_deps.diary_access import study_is_currently_available
+from .api_deps.diary_access import study_availability
 
 
 setup_logging()
@@ -9585,6 +9585,9 @@ class StudyConfigResponse(BaseModel):
     # else, so the client never has to re-derive the rules.
     stage: str = stages.STAGE_DIARY
     done_reason: Optional[str] = None
+    # Why the stage is `unavailable` (D39): "paused", "not_started" or "ended".
+    # The client shows one page for all three and needs to say which it is.
+    unavailable_reason: Optional[str] = None
     external_tasks: List[ParticipantExternalTaskResponse] = []
     all_external_tasks_confirmed: bool = False
     timelines: List[TimelineConfigResponse]
@@ -9791,8 +9794,10 @@ def get_study_config(
         study_days_count=len(day_labels),
     )
 
+    availability = study_availability(study)
     placement = stages.resolve_placement(
-        available=study_is_currently_available(study),
+        available=availability.available,
+        unavailable_reason=availability.reason,
         require_consent=require_consent,
         consent_given=consent_given,
         require_instructions=bool(study_text_instructions),
@@ -9841,6 +9846,7 @@ def get_study_config(
         study_submitted_at=study_submitted_at,
         stage=placement.stage,
         done_reason=placement.done_reason,
+        unavailable_reason=placement.unavailable_reason,
         external_tasks=participant_external_tasks,
         all_external_tasks_confirmed=all_external_tasks_confirmed,
         timelines=timeline_responses,

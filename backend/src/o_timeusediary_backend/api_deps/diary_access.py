@@ -11,6 +11,7 @@ where the rules live for everything new.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import NamedTuple, Optional
 
 from fastapi import Depends, HTTPException, Path
@@ -28,16 +29,48 @@ class DiaryContext(NamedTuple):
     study_participant: StudyParticipant
 
 
-def study_is_currently_available(study: Study) -> bool:
-    """Is the study collecting right now?
+UNAVAILABLE_PAUSED = "paused"
+UNAVAILABLE_NOT_STARTED = "not_started"
+UNAVAILABLE_ENDED = "ended"
 
-    The one place that answers this, because both the 403 and the participant's
-    stage (D37) need the same answer and must not drift.
+
+class Availability(NamedTuple):
+    """Whether a study is collecting right now, and if not, why not.
+
+    The reason is participant-facing: the client has one `unavailable` page and
+    three very different messages to show, and "paused" and "closed four months
+    ago" are not the same thing to someone holding a link (D39).
     """
-    now = coerce_utc_aware(utc_now())
+
+    available: bool
+    reason: Optional[str] = None
+
+
+def study_availability(study: Study, now: Optional[datetime] = None) -> Availability:
+    """Is the study collecting right now, and if not, why?
+
+    The one place that answers this, because the 403, the participant's stage
+    (D37) and the unavailable page (D39) need the same answer and must not drift.
+
+    Precedence: a window that has ended or has not started yet wins over the
+    pause switch, because the date is what the participant can act on; "paused"
+    only describes the state of a study that would otherwise be open.
+    """
+    moment = coerce_utc_aware(now or utc_now())
     collection_start = coerce_utc_aware(study.data_collection_start)
     collection_end = coerce_utc_aware(study.data_collection_end)
-    return not (now < collection_start or now > collection_end or study.is_paused)
+    if moment > collection_end:
+        return Availability(False, UNAVAILABLE_ENDED)
+    if moment < collection_start:
+        return Availability(False, UNAVAILABLE_NOT_STARTED)
+    if study.is_paused:
+        return Availability(False, UNAVAILABLE_PAUSED)
+    return Availability(True)
+
+
+def study_is_currently_available(study: Study) -> bool:
+    """Is the study collecting right now? See study_availability for the reason."""
+    return study_availability(study).available
 
 
 def ensure_study_is_currently_available(study: Study) -> None:

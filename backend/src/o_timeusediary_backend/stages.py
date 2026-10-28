@@ -15,7 +15,8 @@ Here the answer is computed once:
 * ``stage_for_participant`` is the only code that reads the database to feed it.
 
 The client renders the stage it is handed. It never decides, and it never carries
-progress in the URL.
+progress in the URL. An `unavailable` stage also carries a reason (paused, not
+started yet, already over), so the one page can say why instead of guessing (D39).
 
 Two deliberate omissions, so nobody goes looking for them:
 
@@ -34,7 +35,7 @@ from typing import NamedTuple, Optional
 from sqlalchemy import func
 from sqlmodel import Session, select
 
-from .api_deps.diary_access import study_is_currently_available
+from .api_deps.diary_access import study_availability
 from .models import (
     Study,
     StudyExternalTask,
@@ -55,15 +56,21 @@ DONE_NOCONSENT = "noconsent"
 
 
 class Placement(NamedTuple):
-    """The stage a participant belongs in, plus why when the stage is `done`."""
+    """The stage a participant belongs in, plus why.
+
+    ``done_reason`` explains a `done` stage; ``unavailable_reason`` explains an
+    `unavailable` stage (D39). The client renders both, it does not derive them.
+    """
 
     stage: str
     done_reason: Optional[str] = None
+    unavailable_reason: Optional[str] = None
 
 
 def resolve_placement(
     *,
     available: bool,
+    unavailable_reason: Optional[str] = None,
     require_consent: bool,
     consent_given: Optional[bool],
     require_instructions: bool,
@@ -73,23 +80,30 @@ def resolve_placement(
 ) -> Placement:
     """The stage table from D37, as code.
 
-    ``consent_given is False`` is checked before availability on purpose: a
-    participant who declined has finished, and telling them "this study is not
-    available right now, try later" would invite them to come back to a decision
-    they already made.
+    Two checks run before availability, both for the same reason - a participant
+    who has already finished must not be sent back into a decision or a waiting
+    room:
+
+    * ``consent_given is False``: they declined, and "come back later" would
+      invite them to a decision they already made.
+    * ``submitted``: they handed the diary in, and a study whose collection
+      window has since closed would otherwise hide their thank-you page and any
+      external task they still owe. Tasks stay reachable after the window so a
+      participant can finish them.
     """
     if require_consent and consent_given is False:
         return Placement(STAGE_DONE, DONE_NOCONSENT)
-    if not available:
-        return Placement(STAGE_UNAVAILABLE)
-    if require_consent and consent_given is not True:
-        return Placement(STAGE_CONSENT)
 
     if submitted:
-        # A submitted diary is finished; instructions are moot at that point.
+        # A submitted diary is finished; instructions and availability are moot.
         if pending_external_tasks > 0:
             return Placement(STAGE_TASKS)
         return Placement(STAGE_DONE, DONE_COMPLETED)
+
+    if not available:
+        return Placement(STAGE_UNAVAILABLE, None, unavailable_reason)
+    if require_consent and consent_given is not True:
+        return Placement(STAGE_CONSENT)
 
     if require_instructions and not instructions_completed:
         return Placement(STAGE_INSTRUCTIONS)
@@ -141,8 +155,10 @@ def stage_for_participant(
             )
         ).first()
 
+    availability = study_availability(study)
     return resolve_placement(
-        available=study_is_currently_available(study),
+        available=availability.available,
+        unavailable_reason=availability.reason,
         require_consent=bool(study.require_consent),
         consent_given=link.consent_given if link else None,
         require_instructions=bool(

@@ -304,6 +304,12 @@
       "tasksRefresh": "Check again",
       "unavailableTitle": "This study is not available right now",
       "unavailableText": "It is either paused or no longer collecting. Please contact the research team if you expected to take part.",
+      "unavailablePausedTitle": "This study is paused right now",
+      "unavailablePausedText": "Please try again later using your invitation link.",
+      "unavailableNotStartedTitle": "Data collection has not started yet",
+      "unavailableNotStartedText": "It begins on {{date}}. Please come back with your invitation link then.",
+      "unavailableEndedTitle": "Data collection has ended",
+      "unavailableEndedText": "The collection period ended on {{date}}. Please contact the research team if you have questions.",
       "failedTitle": "That did not work",
       "failedText": "Please check your connection and try again."
     },

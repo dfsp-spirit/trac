@@ -304,6 +304,12 @@
       "tasksRefresh": "Kontrollera igen",
       "unavailableTitle": "Studien är inte tillgänglig just nu",
       "unavailableText": "Den är pausad eller tar inte längre emot data. Kontakta forskargruppen om du hade väntat dig att delta.",
+      "unavailablePausedTitle": "Studien är pausad just nu",
+      "unavailablePausedText": "Försök igen senare med din inbjudningslänk.",
+      "unavailableNotStartedTitle": "Datainsamlingen har inte börjat än",
+      "unavailableNotStartedText": "Den börjar den {{date}}. Kom tillbaka med din inbjudningslänk då.",
+      "unavailableEndedTitle": "Datainsamlingen är avslutad",
+      "unavailableEndedText": "Insamlingsperioden avslutades den {{date}}. Kontakta forskargruppen om du har frågor.",
       "failedTitle": "Det gick inte",
       "failedText": "Kontrollera din anslutning och försök igen."
     },

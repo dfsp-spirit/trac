@@ -304,6 +304,12 @@
       "tasksRefresh": "Erneut prüfen",
       "unavailableTitle": "Diese Studie ist derzeit nicht verfügbar",
       "unavailableText": "Sie ist pausiert oder nimmt keine Daten mehr auf. Bitte wenden Sie sich an das Forschungsteam, wenn Sie eine Teilnahme erwartet haben.",
+      "unavailablePausedTitle": "Die Studie ist derzeit pausiert",
+      "unavailablePausedText": "Bitte versuchen Sie es später über Ihren Einladungslink erneut.",
+      "unavailableNotStartedTitle": "Die Erhebung hat noch nicht begonnen",
+      "unavailableNotStartedText": "Sie beginnt am {{date}}. Bitte kommen Sie dann über Ihren Einladungslink zurück.",
+      "unavailableEndedTitle": "Die Erhebung ist beendet",
+      "unavailableEndedText": "Der Erhebungszeitraum endete am {{date}}. Bitte wenden Sie sich an das Forschungsteam, wenn Sie Fragen haben.",
       "failedTitle": "Das hat nicht geklappt",
       "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
     },
