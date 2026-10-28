@@ -12,6 +12,13 @@
  * unordered lists, paragraphs, bold, italic, and http(s) links. That is what the
  * existing study texts use, and it is small enough to keep tested.
  *
+ * Line breaks: a single newline inside a paragraph becomes a `<br>`, not a
+ * space. Study texts are written for reading, not for a 80-column editor -
+ * contact blocks, addresses and opening hours are one line each, and CommonMark's
+ * "soft break" would run them together into one sentence ("Grüneburgweg 14 60322
+ * Frankfurt am Main ana@example.org"). Authors therefore do not need trailing
+ * double spaces, and a blank line still starts a new paragraph.
+ *
  * Pure: string in, string out. The caller decides where to put it.
  */
 
@@ -64,7 +71,7 @@ export function renderMarkdown(markdown) {
 
   const flushParagraph = () => {
     if (paragraph.length) {
-      chunks.push(`<p>${paragraph.join(' ')}</p>`);
+      chunks.push(`<p>${paragraph.join('<br>')}</p>`);
       paragraph = [];
     }
   };

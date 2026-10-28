@@ -111,6 +111,34 @@ python3 -m http.server 8765 --bind 127.0.0.1
 
 ## 3. What is left, in the order I would do it
 
+**Pilot data.** `backend/studies_config_new.json` + `backend/activities_newui_main.json` are the study
+the rewrite is piloted on (`pilot_mpiae_01_open`). Import with a second `--config`
+(`tud studies import --config studies_config.json --config studies_config_new.json`; `--config`
+repeats and the import creates the `Participant`/`StudyParticipant` rows for every
+`study_participant_ids` entry, so e2e participants are seeded by the import instead of by test code).
+
+**Fixture studies** live in the same file, all closed (fixed participant ids) and all pointing at
+`activities_newui_main.json`, so a spec can start in any stage after a plain import:
+
+| `name_short` | lands in | ids | note |
+| --- | --- | --- | --- |
+| `pilot_mpiae_01_open` | `consent` | any (`open`) | the real pilot study, open enrolment |
+| `newui_02_paused` | `unavailable` | `paused_01` | `is_paused` |
+| `newui_03_ended` | `unavailable` | `ended_01` | collection window is over |
+| `newui_04_not_started` | `unavailable` | `notstarted_01` | collection window not open yet |
+| `newui_05_instructions` | `instructions` | `instructions_01/02` | `require_consent: false` + instructions text |
+| `newui_06_diary` | `diary` | `diary_01/02` | no consent, no instructions |
+| `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
+| `newui_08_prefilled` | `diary` | `ready_01` 7/7 days complete, `ready_02` 2 partial days, `ready_03` empty | review, coverage, incomplete-submit |
+| `newui_09_tasks` | `diary` | `tasks_01/02` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
+
+What the config cannot express: **a submitted participant**. `study_submitted_at` is participant
+state, not config, so `done` is one call away from a prefilled fixture — `POST
+/api/studies/{study}/participants/ready_01/diary/submit` → `done` (reason `completed`), and the same
+call for `tasks_01` → `tasks` → confirm with the token → `done`. Seeds and `study_participant_ids`
+apply when the study is **created**, so reseeding means deleting the study and re-importing; the
+fixtures expect a fresh database (as CI has) or a manual reset.
+
 ### 3.1 Committed Playwright specs for the rewrite (D33 rule 8)
 
 Only `frontend/tests/e2e/new_frontend_smoke.spec.js` exists, and it only pins deployment. Everything
@@ -170,6 +198,41 @@ Until then, we need to add new studies to studies_config.json that are suitable 
 - **Idle timeout** ("prevent other family members from continuing in an open browser session"):
   recorded as open at priority Z in the plan. Do not build it with URL tricks; the honest form is a
   server-side expiring session token, and the participant's own return (invitation link to study) must keep working.
+
+### 3.5 TODO: the activities-config `general` block is historical noise
+
+Every `activities_*.json` starts with a `general` block that the parser accepts as `GeneralConfig`
+(`backend/src/o_timeusediary_backend/parsers/activities_config.py`). Only one field of it is ever
+read: `general.language`, which `api.py` cross-checks against the language the file is mapped to in
+the study's `activities_json_files`. `activities_newui_main.json` already carries only `language`; the
+shipped `activities_*.json` files and the parser still have the rest:
+
+| field | state |
+| --- | --- |
+| `language` | **used** — study import / upload validation |
+| `experimentID` | never read; leftover of the pre-TRAC prototype |
+| `app_name` | never read; names come from the study and from i18n |
+| `version`, `author` | never read; not displayed, not used for compatibility |
+| `instructions` | never read |
+| `fallbackToCSV` | never read |
+| `primary_redirect_url` | never read, and semantically a **study** setting (`pages/thank-you.html` from the old multi-page app); the rewrite routes by stage (D37), so the equivalent is the study's closing text, not a URL |
+
+To do, before the pilot data is frozen:
+
+1. Cut `GeneralConfig` down to what is read. Either keep the name `language` (least churn across the
+   existing fixture files) or rename it to `ui_language` in the same pass — decide once, not twice.
+2. Decide `primary_redirect_url` explicitly: delete it, or, if a post-submission redirect is ever
+   needed, move the concept to the study config next to `study_text_end_completed`. Do not leave a
+   never-read field in a file that study authors are told to edit.
+3. Update `parsers`' tests and the shipped `activities_*.json` files together, so no config keeps
+   declaring fields the app ignores.
+
+Related, one layer up: the new frontend reads **one** timeline, but `flattenCatalogue`
+(`src/js/ui/activitySearch.js`) still merges every key under `timeline`, so a legacy file with
+`primary` + `secondary` shows duplicate activity names (8 of them in the pilot file: `1200` and
+`2200`, …). Settle that with the same cleanup: one timeline key per activities file for the rewrite,
+and the client either honours the resolved timeline (`diary.timeline.key`) or the server returns a
+single merged timeline.
 
 ---
 

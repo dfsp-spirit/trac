@@ -213,37 +213,46 @@
               "color": "#DDA0DD",
               "childItems": [
                 {
-                  "name": "Soziale Kontakte (Familie/Freunde treffen)",
+                  "name": "Zu Hause: Soziale Kontakte (Familie/Freunde treffen)",
                   "code": 1141,
                   "label": "soziale kontakte zuhause",
                   "color": "#DDA0DD"
                 },
                 {
-                  "name": "Religiöse/Spirituelle Praxis, Meditation",
+                  "name": "Zu Hause: Religiöse/Spirituelle Praxis, Meditation",
                   "code": 1142,
                   "label": "religion meditation zuhause",
                   "color": "#DDA0DD"
                 },
                 {
-                  "name": "Lesen",
+                  "name": "Zu Hause: Lesen",
                   "code": 1143,
                   "label": "lesen zuhause",
                   "color": "#DDA0DD"
                 },
                 {
-                  "name": "Freizeit / Hobby (Bitte angeben)",
+                  "name": "Zu Hause: Freizeit / Hobby (Bitte angeben)",
                   "code": 1144,
                   "label": "hobby zuhause",
                   "color": "#DDA0DD",
                   "is_custom_input": true,
                   "frequency_options": [
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
+                    {
+                      "key": "bi-weekly",
+                      "label": "Alle zwei Wochen"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monatlich"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Jährlich"
+                    }
                   ]
                 },
                 {
-                  "name": "Sonstiges (Bitte angeben)",
+                  "name": "Zu Hause: Sonstiges (Bitte angeben)",
                   "code": 1145,
                   "label": "sonstiges zuhause",
                   "color": "#DDA0DD",
@@ -258,49 +267,67 @@
               "color": "#DA70D6",
               "childItems": [
                 {
-                  "name": "Soziale Kontakte (Familie/Freunde treffen)",
+                  "name": "Außer Haus: Soziale Kontakte (Familie/Freunde treffen)",
                   "code": 1161,
                   "label": "soziale kontakte außer haus",
                   "color": "#DA70D6"
                 },
                 {
-                  "name": "Religiöse/Spirituelle Praxis, Meditation",
+                  "name": "Außer Haus: Religiöse/Spirituelle Praxis, Meditation",
                   "code": 1162,
                   "label": "religion meditation außer haus",
                   "color": "#DA70D6"
                 },
                 {
-                  "name": "Lesen",
+                  "name": "Außer Haus: Lesen",
                   "code": 1163,
                   "label": "lesen außer haus",
                   "color": "#DA70D6"
                 },
                 {
-                  "name": "Freizeit / Hobby (Bitte angeben)",
+                  "name": "Außer Haus: Freizeit / Hobby (Bitte angeben)",
                   "code": 1164,
                   "label": "hobby außer haus",
                   "color": "#DA70D6",
                   "is_custom_input": true,
                   "frequency_options": [
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
+                    {
+                      "key": "bi-weekly",
+                      "label": "Alle zwei Wochen"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monatlich"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Jährlich"
+                    }
                   ]
                 },
                 {
-                  "name": "Kulturelle Aktivität / Event (Kino, Theater, Konzert, etc.)",
+                  "name": "Außer Haus: Kulturelle Aktivität / Event (Kino, Theater, Konzert, etc.)",
                   "code": 1165,
                   "label": "kultur event",
                   "color": "#DA70D6",
                   "is_custom_input": true,
                   "frequency_options": [
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
+                    {
+                      "key": "bi-weekly",
+                      "label": "Alle zwei Wochen"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monatlich"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Jährlich"
+                    }
                   ]
                 },
                 {
-                  "name": "Sonstiges (Bitte angeben)",
+                  "name": "Außer Haus: Sonstiges (Bitte angeben)",
                   "code": 1176,
                   "label": "sonstiges außer haus",
                   "color": "#DA70D6",
