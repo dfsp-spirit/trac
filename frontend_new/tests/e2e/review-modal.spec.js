@@ -57,7 +57,7 @@ test.describe('review modal', () => {
   });
 
   test('a complete week reaches confirmation and can go back', async ({ page }) => {
-    await openDiary(page, 'ready_01', STUDY);
+    await openDiary(page, 'tasks_02', 'newui_09_tasks');
     await page.locator('#submit-btn').click();
 
     await expect(page.locator(`${REVIEW} .t-review__day`)).toHaveCount(7);

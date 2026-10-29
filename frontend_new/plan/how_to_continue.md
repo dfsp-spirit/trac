@@ -68,7 +68,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_integration.sh` | **backend running on :8000**, `TUD_BASE_SCHEME=http://localhost:8000` | 162 passed, 2 skipped |
 | `sh test_backend_migrations.sh` | **docker**, or `TUD_MIGRATION_TEST_DATABASE_URL` | 16 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash` running | old app's suite |
-| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 8 rewrite specs (chromium) |
+| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 9 rewrite specs (chromium) |
 
 ---
 
@@ -165,6 +165,16 @@ delete + undo on the `newui_06_diary` fixture, `activity-multiday-gap.spec.js` c
 complete/incomplete day states, *Edit* back to a day, and the confirmation step. All clear their
 activities through the public diary API, so repeated local runs start from the same state.
 
+`submit-readonly.spec.js` submits `newui_08_prefilled/ready_01` and checks the thanks page, hidden
+editor controls, and the same state after reload. That participant is one-way: after the first local
+run the spec skips with a reset message. To restore the fixture, delete the study and re-import it:
+
+```sh
+curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
+  http://localhost:3000/tud_backend/api/admin/studies/newui_08_prefilled
+cd backend && uv run tud studies import --config studies_config.json --config studies_config_new.json
+```
+
 That lifecycle spec also pins the plain-http LAN case: `crypto.randomUUID()` only exists in secure
 contexts, and participants reached the dev stack at `http://192.168.x.x:3000`, where saving failed
 with "Nicht gespeichert" before any request was sent. `domain/uuid.js` now falls back to
@@ -180,7 +190,6 @@ The CI job imports **both** study configs (`studies_config.json` and `studies_co
 fixtures and their participant ids exist. Everything else was verified with throwaway scripts that
 were deleted. The flows worth pinning next, in one file each under `frontend_new/tests/e2e/`:
 
-- submit → read-only, survives reload;
 - stage walk: consent → instructions → diary → submit → thanks, including the deep-link guard
   (`#/thanks` for a `consent`-stage participant must be corrected to `#/consent`).
 
