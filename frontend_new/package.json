@@ -8,9 +8,12 @@
     "test:unit": "node --test \"tests/unit/*.test.js\"",
     "check:architecture": "node tools/check-architecture.mjs",
     "typecheck": "tsc -p jsconfig.json",
-    "test": "npm run test:unit && npm run check:architecture && npm run typecheck"
+    "test": "npm run test:unit && npm run check:architecture && npm run typecheck",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "typescript": "^7.0.2"
   }
 }

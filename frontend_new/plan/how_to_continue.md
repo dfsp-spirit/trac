@@ -67,7 +67,8 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_unit.sh` | nothing | 255 tests |
 | `sh test_backend_integration.sh` | **backend running on :8000**, `TUD_BASE_SCHEME=http://localhost:8000` | 162 passed, 2 skipped |
 | `sh test_backend_migrations.sh` | **docker**, or `TUD_MIGRATION_TEST_DATABASE_URL` | 16 tests |
-| `sh test_e2e.sh` | `./run_dev_nginx_both.bash` running | old app's suite + the new smoke spec |
+| `sh test_e2e.sh` | `./run_dev_nginx_both.bash` running | old app's suite |
+| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 2 rewrite specs (chromium) |
 
 ---
 
@@ -155,10 +156,20 @@ reason.
 
 ### 3.1 Committed Playwright specs for the rewrite (D33 rule 8)
 
-Only `frontend/tests/e2e/new_frontend_smoke.spec.js` exists, and it only pins deployment. Everything
-else was verified with throwaway scripts that were deleted. The flows worth pinning, in one file each
-under `frontend_new/tests/e2e/` (they can run through the existing runner in `frontend/` until the old
-suite is gone):
+The rewrite has its **own** runner and CI job now: `frontend_new/playwright.config.js`, specs under
+`frontend_new/tests/e2e/`, and `.github/workflows/frontend_new_e2e.yml`. The runner is chromium-only
+until the suite grows, so a new spec gives a fast signal without waiting for the old app's E2E job. The
+first spec is `deployment.spec.js` (moved from the old suite), and it only pins deployment.
+
+Run it with `./run_dev_nginx_both.bash` up, then:
+
+```sh
+cd frontend_new && npm run test:e2e
+```
+
+The CI job imports **both** study configs (`studies_config.json` and `studies_config_new.json`), so the
+fixtures and their participant ids exist. Everything else was verified with throwaway scripts that
+were deleted. The flows worth pinning next, in one file each under `frontend_new/tests/e2e/`:
 
 - create an activity (catalogue → form → save), edit it, delete + undo;
 - multi-day create ("Also on 2 days") and the gap prefill;
@@ -166,6 +177,10 @@ suite is gone):
 - submit → read-only, survives reload;
 - stage walk: consent → instructions → diary → submit → thanks, including the deep-link guard
   (`#/thanks` for a `consent`-stage participant must be corrected to `#/consent`).
+
+Fixtures are seeded only when a study is created, so a local run that submits or edits leaves state
+behind: delete and re-import the fixture study (or use a fresh database) before repeating it. CI gets
+a fresh database per run.
 
 Two real bugs were found only by driving the browser, which is the argument for this list: `Esc`
 stopped closing the review modal once the shortcut handler ran, and `Enter` in the activity form

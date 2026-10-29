@@ -1,0 +1,133 @@
+name: Frontend Rewrite E2E Tests
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: frontend-new-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Chromium only while the rewrite's suite is small: the point is a fast
+        # signal that does not wait for the old app's E2E job. Add firefox and
+        # webkit here once the behaviour specs have grown.
+        browser: [chromium]
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_DB: timeusediary_db
+          POSTGRES_USER: timeusediary_user
+          POSTGRES_PASSWORD: timeusediary_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U timeusediary_user -d timeusediary_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Python and uv
+        uses: astral-sh/setup-uv@v10.3.2
+        with:
+          python-version: '3.12'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend_new/package-lock.json
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nginx gettext-base curl
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --frozen
+
+      - name: Install frontend_new Playwright dependencies
+        working-directory: frontend_new
+        run: |
+          npm ci
+          npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Configure nginx and rewrite settings
+        run: |
+          sudo systemctl stop nginx || true
+          export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
+          export NEW_FRONTEND_PATH="$GITHUB_WORKSPACE/frontend_new/src/"
+          export LOCALES_PATH="$GITHUB_WORKSPACE/frontend/src/locales/"
+          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH $LOCALES_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
+          cp dev_tools/ci/frontend_settings/config.new.ci.js frontend_new/src/js/config.js
+          # Fail here, with nginx's own message, rather than on the first request.
+          sudo nginx -t -c /tmp/nginx.conf -p /tmp/
+          sudo nginx -c /tmp/nginx.conf -p /tmp/
+
+      - name: Run backend and rewrite Playwright tests
+        env:
+          PLAYWRIGHT_NEW_FRONTEND_URL: http://127.0.0.1:3000/report-new/
+        run: |
+          set -euxo pipefail
+
+          cp dev_tools/ci/backend_settings/.env.ci backend/.env
+          cd backend
+          uv run tud db upgrade
+          # The rewrite's fixtures live in the second config: closed studies with
+          # fixed participant ids for each stage, plus the open pilot study.
+          uv run tud studies import --config studies_config.json --config studies_config_new.json
+          uv run uvicorn o_timeusediary_backend.api:app --host 127.0.0.1 --port 8000 > /tmp/backend.log 2>&1 &
+          backend_pid=$!
+
+          sleep 5
+          cat /tmp/backend.log
+
+          cd ..
+
+          trap 'kill "$backend_pid" || true' EXIT
+
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:8000/api/health > /dev/null; do sleep 2; done'
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/tud_backend/api/health > /dev/null; do sleep 2; done'
+          timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/report-new/index.html > /dev/null; do sleep 2; done'
+
+          cd frontend_new
+          npx playwright test --project=${{ matrix.browser }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-new-playwright-report-${{ matrix.browser }}
+          path: |
+            frontend_new/playwright-report/
+            frontend_new/test-results/
+          if-no-files-found: ignore
+
+      - name: Upload backend log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-new-backend-log-${{ matrix.browser }}
+          path: /tmp/backend.log
+          if-no-files-found: ignore
+
+      - name: Upload nginx logs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-new-nginx-logs-${{ matrix.browser }}
+          path: /tmp/*.log
+          if-no-files-found: ignore

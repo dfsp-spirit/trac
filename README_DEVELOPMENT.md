@@ -169,6 +169,7 @@ Now that you have all local test dependencies, you can run tests directly from y
 - Integration tests require the backend and database to be running: `./test_backend_integration.sh`
 - Migration tests run the real Alembic migrations on a throwaway database (drops it again) or on `TUD_MIGRATION_TEST_DATABASE_URL`: `./test_backend_migrations.sh`
 - E2E tests require frontend and backend to be running: `./test_e2e.sh`
+- The rewrite's own E2E suite has a separate runner and needs the same stack: `cd frontend_new && npm run test:e2e`
 
 If you want to run E2E tests, install Node.js and Playwright once:
 
@@ -176,6 +177,14 @@ If you want to run E2E tests, install Node.js and Playwright once:
 cd frontend/
 npm install
 npx playwright install --with-deps chromium firefox webkit
+```
+
+The rewrite (`frontend_new/`) has its own Playwright runner, chromium-only for now:
+
+```bash
+cd frontend_new/
+npm ci
+npx playwright install --with-deps chromium
 ```
 
 Note: If you get errors on `npm install`, e.g. about unsupported engine, the most likely reason is an outdated `npm` installation. We highly recommend to install [nvm](https://github.com/nvm-sh/nvm), then run `nvm install node` to get the latest stable node/npm version.

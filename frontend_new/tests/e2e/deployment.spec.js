@@ -2,15 +2,12 @@
  * The frontend rewrite is deployed next to the old app and can reach the backend.
  *
  * This is the wiring check, not a behaviour test: the rewrite has its own unit
- * gates and gets its own specs; what can only break in deployment is that nginx
- * serves it, that its config file reaches the browser, that the shared locale
- * files are reachable from it, and that the stage machine gets an answer from the
- * API. Those four things are what this pins.
- *
- * Lives here because this is where the Playwright runner and its browsers live;
- * it moves into frontend_new/ when the old suite goes away.
+ * gates and its own behaviour specs; what can only break in deployment is that
+ * nginx serves it, that its config file reaches the browser, that the shared
+ * locale files are reachable from it, and that the stage machine gets an answer
+ * from the API. Those four things are what this pins.
  */
-const { test, expect } = require('@playwright/test');
+import { test, expect } from '@playwright/test';
 
 const NEW_FRONTEND_URL =
   process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
@@ -40,27 +37,23 @@ test.describe('frontend rewrite deployment', () => {
 
     await page.goto(`${NEW_FRONTEND_URL}?study=${STUDY}&pid=${PARTICIPANT}`);
 
-    // One of the stages renders - which one depends on this participant's state
-    // in this database, and all of them are legitimate here.
-    await expect(
-      page.locator('.t-stage .t-page-head h1, .t-stage .t-confirm h2, .t-stage .t-notice').first()
-    ).toBeVisible({ timeout: 15000 });
+    // The route guard puts the URL on the stage the server reported (D37). A
+    // failure page never settles on a known route, so this also proves the API
+    // answered: without the config file there is no apiBaseUrl and only the
+    // failure message renders.
+    await expect
+      .poll(() => page.evaluate(() => window.location.hash))
+      .toMatch(/^#\/(consent|instructions|diary|tasks|thanks|unavailable)$/);
 
-    // The route guard put the URL on the stage the server reported (D37), so the
-    // hash is always one of the known routes and never a page of its own choosing.
     const hash = await page.evaluate(() => window.location.hash);
-    expect([
-      '#/consent',
-      '#/instructions',
-      '#/diary',
-      '#/tasks',
-      '#/thanks',
-      '#/unavailable',
-    ]).toContain(hash);
+    if (hash === '#/diary') {
+      // The diary owns the shell; the stage host is hidden in this stage.
+      await expect(page.locator('.t-shell')).toBeVisible();
+    } else {
+      // Every other stage is the shared page frame (D40).
+      await expect(page.locator('.t-stage .t-page__title')).toBeVisible();
+    }
 
-    // A resolved API call means the config file reached the browser with a usable
-    // apiBaseUrl: without it the app only shows the failure message.
-    await expect(page.locator('.t-stage .t-hint')).toHaveCount(0);
     expect(consoleErrors).toEqual([]);
   });
 });
