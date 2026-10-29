@@ -8,43 +8,7 @@
  * and the test does not depend on a fresh database.
  */
 import { test, expect } from '@playwright/test';
-
-const BASE_URL =
-  process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
-const ORIGIN = new URL(BASE_URL).origin;
-const STUDY = 'newui_06_diary';
-const PARTICIPANTS_URL = `${ORIGIN}/tud_backend/api/studies/${STUDY}/participants`;
-
-/** @param {import('@playwright/test').APIRequestContext} request @param {string} pid */
-async function clearActivities(request, pid) {
-  const response = await request.get(`${PARTICIPANTS_URL}/${pid}/diary`);
-  expect(response.ok(), `loading diary for ${pid}`).toBeTruthy();
-  const diary = await response.json();
-  for (const activity of diary.activities) {
-    const deleted = await request.delete(
-      `${PARTICIPANTS_URL}/${pid}/activities/${encodeURIComponent(activity.client_uuid)}`
-    );
-    expect(deleted.ok(), `deleting ${activity.client_uuid}`).toBeTruthy();
-  }
-}
-
-/** @param {import('@playwright/test').Page} page @param {string} pid */
-async function openDiary(page, pid) {
-  await page.goto(`${BASE_URL}?study=${STUDY}&pid=${pid}`);
-  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/diary');
-  await expect(page.locator('#days .t-timeline-day')).toHaveCount(7);
-}
-
-/**
- * @param {import('@playwright/test').Page} page
- * @param {{ start: number, end: number }} range
- */
-async function addSchlafen(page, { start, end }) {
-  await page.locator('.t-activity[data-activity-code="1101"]').click();
-  await page.locator('#form-start').selectOption(String(start));
-  await page.locator('#form-end').selectOption(String(end));
-  await page.locator('[data-slot="actions"] .t-btn--primary').click();
-}
+import { addSchlafen, clearActivities, openDiary } from './helpers.js';
 
 test.describe('activity lifecycle', () => {
   const pid = 'diary_01';

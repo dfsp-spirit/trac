@@ -1,0 +1,53 @@
+/**
+ * Shared setup for the rewrite's diary specs.
+ *
+ * The fixture studies are seeded by the import, but their activities persist
+ * between runs. Clearing through the public diary API keeps local runs
+ * repeatable without reaching into the database.
+ */
+import { expect } from '@playwright/test';
+
+export const BASE_URL =
+  process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
+export const ORIGIN = new URL(BASE_URL).origin;
+export const STUDY = 'newui_06_diary';
+export const PARTICIPANTS_URL = `${ORIGIN}/tud_backend/api/studies/${STUDY}/participants`;
+
+/** @param {import('@playwright/test').APIRequestContext} request @param {string} pid */
+export async function clearActivities(request, pid) {
+  const response = await request.get(`${PARTICIPANTS_URL}/${pid}/diary`);
+  expect(response.ok(), `loading diary for ${pid}`).toBeTruthy();
+  const diary = await response.json();
+  for (const activity of diary.activities) {
+    const deleted = await request.delete(
+      `${PARTICIPANTS_URL}/${pid}/activities/${encodeURIComponent(activity.client_uuid)}`
+    );
+    expect(deleted.ok(), `deleting ${activity.client_uuid}`).toBeTruthy();
+  }
+}
+
+/** @param {import('@playwright/test').Page} page @param {string} pid */
+export async function openDiary(page, pid) {
+  await page.goto(`${BASE_URL}?study=${STUDY}&pid=${pid}`);
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/diary');
+  await expect(page.locator('#days .t-timeline-day')).toHaveCount(7);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ start: number, end: number }} range
+ */
+export async function addSchlafen(page, { start, end }) {
+  await page.locator('.t-activity[data-activity-code="1101"]').click();
+  await page.locator('#form-start').selectOption(String(start));
+  await page.locator('#form-end').selectOption(String(end));
+  await page.locator('[data-slot="actions"] .t-btn--primary').click();
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {number} dayIndex
+ */
+export function dayEvents(page, dayIndex) {
+  return page.locator(`#days .t-timeline-day[data-day-index="${dayIndex}"] .t-event`);
+}
