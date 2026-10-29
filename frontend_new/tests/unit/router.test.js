@@ -7,6 +7,7 @@ import {
   parseRoute,
   routeForStage,
 } from '../../src/js/domain/router.js';
+import { createRouter } from '../../src/js/ui/router.js';
 
 test('every stage maps to a route that exists', () => {
   const stages = ['unavailable', 'consent', 'instructions', 'diary', 'tasks', 'done'];
@@ -54,4 +55,22 @@ test('identity comes from the query string and progress never does', () => {
     { study: null, participant: null, language: null },
     'old progress flags are ignored, not honoured'
   );
+});
+
+test('settle corrects a hash that no longer names the stage route', () => {
+  let hash = '#/consent';
+  const router = createRouter({
+    onChange: () => {},
+    getHash: () => hash,
+    apply: (next) => {
+      hash = next;
+    },
+  });
+
+  assert.equal(router.settle('consent'), 'consent');
+  assert.equal(hash, '#/consent');
+
+  hash = '#/diary';
+  assert.equal(router.settle('consent'), 'consent');
+  assert.equal(hash, '#/consent', 'a hashchange must not outlive the stage guard');
 });

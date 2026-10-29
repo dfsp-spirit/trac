@@ -52,7 +52,11 @@ export function createRouter({ onChange, getHash, apply }) {
    */
   function settle(stage) {
     const route = routeForStage(stage);
-    if (current !== route) go(route);
+    const hash = formatRoute(route);
+    // Compare the URL, not the last route we wrote: a hashchange or a hand-edited
+    // deep link can move it while `current` still names the previous stage.
+    if (readHash() !== hash) go(route);
+    else current = route;
     return route;
   }
 

@@ -884,6 +884,102 @@
           "sunday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }]
         }
       }
+    },
+    {
+      "name": "Fixture: Einwilligung und Anleitung",
+      "name_short": "newui_10_walkthrough",
+      "description": {
+        "de": "Fixture für den vollständigen Stage-Walk: Einwilligung, Anleitung, Tagebuch, Absenden."
+      },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_instructions_title": {
+        "de": "Fixture: Anleitung"
+      },
+      "study_text_instructions": {
+        "de": "# Fixture: Anleitung\n\n1. Aktivität wählen.\n2. Zeitraum festlegen.\n\n#### Hinweis\n\nAlle Angaben sind fiktiv."
+      },
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben."
+      },
+      "require_consent": true,
+      "study_text_consent": {
+        "de": "# Fixture: Einwilligung\n\nDies ist ein **Testtext** für automatisierte Tests, keine echte Studie.\n\n## Kontakt\n\nFixture-Institut\nTeststraße 1\n12345 Teststadt\nfixture@example.org\n\n## Einwilligung\n\n- Ich habe den Text gelesen.\n- Ich nehme freiwillig teil."
+      },
+      "study_text_end_noconsent": {
+        "de": "Fixture: Keine Einwilligung erteilt."
+      },
+      "study_participant_ids": [
+        "walk_01",
+        "walk_02"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_files": {
+        "de": "activities_newui_main.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": false,
+      "external_tasks": [],
+      "activities_logged_by_userid": {}
     }
+
   ]
 }

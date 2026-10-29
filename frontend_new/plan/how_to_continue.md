@@ -68,7 +68,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_integration.sh` | **backend running on :8000**, `TUD_BASE_SCHEME=http://localhost:8000` | 162 passed, 2 skipped |
 | `sh test_backend_migrations.sh` | **docker**, or `TUD_MIGRATION_TEST_DATABASE_URL` | 16 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash` running | old app's suite |
-| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 9 rewrite specs (chromium) |
+| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 11 rewrite specs (chromium) |
 
 ---
 
@@ -141,13 +141,15 @@ repeats and the import creates the `Participant`/`StudyParticipant` rows for eve
 | `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
 | `newui_08_prefilled` | `diary` | `ready_01` 7/7 days complete, `ready_02` 2 partial days, `ready_03` empty | review, coverage, incomplete-submit |
 | `newui_09_tasks` | `diary` | `tasks_01/02` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
+| `newui_10_walkthrough` | `consent` | `walk_01/02` | consent **and** instructions, so the full stage walk is possible |
 
 What the config cannot express: **a submitted participant**. `study_submitted_at` is participant
 state, not config, so `done` is one call away from a prefilled fixture — `POST
 /api/studies/{study}/participants/ready_01/diary/submit` → `done` (reason `completed`), and the same
 call for `tasks_01` → `tasks` → confirm with the token → `done`. Seeds and `study_participant_ids`
 apply when the study is **created**, so reseeding means deleting the study and re-importing; the
-fixtures expect a fresh database (as CI has) or a manual reset.
+fixtures expect a fresh database (as CI has) or a manual reset. The same is true after
+`stage-walk.spec.js` submits `walk_01`.
 
 The three `unavailable` fixtures only reach the page because the rewrite asks for
 `GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 — that
@@ -162,16 +164,21 @@ until the suite grows, so a new spec gives a fast signal without waiting for the
 `deployment.spec.js` pins deployment, `activity-lifecycle.spec.js` covers create → edit → reload →
 delete + undo on the `newui_06_diary` fixture, `activity-multiday-gap.spec.js` covers the
 "also on other days" chips and opening the form from a gap, and `review-modal.spec.js` covers the
-complete/incomplete day states, *Edit* back to a day, and the confirmation step. All clear their
-activities through the public diary API, so repeated local runs start from the same state.
+complete/incomplete day states, *Edit* back to a day, and the confirmation step, and
+`stage-walk.spec.js` covers the deep-link guard plus consent → instructions → diary → submit → thanks.
+All clear their activities through the public diary API, so repeated local runs start from the same
+state.
 
-`submit-readonly.spec.js` submits `newui_08_prefilled/ready_01` and checks the thanks page, hidden
-editor controls, and the same state after reload. That participant is one-way: after the first local
-run the spec skips with a reset message. To restore the fixture, delete the study and re-import it:
+`submit-readonly.spec.js` submits `newui_08_prefilled/ready_01`, and `stage-walk.spec.js` submits
+`newui_10_walkthrough/walk_01`; both check the thanks page, hidden editor controls, and the same state
+after reload. Those participants are one-way: after the first local run the specs skip with a reset
+message. To restore the fixtures, delete the studies and re-import them:
 
 ```sh
-curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
-  http://localhost:3000/tud_backend/api/admin/studies/newui_08_prefilled
+for study in newui_08_prefilled newui_10_walkthrough; do
+  curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
+    "http://localhost:3000/tud_backend/api/admin/studies/$study"
+done
 cd backend && uv run tud studies import --config studies_config.json --config studies_config_new.json
 ```
 
@@ -188,18 +195,18 @@ cd frontend_new && npm run test:e2e
 
 The CI job imports **both** study configs (`studies_config.json` and `studies_config_new.json`), so the
 fixtures and their participant ids exist. Everything else was verified with throwaway scripts that
-were deleted. The flows worth pinning next, in one file each under `frontend_new/tests/e2e/`:
-
-- stage walk: consent → instructions → diary → submit → thanks, including the deep-link guard
-  (`#/thanks` for a `consent`-stage participant must be corrected to `#/consent`).
+were deleted. All five flows from the original list are now pinned:
+`deployment`, `activity-lifecycle`, `activity-multiday-gap`, `review-modal`, `submit-readonly`, plus
+the `stage-walk` deep-link guard.
 
 Fixtures are seeded only when a study is created, so a local run that submits or edits leaves state
 behind: delete and re-import the fixture study (or use a fresh database) before repeating it. CI gets
 a fresh database per run.
 
-Two real bugs were found only by driving the browser, which is the argument for this list: `Esc`
-stopped closing the review modal once the shortcut handler ran, and `Enter` in the activity form
-reloaded the page.
+Three real bugs were found only by driving the browser, which is the argument for this list: `Esc`
+stopped closing the review modal once the shortcut handler ran, `Enter` in the activity form
+reloaded the page, and the stage guard compared its cached route instead of the URL, so a same-page
+hash change stayed on `#/diary` while the consent page was shown.
 
 ### 3.2 Old-frontend behaviour the rewrite does not have yet
 
