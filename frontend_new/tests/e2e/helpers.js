@@ -11,24 +11,37 @@ export const BASE_URL =
   process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
 export const ORIGIN = new URL(BASE_URL).origin;
 export const STUDY = 'newui_06_diary';
-export const PARTICIPANTS_URL = `${ORIGIN}/tud_backend/api/studies/${STUDY}/participants`;
 
-/** @param {import('@playwright/test').APIRequestContext} request @param {string} pid */
-export async function clearActivities(request, pid) {
-  const response = await request.get(`${PARTICIPANTS_URL}/${pid}/diary`);
+/** @param {string} [study] */
+export function participantsUrl(study = STUDY) {
+  return `${ORIGIN}/tud_backend/api/studies/${study}/participants`;
+}
+
+/**
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} pid
+ * @param {string} [study]
+ */
+export async function clearActivities(request, pid, study = STUDY) {
+  const base = participantsUrl(study);
+  const response = await request.get(`${base}/${pid}/diary`);
   expect(response.ok(), `loading diary for ${pid}`).toBeTruthy();
   const diary = await response.json();
   for (const activity of diary.activities) {
     const deleted = await request.delete(
-      `${PARTICIPANTS_URL}/${pid}/activities/${encodeURIComponent(activity.client_uuid)}`
+      `${base}/${pid}/activities/${encodeURIComponent(activity.client_uuid)}`
     );
     expect(deleted.ok(), `deleting ${activity.client_uuid}`).toBeTruthy();
   }
 }
 
-/** @param {import('@playwright/test').Page} page @param {string} pid */
-export async function openDiary(page, pid) {
-  await page.goto(`${BASE_URL}?study=${STUDY}&pid=${pid}`);
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} pid
+ * @param {string} [study]
+ */
+export async function openDiary(page, pid, study = STUDY) {
+  await page.goto(`${BASE_URL}?study=${study}&pid=${pid}`);
   await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/diary');
   await expect(page.locator('#days .t-timeline-day')).toHaveCount(7);
 }
