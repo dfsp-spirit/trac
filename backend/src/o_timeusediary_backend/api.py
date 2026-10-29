@@ -424,6 +424,21 @@ def _build_frontend_study_join_url(study_name_short: str, participant_id: str) -
     return f"{frontend_url}/index.html?{query}"
 
 
+def _build_frontend_new_study_join_url(
+    study_name_short: str, participant_id: Optional[str] = None
+) -> str:
+    """Build a link into the rewritten frontend (`frontend_new`).
+
+    The rewrite reads `study` and `pid` from the query string. Without a `pid`
+    the participant is joining an open study, and the rewrite generates an id on
+    load, so a plain `?study=...` link can be shared.
+    """
+    query_values = {"study": study_name_short}
+    if participant_id:
+        query_values["pid"] = participant_id
+    return f"{settings.frontend_new_url}/index.html?{urlencode(query_values)}"
+
+
 def _get_study_blob_languages(session: Session, study_id: int) -> List[str]:
     blob_languages = session.exec(
         select(StudyActivityConfigBlob.language)
@@ -2250,6 +2265,10 @@ async def admin_study_detail(
                         study.name_short,
                         participant.id,
                     ),
+                    "study_join_url_new": _build_frontend_new_study_join_url(
+                        study.name_short,
+                        participant.id,
+                    ),
                 }
             )
 
@@ -2469,9 +2488,14 @@ async def admin_study_detail(
     # --- Description text ---
     description_text = _resolve_description(study)
 
-    # --- Open join URL ---
+    # --- Open join URLs ---
     frontend_open_join_url = (
         f"{settings.frontend_url}/index.html?{urlencode({'study_name': study.name_short})}"
+        if study.allow_unlisted_participants
+        else None
+    )
+    frontend_new_open_join_url = (
+        _build_frontend_new_study_join_url(study.name_short)
         if study.allow_unlisted_participants
         else None
     )
@@ -2610,6 +2634,7 @@ async def admin_study_detail(
         "is_actively_collecting": study_is_currently_collecting,
         "require_consent": bool(study.require_consent),
         "frontend_open_join_url": frontend_open_join_url,
+        "frontend_new_open_join_url": frontend_new_open_join_url,
         "completion_progress": completion_progress,
         "study_owner_usernames": list(study.owner_usernames or []),
         "scientist_names": sorted(settings.scientist_names),

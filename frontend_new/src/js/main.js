@@ -16,6 +16,7 @@ import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
 import { createInitialState, createStore } from './state/store.js';
 import { createDiaryView } from './ui/diaryView.js';
+import { adoptParticipantId } from './ui/identity.js';
 import { createPanelController } from './ui/panelController.js';
 import { createPanelHost } from './ui/panelHost.js';
 import { createRouter } from './ui/router.js';
@@ -42,7 +43,7 @@ export function mount({ root, params }) {
     fallback: config.defaultLanguage,
   });
   const studyName = identity.study || config.studyName;
-  const participantId = identity.participant || config.participantId;
+  const participantId = adoptParticipantId({ studyName, participantId: identity.participant || config.participantId });
 
   const store = createStore(createInitialState({ language }));
   let translator = createTranslator({});

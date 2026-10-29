@@ -66,3 +66,21 @@ def test_frontend_url_falls_back_to_first_allowed_origin(monkeypatch):
     settings = TUDBackendSettings()
 
     assert settings.frontend_url == "https://frontend.example.org"
+
+
+def test_frontend_new_url_derives_the_sibling_path(monkeypatch):
+    monkeypatch.setenv("TUD_FRONTEND_URL", "http://localhost:3000/report/")
+    monkeypatch.delenv("TUD_FRONTEND_NEW_URL", raising=False)
+
+    settings = TUDBackendSettings()
+
+    assert settings.frontend_new_url == "http://localhost:3000/report-new"
+
+
+def test_frontend_new_url_can_be_configured_explicitly(monkeypatch):
+    monkeypatch.setenv("TUD_FRONTEND_URL", "http://localhost:3000/report/")
+    monkeypatch.setenv("TUD_FRONTEND_NEW_URL", "https://new.example.org/diary/")
+
+    settings = TUDBackendSettings()
+
+    assert settings.frontend_new_url == "https://new.example.org/diary"

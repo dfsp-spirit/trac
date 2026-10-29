@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import json
+from urllib.parse import urlparse, urlunparse
 
 load_dotenv()  # load .env file in working directory if it exists
 
@@ -72,6 +73,27 @@ class TUDBackendSettings:
 
         first_allowed_origin = self.allowed_origins[0]
         return str(first_allowed_origin).rstrip("/")
+
+    @property
+    def frontend_new_url(self) -> str:
+        """Get the base URL of the rewritten frontend (`frontend_new/`).
+
+        Prefers `TUD_FRONTEND_NEW_URL`. Without it, the URL is derived from
+        `frontend_url` by swapping its final path segment `report` for
+        `report-new`, which is where the rewrite is served next to the old app.
+        The returned URL has no trailing slash.
+        """
+        explicit_url = (os.getenv("TUD_FRONTEND_NEW_URL") or "").strip()
+        if explicit_url:
+            return explicit_url.rstrip("/")
+
+        parsed = urlparse(self.frontend_url)
+        path = parsed.path.rstrip("/")
+        if path.rsplit("/", 1)[-1] == "report":
+            path = f"{path[: -len('report')]}report-new"
+        else:
+            path = f"{path}/report-new"
+        return urlunparse(parsed._replace(path=path))
 
     @property
     def admin_username(self):
@@ -335,8 +357,7 @@ class TUDBackendSettings:
             left: list[tuple[str, str]], right: list[tuple[str, str]]
         ) -> list[str]:
             return sorted(
-                {username for username, _ in left}
-                & {username for username, _ in right}
+                {username for username, _ in left} & {username for username, _ in right}
             )
 
         overlapping_names = _overlapping_usernames(

@@ -80,3 +80,32 @@ def test_build_frontend_study_join_url_builds_concrete_participant_link(monkeypa
         "?pid=user+1"
         "&study_name=adult+pilot%2Fde"
     )
+
+
+def test_build_frontend_new_study_join_url_uses_rewrite_parameter_names(monkeypatch):
+    monkeypatch.setenv(
+        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
+    )
+
+    url = api._build_frontend_new_study_join_url(
+        study_name_short="adult pilot/de",
+        participant_id="user 1",
+    )
+
+    assert (
+        url == "https://frontend.example.org/report-new/index.html"
+        "?study=adult+pilot%2Fde"
+        "&pid=user+1"
+    )
+
+
+def test_build_frontend_new_study_join_url_omits_pid_for_open_study_link(monkeypatch):
+    monkeypatch.setenv(
+        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
+    )
+
+    url = api._build_frontend_new_study_join_url(study_name_short="adult_pilot_de")
+
+    assert (
+        url == "https://frontend.example.org/report-new/index.html?study=adult_pilot_de"
+    )

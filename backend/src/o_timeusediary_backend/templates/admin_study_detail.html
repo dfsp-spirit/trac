@@ -353,9 +353,14 @@
             <div id="participants-{{ study.name_short }}" class="tab-panel">
                 {% if frontend_open_join_url %}
                 <div style="margin-bottom: 1rem;">
-                    <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                        ➕ Join as new user
-                    </a>
+                    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                        <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            ➕ Join as new user
+                        </a>
+                        <a href="{{ frontend_new_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            ➕ Join as new user (new UI)
+                        </a>
+                    </div>
                     <p style="margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem;">
                         Open study — anyone can join without pre-registration.
                     </p>
@@ -378,7 +383,7 @@
                         {% if external_task_count > 0 %}
                         <p><strong>All external tasks completed:</strong> {% if participant.all_external_tasks_completed %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
                         {% endif %}
-                        <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a></p>
+                        <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a> · <a href="{{ participant.study_join_url_new }}" target="_blank" rel="noopener noreferrer">Join study (new UI)</a></p>
                     </div>
                     {% endfor %}
                 </div>
