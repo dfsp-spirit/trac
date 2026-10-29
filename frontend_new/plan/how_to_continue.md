@@ -68,7 +68,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_integration.sh` | **backend running on :8000**, `TUD_BASE_SCHEME=http://localhost:8000` | 162 passed, 2 skipped |
 | `sh test_backend_migrations.sh` | **docker**, or `TUD_MIGRATION_TEST_DATABASE_URL` | 16 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash` running | old app's suite |
-| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 2 rewrite specs (chromium) |
+| `cd frontend_new && npm run test:e2e` | `./run_dev_nginx_both.bash` running | 4 rewrite specs (chromium) |
 
 ---
 
@@ -158,8 +158,15 @@ reason.
 
 The rewrite has its **own** runner and CI job now: `frontend_new/playwright.config.js`, specs under
 `frontend_new/tests/e2e/`, and `.github/workflows/frontend_new_e2e.yml`. The runner is chromium-only
-until the suite grows, so a new spec gives a fast signal without waiting for the old app's E2E job. The
-first spec is `deployment.spec.js` (moved from the old suite), and it only pins deployment.
+until the suite grows, so a new spec gives a fast signal without waiting for the old app's E2E job.
+`deployment.spec.js` pins deployment, and `activity-lifecycle.spec.js` covers create → edit → reload →
+delete + undo on the `newui_06_diary` fixture. Both clear their activities through the public diary API,
+so repeated local runs start from the same state.
+
+That lifecycle spec also pins the plain-http LAN case: `crypto.randomUUID()` only exists in secure
+contexts, and participants reached the dev stack at `http://192.168.x.x:3000`, where saving failed
+with "Nicht gespeichert" before any request was sent. `domain/uuid.js` now falls back to
+`crypto.getRandomValues()`; the spec removes `randomUUID` and asserts the POST still happens.
 
 Run it with `./run_dev_nginx_both.bash` up, then:
 
@@ -171,7 +178,6 @@ The CI job imports **both** study configs (`studies_config.json` and `studies_co
 fixtures and their participant ids exist. Everything else was verified with throwaway scripts that
 were deleted. The flows worth pinning next, in one file each under `frontend_new/tests/e2e/`:
 
-- create an activity (catalogue → form → save), edit it, delete + undo;
 - multi-day create ("Also on 2 days") and the gap prefill;
 - review modal: day states, *Edit* jumps to the day, incomplete submit explains instead of advancing;
 - submit → read-only, survives reload;

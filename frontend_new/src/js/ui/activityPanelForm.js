@@ -8,6 +8,7 @@
  */
 import { MINUTES_PER_DAY } from '../domain/time.js';
 import { formatClock } from '../domain/time.js';
+import { newUuid } from '../domain/uuid.js';
 import { renderActivityForm } from './activityForm.js';
 import { describeError } from './messages.js';
 
@@ -120,7 +121,7 @@ export function createFormController(deps) {
         items: [
           {
             ...values,
-            client_uuid: crypto.randomUUID(),
+            client_uuid: newUuid(),
             catalogue_version: getCatalogue()?.general?.version || null,
           },
         ],

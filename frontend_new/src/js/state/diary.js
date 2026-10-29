@@ -9,6 +9,7 @@
  */
 
 import { toCreateItem } from '../domain/diary.js';
+import { newUuid } from '../domain/uuid.js';
 
 /**
  * @typedef {import('../domain/diary.js').ApiDiary} ApiDiary
@@ -183,7 +184,7 @@ export function createDiaryActions({ store, api, getLanguage }) {
   async function removeWithUndo(activity) {
     await remove(activity.client_uuid);
     return async () => {
-      await create({ items: [toCreateItem(activity, crypto.randomUUID())] });
+      await create({ items: [toCreateItem(activity, newUuid())] });
     };
   }
 
