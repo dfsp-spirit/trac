@@ -122,9 +122,10 @@ def _can_connect(url: str) -> bool:
         engine.dispose()
 
 
-def _create_database_if_missing(development_url: str, test_url: str) -> None:
+def _create_database_if_missing(development_url: str, test_url: str) -> bool:
+    """Create the database when it is missing; return True when it was created."""
     if _can_connect(test_url):
-        return
+        return False
 
     from sqlalchemy import create_engine, text
 
@@ -149,6 +150,7 @@ def _create_database_if_missing(development_url: str, test_url: str) -> None:
         ) from exc
     finally:
         admin_engine.dispose()
+    return True
 
 
 def reset(test_url: str) -> None:
@@ -219,9 +221,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "command",
-        choices=("url", "reset", "drop"),
+        choices=("url", "create", "reset", "drop"),
         help=(
             "url: print the test database URL; "
+            "create: create it when missing and print 'created' or 'exists'; "
             "reset: create it if needed, migrate, wipe, import the fixture studies; "
             "drop: remove it"
         ),
@@ -241,6 +244,16 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "url":
         print(test_url)
+        return 0
+
+    if args.command == "create":
+        if not managed:
+            exists = _can_connect(test_url)
+            # Somebody else owns this database; whether it exists is their business.
+            print("external" if exists else "missing")
+            return 0 if exists else 1
+        created = _create_database_if_missing(development_url, test_url)
+        print("created" if created else "exists")
         return 0
 
     if args.command == "reset":

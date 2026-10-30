@@ -4,16 +4,19 @@
 #
 # The tests create studies, participants and activities through the real API, so
 # they must not run against the development database. This script prepares a
-# database of its own, starts a throwaway backend that points at it, runs the
-# tests and removes everything again. Nothing has to be running beforehand and
-# backend/.env is not modified.
+# database of its own, starts a throwaway backend that points at it and stops it
+# again afterwards. Nothing has to be running beforehand and backend/.env is not
+# modified.
 #
 # Where the database comes from, in this order:
-#   1. TUD_TEST_DATABASE_URL, when set (that database is reset and reused),
-#   2. "<development database>_test" on the server from backend/.env, when the
-#      database role may CREATE DATABASE,
+#   1. TUD_TEST_DATABASE_URL, when set (that database is reset and reused and is
+#      never dropped by this script),
+#   2. "<development database>_test" on the server from backend/.env (created by
+#      this script when missing and the role may CREATE DATABASE, otherwise it
+#      must have been created once by an administrator - see
+#      README_DEVELOPMENT.md. Only a database this run created is dropped again),
 #   3. a throwaway PostgreSQL container, started and removed by this script
-#      (needs docker; used automatically when 2. is not permitted).
+#      (needs docker; used automatically when 2. is not possible).
 #
 # Usage (from the repository root):
 #
@@ -90,9 +93,15 @@ if [ -n "${TUD_TEST_DATABASE_URL:-}" ]; then
     echo "Using the test database from TUD_TEST_DATABASE_URL."
     TEST_DATABASE_URL="${TUD_TEST_DATABASE_URL}"
     uv run python "${DB_TOOL}" reset
-elif uv run python "${DB_TOOL}" reset; then
+elif CREATED=$(uv run python "${DB_TOOL}" create); then
     TEST_DATABASE_URL=$(uv run python "${DB_TOOL}" url)
-    DROP_TEST_DATABASE=true
+    # Only drop what this run created. A database created by hand (the app role
+    # usually may not CREATE DATABASE) has to survive, or the next run would
+    # have to ask for the administrator again.
+    if [ "${CREATED}" = "created" ]; then
+        DROP_TEST_DATABASE=true
+    fi
+    uv run python "${DB_TOOL}" reset
 else
     echo "Could not prepare a test database on the development server."
     if start_container; then
@@ -100,9 +109,10 @@ else
         TUD_TEST_DATABASE_URL="${TEST_DATABASE_URL}" uv run python "${DB_TOOL}" reset
     else
         echo "Error: no test database available."
-        echo "Set TUD_TEST_DATABASE_URL to an existing throwaway database, or let the"
-        echo "database role create '<development database>_test' (CREATE DATABASE),"
-        echo "or install docker so a throwaway container can be started."
+        echo "Set TUD_TEST_DATABASE_URL to an existing throwaway database, or create"
+        echo "'<development database>_test' once with an administrator account (see"
+        echo "README_DEVELOPMENT.md, \"One-time setup: the test database\"), or install"
+        echo "docker so a throwaway container can be started."
         exit 1
     fi
 fi

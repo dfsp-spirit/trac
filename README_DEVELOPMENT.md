@@ -218,9 +218,11 @@ name that does not contain `test` (override with `--force`). Set
 `TUD_TEST_DATABASE_URL` to use a different, existing throwaway database; it is
 then never created or dropped by the tooling.
 
-`./test_backend_integration.sh` uses that database when it exists and otherwise
-falls back to a throwaway PostgreSQL container (needs docker). For E2E tests,
-start the dev stack with the test database instead of the development one:
+`./test_backend_integration.sh` uses that database; it only drops a database it
+created itself in the same run, so the one you created by hand stays for the next
+run. Without a usable local database it falls back to a throwaway PostgreSQL
+container (needs docker). For E2E tests, start the dev stack with the test
+database instead of the development one:
 
 ```bash
 ./run_dev_nginx_both.bash --test-db     # serves <TUD_DATABASE_NAME>_test
