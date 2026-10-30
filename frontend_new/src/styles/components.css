@@ -35,7 +35,7 @@
 .t-activity-group { display: grid; gap: var(--space-2); }
 .t-activity-group > h3 { position: sticky; top: calc(-1 * var(--space-5)); z-index: 1; margin: 0 0 var(--space-1); padding: var(--space-2) 0; background: var(--bg); font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; color: var(--ink-muted); letter-spacing: 0.02em; text-transform: uppercase; }
 .t-activity-group > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); }
-.t-activity { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px; padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-md); background: var(--surface-100); color: var(--ink); text-align: start; cursor: pointer; }
+.t-activity { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px; padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-md); background: var(--surface-100); color: var(--ink); text-align: start; cursor: pointer; }
 .t-activity:active { background: var(--surface-300); }
 .t-activity__body { flex: 1; min-width: 0; display: grid; gap: 2px; }
 .t-activity__title { font-weight: 600; font-size: 1rem; line-height: 1.375rem; }

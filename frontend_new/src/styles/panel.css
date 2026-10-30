@@ -16,9 +16,14 @@
   background: var(--bg);
 }
 
+/* Same inline gutter as head and foot, so all three zones share one left edge
+   and the section headings do not sit on the column border. It also leaves room
+   for the focus ring: `:focus-visible` draws 3px at a 2px offset, which a
+   flush-aligned scroll container clips on both sides. */
 .t-activity-panel__body {
   flex: 1;
   min-height: 0;
+  padding-inline: var(--space-4);
   overflow: auto;
   overscroll-behavior: contain;
 }
