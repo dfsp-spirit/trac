@@ -328,6 +328,7 @@
     },
     "panel": {
       "chooseActivity": "Välj en aktivitet",
+      "recent": "Senast använd",
       "addActivity": "Lägg till aktivitet",
       "editActivity": "Redigera aktivitet",
       "addToTimeline": "Lägg till i tidslinjen",

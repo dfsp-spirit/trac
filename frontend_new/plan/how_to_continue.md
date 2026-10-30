@@ -211,36 +211,16 @@ hash change stayed on `#/diary` while the consent page was shown.
 ### 3.2 Old-frontend behaviour the rewrite does not have yet
 
 Check each against the old app before deciding to drop it:
-
-- **Skip the diary** (`allow_skip_timeuse`, opt-in, default **false**). Built as a server action, not
-  the old redirect: `POST …/diary/skip` sets `study_submitted_at` (every lock keeps working) plus
-  `skipped_at` / `skip_reason_code` / `skip_note` (migration 0015), and `stages.py` returns
-  `done` with `done_reason="skipped"`, so the thanks page shows the study's `study_text_end_skipped`.
-  The old flow only put `completion_status=skipped` in the URL, which meant the participant stayed
-  "in progress" and re-entered the diary on reload. UI: a menu entry, shown only when the study allows
-  it and the stage is the diary, opening one confirmation dialog (what closes, what is kept, that the
-  team sees it, and what happens to pending tasks) with an **optional** reason (5 codes + note) and
-  the contact link if configured. A skip does **not** satisfy `require_diary_before_external_tasks`:
-  such a study keeps its tasks closed for a skipper, and both the dialog and the launch gate say so.
-- **Browser identification** (`save_browser_identification`). Done, and the storage/export were
-  reshaped while doing it: `ui`-free `domain/clientInfo.js` decides whether to report
-  (`shouldCaptureClientInfo`: flag on, study known, consent given when the study requires it) and
-  builds a **raw-signals-only** payload — no ua-parser in the browser (D16 forbids the global, and a
-  stored parse result goes stale; the backend drops anything outside its whitelist). `data/clientInfo.js`
-  reads the environment and posts; `main.js` calls it once when the study config arrives. Because the
-  rewrite has no device storage (D33), the client posts on every load and the **server** treats an
-  unchanged snapshot as the same capture (`unchanged: true`, `capture_count` unchanged).
-  Storage is now one prefixed column pair on `study_participants` — `client_info` (JSON holding the
-  client signals plus server-owned `schema_version`/`user_agent`/`capture_count`/`first_captured_at`)
-  and `client_info_captured_at`; the separate `user_agent` column is gone (0011 was unreleased and the
-  layout was changed in place). Exports: the `client_*` block appears **only** in the participant
-  export, **only** when the study collects the data, and is curated (15 columns, not 27); the
-  activities export carries none of it, and the `study_save_browser_identification` marker is gone —
-  the presence of the block now means "collected by design". The admin study page has Participant
-  CSV/JSON download buttons (plus a "client info only" variant when the study collects it).
-- **Maintenance banner.** Backend settings exist (`IS_MAINTENANCE_MODE` on the old app); the
-  rewrite has neither. (The footer links from the same bullet are done — see "Menu pages" below.)
-- **"Used recently"** in the activity panel (D28) — never built. There is a prototype, which the new frontend is roughly based on, at ~/develop_mpiae/time-diary-prototype that shows how this should look in UI (basically add recently used N at top of list, below search bar, for N ~ 4).
+- **"Used recently"** in the activity panel (D28): built. It is derived from the diary the client
+  already holds — `recentEntries()` in `ui/activitySearch.js` folds the loaded activities onto
+  catalogue entries and keeps the 4 most recently touched, newest first (deduplicated across days,
+  keyed by the picked row so a sub-activity surfaces its parent, `updated_at` falling back to
+  `created_at`). Entries that are no longer in the catalogue and custom-input rows are dropped, so a
+  shortcut can never open a dead or empty form. No endpoint and no device storage: the shortcut is a
+  shortcut into the same `onChoose` path as the catalogue, rendered by `ui/activityList.js` as an
+  extra "Used recently" group (`diary.panel.recent`) above the categories — and only while the
+  search box is empty, because with a query the matches are the whole answer. Pinned by
+  `frontend_new/tests/unit/activity-search.test.js`.
 
 - **Menu pages** (study information, data protection, contact): built. `ui/legalLinks.js` turns the
   study config into links; `ui/shellChrome.js` renders them and owns the language select, both

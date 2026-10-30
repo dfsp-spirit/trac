@@ -328,6 +328,7 @@
     },
     "panel": {
       "chooseActivity": "Choose an activity",
+      "recent": "Used recently",
       "addActivity": "Add activity",
       "editActivity": "Edit activity",
       "addToTimeline": "Add to timeline",

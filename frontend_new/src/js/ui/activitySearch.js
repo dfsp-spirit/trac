@@ -129,3 +129,48 @@ export function groupByCategory(entries) {
   }
   return [...groups.entries()];
 }
+
+/**
+ * The activities this participant used most recently, as a shortcut row above
+ * the catalogue (D28).
+ *
+ * Derived from the diary the client already holds - no endpoint, no device
+ * storage (D33): it survives a reload and follows the participant to another
+ * device because the entries come from the server. A sub-activity counts as its
+ * parent (that is the row the participant picked), an activity used on several
+ * days counts once, and codes that are no longer in the catalogue are dropped -
+ * a shortcut that opens nothing is worse than none.
+ *
+ * @param {CatalogueEntry[]} entries
+ * @param {Array<{ activity_code: number, parent_activity_code?: number | null, created_at?: string | null, updated_at?: string | null }>} activities
+ * @param {{ limit?: number }} [options]
+ * @returns {CatalogueEntry[]}
+ */
+export function recentEntries(entries, activities, { limit = 4 } = {}) {
+  if (!Array.isArray(entries) || !Array.isArray(activities) || limit <= 0) return [];
+
+  /** @type {Map<number, CatalogueEntry>} */
+  const byCode = new Map(entries.map((entry) => [entry.code, entry]));
+  /** @type {Map<number, number>} */
+  const latestUse = new Map();
+
+  for (const activity of activities) {
+    if (!activity) continue;
+    const code = Number(activity.parent_activity_code || activity.activity_code);
+    const entry = byCode.get(code);
+    // Custom inputs are one-offs by nature ("Other activity" with the
+    // participant's own text): as a shortcut they would only repeat themselves.
+    if (!entry || entry.isCustomInput) continue;
+
+    // Parsed, not compared as strings: ISO stamps from the API may carry
+    // different offsets, where lexicographic order would be wrong.
+    const used = Date.parse(activity.updated_at || activity.created_at || '') || 0;
+    const seen = latestUse.get(code);
+    if (seen === undefined || used > seen) latestUse.set(code, used);
+  }
+
+  return [...latestUse.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([code]) => /** @type {CatalogueEntry} */ (byCode.get(code)));
+}

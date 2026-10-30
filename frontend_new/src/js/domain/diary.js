@@ -25,6 +25,8 @@ import { layoutDay } from './geometry.js';
  * @property {string | null} [frequency_key]
  * @property {number} start_minutes
  * @property {number} end_minutes
+ * @property {string | null} [created_at]
+ * @property {string | null} [updated_at]
  */
 
 /**

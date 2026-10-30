@@ -10,7 +10,7 @@
  */
 import { createFormController } from './activityPanelForm.js';
 import { renderActivityList } from './activityList.js';
-import { flattenCatalogue } from './activitySearch.js';
+import { flattenCatalogue, recentEntries } from './activitySearch.js';
 import { dayLabel, daySummaries } from '../domain/diary.js';
 import { describeError } from './messages.js';
 
@@ -94,6 +94,24 @@ export function createActivityPanel(deps) {
     contextLine.hidden = false;
   }
 
+  /**
+   * The catalogue step: search field above, "Used recently" (when there is
+   * anything in the diary and no query), then the categories.
+   */
+  function renderCatalogue() {
+    const all = entries();
+    const diary = getDiary();
+    renderActivityList(content, {
+      entries: all,
+      // With a query the matches are the whole answer; the shortcut row is for
+      // browsing.
+      recents: query ? [] : recentEntries(all, diary?.activities ?? []),
+      query,
+      t,
+      onChoose: (entry) => showForm(entry),
+    });
+  }
+
   function showCatalogue({ preserveScroll = false } = {}) {
     mode = 'catalogue';
     if (title) title.textContent = t('diary.panel.chooseActivity');
@@ -101,12 +119,7 @@ export function createActivityPanel(deps) {
     if (backButton) backButton.hidden = true;
     foot.hidden = true;
     foot.replaceChildren();
-    renderActivityList(content, {
-      entries: entries(),
-      query,
-      t,
-      onChoose: (entry) => showForm(entry),
-    });
+    renderCatalogue();
     if (preserveScroll) content.scrollTop = scrollOffset;
     updateContext();
   }
@@ -149,12 +162,7 @@ export function createActivityPanel(deps) {
     if (searchClear) searchClear.hidden = !query;
     if (mode !== 'catalogue') return;
     scrollOffset = 0;
-    renderActivityList(content, {
-      entries: entries(),
-      query,
-      t,
-      onChoose: (entry) => showForm(entry),
-    });
+    renderCatalogue();
   });
 
   if (searchClear) {
@@ -164,12 +172,7 @@ export function createActivityPanel(deps) {
       searchInput.value = '';
       searchClear.hidden = true;
       searchInput.focus();
-      renderActivityList(content, {
-        entries: entries(),
-        query,
-        t,
-        onChoose: (entry) => showForm(entry),
-      });
+      renderCatalogue();
     });
   }
 

@@ -328,6 +328,7 @@
     },
     "panel": {
       "chooseActivity": "Aktivität wählen",
+      "recent": "Zuletzt verwendet",
       "addActivity": "Aktivität hinzufügen",
       "editActivity": "Aktivität bearbeiten",
       "addToTimeline": "Zum Zeitplan hinzufügen",
