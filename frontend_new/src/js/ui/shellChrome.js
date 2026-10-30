@@ -9,7 +9,7 @@
  * component is also what keeps the composition root under its size cap.
  */
 import { config } from '../config.js';
-import { studyLanguageOptions } from '../domain/language.js';
+import { offersLanguageChoice, studyLanguageOptions } from '../domain/language.js';
 import { canSkipDiary } from '../domain/skip.js';
 import { restrictLanguageOptions } from './i18n-dom.js';
 import { createLegalLinks } from './legalLinks.js';
@@ -27,6 +27,7 @@ import { createSkipDialog } from './skipDialog.js';
  *     footer: HTMLElement | null,
  *     footerLinks: HTMLElement | null,
  *     languageSelect: HTMLSelectElement | null,
+ *     menuLanguageBlock: HTMLElement | null,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   getLanguage: () => string,
@@ -89,13 +90,16 @@ export function createShellChrome({
      */
     apply(studySession) {
       session = studySession;
-      restrictLanguageOptions(
-        select,
-        studyLanguageOptions(
-          studySession?.supported_languages ?? [],
-          config.supportedLanguages
-        )
+      const languages = studyLanguageOptions(
+        studySession?.supported_languages ?? [],
+        config.supportedLanguages
       );
+      restrictLanguageOptions(select, languages);
+      // A single language is not a choice: hide the entry (and its separator)
+      // instead of showing a select with one option.
+      if (shell.menuLanguageBlock) {
+        shell.menuLanguageBlock.hidden = !offersLanguageChoice(languages);
+      }
       legal.render(session);
       if (shell.menuSkipItem) shell.menuSkipItem.hidden = !canSkipDiary(session);
     },

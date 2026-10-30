@@ -64,3 +64,17 @@ export function studyLanguageOptions(studyLanguages, appSupported) {
   const languages = (studyLanguages || []).filter((language) => appSupported.includes(language));
   return languages.length ? [...new Set(languages)] : [...appSupported];
 }
+
+/**
+ * Whether the menu offers a language choice at all.
+ *
+ * A study that ships one language has nothing to choose, and a select with a
+ * single option is clutter that also invites a pointless reload - so the entry
+ * only exists when there is a real choice to make.
+ *
+ * @param {readonly string[] | null | undefined} languages
+ * @returns {boolean}
+ */
+export function offersLanguageChoice(languages) {
+  return new Set(languages || []).size > 1;
+}

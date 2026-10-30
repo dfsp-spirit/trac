@@ -285,6 +285,8 @@
       "new": "Lägg till en aktivitet vid tiden i vyn",
       "search": "Sök i aktivitetslistan",
       "escape": "Tillbaka, eller rensa sökningen",
+      "nudge": "Flytta den valda aktiviteten 10 minuter",
+      "nudgeEnd": "Ändra slutet på den valda aktiviteten",
       "confirm": "Spara aktiviteten",
       "delete": "Ta bort den valda aktiviteten",
       "list": "Den här listan"

@@ -34,9 +34,9 @@ test('single-character shortcuts only fire inside the diary region', () => {
 });
 
 test('typing in a field is never a shortcut', () => {
-  for (const key of ['n', '/', '?', 'Delete']) {
+  for (const key of ['n', '/', '?']) {
     assert.equal(
-      resolveShortcut({ ...base, key, inEditable: true, onDeleteAction: true }),
+      resolveShortcut({ ...base, key, inEditable: true }),
       null,
       `${key} inside a text field belongs to the field`
     );
@@ -71,10 +71,13 @@ test('the switch turns every shortcut off, but only on a fine pointer', () => {
   }
 });
 
-test('Delete only acts on the control it is meant to press', () => {
-  assert.equal(resolveShortcut({ ...base, key: 'Delete', onDeleteAction: true }), 'deleteFocused');
-  assert.equal(resolveShortcut({ ...base, key: 'Backspace', onDeleteAction: true }), 'deleteFocused');
-  assert.equal(resolveShortcut({ ...base, key: 'Delete' }), null, 'nothing selected, nothing to delete');
+test('there is no Delete shortcut: deleting goes through the form', () => {
+  // The list used to advertise "Delete = delete the selected activity", but no
+  // element ever carried the flag that made it fire. Deleting a block from the
+  // timeline needs a selection model, which the rewrite does not have (D7).
+  for (const key of ['Delete', 'Backspace']) {
+    assert.equal(resolveShortcut({ ...base, key, onActivityBlock: true }), null);
+  }
 });
 
 test('keys the diary does not use stay untouched', () => {
@@ -86,4 +89,55 @@ test('keys the diary does not use stay untouched', () => {
 test('an unknown key in the region is not invented into an action', () => {
   assert.equal(resolveShortcut({ ...base, key: 'Unidentified' }), null);
   assert.equal(resolveShortcut({ key: 'n', inRegion: true }), 'new', 'defaults are permissive');
+});
+
+// ── Arrow keys nudge the focused block (D31) ───────────────────────────────
+
+/** A keyboard event on a timeline block. */
+const onBlock = { ...base, onActivityBlock: true };
+
+test('arrows move the focused block, Shift changes its end', () => {
+  assert.equal(resolveShortcut({ ...onBlock, key: 'ArrowUp' }), 'moveEarlier');
+  assert.equal(resolveShortcut({ ...onBlock, key: 'ArrowDown' }), 'moveLater');
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowUp', shiftKey: true }),
+    'endEarlier'
+  );
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowDown', shiftKey: true }),
+    'endLater'
+  );
+});
+
+test('arrows stay out of the way when no block has focus', () => {
+  for (const key of ['ArrowUp', 'ArrowDown']) {
+    assert.equal(
+      resolveShortcut({ ...base, key }),
+      null,
+      `${key} must keep scrolling the page`
+    );
+    assert.equal(resolveShortcut({ ...base, key, onActivityBlock: false }), null);
+  }
+});
+
+test('arrows do nothing in a field, even on a block', () => {
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowUp', inEditable: true }),
+    null
+  );
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowUp', inScrollable: true }),
+    null
+  );
+});
+
+test('the nudge arrows respect the global off switch', () => {
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowDown', enabled: false }),
+    null
+  );
+  assert.equal(
+    resolveShortcut({ ...onBlock, key: 'ArrowDown', finePointer: false }),
+    null
+  );
 });

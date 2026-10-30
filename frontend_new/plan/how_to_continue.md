@@ -33,8 +33,14 @@ What works end to end (browser-verified, and in CI where noted):
   server-side in `backend/src/o_timeusediary_backend/stages.py`, plus `done_reason`
   (`completed` / `noconsent`). Views in `src/js/ui/views/`, router in `src/js/{domain,ui}/router.js`,
   one guard redirect, hash routes, URL carries identity only.
-- **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `Delete`, `?`, confined to the
-  diary region, with the list and its session-scoped switch under the menu.
+- **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `?`, confined to the diary
+  region, with the list and its session-scoped switch under the menu. A **focused** block can also be
+  nudged with `↑`/`↓` (move by one step) and `Shift+↑`/`Shift+↓` (change the end) — a small keyboard
+  extra, refused by the same rules as the form; adjusting is otherwise the form. Clicking a block
+  opens the form and puts the focus in it (arrows then belong to the day/start/end selects), so
+  nudging is a keyboard path: `Tab` to the block first. Decided 2026-10-30 - a click-to-select model
+  that would make the mouse reach it was rejected as a larger change than the problem, and the list
+  no longer advertises a `Delete` shortcut, because deleting is the form's button (D7).
 - **Stage pages** (D40): one `Page` component (eyebrow = study name, one `h1` = stage purpose, lead,
   body, actions), a full-width header aligned to the shell, study Markdown demoted and level-normalised
   under the page heading, reason-aware `unavailable` copy with dates, one notice component, and a real
@@ -168,7 +174,10 @@ until the suite grows, so a new spec gives a fast signal without waiting for the
 delete + undo on the `newui_06_diary` fixture, `activity-multiday-gap.spec.js` covers the
 "also on other days" chips and opening the form from a gap, and `review-modal.spec.js` covers the
 complete/incomplete day states, *Edit* back to a day, and the confirmation step, and
-`stage-walk.spec.js` covers the deep-link guard plus consent → instructions → diary → submit → thanks.
+`stage-walk.spec.js` covers the deep-link guard plus consent → instructions → diary → submit → thanks,
+and `activity-nudge.spec.js` covers the arrow keys (move, Shift-resize, focus kept on the block after
+the save, a burst of presses, and a refused nudge). Drag and drop is **not** planned (D14): the arrow
+keys are the desktop quick-adjust path, so nothing is lost by not having a pointer gesture.
 All clear their activities through the public diary API, so repeated local runs start from the same
 state.
 

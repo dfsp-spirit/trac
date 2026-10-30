@@ -285,6 +285,8 @@
       "new": "Add an activity at the time in view",
       "search": "Search the activity list",
       "escape": "Back, or clear the search",
+      "nudge": "Move the selected activity by 10 minutes",
+      "nudgeEnd": "Change the end of the selected activity",
       "confirm": "Save the activity",
       "delete": "Delete the activity that is selected",
       "list": "This list"

@@ -56,7 +56,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 | --- | --- |
 | D12 | **Three columns at ≥1200 px**: [1] days + coverage + submit, [2] timeline, [3] activity palette with search. **Single column below 1200 px** (palette becomes a bottom sheet, days pager in the header). **No 2-column tier** — it would squeeze the timeline and the palette and add a third layout to test. |
 | D13 | **No graphical overview strip.** A 24 h bar in a 640 px column is ~4 px per 10 minutes, i.e. unreadable. The "how complete is my week" view is the day rail (coverage bar + minutes + state per day) plus the review list. |
-| D14 | **Drag-to-move is a later, optional desktop module** (`pointer: fine` only), expressed as the same `moveActivity()` action the form uses. Resize only if pilot feedback demands it. Keyboard nudge ships from the start. |
+| D14 | **No drag and drop, anywhere.** Adjusting a block is the form: day, start and end are selects, which is precise and works on every device. A focused block can also be nudged with `↑`/`↓` (move one step) and `Shift+↑`/`Shift+↓` (change the end) - a small keyboard extra for the people who look for one, not a headline feature, and nothing else in the app is shaped around it. Decided 2026-10-30: desktop-only dragging buys almost nothing here and the old app's drag engine is where its worst bugs lived (`touch-action` breaking phone scrolling, scroll-vs-drag ambiguity, resize bands, a separate mobile "move" path); creation stays a click on a labelled gap or an activity (D7). |
 
 ### Stack
 
@@ -307,7 +307,6 @@ Order of magnitude: **8–12 weeks for one developer**, with mobile usable aroun
 
 - `daysToRender` (`7` continuous / `1` paged) — one value in state.
 - `dayStartHour` (default `0`) — one constant in geometry and coverage.
-- Drag-to-move — one optional module, loaded only for fine pointers.
 
 ---
 
@@ -466,8 +465,9 @@ Single-key shortcuts are a WCAG 2.1.4 problem if they are global, and that const
 the "how do we teach it" question:
 
 - Allowed keys: `PageUp`/`PageDown` = previous/next day, `n` = new activity, `/` = focus search,
-  `Esc` = close panel / clear search, `Enter` = confirm, `Delete` = delete while the form's delete
-  action has focus, `?` = shortcut list.
+  `Esc` = close panel / clear search, `Enter` = confirm, `?` = shortcut list. `↑`/`↓` and
+  `Shift+↑`/`Shift+↓` nudge a focused block by one step (D14). There is **no** `Delete` shortcut:
+  deleting is the form's delete button, and a timeline-level Delete would need a selection model.
 - **Single-character shortcuts are active only while focus is inside the diary region** (timeline or
   panel), never globally, and never while a text field has focus. This satisfies 2.1.4 without
   remapping.
@@ -481,7 +481,7 @@ Built in `src/js/ui/keyboard.js` (rules, pure) + `ui/shortcuts.js` (binding + me
 
 - **Paging is not a single-key shortcut**, so `PageUp`/`PageDown` work outside the diary region;
   they are suppressed only inside a control that pages its own content (`<select>`, `<textarea>`).
-  Confinement applies to `n`, `/`, `?` and `Delete`.
+  Confinement applies to `n`, `/` and `?` (and to the nudge arrows, which need a block focused).
 - **The switch remembers for the session only.** D33 forbids device storage and there is no
   participant profile to hang a preference on yet; a server-side preference is a later decision.
 - **Enter had to be spelled out.** The form has no submit button, so implicit submission reloaded
@@ -838,5 +838,6 @@ title and a *Try again* action instead of one grey sentence.
 
 Same pass, same reasons: the UI language now follows the study when the URL does not name one (it
 used to fall back to `en` around German study text), switching language re-renders the stage that is
-on screen, the menu offers only the study's `supported_languages`, and a stage transition moves focus
-to the new `h1` instead of dropping it on `<body>`.
+on screen, the menu offers only the study's `supported_languages` - and no language entry at all when
+that is a single language, because a select with one option is not a choice - and a stage transition
+moves focus to the new `h1` instead of dropping it on `<body>`.

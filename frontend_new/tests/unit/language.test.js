@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   followStudyLanguage,
   pickInitialLanguage,
+  offersLanguageChoice,
   studyLanguageOptions,
 } from '../../src/js/domain/language.js';
 
@@ -59,4 +60,16 @@ test('the menu offers the study languages, narrowed to what the app renders', ()
   assert.deepEqual(studyLanguageOptions(['de', 'fr', 'de'], SUPPORTED), ['de']);
   assert.deepEqual(studyLanguageOptions(null, SUPPORTED), SUPPORTED);
   assert.deepEqual(studyLanguageOptions([], SUPPORTED), SUPPORTED);
+});
+
+// The menu entry is a choice or it is nothing: a select with one option is
+// clutter and invites a reload that cannot change anything (D40).
+test('a language switcher is offered only when there is a choice', () => {
+  assert.equal(offersLanguageChoice(['de']), false, 'one language is no choice');
+  assert.equal(offersLanguageChoice(['de', 'en']), true);
+  assert.equal(offersLanguageChoice(['de', 'en', 'sv']), true);
+  assert.equal(offersLanguageChoice(['de', 'de']), false, 'duplicates are one language');
+  assert.equal(offersLanguageChoice([]), false);
+  assert.equal(offersLanguageChoice(null), false);
+  assert.equal(offersLanguageChoice(undefined), false);
 });

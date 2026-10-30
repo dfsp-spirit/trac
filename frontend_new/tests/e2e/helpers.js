@@ -63,14 +63,25 @@ export async function openDiary(page, pid, study = STUDY) {
 }
 
 /**
+ * Add one activity through the catalogue and the form.
+ *
  * @param {import('@playwright/test').Page} page
- * @param {{ start: number, end: number }} range
+ * @param {number} code Activity code from the fixture's catalogue.
+ * @param {{ start: number, end: number }} range Day-relative minutes.
  */
-export async function addSchlafen(page, { start, end }) {
-  await chooseActivity(page, 1101);
+export async function addActivity(page, code, { start, end }) {
+  await chooseActivity(page, code);
   await page.locator('#form-start').selectOption(String(start));
   await page.locator('#form-end').selectOption(String(end));
   await page.locator('[data-slot="actions"] .t-btn--primary').click();
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ start: number, end: number }} range
+ */
+export async function addSchlafen(page, range) {
+  await addActivity(page, 1101, range);
 }
 
 /**

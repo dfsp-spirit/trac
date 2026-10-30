@@ -4,7 +4,7 @@
  * turns the shortcuts off. No separate page, no onboarding step - the menu is the
  * teaching surface, and this dialog is all the explanation there is.
  *
- * It lists what it does rather than documenting the app: seven rows, one line
+ * It lists what it does rather than documenting the app: one row per action
  * each. Keys are shown as `<kbd>` and are not translated; only the descriptions
  * are, because "PageUp" is the same word in every language.
  */
@@ -29,8 +29,9 @@ const ROWS = [
   { keys: ['n'], label: 'diary.shortcuts.new' },
   { keys: ['/'], label: 'diary.shortcuts.search' },
   { keys: ['Esc'], label: 'diary.shortcuts.escape' },
+  { keys: ['↑', '↓'], label: 'diary.shortcuts.nudge' },
+  { keys: ['Shift + ↑', 'Shift + ↓'], label: 'diary.shortcuts.nudgeEnd' },
   { keys: ['Enter'], label: 'diary.shortcuts.confirm' },
-  { keys: ['Delete'], label: 'diary.shortcuts.delete' },
   { keys: ['?'], label: 'diary.shortcuts.list' },
 ];
 

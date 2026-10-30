@@ -42,6 +42,7 @@ export function readShell(root) {
     dialogHost: /** @type {HTMLDialogElement | null} */ (maybe('#dialog-host')),
     template: /** @type {HTMLTemplateElement | null} */ (maybe('#activity-panel-tpl')),
     languageSelect: /** @type {HTMLSelectElement | null} */ (maybe('#language-select')),
+    menuLanguageBlock: maybe('#menu-language-block'),
     menu: maybe('#menu'),
     menuShortcuts: maybe('#menu-shortcuts'),
     menuPagesBlock: maybe('#menu-pages-block'),

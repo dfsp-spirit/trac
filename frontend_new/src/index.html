@@ -121,14 +121,19 @@
       <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
       <ul id="menu-pages"></ul>
     </div>
-    <hr>
-    <div class="t-drawer__section">
-      <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
-      <select class="t-select t-select--text" id="language-select">
-        <option value="de" lang="de">Deutsch</option>
-        <option value="en" lang="en">English</option>
-        <option value="sv" lang="sv">Svenska</option>
-      </select>
+    <!-- A study that ships one language has nothing to choose: the whole block
+         (separator included) appears only when the study offers more than one
+         (D40). Filled and unhidden by ui/shellChrome.js. -->
+    <div id="menu-language-block" hidden>
+      <hr>
+      <div class="t-drawer__section">
+        <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
+        <select class="t-select t-select--text" id="language-select">
+          <option value="de" lang="de">Deutsch</option>
+          <option value="en" lang="en">English</option>
+          <option value="sv" lang="sv">Svenska</option>
+        </select>
+      </div>
     </div>
   </nav>
 

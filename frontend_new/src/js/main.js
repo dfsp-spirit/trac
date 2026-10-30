@@ -238,6 +238,7 @@ export function mount({ root, params }) {
       newActivity: onFab,
       search: () => panels.focusSearch(),
       escape: onEscape,
+      nudge: (mode, delta) => panels.nudge(mode, delta),
     },
   });
 

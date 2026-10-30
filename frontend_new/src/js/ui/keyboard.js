@@ -16,7 +16,8 @@
  *    only offered there.
  */
 
-/** @typedef {'nextDay' | 'prevDay' | 'new' | 'search' | 'escape' | 'help' | 'deleteFocused'} Shortcut */
+/** @typedef {'nextDay' | 'prevDay' | 'new' | 'search' | 'escape' | 'help'
+ *   | 'moveEarlier' | 'moveLater' | 'endEarlier' | 'endLater'} Shortcut */
 
 /**
  * @typedef {Object} KeyInput
@@ -24,13 +25,14 @@
  * @property {boolean} [ctrlKey]
  * @property {boolean} [metaKey]
  * @property {boolean} [altKey]
+ * @property {boolean} [shiftKey]
  * @property {boolean} [enabled] The participant has not switched shortcuts off.
  * @property {boolean} [finePointer] `(pointer: fine)` matches.
  * @property {boolean} [inEditable] Focus is in a field that takes typing.
  * @property {boolean} [inScrollable] Focus is in a control that pages its own
  *   content (`<select>`, `<textarea>`, contenteditable).
  * @property {boolean} [inRegion] Focus is inside the timeline or the panel.
- * @property {boolean} [onDeleteAction] Focus is on a control Delete should press.
+ * @property {boolean} [onActivityBlock] Focus is on an activity block in the timeline.
  */
 /**
  * @param {KeyInput} input
@@ -42,12 +44,13 @@ export function resolveShortcut(input) {
     ctrlKey = false,
     metaKey = false,
     altKey = false,
+    shiftKey = false,
     enabled = true,
     finePointer = true,
     inEditable = false,
     inScrollable = false,
     inRegion = false,
-    onDeleteAction = false,
+    onActivityBlock = false,
   } = input;
 
   if (!enabled || !finePointer) return null;
@@ -68,10 +71,17 @@ export function resolveShortcut(input) {
   // too, so it counts even if the caller only reported one of the two flags.
   if (inEditable || inScrollable) return null;
   if (!inRegion) return null;
+
+  // Arrows nudge the focused block only. Anywhere else they must keep scrolling
+  // the page, which is why this is not a region-wide shortcut.
+  if (onActivityBlock) {
+    if (key === 'ArrowUp') return shiftKey ? 'endEarlier' : 'moveEarlier';
+    if (key === 'ArrowDown') return shiftKey ? 'endLater' : 'moveLater';
+  }
+
   if (key === 'n' || key === 'N') return 'new';
   if (key === '/') return 'search';
   if (key === '?') return 'help';
-  if ((key === 'Delete' || key === 'Backspace') && onDeleteAction) return 'deleteFocused';
   return null;
 }
 
@@ -110,20 +120,20 @@ export function bindKeyboard({ regions, isEnabled, isFinePointer, isBlocked, han
     if (isBlocked()) return;
 
     const target = event.target instanceof Element ? event.target : null;
-    const onDeleteAction =
-      target instanceof HTMLElement && target.dataset.shortcut === 'delete';
+    const onActivityBlock = target?.closest('.t-event__btn') != null;
 
     const shortcut = resolveShortcut({
       key: event.key,
       ctrlKey: event.ctrlKey,
       metaKey: event.metaKey,
       altKey: event.altKey,
+      shiftKey: event.shiftKey,
       enabled: isEnabled(),
       finePointer: isFinePointer(),
       inEditable: isInside(target, EDITABLE_SELECTOR),
       inScrollable: isInside(target, SCROLLABLE_SELECTOR),
       inRegion: regions.some((region) => region && region.contains(target)),
-      onDeleteAction,
+      onActivityBlock,
     });
     if (!shortcut) return;
 

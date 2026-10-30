@@ -285,6 +285,8 @@
       "new": "Aktivität zur sichtbaren Uhrzeit eintragen",
       "search": "Die Aktivitätenliste durchsuchen",
       "escape": "Zurück oder Suche leeren",
+      "nudge": "Gewählte Aktivität um 10 Minuten verschieben",
+      "nudgeEnd": "Ende der gewählten Aktivität ändern",
       "confirm": "Aktivität speichern",
       "delete": "Die gewählte Aktivität löschen",
       "list": "Diese Liste"
