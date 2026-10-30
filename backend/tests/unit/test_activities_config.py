@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+
 import pytest
 
 from o_timeusediary_backend.parsers.activities_config import (
@@ -134,3 +136,31 @@ def test_rejects_empty_frequency_options_list():
 
     with pytest.raises(ValueError, match="cannot be an empty list"):
         ActivitiesConfig(**payload)
+
+
+def test_shipped_activity_configs_keep_the_app_name_for_the_legacy_app():
+    """The old app's tab title and footer come from `general.app_name`.
+
+    The rewrite uses its own i18n title, so the key looks unused - but while the
+    old app is still served, every config it loads must carry it, or the tab
+    falls back to the generic localized page title ("Time Use Diary").
+    """
+    backend_root = Path(__file__).resolve().parents[2]
+    studies = json.loads((backend_root / "studies_config.json").read_text())["studies"]
+    referenced = {
+        name
+        for study in studies
+        for name in (study.get("activities_json_files") or {}).values()
+    }
+    assert referenced, "studies_config.json should reference activity configs"
+
+    missing = []
+    for name in sorted(referenced):
+        general = json.loads((backend_root / name).read_text())["general"]
+        if not general.get("app_name"):
+            missing.append(name)
+
+    assert not missing, (
+        "these activity configs are served to the old app but have no "
+        f"general.app_name: {missing}"
+    )

@@ -3,6 +3,7 @@
     {
       "name": "Default Weekly Study for Adults",
       "name_short": "default",
+      "allow_skip_timeuse": true,
       "day_start_minutes": 240,
       "description": {
         "en": "Default Study for Adults at KI, filled out by themselves",
@@ -143,6 +144,7 @@
     {
       "name": "Weekly Study for 15 year olds",
       "name_short": "15yearolds",
+      "allow_skip_timeuse": true,
       "day_start_minutes": 240,
       "description": {
         "en": "Weekly Study for 15 year olds at KI, filled out by themselves.",
@@ -269,6 +271,7 @@
     {
       "name": "Weekly Study for 9 year olds",
       "name_short": "9yearolds",
+      "allow_skip_timeuse": true,
       "day_start_minutes": 240,
       "description": {
         "en": "Weekly Study for 9 year olds at KI, filled out by their parents.",

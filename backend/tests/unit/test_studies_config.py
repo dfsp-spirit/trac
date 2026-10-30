@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -869,3 +870,24 @@ def test_shipped_legacy_studies_use_the_04_00_reporting_day():
         "a study written for the old frontend must keep the 04:00 day window "
         f"(the migration sets 240 for existing databases too): {wrong}"
     )
+
+
+def test_shipped_studies_state_skip_behaviour_explicitly():
+    """Every shipped study must say whether skipping the diary is allowed.
+
+    Relying on the (opt-in, default-off) setting once silently removed the skip
+    button from the legacy demo studies, which the old app's E2E suite drives:
+    the fixture study `default` is expected to offer skipping.
+    """
+    backend_root = Path(__file__).resolve().parents[2]
+    config = json.loads((backend_root / "studies_config.json").read_text())
+
+    implicit = [
+        study["name_short"]
+        for study in config["studies"]
+        if "allow_skip_timeuse" not in study
+    ]
+
+    assert (
+        not implicit
+    ), f"state allow_skip_timeuse explicitly for these studies: {implicit}"
