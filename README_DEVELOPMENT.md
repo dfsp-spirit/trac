@@ -42,6 +42,17 @@ cp dev_tools/local_nginx/backend_settings/.env.dev-nginx backend/.env
 ./database/create_tud_db.sh backend/.env
 ```
 
+The test suites run against a *second*, disposable database next to it, which has
+to be created once as well (your app role may not create databases). Skip this
+if you only want to run unit tests:
+
+```bash
+sudo -u postgres createdb -O timeusediary_user timeusediary_db_test
+```
+
+See [Running Tests Locally](#running-tests-locally-without-docker) for what that
+database is for and how the test scripts keep it separate from your dev data.
+
 Now let's install the backend dependencies first and run the unit tests:
 
 ```bash
@@ -63,11 +74,14 @@ cd ..     # back to repo root (`trac` directory)
 
 The web server is configured for hot reload, so you are good to edit away and instantly see the changes. You only need to restart the backend if you add a new endpoint or after database schema changes.
 
-You can verify that all services are operational by running the integration tests in a new terminal:
+You can verify that all services are operational by opening the frontend URLs below, or by running the E2E tests in a new terminal:
 ```bash
 # in the repo root (`trac` directory)
-./test_backend_integration.sh
+./test_e2e.sh
 ```
+
+`./test_backend_integration.sh` is *not* a check of the running stack: it starts a
+backend of its own against a disposable database (see "Running Tests Locally").
 
 We recommend to also run the E2E tests, see next section.
 
@@ -166,10 +180,55 @@ file is not the only source of truth.
 Now that you have all local test dependencies, you can run tests directly from your host machine:
 
 - Unit tests do not require services to be running: `./test_backend_unit.sh`
-- Integration tests require the backend and database to be running: `./test_backend_integration.sh`
+- Integration tests bring their own disposable database (see below): `./test_backend_integration.sh`
 - Migration tests run the real Alembic migrations on a throwaway database (drops it again) or on `TUD_MIGRATION_TEST_DATABASE_URL`: `./test_backend_migrations.sh`
-- E2E tests require frontend and backend to be running: `./test_e2e.sh`
+- E2E tests require frontend and backend to be running, started against the test database: `./test_e2e.sh`
 - The rewrite's own E2E suite has a separate runner and needs the same stack: `cd frontend_new && npm run test:e2e`
+
+##### One-time setup: the test database
+
+The integration and E2E tests create studies, participants and activities through
+the real API. They must not run against your development database, or every run
+leaves that data behind. Instead they use a separate database,
+`<TUD_DATABASE_NAME>_test` (i.e. `timeusediary_db_test` for the default setup),
+on the same server.
+
+The app's database role is not allowed to create databases, so create it **once**
+as a PostgreSQL administrator. From the repo root:
+
+```bash
+sudo -u postgres createdb -O timeusediary_user timeusediary_db_test
+```
+
+Replace the owner with your `TUD_DATABASE_USER` (see `backend/.env`) if you
+changed it. Creating the schema, wiping it and importing the fixture studies
+happens automatically on every test run, so you never have to touch this
+database again.
+
+Check that it is set up correctly:
+
+```bash
+cd backend/
+uv run python tests/support/database_tools.py url      # prints the test database URL
+uv run python tests/support/database_tools.py reset    # create schema + fixture studies
+```
+
+The tool refuses to operate on the database in `TUD_DATABASE_URL`, and on any
+name that does not contain `test` (override with `--force`). Set
+`TUD_TEST_DATABASE_URL` to use a different, existing throwaway database; it is
+then never created or dropped by the tooling.
+
+`./test_backend_integration.sh` uses that database when it exists and otherwise
+falls back to a throwaway PostgreSQL container (needs docker). For E2E tests,
+start the dev stack with the test database instead of the development one:
+
+```bash
+./run_dev_nginx_both.bash --test-db     # serves <TUD_DATABASE_NAME>_test
+./test_e2e.sh                           # in a second terminal
+```
+
+`./test_e2e.sh` warns if the running stack uses a database whose name does not
+contain `test`.
 
 If you want to run E2E tests, install Node.js and Playwright once:
 
