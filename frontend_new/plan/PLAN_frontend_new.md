@@ -1,10 +1,13 @@
 # Plan: new participant frontend (diary view)
 
-Status: discussion summary, nothing implemented yet. Date: 2026-10-22.
+Status: **implemented**, running next to the old app under `/report-new/`. Started 2026-10-22 as a
+discussion summary; the decisions in sections 2-8 are the binding record, and section 9 is the
+operator's view (how to run it, fixtures, what is left).
 
-Scope: **only the participant data-entry page** (the diary/timeline view). The admin portal,
-the participant text pages (consent, instructions, thank-you, timeout) and the backend
-API surface stay as they are, except where this plan says otherwise.
+Scope as written: **only the participant data-entry page** (the diary/timeline view). The admin
+portal, the participant text pages (consent, instructions, thank-you, timeout) and the backend
+API surface were to stay as they are, except where this plan says otherwise - it later did say
+otherwise (D37 stage machine, D39 `unavailable` reasons, D40 stage pages), and those sections win.
 
 Inputs used for this plan:
 
@@ -293,6 +296,10 @@ Order matters: the data model first, so there is exactly one write path when the
 | 5 | Cutover: port the e2e specs to the new flows (45 specs today, most pin the old interaction model), accessibility pass, i18n pass over the 3 remaining locales (en, de, sv), then delete the old timeline modules, drag/long-press engine, switch-timeline code, old save endpoints and dead CSS. | 1–2 weeks |
 
 Order of magnitude: **8–12 weeks for one developer**, with mobile usable around week 6–7.
+
+Where this stands now (2026-10-30): steps 0-4 are done; the "optional drag-to-move module" listed in
+step 4 was dropped entirely (D14), and the arrow-key nudges took its place as a keyboard extra. Step 5
+is untouched and must not be started without an explicit instruction - see section 9.7.
 
 ### Success criteria
 
@@ -841,3 +848,246 @@ used to fall back to `en` around German study text), switching language re-rende
 on screen, the menu offers only the study's `supported_languages` - and no language entry at all when
 that is a single language, because a select with one option is not a choice - and a stage transition
 moves focus to the new `h1` instead of dropping it on `<body>`.
+
+---
+
+## 9. Working on the rewrite today
+
+Sections 1-8 are the decision record and are binding. This section is the operator's view: what
+exists, how to run it, which fixtures exist, and what is left. It replaces the former
+`how_to_continue.md` - one doc instead of two, because both answered "what is true now" and they had
+started to disagree.
+
+The rewrite is built and runs **next to** the old app, not instead of it:
+
+| Path | Serves |
+| --- | --- |
+| `/report/` | the old app (`frontend/src`) |
+| `/report-new/` | the rewrite (`frontend_new/src`) |
+| `/locales/` | shared locale files (`frontend/src/locales`, D35) |
+| `/tud_backend/` | the API |
+
+### 9.1 What works end to end
+
+- **Diary**: continuous multi-day timeline, lanes, gaps, day rail, day navigation, activity panel with
+  pinned search, add/edit/delete with undo, multi-day create, coverage against `min_coverage`.
+  Search also matches **sub-activities** by their own name: a matching child becomes its own row
+  (child name as the title, parent as the hint) and opens the form with that child preselected, so
+  "Joggen" finds "Joggen: Draußen alleine" in one click instead of the parent plus a second choice.
+- **"Used recently"** (D28): the four most recently touched activities, folded from the diary the
+  client already holds (`recentEntries()` in `ui/activitySearch.js`), shown above the categories and
+  only while the search box is empty. No endpoint, no device storage.
+- **Review + submit** (D32): two-step modal, per-day state, *Edit* back to a day, locked and read-only
+  after submission, survives reload.
+- **Stage machine** (D37): `unavailable | consent | instructions | diary | tasks | done`, computed
+  server-side in `backend/src/o_timeusediary_backend/stages.py`, plus `done_reason`
+  (`completed` / `noconsent`). Views in `src/js/ui/views/`, router in `src/js/{domain,ui}/router.js`,
+  one guard redirect, hash routes, URL carries identity only.
+- **Stage pages** (D40): one `Page` component, one `h1` each, study Markdown demoted under the page
+  heading, reason-aware `unavailable` copy, a real failure page with *Try again*. Verified with axe:
+  five pages, zero violations.
+- **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `?`, confined to the diary region,
+  with the list and its session-scoped switch under the menu. A **focused** block can also be nudged
+  with `↑`/`↓` and `Shift+↑`/`Shift+↓` (D14); adjusting is otherwise the form, and there is no
+  `Delete` shortcut because deleting is the form's button.
+- **Menu pages** (study information, data protection, contact): `ui/legalLinks.js` turns the study
+  config into links, `ui/shellChrome.js` renders them and owns the language select, both re-rendered
+  when the language changes. Phones get them **only** in the menu (a footer under a week-long timeline
+  is a misclick target), desktop (>=1200px) gets a small footer *and* the menu. The footer shows only
+  the deployment's legal pair (`TUD_IMPRINT_URL`, `TUD_PRIVACY_URL`, sent in study-config as
+  `imprint_url`/`privacy_url`); the menu adds the study's own `footer_links` and respects
+  `hide_server_wide_links`.
+- **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text. The UI
+  language follows `?lang`, then the browser, then the study's `selected_language`; the menu offers
+  only the study's `supported_languages`, and no language entry at all when that is a single language.
+- **No help page** (Q9): the old app's screenshot help modal is not ported, and nothing links to one.
+- **Skip the diary**: `POST /diary/skip` is offered only when the study sets `allow_skip_timeuse`
+  (default **false**), writes `DONE_SKIPPED`, and does *not* satisfy `require_diary_before_external_tasks`.
+- **Deployment**: two nginx locations, one settings file per app, no duplicated scripts.
+
+### 9.2 Layers (the map)
+
+```
+src/js/
+  config.js        deployment config (replaced per environment at deploy time)
+  main.js          composition root, 299 lines, cap 300
+  data/            api.js (only network), i18n.js (locales + translator), clientInfo.js
+  domain/          time, geometry, validation, diary, color, review, markdown, router,
+                   dates, language, nudge, skip, clientInfo, participantId, uuid  (pure)
+  state/           store.js (one state object + the initial state), diary.js (the only writers)
+  ui/              components; page.js/notice.js are the stage-page frame, reviewFlow.js the
+                   review-then-submit seam, panelController.js the panel, shellChrome.js the menu,
+                   skipDialog.js the skip confirmation, views/ the stage pages
+  styles/          tokens, base, components (kit), page, topbar, layout (shell), stage, panel, dialogs
+tools/check-architecture.mjs   enforces D33: import direction, no globals, no device storage,
+                               no network outside data/, CSS rules, file size caps
+```
+
+### 9.3 Gates
+
+| Command | Needs | Result now |
+| --- | --- | --- |
+| `sh test_frontend_new.sh` | nothing (Node 24, `npm ci` in `frontend_new/`) | 198 unit tests + architecture + typecheck |
+| `sh test_frontend_unit.sh` | nothing | 115 old-frontend tests |
+| `sh test_backend_unit.sh` | nothing | 292 tests |
+| `sh test_backend_integration.sh` | postgres (own throwaway database/container), nothing running beforehand | 179 tests |
+| `sh test_backend_migrations.sh` | docker, or `TUD_MIGRATION_TEST_DATABASE_URL` | 18 tests |
+| `sh test_e2e.sh` | `./run_dev_nginx_both.bash --test-db` running | the old app's suite: 114 tests in 43 specs (four browser/timezone legs in CI) |
+| `cd frontend_new && npm run test:e2e` | the same nginx stack | 17 rewrite tests in 8 specs (chromium) |
+
+### 9.4 Fresh machine: getting to a green run
+
+```sh
+# 1. Backend settings and schema (the API does no bootstrap of its own)
+cp dev_tools/local_nginx/backend_settings/.env.dev-nginx backend/.env   # or write your own
+cd backend && uv sync --frozen
+uv run tud db upgrade
+uv run tud studies import --config studies_config.json --config studies_config_new.json
+uv run uvicorn o_timeusediary_backend.api:app --host 127.0.0.1 --port 8000   # keep running
+```
+
+```sh
+# 2a. Quick look at the rewrite without nginx (serves the repo root, so the
+#     repo-default config.js resolves its locale path)
+python3 -m http.server 8765 --bind 127.0.0.1
+#   http://127.0.0.1:8765/frontend_new/src/index.html?study=<study>&pid=<participant>
+
+# 2b. The real deployment shape (what CI does)
+./run_dev_nginx_both.bash --test-db
+#   http://localhost:3000/report/       old app
+#   http://localhost:3000/report-new/   rewrite
+```
+
+**Traps that cost time:**
+
+- **A stale uvicorn silently keeps serving old code.** If the port is in use, the new process dies and
+  you debug code that is not running. Check `ps -eo pid,args | grep [u]vicorn` and kill by PID.
+- **`run_dev_nginx_both.bash` overwrites tracked files**: it copies the dev-nginx settings over
+  `frontend/src/settings/tud_settings.js` **and** `frontend_new/src/js/config.js`, and restores both on
+  a clean exit - a killed run leaves them modified. If a diff shows up there, restore both with
+  `git checkout --`, or the repo default (`localesUrl: '../../frontend/src/locales'`) is gone.
+- **`nginx` needs a writable prefix**: `-p /tmp/` and `client_body_temp_path` (already in the
+  template). Run `nginx -t -c /tmp/nginx.conf -p /tmp/` first - an unsubstituted `$VARIABLE` is the
+  usual failure.
+- **CORS is mandatory** for browser-driven checks: `TUD_ALLOWED_ORIGINS` must name the origin you
+  load the app from, or nearly every request fails.
+- **Study import** rejects languages whose activities JSON is missing, and per-participant task tokens
+  require a closed study (`study_participant_ids` set); open studies need `open_pool` tokens.
+- **Pre-commit hooks** run ruff/ruff-format/prettier. `ruff-format` reformats *the whole staged file*,
+  so touching an old file can pull in unrelated whitespace changes - acceptable, but expect it.
+
+### 9.5 Fixture studies
+
+`backend/studies_config_new.json` + `backend/activities_newui_main.json` hold the study the rewrite is
+piloted on (`pilot_mpiae_01_open`: open enrolment, no fixed participant ids, single-timeline
+catalogue). The fixture studies live in the same file, all closed (fixed participant ids) and all
+pointing at `activities_newui_main.json`, so a spec can start from a known stage:
+
+| `name_short` | lands in | ids | note |
+| --- | --- | --- | --- |
+| `pilot_mpiae_01_open` | `consent` | any (`open`) | the real pilot study, open enrolment |
+| `newui_02_paused` | `unavailable` (`paused`) | `paused_01` | `is_paused`; the page says the study is paused |
+| `newui_03_ended` | `unavailable` (`ended`) | `ended_01` | window over; the page names the end date |
+| `newui_04_not_started` | `unavailable` (`not_started`) | `notstarted_01` | window opens in 2030; the page names the start date |
+| `newui_05_instructions` | `instructions` | `instructions_01/02` | `require_consent: false` + instructions text |
+| `newui_06_diary` | `diary` | `diary_01/02` | no consent, no instructions; the one used by the activity specs |
+| `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
+| `newui_08_prefilled` | `diary` | `ready_01` 7/7 days complete, `ready_02` 2 partial days, `ready_03` empty | review, coverage, incomplete-submit |
+| `newui_09_tasks` | `diary` | `tasks_01/02` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
+| `newui_10_walkthrough` | `consent` | `walk_01/02` | consent **and** instructions, so the full stage walk is possible |
+
+The three `unavailable` fixtures only reach the page because the rewrite asks for
+`GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 - that
+is the old frontend's signal - and the client would show its generic failure text instead of the
+reason.
+
+`max_overlap` is a study column with a model default of 2 (`models.py`) and none of the fixtures
+overrides it, so two parallel activities per moment are allowed.
+
+Two guard tests protect config keys that look unused in the rewrite:
+`backend/tests/unit/test_studies_config.py` requires `allow_skip_timeuse` to be explicit in every
+study, and `test_activities_config.py` requires `general.app_name` in every activities file that
+`studies_config.json` references (`activities_newui_main.json` is rewrite-only and has none, because
+the rewrite uses its own i18n title). The old app renders `app_name` as the tab title and footer, and
+one commit dropped it from 13 files, which broke six CI E2E tests.
+
+**A config cannot express a submitted participant.** `study_submitted_at` is participant state, so
+`done` is one API call away from a prefilled fixture:
+`POST /api/studies/{study}/participants/ready_01/diary/submit` → `done` (`completed`), and the same
+call for `tasks_01` → `tasks` → confirm with the token → `done`. Seeds and `study_participant_ids`
+apply when the study is **created**, so reseeding means deleting the study and re-importing it. The
+fixtures expect a fresh database (as CI has) or a manual reset:
+
+```sh
+for study in newui_08_prefilled newui_10_walkthrough; do
+  curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
+    "http://localhost:3000/tud_backend/api/admin/studies/$study"
+done
+cd backend && uv run tud studies import --config studies_config.json --config studies_config_new.json
+```
+
+### 9.6 Committed Playwright specs for the rewrite (D33 rule 8)
+
+The rewrite has its **own** runner and CI job: `frontend_new/playwright.config.js`, specs under
+`frontend_new/tests/e2e/`, workflow `.github/workflows/frontend_new_e2e.yml`. Chromium-only until the
+suite grows, so a new spec gives a fast signal without waiting for the old app's four-leg E2E job.
+
+| Spec | Pins |
+| --- | --- |
+| `deployment.spec.js` | the shared locale files are served where the rewrite expects them, and the app loads, routes to a stage and gets one from the backend |
+| `activity-lifecycle.spec.js` | create → edit → reload → delete + undo, and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
+| `activity-multiday-gap.spec.js` | copying one entry onto a second day, and opening the form from a clicked gap |
+| `activity-nudge.spec.js` | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
+| `menu.spec.js` | a single-language study has no language entry, and the skip entry appears only when the study allows skipping |
+| `review-modal.spec.js` | complete/incomplete day states, *Edit* back to a day, the confirmation step |
+| `stage-walk.spec.js` | deep-link guard plus consent → instructions → diary → submit → thanks |
+| `submit-readonly.spec.js` | the locked, read-only state after submission |
+
+The specs that write (`activity-lifecycle`, `activity-multiday-gap`, `activity-nudge`) clear their
+activities through the public diary API first, so repeated local runs start from the same state.
+`submit-readonly.spec.js` submits `newui_08_prefilled/ready_01` and `stage-walk.spec.js` submits
+`newui_10_walkthrough/walk_01`; those are one-way, so after the first local run they skip with a reset
+message (see 9.5).
+
+Three real bugs were found only by driving the browser, which is the argument for this list: `Esc`
+stopped closing the review modal once the shortcut handler ran, `Enter` in the activity form reloaded
+the page, and the stage guard compared its cached route instead of the URL, so a same-page hash change
+stayed on `#/diary` while the consent page was shown.
+
+### 9.7 What is left
+
+1. **Idle timeout** - recorded, not built, priority Z (see section 8). Stakeholders must decide first;
+   the honest form is a server-side expiring session token, not URL manipulation, and the
+   participant's own return must keep working.
+2. **New studies that suit the rewrite.** Until cutover, studies for `/report-new/` are added to
+   `studies_config*.json` with a **single-timeline** catalogue. Two open points:
+   - *Legacy two-timeline files.* `flattenCatalogue` (`src/js/ui/activitySearch.js`) iterates every key
+     under `timeline`, so pointing the rewrite at a file with `primary` + `secondary` would list the
+     same names twice (each file duplicates 8-10 activity names, the same activity under `1220` in
+     `primary` and `2220` in `secondary`). Latent today: every study in `studies_config.json` uses such
+     a file but is served by the old app, and the pilot uses `activities_newui_main.json` (single
+     timeline). Settle it before pointing the rewrite at a legacy study: either the client honours the
+     server-resolved timeline (`diary.timeline.key`) or the server returns one merged timeline.
+   - *Displaying a two-timeline study in one.* Only worth considering as a fallback, bounded by
+     `max_overlap` (2 unless a study sets it), and no study has more than two timelines, so it gets
+     confusing quickly.
+3. **Cutover (plan step 5) - do not do without being explicitly told to.** Blue/green is planned first.
+   When it is asked for: delete the second timeline and the `2xxx` codes from the studies and
+   activities JSON (Q6/Q7: confirmed), delete the old whole-day save endpoint and the old diary
+   JS/CSS/pages once nothing uses them (D25), the `day_start_minutes: 240` that every legacy study
+   sets (the rewrite's fixtures use 0, the model default) stops being a compatibility concern and
+   becomes ordinary configuration, port or retire the 43 old E2E specs (114 tests; they pin the
+   old interaction model), and then `/report/` disappears while `/report-new/` becomes `/report/`.
+
+### 9.8 Rules that are easy to break (the checks will fail)
+
+- `frontend_new` may not import `frontend` (and vice versa) - the locale files are the only shared
+  artefact.
+- No globals, no `document.documentElement` outside `main.js` (`<html lang>`), no
+  `localStorage`/`indexedDB`, no `fetch` outside `js/data/`.
+- File caps: 300 lines JS, 150 CSS (`components.css` excepted). Hitting the cap has been a reliable
+  signal that something belongs in its own module - `main.js` was split three times this way
+  (`diaryView`, `panelController`, `stageMachine`/`boot`).
+- CSS: tokens only, no colour literals, no id selectors, no `!important` (except `base.css`).
+- Locale keys: `diary.*` plus a small shell allowlist; values are plain text; `_one`/`_other` for
+  plurals. `tests/unit/page_i18n_keys.test.js` enforces all of it across de/en/sv.
