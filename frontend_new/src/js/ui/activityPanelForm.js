@@ -50,7 +50,7 @@ export function createFormController(deps) {
   let form = null;
   /** @type {import('../domain/diary.js').ApiActivity | null} */
   let editing = null;
-  /** @type {{ dayIndex: number, startMinutes: number, endMinutes: number }} */
+  /** @type {{ dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null }} */
   let prefill = { dayIndex: 0, startMinutes: 8 * 60, endMinutes: 9 * 60 };
 
   /** @param {import('../domain/diary.js').ApiActivity | null} activity */
@@ -171,8 +171,9 @@ export function createFormController(deps) {
     /**
      * @param {import('./activitySearch.js').CatalogueEntry} entry
      * @param {import('../domain/diary.js').ApiActivity | null} [activity]
+     * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
      */
-    show(entry, activity = null) {
+    show(entry, activity = null, child = null) {
       editing = activity;
       foot.hidden = false;
       const diary = getDiary();
@@ -189,7 +190,7 @@ export function createFormController(deps) {
               startMinutes: activity.start_minutes,
               endMinutes: activity.end_minutes,
             }
-          : prefill,
+          : { ...prefill, childCode: child ? child.code : null },
         existing: diary.activities.map((item) => ({
           id: item.client_uuid,
           dayIndex: item.day_label_index,

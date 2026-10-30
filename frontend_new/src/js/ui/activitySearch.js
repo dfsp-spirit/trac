@@ -23,6 +23,14 @@
  */
 
 /**
+ * @typedef {Object} SearchHit
+ * @property {CatalogueEntry} entry The catalogue row this hit belongs to.
+ * @property {{ code: number, name: string } | null} child The matched sub-activity, if the hit is one.
+ * @property {number} rank 0 for a word-start match, 1 for an inner match.
+ * @property {number} position Where the match starts in the folded text.
+ */
+
+/**
  * Lowercase, strip diacritics and normalise "ß" so "Aussern" finds "Äußern".
  *
  * @param {string} value
@@ -35,6 +43,20 @@ export function fold(value) {
     .replace(/ß/g, 'ss')
     .toLowerCase()
     .trim();
+}
+
+/**
+ * Locate the needle in one folded string.
+ *
+ * @param {string} haystack
+ * @param {string} needle
+ * @returns {{ rank: number, position: number } | null}
+ */
+function locate(haystack, needle) {
+  const position = haystack.indexOf(needle);
+  if (position === -1) return null;
+  const startsWord = position === 0 || /\s/.test(haystack[position - 1] || '');
+  return { rank: startsWord ? 0 : 1, position };
 }
 
 /**
@@ -89,28 +111,70 @@ export function flattenCatalogue(catalogue) {
 }
 
 /**
+ * Match entries and their sub-activities against a query.
+ *
+ * A matching sub-activity *replaces* its parent row: the parent name alone does
+ * not say which sub-activity matched, and the child is the row the participant
+ * ends up reporting ("Joggen" must find "Joggen: Draußen alleine" directly, not
+ * "Sport & Bewegung (Außer Haus)" and then a second choice).
+ *
+ * @param {CatalogueEntry[]} entries
+ * @param {string} query
+ * @returns {SearchHit[]}
+ */
+export function searchHits(entries, query) {
+  const needle = fold(query);
+  if (!needle) return entries.map((entry) => ({ entry, child: null, rank: 0, position: 0 }));
+
+  /** @type {SearchHit[]} */
+  const hits = [];
+  for (const entry of entries) {
+    const children = [];
+    for (const child of entry.children) {
+      const found = locate(fold(child.name), needle);
+      if (found) children.push({ entry, child, ...found });
+    }
+    if (children.length) {
+      hits.push(...children);
+      continue;
+    }
+    const found = locate(entry.haystack, needle);
+    if (found) hits.push({ entry, child: null, ...found });
+  }
+
+  /** @param {SearchHit} hit */
+  const label = (hit) => (hit.child ? hit.child.name : hit.entry.name);
+  hits.sort(
+    (a, b) => a.rank - b.rank || a.position - b.position || label(a).localeCompare(label(b))
+  );
+  return hits;
+}
+
+/**
  * Filter entries by a query. Word-start matches come before inner matches, then
  * alphabetical order, which keeps the list stable while typing.
+ *
+ * Entries are listed once even when several of their sub-activities match; use
+ * {@link searchHits} where the matching sub-activity matters.
  *
  * @param {CatalogueEntry[]} entries
  * @param {string} query
  * @returns {CatalogueEntry[]}
  */
 export function filterEntries(entries, query) {
-  const needle = fold(query);
-  if (!needle) return entries;
+  // The catalogue itself when nothing is typed - the renderer relies on the
+  // list being untouched while browsing.
+  if (!fold(query)) return entries;
 
-  const scored = [];
-  for (const entry of entries) {
-    const position = entry.haystack.indexOf(needle);
-    if (position === -1) continue;
-    const startsWord = position === 0 || /\s/.test(entry.haystack[position - 1] || '');
-    scored.push({ entry, rank: startsWord ? 0 : 1, position });
+  /** @type {CatalogueEntry[]} */
+  const matched = [];
+  const seen = new Set();
+  for (const hit of searchHits(entries, query)) {
+    if (seen.has(hit.entry.code)) continue;
+    seen.add(hit.entry.code);
+    matched.push(hit.entry);
   }
-  scored.sort(
-    (a, b) => a.rank - b.rank || a.position - b.position || a.entry.name.localeCompare(b.entry.name)
-  );
-  return scored.map((item) => item.entry);
+  return matched;
 }
 
 /**

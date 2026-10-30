@@ -31,7 +31,7 @@ function el(tag, className, text) {
  *   days: Array<{ index: number, name: string, display_names?: Record<string, string>, display_name: string }>,
  *   language: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
- *   prefill: { dayIndex: number, startMinutes: number, endMinutes: number },
+ *   prefill: { dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null },
  *   existing: Array<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number, activityCode: string | number }>,
  *   dayStartMinutes: number,
  *   maxOverlap: number,
@@ -64,6 +64,9 @@ export function renderActivityForm(host, view) {
     }
     if (current && current.parent_activity_code === entry.code) {
       childSelect.value = String(current.activity_code);
+    } else if (prefill.childCode) {
+      // Chosen in the search results, so the form opens ready to save.
+      childSelect.value = String(prefill.childCode);
     }
     form.append(field(t('diary.form.option'), 'form-child', childSelect));
   }

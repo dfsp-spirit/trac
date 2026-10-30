@@ -108,7 +108,7 @@ export function createActivityPanel(deps) {
       recents: query ? [] : recentEntries(all, diary?.activities ?? []),
       query,
       t,
-      onChoose: (entry) => showForm(entry),
+      onChoose: (entry, child) => showForm(entry, null, child),
     });
   }
 
@@ -127,14 +127,15 @@ export function createActivityPanel(deps) {
   /**
    * @param {import('./activitySearch.js').CatalogueEntry} entry
    * @param {import('../domain/diary.js').ApiActivity | null} [activity]
+   * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
    */
-  function showForm(entry, activity = null) {
+  function showForm(entry, activity = null, child = null) {
     mode = 'form';
     scrollOffset = content.scrollTop;
     if (title) title.textContent = activity ? t('diary.panel.editActivity') : t('diary.panel.addActivity');
     searchRow.hidden = true;
     if (backButton) backButton.hidden = false;
-    formController.show(entry, activity);
+    formController.show(entry, activity, child);
     updateContext();
     // The list item that was just clicked is gone, so focus would fall back to
     // the body; move it to the first field so the form is where the next key

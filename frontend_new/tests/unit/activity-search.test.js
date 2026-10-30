@@ -6,6 +6,7 @@ import {
   fold,
   groupByCategory,
   recentEntries,
+  searchHits,
 } from '../../src/js/ui/activitySearch.js';
 
 const config = {
@@ -196,4 +197,112 @@ test('the creation time is the fallback when nothing was edited', () => {
   ]).map((item) => item.code);
 
   assert.deepEqual(codes, [101, 100]);
+});
+
+// ── Sub-activities are searchable (D30) ────────────────────────────────────
+// A child is not a row of the catalogue, but it is the row the participant ends
+// up reporting, so it has to be findable by its own name.
+
+const sport = {
+  general: { version: '1' },
+  timeline: {
+    primary: {
+      categories: [
+        {
+          name: 'Sport',
+          activities: [
+            {
+              code: 1166,
+              name: 'Sport & Bewegung (Außer Haus)',
+              childItems: [
+                { code: 1171, name: 'Joggen: Draußen alleine' },
+                { code: 1172, name: 'Joggen: Draußen mit anderen' },
+                { code: 1168, name: 'Gehen: Draußen alleine' },
+              ],
+            },
+            { code: 1167, name: 'Sport & Bewegung (Zuhause)' },
+          ],
+        },
+      ],
+    },
+  },
+};
+
+const { entries: SPORT_ENTRIES } = flattenCatalogue(sport);
+
+/** @param {import('../../src/js/ui/activitySearch.js').SearchHit[]} hits */
+const labels = (hits) => hits.map((hit) => (hit.child ? hit.child.name : hit.entry.name));
+
+test('a sub-activity is found by its own name', () => {
+  const hits = searchHits(SPORT_ENTRIES, 'joggen');
+
+  assert.deepEqual(labels(hits), ['Joggen: Draußen alleine', 'Joggen: Draußen mit anderen']);
+  assert.deepEqual(
+    hits.map((hit) => [hit.entry.code, hit.child && hit.child.code]),
+    [
+      [1166, 1171],
+      [1166, 1172],
+    ]
+  );
+});
+
+test('a matching sub-activity replaces its parent row', () => {
+  const hits = searchHits(SPORT_ENTRIES, 'joggen');
+
+  // The parent name does not even contain the query; showing it on its own
+  // would leave the participant guessing which sub-activity matched.
+  assert.equal(hits.filter((hit) => hit.child === null).length, 0);
+});
+
+test('a parent whose own name matches is still one row with options', () => {
+  const hits = searchHits(SPORT_ENTRIES, 'zuhause');
+
+  assert.deepEqual(labels(hits), ['Sport & Bewegung (Zuhause)']);
+  assert.equal(hits[0].child, null);
+});
+
+test('searching a parent name that also appears in children lists only the children', () => {
+  // "draussen" occurs in all three child names, not in the parent names.
+  assert.deepEqual(labels(searchHits(SPORT_ENTRIES, 'draussen')), [
+    'Gehen: Draußen alleine',
+    'Joggen: Draußen alleine',
+    'Joggen: Draußen mit anderen',
+  ]);
+});
+
+test('child matches are ranked like any other match', () => {
+  const drinks = {
+    general: { version: '1' },
+    timeline: {
+      primary: {
+        categories: [
+          {
+            name: 'Getränke',
+            activities: [
+              { code: 1, name: 'Kaffee kochen' },
+              { code: 2, name: 'Getränk', childItems: [{ code: 21, name: 'Eiskaffee' }] },
+            ],
+          },
+        ],
+      },
+    },
+  };
+  const { entries } = flattenCatalogue(drinks);
+
+  // "Kaffee" starts the parent name but sits inside "Eiskaffee": the word-start
+  // hit comes first even though it is a parent and the other one a child.
+  assert.deepEqual(labels(searchHits(entries, 'kaffee')), ['Kaffee kochen', 'Eiskaffee']);
+});
+
+test('an entry with several matching children is filtered once', () => {
+  const codes = filterEntries(SPORT_ENTRIES, 'joggen').map((entry) => entry.code);
+
+  assert.deepEqual(codes, [1166]);
+});
+
+test('an empty query has no hits with children', () => {
+  const hits = searchHits(SPORT_ENTRIES, '');
+
+  assert.equal(hits.length, SPORT_ENTRIES.length);
+  assert.ok(hits.every((hit) => hit.child === null));
 });

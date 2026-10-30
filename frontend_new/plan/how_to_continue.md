@@ -24,6 +24,9 @@ What works end to end (browser-verified, and in CI where noted):
 
 - **Diary**: continuous multi-day timeline, lanes, gaps, day rail, day navigation, activity panel with
   pinned search, add/edit/delete with undo, multi-day create, coverage against `min_coverage`.
+  Searching also matches **sub-activities** by their own name: a matching child becomes its own row
+  (child name as the title, parent as the hint) and opens the form with that child preselected, so
+  "Joggen" finds "Joggen: Draußen alleine" in one click instead of the parent plus a second choice.
 - **Review + submit** (D32): two-step modal, per-day state, *Edit* back to a day, locked and read-only
   after submission, survives reload.
 - **Stage machine** (D37): `unavailable | consent | instructions | diary | tasks | done`, computed
