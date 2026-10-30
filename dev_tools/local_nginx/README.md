@@ -30,7 +30,18 @@ If you get HTTP 500 errors when importing large study configurations, check the 
 ```sh
 # start script that copies proper cfg files in place and then runs nginx and uvicorn
 ./run_dev_nginx_both.bash
+
+# same, but against the throwaway test database the E2E suites use.
+# Use this before ./test_e2e.sh so a test run leaves nothing in the development data.
+./run_dev_nginx_both.bash --test-db
 ```
+
+With `--test-db`, the backend is pointed at `<development database>_test` instead of the development
+database. The script creates that database when it does not exist, migrates it to head and imports
+the fixture studies on every start (`backend/tests/support/database_tools.py reset`). If the
+database role may not `CREATE DATABASE`, create it once with an administrator account, e.g.
+`sudo -u postgres createdb -O timeusediary_user timeusediary_db_test`, or set
+`TUD_TEST_DATABASE_URL` to an existing throwaway database.
 
 
 

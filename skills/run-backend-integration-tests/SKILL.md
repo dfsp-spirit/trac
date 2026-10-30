@@ -9,9 +9,14 @@ Use this skill when the user asks to run backend integration tests that cover AP
 
 ## Steps
 1. Confirm repository root is current working directory.
-2. Ensure backend services are running before tests (recommended: start `./run_dev_nginx_both.bash` in another terminal and keep it running).
-3. Execute `./test_backend_integration.sh`.
-4. If script prerequisites fail, report what service/environment is missing and how to start it.
+2. Execute `./test_backend_integration.sh`. It is self-contained: it prepares a
+   disposable test database, starts a backend that points at it, runs pytest and
+   removes both again. Do not start the dev stack for it, and never run the
+   integration tests against the development database.
+3. Pass extra pytest selectors through, e.g. `./test_backend_integration.sh -k diary`.
+4. If the script cannot obtain a database, report what is missing: either
+   `TUD_TEST_DATABASE_URL`, a database role allowed to `CREATE DATABASE`, or docker
+   for the throwaway container.
 5. Return test outcome with failing test names/paths when applicable.
 
 ## Expected Output

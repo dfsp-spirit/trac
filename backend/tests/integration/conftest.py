@@ -1,21 +1,16 @@
-import pytest
-from sqlalchemy import create_engine
-from sqlmodel import SQLModel
-from o_timeusediary_backend.settings import settings
+"""Integration tests run against a disposable database, not the development one.
 
+The tests create studies, participants and activities through the real API. The
+suite is prepared by ``./test_backend_integration.sh`` (which starts a backend
+against a throwaway database), or by hand: ``tests/support/database_tools.py
+reset`` plus a backend that points at that database.
 
-@pytest.fixture(autouse=True)
-def setup_db():
-    # Connect to the DB
-    engine = create_engine(settings.database_url)
+There is deliberately no per-test cleanup here. The seeded fixture studies
+("default", "adult_pilot_de*", ...) have to survive the whole run, so deleting
+all rows between tests would break the suite rather than isolate it.
 
-    # Create tables (your backend does this, but we ensure it for tests)
-    SQLModel.metadata.create_all(engine)
-
-    yield  # The test runs here
-
-    # Optional: Clear tables after test so they don't leak into the next one
-    with engine.connect() as connection:
-        for table in reversed(SQLModel.metadata.sorted_tables):
-            connection.execute(table.delete())
-        connection.commit()
+A previous ``setup_db`` fixture looked like it cleaned up, but it iterated over
+an empty ``SQLModel.metadata`` (``models.py`` was never imported) and silently did
+nothing. Do not reintroduce a blanket delete: isolating the database is the
+script's job.
+"""

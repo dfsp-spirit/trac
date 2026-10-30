@@ -219,8 +219,7 @@ Check each against the old app before deciding to drop it:
 - **Maintenance banner / footer links.** Backend settings exist (`footer_links`,
   `IS_MAINTENANCE_MODE` on the old app); the rewrite has neither.
 - **"Used recently"** in the activity panel (D28) — never built. There is a prototype, which the new frontend is roughly based on, at ~/develop_mpiae/time-diary-prototype that shows how this should look in UI (basically add recently used N at top of list, below search bar, for N ~ 4).
-- **Rail consolidation** (D28): the day rail should also carry submission state and *Submit*; today
-  Submit is in the top bar. Maybe needs discussion what is better from UI/UX perspective.
+
 - **Menu pages** (study information, data protection, contact): entries were removed until the pages
   exist. The old app renders footer links instead, but at least on mobile view, these need to go into the expandable menu to prevent mi-sclicks  and save precisous screen space. on desktio a small footer with these is better, as on desktiom people expect thing like data privaxy link in the footer.
 
@@ -241,11 +240,6 @@ Until then, we need to add new studies to studies_config.json that are suitable 
 
 ### 3.4 Open decisions, answered now (oct 28)
 
-- **`copy_source_uuid`**: decided and removed. We do not store provenance when copying activities:
-  it does not matter whether an activity was copied or not, it is an activity the participant
-  placed, and we believe them. The unused column that 0013 added is dropped by migration
-  `0014_drop_copy_source_uuid`; the model, the create request schema and the export no longer
-  mention it.
 - **Idle timeout** ("prevent other family members from continuing in an open browser session"):
   recorded as open at priority Z in the plan. Do not build it with URL tricks; the honest form is a
   server-side expiring session token, and the participant's own return (invitation link to study) must keep working.

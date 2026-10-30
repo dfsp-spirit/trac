@@ -11,6 +11,20 @@
 ## save current directory to return to it later
 CURRENT_DIR=$(pwd)
 
+# --test-db: serve a throwaway test database instead of the development one, so
+# running the test suites does not leave studies and participants in the dev
+# data. The test database is created, migrated and seeded on every start.
+USE_TEST_DB=false
+case "${1:-}" in
+    --test-db) USE_TEST_DB=true ;;
+    "") ;;
+    *)
+        echo "Unknown option '$1'."
+        echo "Usage: $0 [--test-db]"
+        exit 1
+        ;;
+esac
+
 # ── Pre-flight: clean up leftover processes from previous runs ──
 # Kill old nginx started by this script (user-level, no root needed)
 if [ -f "$HOME/nginx-dev.pid" ]; then
@@ -97,10 +111,30 @@ else
     PHONE_URL=""
 fi
 
+# Point the backend at the disposable test database on request. The override has
+# to come after the LAN rewrite above, and the last assignment wins in .env.
+TEST_DATABASE_NAME=""
+if [ "$USE_TEST_DB" = true ]; then
+    TEST_DATABASE_URL=$(cd "$CURRENT_DIR/backend" && uv run python tests/support/database_tools.py url) \
+        || { echo -e "ERROR: Failed to resolve the test database URL"; exit 1; }
+    TEST_DATABASE_NAME=$(printf '%s' "$TEST_DATABASE_URL" | sed 's#.*/##')
+    {
+        echo ""
+        echo "# --test-db: the throwaway database the test suites run against."
+        echo "TUD_DATABASE_NAME=$TEST_DATABASE_NAME"
+        echo "TUD_DATABASE_URL=$TEST_DATABASE_URL"
+    } >> "$CURRENT_DIR/backend/.env" || { echo -e "ERROR: Failed to write the test database into backend/.env"; exit 1; }
+    echo -e "INFO Using the test database '$TEST_DATABASE_NAME' instead of the development database."
+fi
+
 # Prepare backend DB state explicitly before starting the API server.
 cd "$CURRENT_DIR/backend/" || { echo -e "ERROR: Failed to change to backend directory"; exit 1; }
-uv run tud db upgrade || { echo -e "ERROR: Failed to apply DB migrations"; exit 1; }
-uv run tud studies import --config studies_config.json --config studies_config_new.json || { echo -e "ERROR: Failed to import studies config"; exit 1; }
+if [ "$USE_TEST_DB" = true ]; then
+    uv run python tests/support/database_tools.py reset || { echo -e "ERROR: Failed to prepare the test database. It must exist (or be creatable) - see the README section on running the tests."; exit 1; }
+else
+    uv run tud db upgrade || { echo -e "ERROR: Failed to apply DB migrations"; exit 1; }
+    uv run tud studies import --config studies_config.json --config studies_config_new.json || { echo -e "ERROR: Failed to import studies config"; exit 1; }
+fi
 
 # The deployment configs above are copies over tracked files; put the repo
 # versions back so a global `git add -A` cannot commit this machine's paths.
@@ -131,6 +165,9 @@ if [ $? -eq 0 ]; then
     echo -e "  rewrite:       http://localhost:3000/report-new/"
     echo -e "  pilot study:   http://localhost:3000/report-new/?study=pilot_mpiae_01_open&pid=test01"
     echo -e "  backend API:   http://localhost:3000/tud_backend/api"
+    if [ "$USE_TEST_DB" = true ]; then
+        echo -e "  database:      $TEST_DATABASE_NAME (throwaway test database)"
+    fi
     if [ -n "$PHONE_URL" ]; then
         echo -e "INFO Testing from a phone on the same wifi: $PHONE_URL"
     else

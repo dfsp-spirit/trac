@@ -18,11 +18,17 @@
 
 ## Preferred Entry Commands
 - `./test_backend_unit.sh`
-- `./test_backend_integration.sh`
+- `./test_backend_integration.sh` (self-contained: prepares a disposable database, starts a backend for it, drops both; no dev stack needed)
 - `./test_backend_migrations.sh` (real migrations; starts a throwaway database or uses `TUD_MIGRATION_TEST_DATABASE_URL`)
-- `./test_e2e.sh`
-- `cd frontend_new && npm run test:e2e` (rewrite only; requires `./run_dev_nginx_both.bash`)
+- `./test_e2e.sh` (requires the dev stack started with `./run_dev_nginx_both.bash --test-db`)
+- `cd frontend_new && npm run test:e2e` (rewrite only; requires `./run_dev_nginx_both.bash --test-db`)
+
+## Test Data Hygiene
+- Integration and E2E tests create studies, participants and activities through the real API. They must not use the development database.
+- `backend/tests/support/database_tools.py` manages the disposable test database (`url`, `reset`, `drop`). It derives `<development database>_test` from `TUD_DATABASE_URL`, refuses to touch the development database, and refuses names without "test" unless `--force` is given.
+- `./test_backend_integration.sh` uses `TUD_TEST_DATABASE_URL` when set, otherwise the local `<development database>_test`, otherwise a throwaway PostgreSQL container.
+- `./run_dev_nginx_both.bash --test-db` serves that test database; it is created, migrated and seeded on every start.
 
 ## Environment Notes
 - Recommended local integration topology uses Nginx/dev reverse proxy to mirror deployed routing.
-- E2E tests require required app services to be running before invocation.
+- E2E tests require required app services to be running before invocation, started with `--test-db`.

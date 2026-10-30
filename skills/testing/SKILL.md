@@ -18,11 +18,12 @@ Use this skill to decide and run the correct TRAC test suite for a requested cha
    - `./test_backend_unit.sh`
    - `./test_backend_integration.sh`
    - `./test_e2e.sh`
-3. For integration and E2E suites, ensure required services are running first (recommended: `./run_dev_nginx_both.bash` in another terminal).
-4. If environment prerequisites are missing, report exactly what is missing and stop before unsafe assumptions.
-5. Return concise test evidence: command run, pass/fail, and first failing location if any.
+3. Integration tests are self-contained: `./test_backend_integration.sh` prepares its own disposable database (a throwaway container when the dev role may not `CREATE DATABASE`), starts a backend for it and removes both afterwards. Do not point them at the development database.
+4. E2E tests need the dev stack running first — start it against the test database with `./run_dev_nginx_both.bash --test-db` (a plain `./run_dev_nginx_both.bash` uses the development database and leaves test studies behind).
+5. If environment prerequisites are missing, report exactly what is missing and stop before unsafe assumptions.
+6. Return concise test evidence: command run, pass/fail, and first failing location if any.
 
 ## Quality Checks
 - Unit tests do not depend on live frontend/backend services.
-- Integration tests require backend services to be running.
-- E2E tests run with required services available.
+- Integration tests bring their own disposable database and leave the development data untouched.
+- E2E tests run with required services available, started via `./run_dev_nginx_both.bash --test-db`.
