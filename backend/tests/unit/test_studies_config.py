@@ -129,22 +129,14 @@ def test_load_studies_config_accepts_require_diary_before_external_tasks_setting
     assert config.studies[0].require_diary_before_external_tasks is True
 
 
-def test_load_studies_config_allow_skip_timeuse_defaults_true(tmp_path):
+def test_load_studies_config_allow_skip_timeuse_defaults_false(tmp_path):
+    """Skipping the diary is opt-in: a diary-only study never offers it.
+
+    The option is meant for studies where the diary is one part of a longer
+    protocol; a button that ends the study must not appear by accident.
+    """
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()
-
-    config_file = tmp_path / "studies_config.json"
-    config_file.write_text(json.dumps(payload), encoding="utf-8")
-
-    config = load_studies_config(str(config_file))
-
-    assert config.studies[0].allow_skip_timeuse is True
-
-
-def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
-    _write_default_multilingual_activities(tmp_path)
-    payload = _valid_studies_payload()
-    payload["studies"][0]["allow_skip_timeuse"] = False
 
     config_file = tmp_path / "studies_config.json"
     config_file.write_text(json.dumps(payload), encoding="utf-8")
@@ -152,6 +144,19 @@ def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
     config = load_studies_config(str(config_file))
 
     assert config.studies[0].allow_skip_timeuse is False
+
+
+def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_skip_timeuse"] = True
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].allow_skip_timeuse is True
 
 
 def test_load_studies_config_save_browser_identification_defaults_false(tmp_path):

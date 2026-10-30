@@ -3,8 +3,9 @@
  * The `done` stage (D37): thank-you, with the study's own closing text.
  *
  * Which text depends on how the participant got here: `noconsent` when they
- * declined (D38), `completed` otherwise. There is nothing to do on this page and
- * nothing to edit - the diary is locked, and the server says so.
+ * declined (D38), `skipped` when they closed the diary without filling it (D41),
+ * `completed` otherwise. There is nothing to do on this page and nothing to
+ * edit - the diary is closed, and the server says so.
  */
 import { el } from '../dom.js';
 import { renderPage, prose } from '../page.js';
@@ -18,7 +19,10 @@ import { renderPage, prose } from '../page.js';
  */
 export function renderThanks(host, { session, t }) {
   const declined = session.done_reason === 'noconsent';
-  const text = declined ? session.study_text_end_noconsent : session.study_text_end_completed;
+  const skipped = session.done_reason === 'skipped';
+  let text = session.study_text_end_completed;
+  if (declined) text = session.study_text_end_noconsent;
+  else if (skipped) text = session.study_text_end_skipped || session.study_text_end_completed;
 
   const body = [];
   if (text) {

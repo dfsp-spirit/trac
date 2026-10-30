@@ -212,8 +212,16 @@ hash change stayed on `#/diary` while the consent page was shown.
 
 Check each against the old app before deciding to drop it:
 
-- **Skip the diary** (`allow_skip_timeuse`). No UI, and no `skipped` done reason in `stages.py`. If it
-  stays, `StudyParticipant` needs a field to record it — the old flow carried it in the URL.
+- **Skip the diary** (`allow_skip_timeuse`, opt-in, default **false**). Built as a server action, not
+  the old redirect: `POST …/diary/skip` sets `study_submitted_at` (every lock keeps working) plus
+  `skipped_at` / `skip_reason_code` / `skip_note` (migration 0015), and `stages.py` returns
+  `done` with `done_reason="skipped"`, so the thanks page shows the study's `study_text_end_skipped`.
+  The old flow only put `completion_status=skipped` in the URL, which meant the participant stayed
+  "in progress" and re-entered the diary on reload. UI: a menu entry, shown only when the study allows
+  it and the stage is the diary, opening one confirmation dialog (what closes, what is kept, that the
+  team sees it, and what happens to pending tasks) with an **optional** reason (5 codes + note) and
+  the contact link if configured. A skip does **not** satisfy `require_diary_before_external_tasks`:
+  such a study keeps its tasks closed for a skipper, and both the dialog and the launch gate say so.
 - **Browser identification** (`save_browser_identification`). Done, and the storage/export were
   reshaped while doing it: `ui`-free `domain/clientInfo.js` decides whether to report
   (`shouldCaptureClientInfo`: flag on, study known, consent given when the study requires it) and

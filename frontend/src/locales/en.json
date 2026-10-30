@@ -420,6 +420,27 @@
         "title": "Study unavailable",
         "text": "Please try again later."
       }
+    },
+    "skip": {
+      "menuEntry": "Skip the diary…",
+      "title": "Skip the diary?",
+      "closes": "Your diary will be closed and you will not be able to edit it.",
+      "kept": "Everything you entered so far is kept and sent to the research team.",
+      "visible": "The research team will see that you skipped the diary.",
+      "tasksContinue": "You can still complete the remaining tasks afterwards.",
+      "tasksLocked": "The remaining tasks stay closed, because they require a completed diary.",
+      "reasonLabel": "Reason (optional)",
+      "reasonNone": "Prefer not to say",
+      "reasonNoTimeAndEffort": "It took too much time or effort",
+      "reasonTechnicalProblem": "Technical problems with the app",
+      "reasonDidNotUnderstand": "I did not understand what to enter",
+      "reasonDoNotWantToReport": "I do not want to report my time use",
+      "reasonOther": "Another reason",
+      "noteLabel": "Anything else we should know? (optional)",
+      "ok": "Skip the diary",
+      "cancel": "Keep filling it in",
+      "sending": "Skipping…",
+      "failed": "Could not skip the diary. Please try again."
     }
   }
 }

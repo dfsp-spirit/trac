@@ -10,13 +10,18 @@
  */
 import { config } from '../config.js';
 import { studyLanguageOptions } from '../domain/language.js';
+import { canSkipDiary } from '../domain/skip.js';
 import { restrictLanguageOptions } from './i18n-dom.js';
 import { createLegalLinks } from './legalLinks.js';
+import { createSkipDialog } from './skipDialog.js';
 
 /**
  * @param {{
  *   shell: {
+ *     root: HTMLElement,
  *     menu: HTMLElement | null,
+ *     menuSkip: HTMLElement | null,
+ *     menuSkipItem: HTMLElement | null,
  *     menuPagesBlock: HTMLElement | null,
  *     menuPages: HTMLElement | null,
  *     footer: HTMLElement | null,
@@ -26,9 +31,16 @@ import { createLegalLinks } from './legalLinks.js';
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   getLanguage: () => string,
  *   onLanguageChange: (language: string) => void,
+ *   onSkip: (body: { reason_code?: string, reason_note?: string }) => Promise<void> | void,
  * }} deps
  */
-export function createShellChrome({ shell, t, getLanguage, onLanguageChange }) {
+export function createShellChrome({
+  shell,
+  t,
+  getLanguage,
+  onLanguageChange,
+  onSkip,
+}) {
   const legal = createLegalLinks({
     footer: shell.footer,
     footerList: shell.footerLinks,
@@ -39,6 +51,23 @@ export function createShellChrome({ shell, t, getLanguage, onLanguageChange }) {
     getLanguage,
   });
   legal.connect();
+
+  // Skipping ends the diary part of the study: the entry appears only when the
+  // study asks for it, and the dialog explains what it does to the participant's
+  // data and to any remaining tasks (D41).
+  const skipDialog = createSkipDialog({
+    root: shell.root,
+    t,
+    onSkip: async (body) => {
+      await onSkip(body);
+    },
+    getSession: () => session,
+  });
+  const onSkipClick = () => {
+    if (shell.menu && shell.menu.matches(':popover-open')) shell.menu.hidePopover();
+    skipDialog.open();
+  };
+  shell.menuSkip?.addEventListener('click', onSkipClick);
 
   const select = shell.languageSelect;
   // The select lives in this menu, and picking a language is what makes the
@@ -68,6 +97,7 @@ export function createShellChrome({ shell, t, getLanguage, onLanguageChange }) {
         )
       );
       legal.render(session);
+      if (shell.menuSkipItem) shell.menuSkipItem.hidden = !canSkipDiary(session);
     },
 
     /**
@@ -82,6 +112,8 @@ export function createShellChrome({ shell, t, getLanguage, onLanguageChange }) {
 
     destroy() {
       select?.removeEventListener('change', onSelectChange);
+      shell.menuSkip?.removeEventListener('click', onSkipClick);
+      skipDialog.destroy();
       legal.destroy();
     },
   };

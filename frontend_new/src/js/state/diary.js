@@ -217,5 +217,34 @@ export function createDiaryActions({ store, api, getLanguage }) {
     }
   }
 
-  return { load, create, update, remove, removeWithUndo, removeGroup, submit };
+  /**
+   * Skip the diary (D41): the server closes it exactly like a submission, so the
+   * local diary is marked submitted and every lock applies at once.
+   *
+   * @param {{ reason_code?: string, reason_note?: string }} [body]
+   * @returns {Promise<{ study_submitted_at: string, skipped_at: string, stage: string }>}
+   */
+  async function skip(body = {}) {
+    store.set({ saveState: 'saving' });
+    try {
+      const result = await api.skipDiary(body);
+      store.set((state) => ({
+        ...state,
+        saveState: 'idle',
+        diary: state.diary
+          ? {
+              ...state.diary,
+              study: { ...state.diary.study, submitted_at: result.study_submitted_at },
+            }
+          : state.diary,
+        revision: (state.revision || 0) + 1,
+      }));
+      return result;
+    } catch (error) {
+      store.set({ saveState: 'idle' });
+      throw error;
+    }
+  }
+
+  return { load, create, update, remove, removeWithUndo, removeGroup, submit, skip };
 }

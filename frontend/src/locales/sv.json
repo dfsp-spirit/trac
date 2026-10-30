@@ -420,6 +420,27 @@
         "title": "Studien är inte tillgänglig",
         "text": "Försök igen senare."
       }
+    },
+    "skip": {
+      "menuEntry": "Hoppa över dagboken…",
+      "title": "Hoppa över dagboken?",
+      "closes": "Din dagbok stängs och du kan inte längre redigera den.",
+      "kept": "Allt du har fyllt i hittills sparas och skickas till forskarteamet.",
+      "visible": "Forskarteamet ser att du hoppade över dagboken.",
+      "tasksContinue": "Du kan fortfarande göra de återstående uppgifterna efteråt.",
+      "tasksLocked": "De återstående uppgifterna förblir låsta, eftersom de kräver en ifylld dagbok.",
+      "reasonLabel": "Orsak (valfritt)",
+      "reasonNone": "Vill inte uppge",
+      "reasonNoTimeAndEffort": "Det tog för mycket tid eller kraft",
+      "reasonTechnicalProblem": "Tekniska problem med appen",
+      "reasonDidNotUnderstand": "Jag förstod inte vad jag skulle fylla i",
+      "reasonDoNotWantToReport": "Jag vill inte redovisa min tidsanvändning",
+      "reasonOther": "En annan orsak",
+      "noteLabel": "Något annat vi borde känna till? (valfritt)",
+      "ok": "Hoppa över dagboken",
+      "cancel": "Fortsätt fylla i",
+      "sending": "Hoppar över…",
+      "failed": "Dagboken kunde inte hoppas över. Försök igen."
     }
   }
 }

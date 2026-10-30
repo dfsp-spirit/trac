@@ -390,8 +390,9 @@
                         <p><strong>Days complete (min coverage):</strong>
                             {% if participant.all_days_meet_min_coverage %}<span style="color: #16a34a; font-weight: 600;">Yes</span>
                             {% else %}{{ participant.days_meeting_min_coverage }} of {{ participant.total_days }}{% endif %}</p>
-                        <p><strong>Study submitted:</strong>
-                            {% if participant.study_submitted_at %}<span style="color: #16a34a; font-weight: 600;">{{ participant.study_submitted_at }}</span>
+                        <p><strong>Diary closed:</strong>
+                            {% if participant.skipped_at %}<span style="color: #b45309; font-weight: 600;">Skipped</span> <span>{{ participant.skipped_at.strftime('%Y-%m-%d %H:%M') }}</span>{% if participant.skip_reason_code %} <span class="badge badge-participant">{{ participant.skip_reason_code }}</span>{% endif %}
+                            {% elif participant.study_submitted_at %}<span style="color: #16a34a; font-weight: 600;">Submitted {{ participant.study_submitted_at }}</span>
                             {% elif participant.all_days_meet_min_coverage %}<span style="color: #d97706;">All days complete — not yet submitted</span>
                             {% else %}<span style="color: #9ca3af;">Not yet</span>{% endif %}</p>
                         {% if external_task_count > 0 %}

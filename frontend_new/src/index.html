@@ -104,6 +104,13 @@
     <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
       <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
                   data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
+      <!-- Skipping ends the study's diary part, so it is only offered when the
+           study asks for it (`allow_skip_timeuse`) and never on the phone-only
+           surface: the menu is the one place that needs it (D41). -->
+      <li id="menu-skip-item" hidden>
+        <button class="t-drawer__item" type="button" id="menu-skip"
+                data-i18n="diary.skip.menuEntry">Skip the diary…</button>
+      </li>
     </ul>
     <!-- Pages the deployment and the study link to (imprint, data protection,
          study information, contact). Filled by ui/legalLinks.js from the study

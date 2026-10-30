@@ -18,14 +18,15 @@ The client renders the stage it is handed. It never decides, and it never carrie
 progress in the URL. An `unavailable` stage also carries a reason (paused, not
 started yet, already over), so the one page can say why instead of guessing (D39).
 
-Two deliberate omissions, so nobody goes looking for them:
+A skipped diary is ``done`` with ``skipped`` as the reason (D41). Skipping closes
+the diary exactly like submitting it, but it is **not** a filled diary: a study
+that sets ``require_diary_before_external_tasks`` keeps its tasks closed for a
+skipper, because the requirement exists precisely so questionnaires are not
+answered without the diary. For studies without that requirement the participant
+continues to the tasks - that is what ``allow_skip_timeuse`` is for.
 
-* **No ``skipped`` done reason.** ``allow_skip_timeuse`` is still an old-frontend
-  flow; the new frontend has no way to skip the diary, so nothing could record it.
-* **Tasks never come before the diary.** ``require_diary_before_external_tasks``
-  keeps them locked until submission. For studies that do not require that, the
-  diary is still what the participant came for, so ``tasks`` is reached from the
-  diary (and after it) rather than instead of it.
+**Tasks never come before the diary.** They are reached from the diary (and after
+it), never instead of it.
 """
 
 from __future__ import annotations
@@ -53,6 +54,7 @@ STAGE_DONE = "done"
 
 DONE_COMPLETED = "completed"
 DONE_NOCONSENT = "noconsent"
+DONE_SKIPPED = "skipped"
 
 
 class Placement(NamedTuple):
@@ -77,6 +79,8 @@ def resolve_placement(
     instructions_completed: bool,
     submitted: bool,
     pending_external_tasks: int = 0,
+    skipped: bool = False,
+    require_diary_before_external_tasks: bool = False,
 ) -> Placement:
     """The stage table from D37, as code.
 
@@ -95,10 +99,14 @@ def resolve_placement(
         return Placement(STAGE_DONE, DONE_NOCONSENT)
 
     if submitted:
-        # A submitted diary is finished; instructions and availability are moot.
-        if pending_external_tasks > 0:
+        # A closed diary is finished; instructions and availability are moot.
+        # A *skipped* one does not satisfy a "diary before tasks" requirement: the
+        # participant ended the diary without filling it, which is exactly what
+        # that setting rules out.
+        tasks_unlocked = not (skipped and require_diary_before_external_tasks)
+        if pending_external_tasks > 0 and tasks_unlocked:
             return Placement(STAGE_TASKS)
-        return Placement(STAGE_DONE, DONE_COMPLETED)
+        return Placement(STAGE_DONE, DONE_SKIPPED if skipped else DONE_COMPLETED)
 
     if not available:
         return Placement(STAGE_UNAVAILABLE, None, unavailable_reason)
@@ -168,5 +176,9 @@ def stage_for_participant(
         submitted=bool(link and link.study_submitted_at is not None),
         pending_external_tasks=pending_external_task_count(
             session, study, participant_id
+        ),
+        skipped=bool(link and link.skipped_at is not None),
+        require_diary_before_external_tasks=bool(
+            study.require_diary_before_external_tasks
         ),
     )

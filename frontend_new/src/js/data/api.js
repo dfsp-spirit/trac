@@ -175,5 +175,18 @@ export function createApi(baseUrl, studyName, participantId) {
      * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean, stage: string }>}
      */
     submitDiary: () => request(`${diaryRoot}/diary/submit`, { method: 'POST' }),
+
+    /**
+     * Close the diary without filling it (D41). The reason is optional; the
+     * server enforces `allow_skip_timeuse` and ignores an unknown code.
+     *
+     * @param {{ reason_code?: string, reason_note?: string }} body
+     * @returns {Promise<any>}
+     */
+    skipDiary: (body) =>
+      request(`${diaryRoot}/diary/skip`, {
+        method: 'POST',
+        body: JSON.stringify(body ?? {}),
+      }),
   };
 }

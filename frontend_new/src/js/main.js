@@ -73,13 +73,14 @@ export function mount({ root, params }) {
 
   const wide = window.matchMedia('(min-width: 1200px)');
 
-  // Languages and linked pages of this study: one component, because both come
-  // from the same payload and both follow the language (shellChrome.js).
+  // Shell parts that depend on the study config (shellChrome.js); `onSkip` is
+  // deferred because its machinery is created below and only runs on confirm.
   const chrome = createShellChrome({
     shell: handles,
     t,
     getLanguage: () => store.get().language,
     onLanguageChange: (next) => void setLanguage(next),
+    onSkip: (body) => (actions ? actions.skip(body).then((r) => stageMachine.applyStage(r.stage)) : undefined),
   });
 
   const api =
@@ -97,9 +98,7 @@ export function mount({ root, params }) {
   });
 
   /** @returns {boolean} */
-  function isLocked() {
-    return Boolean(store.get().diary?.study.submitted_at);
-  }
+  const isLocked = () => Boolean(store.get().diary?.study.submitted_at);
 
   const panels = createPanelController({
     hostPanel,

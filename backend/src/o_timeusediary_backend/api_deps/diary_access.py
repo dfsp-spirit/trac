@@ -144,6 +144,27 @@ def get_readable_diary_context(
     return DiaryContext(study=study, study_participant=link)
 
 
+def ensure_participant_rows(session: Session, link: StudyParticipant) -> None:
+    """Create the participant and its study association on first write.
+
+    The readable context hands out an unsaved stand-in for open studies; every
+    endpoint that writes through it has to materialise both rows first. Shared so
+    submit, skip and the write path cannot drift apart.
+    """
+    if link.id is not None:
+        return
+
+    participant = session.exec(
+        select(Participant).where(Participant.id == link.participant_id)
+    ).first()
+    if participant is None:
+        participant = Participant(id=link.participant_id)
+        session.add(participant)
+        session.flush()
+    session.add(link)
+    session.flush()
+
+
 def get_writable_diary_context(
     context: DiaryContext = Depends(get_readable_diary_context),
     session: Session = Depends(get_session),
@@ -158,16 +179,7 @@ def get_writable_diary_context(
 
     ensure_study_is_currently_available(study)
 
-    if link.id is None:
-        participant = session.exec(
-            select(Participant).where(Participant.id == link.participant_id)
-        ).first()
-        if participant is None:
-            participant = Participant(id=link.participant_id)
-            session.add(participant)
-            session.flush()
-        session.add(link)
-        session.flush()
+    ensure_participant_rows(session, link)
 
     if link.study_submitted_at is not None:
         raise HTTPException(

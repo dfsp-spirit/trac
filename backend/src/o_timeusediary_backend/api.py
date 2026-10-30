@@ -744,8 +744,19 @@ def _is_external_tasks_locked_by_diary_requirement(
     participant_id: Optional[str],
     study_days_count: int,
 ) -> bool:
+    """Is the diary still missing for a study that requires it before its tasks?
+
+    A *skipped* diary counts as missing: skipping closes the diary without
+    filling it, and the requirement exists precisely so questionnaires are not
+    answered without the diary (D41). This is the same rule the stage machine
+    applies in ``stages.resolve_placement``; both have to agree, or a task link
+    would bypass what the tasks page shows.
+    """
     if not study.require_diary_before_external_tasks:
         return False
+
+    if _is_participant_diary_skipped(session, study, participant_id):
+        return True
 
     return not _is_participant_study_complete(
         session=session,
@@ -753,6 +764,18 @@ def _is_external_tasks_locked_by_diary_requirement(
         participant_id=participant_id,
         study_days_count=study_days_count,
     )
+
+
+def _is_participant_diary_skipped(
+    session: Session, study: Study, participant_id: Optional[str]
+) -> bool:
+    """Has this participant skipped the diary (closed it without filling it)?
+
+    Used only by the "diary before tasks" gate: a skip is a closed diary, but not
+    a filled one, so it must not satisfy a study that requires the diary first.
+    """
+    link = _get_study_participant_association(session, study, participant_id)
+    return bool(link and link.skipped_at is not None)
 
 
 def _build_participant_completion_map(
@@ -2260,6 +2283,8 @@ async def admin_study_detail(
                         if participant_study_submitted_at
                         else None
                     ),
+                    "skipped_at": sp.skipped_at,
+                    "skip_reason_code": sp.skip_reason_code,
                     "all_external_tasks_completed": participant_all_external_tasks_completed,
                     "study_join_url": _build_frontend_study_join_url(
                         study.name_short,
@@ -7713,6 +7738,10 @@ async def export_study_participants(
     A study with ``save_browser_identification`` disabled gets no ``client_*``
     columns at all.
 
+    Studies that allow skipping (``allow_skip_timeuse``) also get the three
+    ``participant_skip*`` columns; ``study_submitted_at`` alone cannot tell a
+    skipped diary from a filled one.
+
     @param request FastAPI request object.
     @param study_name_short Short name of the study to export.
     @param format Output format, either `csv` or `json`.
@@ -7835,6 +7864,22 @@ async def export_study_participants(
                 "participant_total_days": comp.get("total_days", 0),
             }
         )
+
+        if study.allow_skip_timeuse:
+            # A skip closes the diary without filling it; without these columns
+            # it would look like a (possibly partial) submission. Only the
+            # participant export carries them, like the client-info block.
+            record.update(
+                {
+                    "participant_skipped_at": (
+                        study_participant.skipped_at.isoformat()
+                        if study_participant.skipped_at
+                        else None
+                    ),
+                    "participant_skip_reason_code": study_participant.skip_reason_code,
+                    "participant_skip_note": study_participant.skip_note,
+                }
+            )
 
         for day_idx, day_state in comp.get("day_status", {}).items():
             record[f"day_{day_idx}_status"] = day_state
@@ -9596,6 +9641,7 @@ class StudyConfigResponse(BaseModel):
     instructions_completed_at: Optional[datetime] = None
     participant_has_completed_study: bool = False
     study_submitted_at: Optional[datetime] = None
+    study_skipped_at: Optional[datetime] = None
     # Where this participant belongs right now (D37). Computed here and nowhere
     # else, so the client never has to re-derive the rules.
     stage: str = stages.STAGE_DIARY
@@ -9801,6 +9847,7 @@ def get_study_config(
     instructions_completed = False
     instructions_completed_at = None
     study_submitted_at = None
+    skipped_at = None
     if participant_id is not None:
         study_participant = _get_study_participant_association(
             session, study, participant_id
@@ -9811,6 +9858,7 @@ def get_study_config(
             instructions_completed = bool(study_participant.instructions_completed)
             instructions_completed_at = study_participant.instructions_completed_at
             study_submitted_at = study_participant.study_submitted_at
+            skipped_at = study_participant.skipped_at
 
     participant_external_tasks = _get_participant_external_tasks(
         session, study, participant_id, selected_language, len(day_labels)
@@ -9838,6 +9886,10 @@ def get_study_config(
             1
             for external_task in participant_external_tasks
             if not external_task.is_confirmed
+        ),
+        skipped=skipped_at is not None,
+        require_diary_before_external_tasks=bool(
+            study.require_diary_before_external_tasks
         ),
     )
 
@@ -9875,6 +9927,7 @@ def get_study_config(
         instructions_completed_at=instructions_completed_at,
         participant_has_completed_study=participant_has_completed_study,
         study_submitted_at=study_submitted_at,
+        study_skipped_at=skipped_at,
         stage=placement.stage,
         done_reason=placement.done_reason,
         unavailable_reason=placement.unavailable_reason,

@@ -38,7 +38,7 @@ BASELINE_TABLES = (
 REVISIONS = all_revisions()  # head first
 HEAD = REVISIONS[0]
 
-# Columns that migrations 0005-0014 add, i.e. the difference between a database
+# Columns that migrations 0005-0015 add, i.e. the difference between a database
 # created by create_all() before Alembic existed (which is what `stamp
 # 0003_add_study_footer_links` assumes) and the current models.
 COLUMNS_ADDED_AFTER_0003 = (
@@ -52,6 +52,9 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("study_participants", "user_agent"),
     ("study_participants", "client_info"),
     ("study_participants", "client_info_captured_at"),
+    ("study_participants", "skipped_at"),
+    ("study_participants", "skip_reason_code"),
+    ("study_participants", "skip_note"),
     ("timelines", "max_overlap"),
     ("activities", "client_uuid"),
     ("activities", "group_id"),

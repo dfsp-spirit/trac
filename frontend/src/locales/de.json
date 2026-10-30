@@ -420,6 +420,27 @@
         "title": "Studie nicht verfügbar",
         "text": "Bitte versuchen Sie es später erneut."
       }
+    },
+    "skip": {
+      "menuEntry": "Tagebuch überspringen…",
+      "title": "Tagebuch überspringen?",
+      "closes": "Ihr Tagebuch wird geschlossen, und Sie können es danach nicht mehr bearbeiten.",
+      "kept": "Alles, was Sie bisher eingetragen haben, bleibt erhalten und wird an das Forschungsteam gesendet.",
+      "visible": "Das Forschungsteam sieht, dass Sie das Tagebuch übersprungen haben.",
+      "tasksContinue": "Die verbleibenden Aufgaben können Sie danach weiterhin erledigen.",
+      "tasksLocked": "Die verbleibenden Aufgaben bleiben gesperrt, weil sie ein ausgefülltes Tagebuch voraussetzen.",
+      "reasonLabel": "Grund (optional)",
+      "reasonNone": "Möchte ich nicht angeben",
+      "reasonNoTimeAndEffort": "Es hat zu viel Zeit oder Mühe gekostet",
+      "reasonTechnicalProblem": "Technische Probleme mit der App",
+      "reasonDidNotUnderstand": "Ich wusste nicht, was ich eintragen soll",
+      "reasonDoNotWantToReport": "Ich möchte meinen Zeitverlauf nicht angeben",
+      "reasonOther": "Ein anderer Grund",
+      "noteLabel": "Gibt es noch etwas, das wir wissen sollten? (optional)",
+      "ok": "Tagebuch überspringen",
+      "cancel": "Weiter ausfüllen",
+      "sending": "Wird übersprungen…",
+      "failed": "Das Tagebuch konnte nicht übersprungen werden. Bitte versuchen Sie es erneut."
     }
   }
 }

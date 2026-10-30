@@ -108,3 +108,32 @@ call entirely when the study has the flag off (it answers `saved: false`).
   nulls. The activities export carries none of it: the values are per
   participant, so join on `participant_id`. `only_with_client_info=true` is a 400
   on a study that does not collect the data.
+
+## Skipping the diary (`allow_skip_timeuse`)
+
+Opt-in per study (**off by default**: a diary-only study never offers it).
+Participants who cannot fill the diary - typically because it is one part of a
+longer protocol - can close it from the menu:
+
+- **Endpoint:** `POST /api/studies/{s}/participants/{pid}/diary/skip`, body
+  `{reason_code?, reason_note?}` (both optional). 400 when the study does not
+  allow it (`diary.skip_not_allowed`) or the code is unknown
+  (`diary.unknown_skip_reason`); idempotent once closed.
+- **Storage:** `study_submitted_at` is set, so every existing lock, the admin
+  completion view and the exports keep working, plus `skipped_at`,
+  `skip_reason_code` and `skip_note` (migration 0015). The partial diary is kept.
+- **Stage:** `resolve_placement` returns `done` with `done_reason="skipped"`; the
+  client then renders the study's `study_text_end_skipped`.
+- **External tasks:** a skip closes the diary but is **not** a filled diary. A
+  study with `require_diary_before_external_tasks` keeps its tasks closed for a
+  skipper - enforced both by the stage machine and by
+  `_is_external_tasks_locked_by_diary_requirement` (whose payload signal is an
+  empty `continuation_url`). Without that flag the participant continues to the
+  tasks, which is the case the option exists for.
+- **Export:** the participant export gains `participant_skipped_at`,
+  `participant_skip_reason_code` and `participant_skip_note`, but only for studies
+  that allow skipping. `study_submitted_at` alone cannot tell a skipped diary
+  from a filled one; `participant_diary_completed_at` (coverage-based) stays empty
+  for a skipper.
+- **Old app:** still skips by redirect (`completion_status=skipped`) and records
+  nothing. That goes away with the cutover; do not add a second code path.

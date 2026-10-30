@@ -46,7 +46,10 @@ class Study(SQLModel, table=True):
     allow_unlisted_participants: bool = Field(default=True)
     require_consent: bool = Field(default=False)
     is_paused: bool = Field(default=False)
-    allow_skip_timeuse: bool = Field(default=True)
+    # Opt-in: skipping is meant for studies where the diary is one part of a
+    # longer protocol. A diary-only study does not need it, and a button that
+    # ends the study must never appear by accident.
+    allow_skip_timeuse: bool = Field(default=False)
     require_diary_before_external_tasks: bool = Field(default=False)
     default_language: str = Field(default="en", sa_type=String(32))
     study_text_intro: Optional[Dict[str, str]] = Field(
@@ -453,6 +456,15 @@ class StudyParticipant(SQLModel, table=True):
     client_info_captured_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
+    # A skipped diary: `study_submitted_at` is the moment the diary closed (the
+    # same field a submission sets, so every lock keeps working), and these three
+    # record that it was skipped rather than filled, and why. Null means the
+    # participant submitted (or has not finished yet).
+    skipped_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
+    skip_reason_code: Optional[str] = Field(default=None, sa_type=String(32))
+    skip_note: Optional[str] = Field(default=None, sa_type=String(500))
     created_at: datetime = Field(
         default_factory=utc_now,
         sa_column=Column(DateTime(timezone=True), nullable=False),

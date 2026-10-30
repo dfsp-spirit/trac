@@ -23,6 +23,7 @@ def test_diary_requirement_lock_disabled_returns_false():
 def test_diary_requirement_lock_enabled_returns_true_when_study_incomplete(monkeypatch):
     study = SimpleNamespace(require_diary_before_external_tasks=True)
 
+    monkeypatch.setattr(api, "_is_participant_diary_skipped", lambda *_, **__: False)
     monkeypatch.setattr(api, "_is_participant_study_complete", lambda **_: False)
 
     is_locked = api._is_external_tasks_locked_by_diary_requirement(
@@ -38,6 +39,7 @@ def test_diary_requirement_lock_enabled_returns_true_when_study_incomplete(monke
 def test_diary_requirement_lock_enabled_returns_false_when_study_complete(monkeypatch):
     study = SimpleNamespace(require_diary_before_external_tasks=True)
 
+    monkeypatch.setattr(api, "_is_participant_diary_skipped", lambda *_, **__: False)
     monkeypatch.setattr(api, "_is_participant_study_complete", lambda **_: True)
 
     is_locked = api._is_external_tasks_locked_by_diary_requirement(
@@ -48,6 +50,27 @@ def test_diary_requirement_lock_enabled_returns_false_when_study_complete(monkey
     )
 
     assert is_locked is False
+
+
+def test_a_skipped_diary_counts_as_missing_for_the_requirement(monkeypatch):
+    """Skipping closes the diary without filling it (D41).
+
+    A submitted-but-skipped diary must not unlock tasks that the study requires a
+    diary for, so the skip outranks the submission.
+    """
+    study = SimpleNamespace(require_diary_before_external_tasks=True)
+
+    monkeypatch.setattr(api, "_is_participant_diary_skipped", lambda *_, **__: True)
+    monkeypatch.setattr(api, "_is_participant_study_complete", lambda **_: True)
+
+    is_locked = api._is_external_tasks_locked_by_diary_requirement(
+        session=None,
+        study=study,
+        participant_id="p1",
+        study_days_count=7,
+    )
+
+    assert is_locked is True
 
 
 def test_expected_return_url_template_fills_known_study_and_task(monkeypatch):

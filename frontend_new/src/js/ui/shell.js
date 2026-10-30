@@ -26,6 +26,7 @@ export function readShell(root) {
   };
 
   return {
+    root,
     topbar: must('#topbar'),
     daysHost: must('#days'),
     stageHost: must('#stage-host'),
@@ -45,6 +46,8 @@ export function readShell(root) {
     menuShortcuts: maybe('#menu-shortcuts'),
     menuPagesBlock: maybe('#menu-pages-block'),
     menuPages: maybe('#menu-pages'),
+    menuSkip: maybe('#menu-skip'),
+    menuSkipItem: maybe('#menu-skip-item'),
     footer: maybe('#footer'),
     footerLinks: maybe('#footer-links'),
     nav: {

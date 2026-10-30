@@ -11,6 +11,7 @@ import pytest
 from o_timeusediary_backend.stages import (
     DONE_COMPLETED,
     DONE_NOCONSENT,
+    DONE_SKIPPED,
     STAGE_CONSENT,
     STAGE_DIARY,
     STAGE_DONE,
@@ -110,6 +111,48 @@ def test_tasks_never_precede_the_diary():
 def test_instructions_come_before_the_diary_and_are_moot_once_it_is_submitted():
     assert _place(instructions_completed=False).stage == STAGE_INSTRUCTIONS
     assert _place(instructions_completed=False, submitted=True).stage == STAGE_DONE
+
+
+def test_a_skipped_diary_is_done_with_its_own_reason():
+    """The thanks page shows the study's "skipped" text, so the reason matters."""
+    placement = _place(submitted=True, skipped=True)
+    assert placement.stage == STAGE_DONE
+    assert placement.done_reason == DONE_SKIPPED
+
+
+def test_a_skip_still_lets_the_participant_do_the_tasks():
+    """The case `allow_skip_timeuse` exists for: the diary is one part of a study."""
+    assert (
+        _place(submitted=True, skipped=True, pending_external_tasks=1).stage
+        == STAGE_TASKS
+    )
+
+
+def test_a_skip_does_not_satisfy_diary_before_tasks():
+    """A study that requires the diary first keeps its tasks closed for a skipper.
+
+    The requirement exists so questionnaires are not answered without a diary;
+    skipping is exactly that case, so it must not unlock them.
+    """
+    placement = _place(
+        submitted=True,
+        skipped=True,
+        pending_external_tasks=1,
+        require_diary_before_external_tasks=True,
+    )
+    assert placement.stage == STAGE_DONE
+    assert placement.done_reason == DONE_SKIPPED
+
+
+def test_a_normal_submission_still_satisfies_diary_before_tasks():
+    assert (
+        _place(
+            submitted=True,
+            pending_external_tasks=1,
+            require_diary_before_external_tasks=True,
+        ).stage
+        == STAGE_TASKS
+    )
 
 
 @pytest.mark.parametrize(

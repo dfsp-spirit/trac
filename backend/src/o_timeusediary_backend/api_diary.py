@@ -19,6 +19,7 @@ The old whole-day endpoint stays untouched until cutover (D25).
 
 from __future__ import annotations
 
+import logging
 import uuid
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -31,6 +32,7 @@ from .api_deps.activities import get_study_activity_codes
 from .api_deps.available_activities import get_study_activities_config_model
 from .api_deps.diary_access import (
     DiaryContext,
+    ensure_participant_rows,
     get_readable_diary_context,
     get_writable_diary_context,
 )
@@ -42,10 +44,13 @@ from .coverage import (
     required_coverage_by_timeline,
     to_day_relative,
 )
+
 from .database import get_session
 from .models import Activity, DayLabel, Study, Timeline
 from .stages import stage_for_participant
 from .utils import utc_now
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/studies/{study_name_short}/participants/{participant_id}"
@@ -503,6 +508,122 @@ def submit_diary(
         "study_submitted_at": submitted_at.isoformat(),
         "already_submitted": False,
         # `tasks` when external tasks are still owed, otherwise `done` (D37).
+        "stage": stage_for_participant(
+            session, study, participant.participant_id
+        ).stage,
+    }
+
+
+#: Reasons a participant may pick when skipping. The codes are stored as-is, so
+#: they are stable strings; their labels live in the client's locales.
+SKIP_REASON_CODES = (
+    "no_time_and_effort",
+    "technical_problem",
+    "did_not_understand",
+    "do_not_want_to_report",
+    "other",
+)
+
+
+class SkipDiaryRequest(BaseModel):
+    """Why the participant is skipping. Both fields are optional on purpose."""
+
+    reason_code: Optional[str] = None
+    reason_note: Optional[str] = Field(default=None, max_length=500)
+
+
+@router.post("/diary/skip")
+def skip_diary(
+    payload: Optional[SkipDiaryRequest] = None,
+    context: DiaryContext = Depends(get_readable_diary_context),
+    session: Session = Depends(get_session),
+):
+    """Close the diary because the participant does not want to fill it (D41).
+
+    Skipping is a server action, not a redirect: it sets ``study_submitted_at``
+    (the field every lock, the admin completion view and the exports already key
+    off) plus ``skipped_at`` and the optional reason, so the decision survives a
+    reload and the study team can tell a skip from an abandonment.
+
+    What it does **not** do: satisfy ``require_diary_before_external_tasks``. A
+    study that requires the diary before its questionnaires keeps them closed for
+    a skipper (see ``stages.resolve_placement``), because that requirement exists
+    to prevent exactly this - questionnaires without a diary.
+
+    Idempotent: skipping again returns the stored state. Refused when the study
+    does not offer the option, and when the diary was already submitted normally
+    (then there is nothing to skip).
+
+    @param payload Optional reason (code and/or short note).
+    @param context Diary context dependency (study + participant).
+    @param session Database session dependency.
+    @returns When the diary closed, the reason, and the stage to show next.
+    """
+    study = context.study
+    participant = context.study_participant
+    payload = payload or SkipDiaryRequest()
+
+    if not study.allow_skip_timeuse:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "diary.skip_not_allowed",
+                "message": "This study does not allow skipping the diary.",
+            },
+        )
+
+    reason_code = (payload.reason_code or "").strip() or None
+    if reason_code is not None and reason_code not in SKIP_REASON_CODES:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "diary.unknown_skip_reason",
+                "message": "Unknown skip reason.",
+                "allowed_reason_codes": list(SKIP_REASON_CODES),
+            },
+        )
+    note = (payload.reason_note or "").strip() or None
+
+    # A first write from an open study still has to create the two rows; the
+    # readable context hands out an unsaved stand-in on purpose.
+    ensure_participant_rows(session, participant)
+
+    # Already closed: report what is stored instead of overwriting it. A diary
+    # submitted the normal way is not turned into a skipped one.
+    if participant.study_submitted_at is not None:
+        return {
+            "study_submitted_at": participant.study_submitted_at.isoformat(),
+            "skipped_at": (
+                participant.skipped_at.isoformat() if participant.skipped_at else None
+            ),
+            "already_closed": True,
+            "stage": stage_for_participant(
+                session, study, participant.participant_id
+            ).stage,
+        }
+
+    closed_at = utc_now()
+    participant.study_submitted_at = closed_at
+    participant.skipped_at = closed_at
+    participant.skip_reason_code = reason_code
+    participant.skip_note = note
+    session.add(participant)
+    session.commit()
+    session.refresh(participant)
+
+    skipped_at = participant.skipped_at
+    assert skipped_at is not None
+    logger.info(
+        "Participant '%s' skipped the diary of study '%s' (reason=%s)",
+        participant.participant_id,
+        study.name_short,
+        reason_code or "not given",
+    )
+
+    return {
+        "study_submitted_at": participant.study_submitted_at.isoformat(),
+        "skipped_at": skipped_at.isoformat(),
+        "already_closed": False,
         "stage": stage_for_participant(
             session, study, participant.participant_id
         ).stage,
