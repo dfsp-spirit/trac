@@ -114,3 +114,30 @@
   overflow: hidden;
 }
 .t-rail__fill { display: block; height: 100%; width: var(--fill, 0); background: var(--ink); }
+
+/* Footer with the deployment's legal pages: desktop only. A phone has the same
+   entries in the menu, and a link under a week-long timeline is a misclick
+   target rather than a service. */
+.t-footer { display: none; }
+
+@media (min-width: 1200px) {
+  .t-footer {
+    display: flex;
+    justify-content: center;
+    padding: var(--space-4) var(--space-4) var(--space-6);
+    border-top: 1px solid var(--line);
+  }
+  .t-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+    color: var(--ink-muted);
+  }
+  .t-footer__link { color: inherit; text-decoration: none; }
+  .t-footer__link:hover { color: var(--ink); text-decoration: underline; }
+}

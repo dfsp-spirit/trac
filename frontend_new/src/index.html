@@ -74,6 +74,15 @@
     <section class="t-activity-panel" id="panel-host"></section>
   </div>
 
+  <!-- Desktop only (≥1200px, see layout.css): the deployment's legal pages stay
+       reachable without opening the menu, which is where desktop visitors look
+       for them. Phones deliberately get no footer - under a week-long timeline it
+       would be a misclick target - and use the menu instead. Filled by
+       ui/legalLinks.js; empty studies render nothing. -->
+  <footer class="t-footer" id="footer" hidden>
+    <ul class="t-footer__links" id="footer-links"></ul>
+  </footer>
+
   <button class="t-fab" type="button" id="fab" aria-keyshortcuts="n">
     <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
     <span data-i18n="diary.shell.addActivity">Add activity</span>
@@ -96,9 +105,15 @@
       <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
                   data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
     </ul>
-    <!-- The instruction pages (study information, data protection, contact) get
-         their menu entries back when the pages exist. An entry that does nothing
-         is worse than no entry (D28: less is more). -->
+    <!-- Pages the deployment and the study link to (imprint, data protection,
+         study information, contact). Filled by ui/legalLinks.js from the study
+         config; the whole block stays hidden when nothing is configured, and no
+         entry is rendered without a URL (D28: an entry that does nothing is
+         worse than no entry). Phones get these only here, never in a footer. -->
+    <div id="menu-pages-block" hidden>
+      <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
+      <ul id="menu-pages"></ul>
+    </div>
     <hr>
     <div class="t-drawer__section">
       <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>

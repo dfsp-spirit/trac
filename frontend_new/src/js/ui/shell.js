@@ -43,6 +43,10 @@ export function readShell(root) {
     languageSelect: /** @type {HTMLSelectElement | null} */ (maybe('#language-select')),
     menu: maybe('#menu'),
     menuShortcuts: maybe('#menu-shortcuts'),
+    menuPagesBlock: maybe('#menu-pages-block'),
+    menuPages: maybe('#menu-pages'),
+    footer: maybe('#footer'),
+    footerLinks: maybe('#footer-links'),
     nav: {
       prev: /** @type {HTMLAnchorElement | null} */ (maybe('#day-prev')),
       next: /** @type {HTMLAnchorElement | null} */ (maybe('#day-next')),

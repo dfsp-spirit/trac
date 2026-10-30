@@ -214,14 +214,39 @@ Check each against the old app before deciding to drop it:
 
 - **Skip the diary** (`allow_skip_timeuse`). No UI, and no `skipped` done reason in `stages.py`. If it
   stays, `StudyParticipant` needs a field to record it — the old flow carried it in the URL.
-- **Browser identification** (`save_browser_identification`). The backend endpoint exists; the
-  rewrite never calls it.
-- **Maintenance banner / footer links.** Backend settings exist (`footer_links`,
-  `IS_MAINTENANCE_MODE` on the old app); the rewrite has neither.
+- **Browser identification** (`save_browser_identification`). Done, and the storage/export were
+  reshaped while doing it: `ui`-free `domain/clientInfo.js` decides whether to report
+  (`shouldCaptureClientInfo`: flag on, study known, consent given when the study requires it) and
+  builds a **raw-signals-only** payload — no ua-parser in the browser (D16 forbids the global, and a
+  stored parse result goes stale; the backend drops anything outside its whitelist). `data/clientInfo.js`
+  reads the environment and posts; `main.js` calls it once when the study config arrives. Because the
+  rewrite has no device storage (D33), the client posts on every load and the **server** treats an
+  unchanged snapshot as the same capture (`unchanged: true`, `capture_count` unchanged).
+  Storage is now one prefixed column pair on `study_participants` — `client_info` (JSON holding the
+  client signals plus server-owned `schema_version`/`user_agent`/`capture_count`/`first_captured_at`)
+  and `client_info_captured_at`; the separate `user_agent` column is gone (0011 was unreleased and the
+  layout was changed in place). Exports: the `client_*` block appears **only** in the participant
+  export, **only** when the study collects the data, and is curated (15 columns, not 27); the
+  activities export carries none of it, and the `study_save_browser_identification` marker is gone —
+  the presence of the block now means "collected by design". The admin study page has Participant
+  CSV/JSON download buttons (plus a "client info only" variant when the study collects it).
+- **Maintenance banner.** Backend settings exist (`IS_MAINTENANCE_MODE` on the old app); the
+  rewrite has neither. (The footer links from the same bullet are done — see "Menu pages" below.)
 - **"Used recently"** in the activity panel (D28) — never built. There is a prototype, which the new frontend is roughly based on, at ~/develop_mpiae/time-diary-prototype that shows how this should look in UI (basically add recently used N at top of list, below search bar, for N ~ 4).
 
-- **Menu pages** (study information, data protection, contact): entries were removed until the pages
-  exist. The old app renders footer links instead, but at least on mobile view, these need to go into the expandable menu to prevent mi-sclicks  and save precisous screen space. on desktio a small footer with these is better, as on desktiom people expect thing like data privaxy link in the footer.
+- **Menu pages** (study information, data protection, contact): built. `ui/legalLinks.js` turns the
+  study config into links; `ui/shellChrome.js` renders them and owns the language select, both
+  re-rendered when the language changes. Phones get them **only** in the menu (a footer under a
+  week-long timeline is a misclick target), desktop (≥1200px) gets a small footer at the end of the
+  document *and* the menu. The footer shows only the deployment's legal pair (`TUD_IMPRINT_URL`,
+  `TUD_PRIVACY_URL`, now sent in study-config as `imprint_url`/`privacy_url`); the menu adds the
+  study's own `footer_links` and respects `hide_server_wide_links`. Entries without a URL are not
+  rendered (D28). External targets open in a new tab with `rel=noopener` and the
+  `footer.opensInNewTab` hint. The old app's iframe-dialog behaviour for *same-origin* links is not
+  ported: nothing is hosted locally today. Pinned by `frontend_new/tests/unit/legal-links.test.js`
+  and `backend/tests/{unit/test_settings_legal_links.py,integration/test_study_footer_links.py}`, plus
+  a browser check of both viewports (phone: no footer, menu only; desktop: footer + menu; nothing
+  configured: no footer).
 
 ### 3.3 Cutover (plan step 5) - DO NOT DO THIS WITHOUT EXPLICITELY BEING TOLD TO DO IT!
 

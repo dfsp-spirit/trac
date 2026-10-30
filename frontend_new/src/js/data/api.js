@@ -122,6 +122,21 @@ export function createApi(baseUrl, studyName, participantId) {
       }),
 
     /**
+     * Report the device once per load for studies that collect it. The server
+     * ignores this when the study's `save_browser_identification` is off, and
+     * treats an unchanged snapshot as the same capture.
+     *
+     * @param {{ user_agent?: string, client_info: Record<string, unknown> }} body
+     * @returns {Promise<any>}
+     */
+    submitClientInfo: (body) =>
+      request(`${diaryRoot}/client-info`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        keepalive: true,
+      }),
+
+    /**
      * @param {{ items: any[], group_id?: string, catalogue_version?: string }} body
      * @returns {Promise<any>}
      */

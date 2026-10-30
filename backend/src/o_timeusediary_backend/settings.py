@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 import json
+from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 load_dotenv()  # load .env file in working directory if it exists
@@ -59,6 +60,23 @@ class TUDBackendSettings:
             str: The root path of the application.
         """
         return os.getenv("TUD_ROOTPATH", "/")
+
+    @property
+    def imprint_url(self) -> Optional[str]:
+        """Server-wide imprint ("Impressum") link shown to participants.
+
+        These two are deployment facts, not study configuration: every study on
+        this server points at the same institution pages. The client renders them
+        in the footer (desktop) and the menu, unless the study sets
+        `hide_server_wide_links`. Empty means "not configured" and nothing is
+        rendered, rather than a dead link.
+        """
+        return (os.getenv("TUD_IMPRINT_URL") or "").strip() or None
+
+    @property
+    def privacy_url(self) -> Optional[str]:
+        """Server-wide data-protection link. See `imprint_url`."""
+        return (os.getenv("TUD_PRIVACY_URL") or "").strip() or None
 
     @property
     def frontend_url(self) -> str:

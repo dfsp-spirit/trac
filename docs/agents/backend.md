@@ -59,3 +59,52 @@ Rules that must not drift:
 - Errors carry a machine-readable `detail.code` (`overlap.limit_reached`,
   `activity.duplicate`, `day.ends_at_midnight`, `days.incomplete`, ...); the
   frontend maps those codes to translations and never parses message text.
+
+## Participant-facing links (imprint, data protection, study pages)
+
+`GET /api/studies/{study}/study-config` is the only place the participant UI
+learns which pages it may link, so no deployment value has to live in a served
+JavaScript file:
+
+| Field | Source | Shown |
+| --- | --- | --- |
+| `imprint_url` | `TUD_IMPRINT_URL` (deployment) | menu, desktop footer |
+| `privacy_url` | `TUD_PRIVACY_URL` (deployment) | menu, desktop footer |
+| `footer_links` | `studies.footer_links` (per study) | menu only |
+| `hide_server_wide_links` | `studies.hide_server_wide_links` (per study) | hides the two deployment links |
+
+- Both env values are optional; empty or whitespace-only means "not configured"
+  and the field is `null` (see `settings.imprint_url`). A study with no links at
+  all produces no footer and no menu section.
+- `hide_server_wide_links` hides the deployment pair for that study only; the
+  study's own `footer_links` are unaffected.
+- The old frontend still reads the same two URLs from its
+  `frontend/src/settings/tud_settings.js`; that duplication goes away with the
+  cutover. Do not add a third source.
+
+## Browser/device identification (`save_browser_identification`)
+
+Opt-in per study, **off by default**. The participant UI reports the device through
+`POST /api/studies/{s}/participants/{pid}/client-info`; the endpoint ignores the
+call entirely when the study has the flag off (it answers `saved: false`).
+
+- **Storage:** one prefixed column pair on `study_participants`, migrated by 0011:
+  `client_info` (JSON) and `client_info_captured_at`. The blob holds the client
+  signals plus the server-owned `schema_version`, `user_agent`,
+  `capture_count` and `first_captured_at`, so no second column can disagree with
+  it. There is exactly **one** user agent: the `User-Agent` header when present
+  (nothing in the page can rewrite it in flight), the reported value as fallback.
+- **Whitelist:** `CLIENT_INFO_CLIENT_KEYS` decides what a client may store
+  (`platform`, `language`, `timezone`, `screen`, `viewport`,
+  `device_pixel_ratio`, `max_touch_points`). Anything else is dropped, which is
+  what removed the client-side `ua-parser-js` snapshot — parsing rules improve,
+  so the raw values are stored and interpreted later.
+- **Idempotent by design:** the rewrite has no device storage (D33) and posts on
+  every load. An unchanged snapshot is not a capture: the endpoint returns
+  `unchanged: true` and leaves `capture_count`/`first_captured_at` alone.
+- **Exports:** only the participant export carries it (`client_*` columns, 15 of
+  them, plus `client_info_json`), and only when the study collects it — a study
+  with the flag off produces no `client_*` columns at all, rather than a block of
+  nulls. The activities export carries none of it: the values are per
+  participant, so join on `participant_id`. `only_with_client_info=true` is a 400
+  on a study that does not collect the data.

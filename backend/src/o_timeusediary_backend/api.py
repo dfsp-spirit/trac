@@ -7578,13 +7578,6 @@ async def export_study_activities(
             else None
         )
 
-        # Browser/device identification. Participant-level data repeated on each
-        # activity row, consistent with the other participant columns above. The
-        # study-level marker lets researchers tell "not collected by design"
-        # apart from "collected but missing".
-        record["study_save_browser_identification"] = study.save_browser_identification
-        record.update(_client_info_export_columns(study_participant))
-
         if study.require_consent:
             consent_decided_at = (
                 study_participant.consent_decided_at.isoformat()
@@ -7700,7 +7693,7 @@ async def export_study_participants(
         False,
         description=(
             "When true, export only participants for whom browser identification "
-            "data was actually stored."
+            "data was actually stored. Requires a study that collects it."
         ),
     ),
     current_admin: str = Depends(verify_admin),
@@ -7714,10 +7707,17 @@ async def export_study_participants(
     represented. It intentionally contains **no activity data**; join it to the
     activities export on ``participant_id`` when per-activity context is needed.
 
+    It is also the only export that carries the browser/device identification
+    (``client_*`` columns), because that data is captured once per participant:
+    repeating it on every activity row would add columns without information.
+    A study with ``save_browser_identification`` disabled gets no ``client_*``
+    columns at all.
+
     @param request FastAPI request object.
     @param study_name_short Short name of the study to export.
     @param format Output format, either `csv` or `json`.
-    @param only_with_client_info When true, skip participants without stored browser data.
+    @param only_with_client_info When true, skip participants without stored
+        browser data.
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
     @returns A file-download response with one record per study participant.
@@ -7733,6 +7733,16 @@ async def export_study_participants(
     if not study:
         raise HTTPException(
             status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    if only_with_client_info and not study.save_browser_identification:
+        # "Nothing to filter" is a configuration answer, not an empty result.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Study '{study_name_short}' does not collect browser "
+                "identification (save_browser_identification is disabled)"
+            ),
         )
 
     study_participants = session.exec(
@@ -7773,9 +7783,6 @@ async def export_study_participants(
             "study_name": study.name,
             "study_name_short": study.name_short,
             "study_id": study.id,
-            # Marker so empty browser columns can be interpreted as "not
-            # collected by design" rather than "collection failed".
-            "study_save_browser_identification": study.save_browser_identification,
             "participant_study_association_created_at": (
                 study_participant.created_at.isoformat()
             ),
@@ -7838,11 +7845,16 @@ async def export_study_participants(
             )
 
         # One row per participant, so the full stored blob is safe to include.
+        # A study that does not collect this data contributes no columns.
         record.update(
-            _client_info_export_columns(study_participant, include_raw_json=True)
+            _client_info_export_columns(
+                study_participant,
+                enabled=study.save_browser_identification,
+                include_raw_json=True,
+            )
         )
 
-        if only_with_client_info and not record["participant_client_info_collected"]:
+        if only_with_client_info and not record.get("client_info_collected"):
             continue
 
         export_data.append(record)
@@ -8606,22 +8618,30 @@ def _client_info_lookup(blob: Any, *path: str) -> Any:
 def _client_info_export_columns(
     study_participant: Optional[StudyParticipant],
     *,
+    enabled: bool,
     include_raw_json: bool = False,
 ) -> Dict[str, Any]:
     """Flatten stored browser/device identification into export columns.
 
-    These are participant-level values that get repeated on every activity row
-    in the activities export, matching how consent/instructions/completion
-    columns are already handled. Empty values simply mean nothing was captured
-    (or the study disabled the feature -- see the study-level
-    ``study_save_browser_identification`` marker column).
+    Only the participant-level export calls this: the values are captured once
+    per participant, so repeating them on every activity row would multiply the
+    same constants by the number of activities without adding information. Join
+    the activities export on ``participant_id`` when per-activity context is
+    needed.
+
+    A study that does not collect this data produces **no columns at all**
+    (empty dict) instead of a wide block of nulls: the presence of the
+    ``client_*`` block is what tells a reader that collection was configured.
 
     @param study_participant The study-participant association, if any.
-    @param include_raw_json When true, also emit the full stored blob as a JSON
-        string. Only used by the participant-level export, where it cannot be
-        duplicated across many rows.
-    @returns A dict of export column names to values.
+    @param enabled The study's ``save_browser_identification`` flag.
+    @param include_raw_json When true, also emit the stored blob as a JSON
+        string, so values outside the curated columns stay available.
+    @returns A dict of export column names to values (empty when disabled).
     """
+    if not enabled:
+        return {}
+
     blob = (
         study_participant.client_info
         if study_participant and isinstance(study_participant.client_info, dict)
@@ -8632,54 +8652,25 @@ def _client_info_export_columns(
     )
 
     columns: Dict[str, Any] = {
-        "participant_client_info_collected": bool(blob),
-        "participant_user_agent": (
-            study_participant.user_agent if study_participant else None
-        ),
-        "participant_browser_name": _client_info_lookup(blob, "browser", "name"),
-        "participant_browser_version": _client_info_lookup(blob, "browser", "version"),
-        "participant_engine_name": _client_info_lookup(blob, "engine", "name"),
-        "participant_engine_version": _client_info_lookup(blob, "engine", "version"),
-        "participant_os_name": _client_info_lookup(blob, "os", "name"),
-        "participant_os_version": _client_info_lookup(blob, "os", "version"),
-        "participant_device_type": _client_info_lookup(blob, "device", "type"),
-        "participant_device_vendor": _client_info_lookup(blob, "device", "vendor"),
-        "participant_device_model": _client_info_lookup(blob, "device", "model"),
-        "participant_cpu_architecture": _client_info_lookup(
-            blob, "cpu", "architecture"
-        ),
-        "participant_screen_width": _client_info_lookup(blob, "screen", "width"),
-        "participant_screen_height": _client_info_lookup(blob, "screen", "height"),
-        "participant_viewport_width": _client_info_lookup(blob, "viewport", "width"),
-        "participant_viewport_height": _client_info_lookup(blob, "viewport", "height"),
-        "participant_device_pixel_ratio": _client_info_lookup(
-            blob, "device_pixel_ratio"
-        ),
-        "participant_max_touch_points": _client_info_lookup(blob, "max_touch_points"),
-        "participant_platform": _client_info_lookup(blob, "platform"),
-        "participant_client_timezone": _client_info_lookup(blob, "timezone"),
-        "participant_client_language": _client_info_lookup(blob, "language"),
-        "participant_client_info_parser_library": _client_info_lookup(
-            blob, "parser_library"
-        ),
-        "participant_client_info_parser_version": _client_info_lookup(
-            blob, "parser_version"
-        ),
-        "participant_client_info_capture_count": _client_info_lookup(
-            blob, "capture_count"
-        ),
-        "participant_client_info_first_captured_at": _client_info_lookup(
-            blob, "first_captured_at"
-        ),
-        "participant_client_info_captured_at": (
-            captured_at.isoformat() if captured_at else None
-        ),
+        "client_info_collected": bool(blob),
+        "client_info_captured_at": captured_at.isoformat() if captured_at else None,
+        "client_info_capture_count": _client_info_lookup(blob, "capture_count"),
+        "client_info_first_captured_at": _client_info_lookup(blob, "first_captured_at"),
+        "client_info_schema_version": _client_info_lookup(blob, "schema_version"),
+        "client_user_agent": _client_info_lookup(blob, "user_agent"),
+        "client_platform": _client_info_lookup(blob, "platform"),
+        "client_language": _client_info_lookup(blob, "language"),
+        "client_timezone": _client_info_lookup(blob, "timezone"),
+        "client_screen_width": _client_info_lookup(blob, "screen", "width"),
+        "client_screen_height": _client_info_lookup(blob, "screen", "height"),
+        "client_viewport_width": _client_info_lookup(blob, "viewport", "width"),
+        "client_viewport_height": _client_info_lookup(blob, "viewport", "height"),
+        "client_device_pixel_ratio": _client_info_lookup(blob, "device_pixel_ratio"),
+        "client_max_touch_points": _client_info_lookup(blob, "max_touch_points"),
     }
 
     if include_raw_json:
-        columns["participant_client_info_json"] = (
-            json.dumps(blob, default=str) if blob else None
-        )
+        columns["client_info_json"] = json.dumps(blob, default=str) if blob else None
 
     return columns
 
@@ -9624,6 +9615,10 @@ class StudyConfigResponse(BaseModel):
     # Study-specific footer links
     footer_links: Optional[List[Dict[str, Any]]] = None
     hide_server_wide_links: bool = False
+    # The deployment's legal pages (see `settings.imprint_url`). Sent with the
+    # study config so the client does not have to read a served JS file for them.
+    imprint_url: Optional[str] = None
+    privacy_url: Optional[str] = None
     save_browser_identification: bool = False
 
 
@@ -9893,6 +9888,8 @@ def get_study_config(
         inactivity_page_custom_text=study.inactivity_page_custom_text,
         footer_links=study.footer_links,
         hide_server_wide_links=study.hide_server_wide_links,
+        imprint_url=settings.imprint_url,
+        privacy_url=settings.privacy_url,
         save_browser_identification=study.save_browser_identification,
     )
 
@@ -10371,13 +10368,33 @@ async def set_participant_consent(
 # payload is client-controlled, so this bounds what a single request can store.
 CLIENT_INFO_MAX_JSON_CHARACTERS = 32 * 1024
 
+# Bumped whenever the stored blob changes shape, so exports and analyses can tell
+# old rows apart instead of guessing from which keys happen to be present.
+CLIENT_INFO_SCHEMA_VERSION = 1
+
+# The blob is owned by the server: these are the only keys a client may set.
+# Everything else is dropped, so an older frontend cannot smuggle in a parsed
+# ua-parser snapshot that goes stale as soon as the parsing rules improve, and
+# the stored shape does not depend on which frontend version sent it.
+CLIENT_INFO_CLIENT_KEYS = (
+    "platform",
+    "language",
+    "timezone",
+    "screen",
+    "viewport",
+    "device_pixel_ratio",
+    "max_touch_points",
+)
+
 
 class ClientInfoSubmitRequest(BaseModel):
     """Client-side browser/device identification snapshot.
 
-    `user_agent` is `navigator.userAgent` verbatim, `client_info` is the parsed
-    ua-parser-js result plus extra environment signals (screen size, client hints
-    where available, ...).
+    ``user_agent`` is ``navigator.userAgent`` verbatim. ``client_info`` carries
+    the environment signals the server cannot see (screen, viewport, touch
+    support, time zone, ...). The browser deliberately parses nothing: parsing
+    rules improve, so the raw values are stored and interpreted later (see
+    ``CLIENT_INFO_CLIENT_KEYS``).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -10396,21 +10413,22 @@ def submit_participant_client_info(
 ):
     """Store browser/device identification for a participant.
 
-    Called once per participant by the frontend when the study's
-    ``save_browser_identification`` flag is enabled. The stored snapshot is
-    replaced on repeat calls, but the blob keeps ``first_captured_at`` and a
-    ``capture_count`` so repeated visits remain visible.
+    Called by the frontend on every load when the study's
+    ``save_browser_identification`` flag is enabled. A snapshot that has not
+    changed is not a new capture: the client has no device storage to remember
+    what it already sent (D33), so posting per load is the normal case and must
+    not inflate ``capture_count``.
 
     The feature is enforced server-side: when the study disables it, nothing is
-    stored. The server-observed ``User-Agent`` header is recorded alongside the
-    JS-provided value so mismatches (proxies, spoofing) stay detectable.
+    stored.
 
     @param study_name_short Short name of the study.
     @param participant_id Participant the snapshot belongs to.
     @param payload The client-supplied snapshot.
     @param request FastAPI request, used to read the raw User-Agent header.
     @param session Database session dependency.
-    @returns Whether anything was stored, and the capture timestamp.
+    @returns Whether anything was stored, whether it changed, and when it was
+        captured.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -10462,7 +10480,7 @@ def submit_participant_client_info(
         )
         raise HTTPException(
             status_code=403,
-            detail=f"Participant '{participant_id}' not authorized for this study",
+            detail=f"Participant '{participant_id}' is not authorized for this study",
         )
 
     if participant is None:
@@ -10478,30 +10496,61 @@ def submit_participant_client_info(
         session.add(association)
 
     now = _coerce_utc_aware(utc_now())
-    server_user_agent = request.headers.get("user-agent")
+    # One user agent, no duplicate column: the header is what actually reached
+    # us (nothing in the page can rewrite it in flight); the JS value is the
+    # fallback for a client that sends no header at all.
+    user_agent = request.headers.get("user-agent") or payload.user_agent or None
 
-    # Bookkeeping fields are server-owned so they cannot be spoofed by the
-    # client payload. everything else comes from the client snapshot.
+    supplied = payload.client_info if isinstance(payload.client_info, dict) else {}
+    signals = {key: supplied[key] for key in CLIENT_INFO_CLIENT_KEYS if key in supplied}
+
     existing_blob = (
         association.client_info if isinstance(association.client_info, dict) else {}
     )
-    existing_first_captured_at = existing_blob.get("first_captured_at")
-    stored_blob: Dict[str, Any] = dict(payload.client_info or {})
+    existing_signals = {
+        key: value
+        for key, value in existing_blob.items()
+        if key in CLIENT_INFO_CLIENT_KEYS
+    }
+
+    # Nothing changed since the last visit: report the stored capture instead of
+    # counting another one. The comparison covers only what the client owns, so
+    # an improved server-side field does not look like a new device.
+    if (
+        existing_blob
+        and existing_signals == signals
+        and existing_blob.get("user_agent") == user_agent
+    ):
+        return {
+            "saved": True,
+            "unchanged": True,
+            "study_name_short": study_name_short,
+            "participant_id": participant_id,
+            "capture_count": existing_blob.get("capture_count"),
+            "client_info_captured_at": association.client_info_captured_at,
+        }
+
     try:
         capture_count = int(existing_blob.get("capture_count") or 0) + 1
     except (TypeError, ValueError):
         capture_count = 1
-    stored_blob["capture_count"] = capture_count
-    stored_blob["first_captured_at"] = existing_first_captured_at or now.isoformat()
-    stored_blob["server_user_agent_header"] = server_user_agent
 
-    association.user_agent = payload.user_agent or server_user_agent
+    # Bookkeeping is written here, never taken from the payload.
+    stored_blob: Dict[str, Any] = {
+        **signals,
+        "schema_version": CLIENT_INFO_SCHEMA_VERSION,
+        "user_agent": user_agent,
+        "capture_count": capture_count,
+        "first_captured_at": (
+            existing_blob.get("first_captured_at") or now.isoformat()
+        ),
+    }
     association.client_info = stored_blob
     association.client_info_captured_at = now
     session.add(association)
     session.flush()
 
-    if not existing_first_captured_at:
+    if capture_count == 1:
         # The sub-second precision of a timestamp column is a DBMS property
         # (MySQL/MariaDB DATETIME keeps whole seconds, SQL Server rounds to
         # milliseconds, PostgreSQL keeps microseconds). Read the value that was
@@ -10513,8 +10562,8 @@ def submit_participant_client_info(
         stored_captured_at = association.client_info_captured_at
         if stored_captured_at is not None:
             stored_blob["first_captured_at"] = stored_captured_at.isoformat()
-        association.client_info = stored_blob
-        session.add(association)
+            association.client_info = stored_blob
+            session.add(association)
 
     session.commit()
     session.refresh(association)
@@ -10528,7 +10577,9 @@ def submit_participant_client_info(
 
     return {
         "saved": True,
+        "unchanged": False,
         "study_name_short": study_name_short,
         "participant_id": participant_id,
+        "capture_count": capture_count,
         "client_info_captured_at": association.client_info_captured_at,
     }

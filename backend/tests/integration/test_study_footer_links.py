@@ -182,3 +182,27 @@ async def test_study_config_includes_hide_server_wide_links(
     assert (
         data["hide_server_wide_links"] is False
     ), f"Expected hide_server_wide_links=False, got {data['hide_server_wide_links']}"
+
+
+@pytest.mark.asyncio
+async def test_study_config_carries_the_deployment_legal_links():
+    """The response names the imprint/privacy pages, so the client needs no JS config.
+
+    The values come from the backend's own environment, so this asserts the
+    contract (both keys, right type) rather than a fixed URL: a deployment that
+    configures neither sends nulls, and the client then renders no footer.
+    """
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(
+            f"{BASE_URL}/api/studies/default/study-config?lang=en"
+        )
+
+    assert response.status_code == 200, response.text
+    data = response.json()
+
+    for key in ("imprint_url", "privacy_url"):
+        assert key in data, f"study-config response missing '{key}' key"
+        value = data[key]
+        assert value is None or (
+            isinstance(value, str) and value.startswith(("http://", "https://"))
+        ), f"{key} should be null or a URL, got {value!r}"

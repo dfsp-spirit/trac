@@ -8,17 +8,23 @@ Adds per-study opt-out and per-participant storage for browser/device
 identification data:
 
 * ``studies.save_browser_identification`` -- opt-in flag; when true the frontend
-  captures the raw user agent plus a parsed ``ua-parser-js`` snapshot and posts
-  it once per participant. It defaults to false (the server default), so neither
-  existing nor new studies start collecting this data without an explicit choice.
-* ``study_participants.user_agent`` / ``client_info`` / ``client_info_captured_at``
-  -- the captured data itself, stored on the study-participant association so the
-  existing activities export can reuse the rows it already loads.
+  sends the raw user agent plus a few environment signals once per participant.
+  It defaults to false (the server default), so neither existing nor new studies
+  start collecting this data without an explicit choice.
+* ``study_participants.client_info`` / ``client_info_captured_at`` -- the
+  captured data itself, stored on the study-participant association so the
+  participant export has it without loading activity rows.
 
-The raw user agent string is stored verbatim so the data can be re-parsed later
-with improved parsing rules; ``client_info`` keeps the parsed snapshot plus extra
-environment signals (screen size, client hints, ...) as a JSON blob, so the
-schema stays stable across ua-parser-js versions.
+The blob is owned by the server: ``user_agent`` and ``schema_version`` follow the
+client's signals, while ``capture_count`` and ``first_captured_at`` are written
+by the endpoint, so one column pair describes a whole capture and no separate
+column can disagree with it. The raw user agent is kept verbatim so it can be
+re-parsed later with better rules; the browser never parses it itself, so there
+is no client-side parser (and no stored parsing result that goes stale).
+
+This revision was never released; the column layout was changed in place before
+the first deployment instead of carrying a migration that only reshapes empty
+columns.
 """
 
 from __future__ import annotations
@@ -54,10 +60,6 @@ def upgrade() -> None:
     )
     op.add_column(
         "study_participants",
-        sa.Column("user_agent", sa.String(length=2048), nullable=True),
-    )
-    op.add_column(
-        "study_participants",
         sa.Column("client_info", sa.JSON(), nullable=True),
     )
     op.add_column(
@@ -73,5 +75,4 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_column("study_participants", "client_info_captured_at")
     op.drop_column("study_participants", "client_info")
-    op.drop_column("study_participants", "user_agent")
     op.drop_column("studies", "save_browser_identification")

@@ -9,8 +9,9 @@
  */
 import { config } from './config.js';
 import { createApi } from './data/api.js';
+import { reportClientInfo } from './data/clientInfo.js';
 import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
-import { followStudyLanguage, pickInitialLanguage, studyLanguageOptions } from './domain/language.js';
+import { followStudyLanguage, pickInitialLanguage } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
 import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
@@ -25,14 +26,12 @@ import { loadFirstStage } from './ui/boot.js';
 import { createReviewFlow } from './ui/reviewFlow.js';
 import { readShell } from './ui/shell.js';
 import { createShortcuts } from './ui/shortcuts.js';
-import { applyTranslations, restrictLanguageOptions } from './ui/i18n-dom.js';
+import { createShellChrome } from './ui/shellChrome.js';
+import { applyTranslations } from './ui/i18n-dom.js';
 import { scrollToDay } from './ui/timeline.js';
 import { watchTopbarHeight } from './ui/topbarHeight.js';
 
-/**
- * @param {{ root: HTMLElement, params: URLSearchParams }} inputs
- * @returns {{ destroy: () => void }}
- */
+/** @param {{ root: HTMLElement, params: URLSearchParams }} inputs */
 export function mount({ root, params }) {
   // Identity only - never progress (D37).
   const identity = parseIdentity(params.toString());
@@ -51,6 +50,7 @@ export function mount({ root, params }) {
   /** @type {(key: string, values?: Record<string, string | number>) => string} */
   const t = (key, values) => translator.t(key, values);
 
+  const handles = readShell(root);
   const {
     topbar,
     daysHost,
@@ -66,13 +66,21 @@ export function mount({ root, params }) {
     sectionHost,
     dialogHost,
     template,
-    languageSelect,
     menu,
     menuShortcuts,
     nav,
-  } = readShell(root);
+  } = handles;
 
   const wide = window.matchMedia('(min-width: 1200px)');
+
+  // Languages and linked pages of this study: one component, because both come
+  // from the same payload and both follow the language (shellChrome.js).
+  const chrome = createShellChrome({
+    shell: handles,
+    t,
+    getLanguage: () => store.get().language,
+    onLanguageChange: (next) => void setLanguage(next),
+  });
 
   const api =
     studyName && participantId ? createApi(config.apiBaseUrl, studyName, participantId) : null;
@@ -118,11 +126,7 @@ export function mount({ root, params }) {
     api,
     getLanguage: () => store.get().language,
     onEnterDiary: () => void actions?.load(),
-    onSession: (session) =>
-      restrictLanguageOptions(
-        languageSelect,
-        studyLanguageOptions(session.supported_languages, config.supportedLanguages)
-      ),
+    onSession: chrome.apply,
   });
 
   const view = createDiaryView({
@@ -180,7 +184,7 @@ export function mount({ root, params }) {
     document.documentElement.lang = loaded.language;
     applyTranslations(document, translator);
     store.set({ language: loaded.language });
-    if (languageSelect) languageSelect.value = loaded.language;
+    chrome.syncLanguage(loaded.language);
     stageMachine.rerender();
   }
 
@@ -212,11 +216,6 @@ export function mount({ root, params }) {
 
   const onSubmitClick = () => review.open();
 
-  const onLanguageChange = () => {
-    const next = languageSelect?.value;
-    if (next) void setLanguage(next);
-  };
-
   const finePointer = window.matchMedia('(pointer: fine)');
   const shortcuts = createShortcuts({
     root,
@@ -246,7 +245,6 @@ export function mount({ root, params }) {
   fab.addEventListener('click', onFab);
   submitBtn.addEventListener('click', onSubmitClick);
   daysHost.addEventListener('click', onTimelineClick);
-  languageSelect?.addEventListener('change', onLanguageChange);
   const onBreakpoint = () => panels.create();
   wide.addEventListener('change', onBreakpoint);
 
@@ -271,7 +269,10 @@ export function mount({ root, params }) {
       store,
       stageMachine,
       t,
-      onLoaded: adoptStudyLanguage,
+      onLoaded: async (session) => {
+        reportClientInfo(api, session);
+        await adoptStudyLanguage(session);
+      },
     });
   })();
 
@@ -287,7 +288,7 @@ export function mount({ root, params }) {
       daysHost.removeEventListener('click', onTimelineClick);
       shortcuts.destroy();
       review.destroy();
-      languageSelect?.removeEventListener('change', onLanguageChange);
+      chrome.destroy();
     },
   };
 }

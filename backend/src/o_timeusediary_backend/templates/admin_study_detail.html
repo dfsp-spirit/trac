@@ -275,6 +275,8 @@
             <strong style="display: block; margin-bottom: 0.5rem;">Export Study Data:</strong>
             <p style="margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem;">
                 Download research data (CSV/JSON) or the server runtime config for this study.
+                The participant export has one row per participant and is the only place the
+                browser/device identification is delivered.
             </p>
             <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 {% if total_activities_logged > 0 %}
@@ -285,6 +287,18 @@
                 <span class="export-btn disabled">📥 Download CSV not available (No activities yet)</span>
                 <span class="export-btn disabled">📥 Download JSON not available (No activities yet)</span>
                 <span class="export-btn disabled">📥 CSV Without Metadata not available (No activities yet)</span>
+                {% endif %}
+            </div>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                {% if participant_count > 0 %}
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">📥 Participants CSV</a>
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">📥 Participants JSON</a>
+                {% if study.save_browser_identification %}
+                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">📥 Participants CSV (with client info only)</a>
+                {% endif %}
+                {% else %}
+                <span class="export-btn disabled">📥 Participants CSV not available (No participants yet)</span>
+                <span class="export-btn disabled">📥 Participants JSON not available (No participants yet)</span>
                 {% endif %}
             </div>
             <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">

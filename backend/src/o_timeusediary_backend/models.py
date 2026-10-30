@@ -435,10 +435,13 @@ class StudyParticipant(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
     # Browser/device identification captured once per participant (see the
-    # study's `save_browser_identification` flag). The raw user agent string is
-    # kept verbatim so it can be re-parsed later when parsing rules improve;
-    # `client_info` holds the parsed snapshot plus extra environment signals.
-    user_agent: Optional[str] = Field(default=None, sa_type=String(2048))
+    # study's `save_browser_identification` flag). One column pair, one prefix:
+    # the blob holds the client's raw signals plus the server-owned bookkeeping
+    # (`user_agent`, `schema_version`, `capture_count`, `first_captured_at`), so
+    # it can never disagree with a separate column. Nothing is derived here:
+    # the browser does not parse its own user agent, which keeps the stored
+    # values re-derivable when parsing rules improve.
+    #
     # none_as_null=True so an empty capture is a real SQL NULL, not the JSON
     # value `null`. SQLAlchemy's default (none_as_null=False) would store "null",
     # which makes `WHERE client_info IS NOT NULL` match rows that hold no data.
