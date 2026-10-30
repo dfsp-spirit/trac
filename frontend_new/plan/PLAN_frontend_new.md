@@ -42,7 +42,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 | # | Decision |
 | --- | --- |
 | D1 | **One timeline per study.** The `primary`/`secondary` split disappears from the participant UI and the catalogue: no tabs, no switch button, no "what may I log as secondary". One `timelines` row per study is kept, so admin and exports are unaffected. |
-| D2 | **Concurrency is overlap, not a second lane group.** Up to N activities may occupy the same minute on the one timeline; display lanes are computed, the data has no lane. N is configurable (default 3, see open question Q1). |
+| D2 | **Concurrency is overlap, not a second lane group.** Up to N activities may occupy the same minute on the one timeline; display lanes are computed, the data has no lane. N is configurable; Q1 answered **2** and that is the model default (`max_overlap`). |
 | D3 | **Vertical timeline, continuous across the study's days.** Day sections with headings and anchors; prev/next buttons and a day rail jump (never a mode switch); scroll-spy label ("Day 2 of 7 · Tuesday"); `PageUp`/`PageDown` move one day. A `daysToRender` value in state (`7` = continuous, `1` = paged) keeps the alternative available as a one-line change. |
 | D4 | **The reporting day starts at 00:00** (see Q2 for the 04:00 alternative). |
 | D5 | **An activity may start on one day and end on the next, as one record** (end shown as `07:00 (+1)`). No splitting into two entries. |
@@ -50,7 +50,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 | D7 | **Entry always goes through a form dialog** (day, start, end, option/note), prefilled from the tapped time. No drag or resize required. Gap taps open the dialog with that range prefilled. "Used recently" (5) shortcut. "Save and add another" keeps the day and chains `start = last end`. |
 | D8 | **Duplicate rejection:** same activity code + same start + same end is refused server-side (relevant because desktop palette placement creates a block on click). |
 | D9 | **Undo, not confirmation.** Deleting or clearing offers an undo toast; the only confirm step is submission. |
-| D10 | **Review list before submit**, reachable also from the menu: days in order, activities as text time ranges, per-day coverage, *Edit* links back to the day, then a confirm step. |
+| D10 | **Review list before submit**, reachable also from the menu: days in order, activities as text time ranges, per-day coverage, *Edit* links back to the day, then a confirm step. Implemented as the always-visible *Submit* button in the header, so there is no separate menu entry for it. |
 | D11 | **Colour comes only from the study config** (`activity.color`). The app chrome stays neutral and the app adds no colour of its own. No dark mode. No colour design or colour testing in this project. The block picks black or white label ink by luminance, and falls back to a neutral fill when a study defines no colour. |
 
 ### Desktop
@@ -900,7 +900,10 @@ The rewrite is built and runs **next to** the old app, not instead of it:
 - **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text. The UI
   language follows `?lang`, then the browser, then the study's `selected_language`; the menu offers
   only the study's `supported_languages`, and no language entry at all when that is a single language.
-- **No help page** (Q9): the old app's screenshot help modal is not ported, and nothing links to one.
+- **No help page** (Q9): there is no separate help/documentation page and nothing links to one. The
+  old app's *How do I use this?* modal - which loaded the study's instructions in `?embed=1` while
+  the participant was mid-diary - has no equivalent: the instructions text is rendered on the
+  `instructions` stage only, so it cannot be re-read once the diary is open. Open question (9.7).
 - **Skip the diary**: `POST /diary/skip` is offered only when the study sets `allow_skip_timeuse`
   (default **false**), writes `DONE_SKIPPED`, and does *not* satisfy `require_diary_before_external_tasks`.
 - **Deployment**: two nginx locations, one settings file per app, no duplicated scripts.
@@ -1059,7 +1062,11 @@ stayed on `#/diary` while the consent page was shown.
 1. **Idle timeout** - recorded, not built, priority Z (see section 8). Stakeholders must decide first;
    the honest form is a server-side expiring session token, not URL manipulation, and the
    participant's own return must keep working.
-2. **New studies that suit the rewrite.** Until cutover, studies for `/report-new/` are added to
+2. **Re-reading the instructions during the diary** - the `instructions` stage is the only place the
+   study text appears, so someone who has started filling days cannot look it up again. The old app had
+   a modal for exactly that. A menu entry that opens the same text in the existing dialog would close
+   the gap; it is a product decision, not a technical one.
+3. **New studies that suit the rewrite.** Until cutover, studies for `/report-new/` are added to
    `studies_config*.json` with a **single-timeline** catalogue. Two open points:
    - *Legacy two-timeline files.* `flattenCatalogue` (`src/js/ui/activitySearch.js`) iterates every key
      under `timeline`, so pointing the rewrite at a file with `primary` + `secondary` would list the
@@ -1071,7 +1078,7 @@ stayed on `#/diary` while the consent page was shown.
    - *Displaying a two-timeline study in one.* Only worth considering as a fallback, bounded by
      `max_overlap` (2 unless a study sets it), and no study has more than two timelines, so it gets
      confusing quickly.
-3. **Cutover (plan step 5) - do not do without being explicitly told to.** Blue/green is planned first.
+4. **Cutover (plan step 5) - do not do without being explicitly told to.** Blue/green is planned first.
    When it is asked for: delete the second timeline and the `2xxx` codes from the studies and
    activities JSON (Q6/Q7: confirmed), delete the old whole-day save endpoint and the old diary
    JS/CSS/pages once nothing uses them (D25), the `day_start_minutes: 240` that every legacy study

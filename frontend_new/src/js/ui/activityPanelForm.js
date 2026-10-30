@@ -75,9 +75,6 @@ export function createFormController(deps) {
     if (activity) {
       const remove = el('button', 't-btn t-btn--ghost t-btn--block', t('diary.panel.delete'));
       remove.type = 'button';
-      // Marks the control `Delete` presses while it has focus (D31).
-      remove.dataset.shortcut = 'delete';
-      remove.setAttribute('aria-keyshortcuts', 'Delete');
       remove.addEventListener('click', async () => {
         await onDelete(activity);
         onDone();
