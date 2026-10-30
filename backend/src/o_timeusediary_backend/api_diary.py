@@ -84,15 +84,10 @@ class ActivityFields(BaseModel):
 
 
 class NewActivityItem(ActivityFields):
-    """One activity, optionally on several days (D19).
-
-    ``copy_source_uuid`` marks a row that was created by copying another one, so
-    an analysis can tell a deliberate duplicate from an independent entry.
-    """
+    """One activity, optionally on several days (D19)."""
 
     client_uuid: Optional[str] = None
     group_id: Optional[str] = None
-    copy_source_uuid: Optional[str] = None
     day_label_indexes: List[int] = Field(default_factory=list)
 
 
@@ -653,7 +648,6 @@ def create_activities(
                 parent_activity_code=item.parent_activity_code,
                 client_uuid=row_uuid,
                 group_id=item.group_id or group_id,
-                copy_source_uuid=item.copy_source_uuid,
                 catalogue_version=item.catalogue_version or payload.catalogue_version,
             )
             session.add(row)

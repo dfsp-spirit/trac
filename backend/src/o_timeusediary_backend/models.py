@@ -528,9 +528,6 @@ class Activity(SQLModel, table=True):
     group_id: Optional[str] = Field(default=None, index=True, sa_type=String(64))
     # Which catalogue produced this row, for detecting stale frontends (D17).
     catalogue_version: Optional[str] = Field(default=None, sa_type=String(64))
-    # Set when the row was created by copying another row. Nullable because the
-    # PI has not decided whether provenance should be recorded (D27, Q5).
-    copy_source_uuid: Optional[str] = Field(default=None, sa_type=String(64))
     # Metadata
     created_at: datetime = Field(
         default_factory=utc_now,

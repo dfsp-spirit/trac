@@ -69,7 +69,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 
 | # | Decision |
 | --- | --- |
-| D17 | **Row identity:** `client_uuid`, `group_id` (activities created together), `catalogue_version`, `updated_at` on `activities`. Optional `copy_source_uuid`. |
+| D17 | **Row identity:** `client_uuid`, `group_id` (activities created together), `catalogue_version`, `updated_at` on `activities`. |
 | D18 | **Incremental endpoints** replace the whole-day delete+insert save: create (single or batch with `targets[]`), update, delete, delete-by-group, copy. Submit stays as it is. |
 | D19 | **Multi-day add/copy is explicit**: explicit selection → explicit target days, merged into the target (never "replace the day"), per-target result (`added`, `skipped: slot_full`, `skipped: invalid day`), one `group_id` so one undo reverses it. |
 | D20 | **Coverage = interval union, clipped to the day window.** One server-side helper used by submit validation, save responses, admin progress and the frontend rail; mirrored client-side and unit-tested. |
@@ -167,9 +167,8 @@ kopieren", das ersetzt bisher den Zieltagg vollständig und war eine Fehlerquell
 Implikationen:
 
 - Kopierte Einträge sind **bewusste Duplikate** über Tage hinweg. Analysen dürfen sie nicht
-  als unabhängige Beobachtungen behandeln, ohne dass das entschieden ist. Wir können
-  optional festhalten, aus welchem Eintrag eine Kopie entstanden ist
-  (`copy_source_uuid`) – bitte sagen, ob das gewünscht ist (Q5).
+  als unabhängige Beobachtungen behandeln, ohne dass das entschieden ist. Eine
+  Herkunftsmarkierung (`copy_source_uuid`) wird **nicht** gespeichert (siehe Q5).
 - Es besteht ein Risiko, dass Teilnehmende Tage „gleich machen", um schneller fertig zu
   werden. Das ist ein Datenqualitäts-Thema, kein UI-Thema, aber die Funktion macht es
   leichter. Wenn das unerwünscht ist, lassen wir das Mehrfach-Anlegen weg und behalten nur
@@ -381,8 +380,8 @@ Coverage clips to that window; the geometry reads it from study config instead o
   admin progress and the "days meeting min coverage" helper — and `_get_completed_day_indices`
   ("has any data") guards copy-overwrite.
 - `GET …/participants/{id}/diary`: the continuous view needs the whole diary in one request.
-- `copy_source_uuid` is still an open question (Q5 answered multi-day, not provenance). Add the
-  nullable column now; after data collection it is expensive.
+- `copy_source_uuid` was added by migration 0013 and dropped again by 0014: provenance is not
+  recorded (Q5), so no code path sets or exports it.
 
 ### D28 — Desktop UI/UX (external review, 27 Oct 2026)
 

@@ -241,42 +241,15 @@ Until then, we need to add new studies to studies_config.json that are suitable 
 
 ### 3.4 Open decisions, answered now (oct 28)
 
-- **`copy_source_uuid`**: the column exists, the API echoes it, nothing sets it. Q5 answered "multi-day,
-  no limits" without asking for provenance. Decide keep-or-drop **before** the first real data
-  collection. => NO LONGER OPEN: we do not store provenvance when copying activities. it does not matter whether is was copied or not. its an activitiy the user placed. we believe them, what else should we do.
-- **Keyboard switch persistence**: session-only today, because D33 forbids device storage and there is
-  no participant profile. Needs a server-side preference or an explicit "session only is fine". => Session only is fine, no server here please, this feature is very low priority.
+- **`copy_source_uuid`**: decided and removed. We do not store provenance when copying activities:
+  it does not matter whether an activity was copied or not, it is an activity the participant
+  placed, and we believe them. The unused column that 0013 added is dropped by migration
+  `0014_drop_copy_source_uuid`; the model, the create request schema and the export no longer
+  mention it.
 - **Idle timeout** ("prevent other family members from continuing in an open browser session"):
   recorded as open at priority Z in the plan. Do not build it with URL tricks; the honest form is a
   server-side expiring session token, and the participant's own return (invitation link to study) must keep working.
 
-### 3.5 TODO: the activities-config `general` block is historical noise
-
-Every `activities_*.json` starts with a `general` block that the parser accepts as `GeneralConfig`
-(`backend/src/o_timeusediary_backend/parsers/activities_config.py`). Only one field of it is ever
-read: `general.language`, which `api.py` cross-checks against the language the file is mapped to in
-the study's `activities_json_files`. `activities_newui_main.json` already carries only `language`; the
-shipped `activities_*.json` files and the parser still have the rest:
-
-| field | state |
-| --- | --- |
-| `language` | **used** — study import / upload validation |
-| `experimentID` | never read; leftover of the pre-TRAC prototype |
-| `app_name` | never read; names come from the study and from i18n |
-| `version`, `author` | never read; not displayed, not used for compatibility |
-| `instructions` | never read |
-| `fallbackToCSV` | never read |
-| `primary_redirect_url` | never read, and semantically a **study** setting (`pages/thank-you.html` from the old multi-page app); the rewrite routes by stage (D37), so the equivalent is the study's closing text, not a URL |
-
-To do, before the pilot data is frozen:
-
-1. Cut `GeneralConfig` down to what is read. Either keep the name `language` (least churn across the
-   existing fixture files) or rename it to `ui_language` in the same pass — decide once, not twice.
-2. Decide `primary_redirect_url` explicitly: delete it, or, if a post-submission redirect is ever
-   needed, move the concept to the study config next to `study_text_end_completed`. Do not leave a
-   never-read field in a file that study authors are told to edit.
-3. Update `parsers`' tests and the shipped `activities_*.json` files together, so no config keeps
-   declaring fields the app ignores.
 
 Related, one layer up: the new frontend reads **one** timeline, but `flattenCatalogue`
 (`src/js/ui/activitySearch.js`) still merges every key under `timeline`, so a legacy file with
@@ -300,9 +273,3 @@ single merged timeline.
 - Locale keys: `diary.*` plus a small shell allowlist; values are plain text; `_one`/`_other` for
   plurals. `tests/unit/page_i18n_keys.test.js` enforces all of it across de/en/sv.
 
-## 5. Local database state (not part of the repo)
-
-The dev database on the machine where this was written contains throwaway studies from the sessions:
-`it_rev_full_*`, `it_rev_part_*`, `it_stage_ui_*` and participants `rev-kb*`, `walk*`, `stage-walk-*`.
-Nothing depends on them; delete or ignore. `adult_pilot_de` participants were reset where the work
-touched them.

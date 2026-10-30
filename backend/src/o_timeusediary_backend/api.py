@@ -7544,13 +7544,12 @@ async def export_study_activities(
             "end_minutes": activity.end_minutes,
             "duration_minutes": duration_minutes,
             "category": activity.category,
-            # Row identity and provenance (D17). Additive columns: existing
-            # analyses are unaffected, and the new frontend can be reconciled
-            # against an export.
+            # Row identity (D17). Additive columns: existing analyses are
+            # unaffected, and the new frontend can be reconciled against an
+            # export.
             "client_uuid": activity.client_uuid,
             "group_id": activity.group_id or "",
             "catalogue_version": activity.catalogue_version or "",
-            "copy_source_uuid": activity.copy_source_uuid or "",
             "activity_updated_at": (
                 activity.updated_at.isoformat() if activity.updated_at else None
             ),
