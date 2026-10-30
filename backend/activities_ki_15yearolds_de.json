@@ -1,13 +1,6 @@
 {
   "general": {
-    "experimentID": "default",
-    "app_name": "KI Zeitverwendungstagebuch - 15-Jährige",
-    "version": "1.0.0",
-    "author": "Tim Schaefer",
-    "language": "de",
-    "instructions": true,
-    "primary_redirect_url": "pages/thank-you.html",
-    "fallbackToCSV": true
+    "language": "de"
   },
   "timeline": {
     "primary": {

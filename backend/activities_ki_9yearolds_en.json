@@ -1,13 +1,6 @@
 {
   "general": {
-    "experimentID": "default",
-    "app_name": "KI Time Use Diary - 9 year olds",
-    "version": "1.0.0",
-    "author": "Tim Schaefer",
-    "language": "en",
-    "instructions": true,
-    "primary_redirect_url": "pages/thank-you.html",
-    "fallbackToCSV": true
+    "language": "en"
   },
   "timeline": {
     "primary": {

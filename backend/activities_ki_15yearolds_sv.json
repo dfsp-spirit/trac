@@ -1,13 +1,6 @@
 {
   "general": {
-    "experimentID": "default",
-    "app_name": "KI Tidsdagbok - 15-åringar",
-    "version": "1.0.0",
-    "author": "Tim Schaefer",
-    "language": "sv",
-    "instructions": true,
-    "primary_redirect_url": "pages/thank-you.html",
-    "fallbackToCSV": true
+    "language": "sv"
   },
   "timeline": {
     "primary": {
