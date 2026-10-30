@@ -38,6 +38,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "pytest>=9.0.0",
     "ruff>=0.16.8",
+    "watchdog>=6.0.0",
 ]
 requires-python = ">=3.11"
 

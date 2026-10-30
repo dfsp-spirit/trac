@@ -237,6 +237,7 @@ TUD_API_SCIENTISTS='[{"name": "alice", "password": "secret1", "studies": ["exist
 - A study created by a scientist (admin interface, *File Validation* → create study) is owned by that scientist. Studies created by a super admin, or imported with `tud studies import` / `POST /api/admin/studies/import-config`, are **unowned** and can only be managed by super admins.
 - Ownership is edited in the *Study Owners* section at the bottom of the study detail page. It sits in the danger zone, so it only becomes editable after clicking *Enable Editing* - removing an owner revokes their access immediately. A study can have several owners. Scientists may add and remove co-owners but cannot remove themselves, so they cannot lock themselves out of a study they administer. A super admin can also remove all owners, which makes the study unowned again.
 - Every ownership change is recorded as its own entry in the admin audit log (`added owner 'bob' to study 'x'`, `removed owner ...`).
+- A super admin sees an **Admin Users** section at the bottom of the admin overview page: every configured super admin, scientist (with the studies she manages) and backup account, plus a warning for study owner entries whose account is no longer configured as a scientist. Scientists do not get that section at all.
 
 Scientists have the full set of admin capabilities for their studies: study settings and texts, participant management, token and pool management, data export, and deleting the study. For studies they do not own they get HTTP 403.
 

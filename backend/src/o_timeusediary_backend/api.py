@@ -112,6 +112,7 @@ from .utils import (
 )
 from . import stages
 from .api_deps.diary_access import study_availability
+from .admin_directory import build_admin_directory
 
 
 setup_logging()
@@ -2096,6 +2097,21 @@ async def admin_overview(
             )
             continue
 
+    # The account directory names every administrator on the server, so it is
+    # built for super admins only and stays absent (not merely hidden) otherwise.
+    admin_directory = None
+    if identity.is_super_admin:
+        admin_directory = build_admin_directory(
+            super_admin_usernames=settings.admin_usernames,
+            scientist_accounts=settings.scientists,
+            backup_usernames=settings.backup_names,
+            study_owners={
+                study.name_short: list(study.owner_usernames or [])
+                for study in all_studies
+            },
+            current_username=current_admin,
+        )
+
     # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages.
     # When templates are installed from a wheel, Starlette's TemplateResponse cache fails with "unhashable type: dict".
     context_dict = {
@@ -2109,6 +2125,7 @@ async def admin_overview(
         "total_participants": total_participants,
         "total_activities_all": total_activities_all,
         "recent_activities": enriched_recent_activities,
+        "admin_directory": admin_directory,
         "is_super_admin": identity.is_super_admin,
         "current_admin_role": identity.role,
         "current_time": utc_now(),

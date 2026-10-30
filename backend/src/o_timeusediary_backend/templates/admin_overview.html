@@ -441,6 +441,62 @@
             color: #f57c00;
         }
 
+        .badge-role-super {
+            background: #ede7f6;
+            color: #5e35b1;
+        }
+
+        .badge-role-scientist {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .badge-role-backup {
+            background: #eceff1;
+            color: #546e7a;
+        }
+
+        .admin-directory-name {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .admin-directory-you {
+            margin-left: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #b42318;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .admin-directory-studies {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .admin-directory-stale {
+            margin: 1rem;
+            padding: 0.9rem 1rem;
+            border: 1px solid #e0c6c4;
+            border-left: 4px solid #b42318;
+            border-radius: 6px;
+            background: #fdf2f1;
+            font-size: 0.9rem;
+        }
+
+        .admin-directory-stale h3 {
+            margin: 0 0 0.5rem;
+            font-size: 1rem;
+            color: #b42318;
+        }
+
+        .admin-directory-stale ul {
+            margin: 0.35rem 0 0;
+            padding-left: 1.25rem;
+        }
+
         .activity-path {
             font-family: 'Courier New', monospace;
             font-size: 0.85rem;
@@ -864,6 +920,89 @@
             <div class="study-header">
                 <h2>⚙️ Runtime Config Export</h2>
                 <p>Runtime config backups for a single study are available on that study's detail page.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if admin_directory %}
+        <div class="study-section">
+            <div class="study-header">
+                <h2>🔑 Admin Users</h2>
+                <p>
+                    These accounts are configured in the server environment
+                    (<code>TUD_API_ADMIN_USERNAME</code>, <code>TUD_API_SCIENTISTS</code>,
+                    <code>TUD_API_BACKUP_USERS</code>); changing them requires an environment edit and a restart.
+                    A scientist manages the studies she owns plus the ones granted to her in the environment.
+                </p>
+                <p class="study-meta">
+                    {{ admin_directory.counts.super_admins }} super admin{{ '' if admin_directory.counts.super_admins == 1 else 's' }}
+                    · {{ admin_directory.counts.scientists }} scientist{{ '' if admin_directory.counts.scientists == 1 else 's' }}
+                    · {{ admin_directory.counts.backup_accounts }} backup account{{ '' if admin_directory.counts.backup_accounts == 1 else 's' }}
+                </p>
+            </div>
+            <div class="tab-content">
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Account</th>
+                                <th>Role</th>
+                                <th>Manages</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for admin in admin_directory.super_admins %}
+                            <tr>
+                                <td>
+                                    <span class="admin-directory-name">{{ admin.username }}</span>
+                                    {% if admin.is_current %}<span class="admin-directory-you">you</span>{% endif %}
+                                </td>
+                                <td><span class="badge badge-role-super">Super admin</span></td>
+                                <td style="color: var(--muted);">All studies</td>
+                            </tr>
+                            {% endfor %}
+                            {% for scientist in admin_directory.scientists %}
+                            <tr>
+                                <td>
+                                    <span class="admin-directory-name">{{ scientist.username }}</span>
+                                    {% if scientist.is_current %}<span class="admin-directory-you">you</span>{% endif %}
+                                </td>
+                                <td><span class="badge badge-role-scientist">Scientist</span></td>
+                                <td class="admin-directory-studies">
+                                    {% if scientist.manages %}{{ scientist.manages|join(', ') }}{% else %}<span style="color: var(--muted); font-family: inherit;">— (no studies)</span>{% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% for account in admin_directory.backup_accounts %}
+                            <tr>
+                                <td>
+                                    <span class="admin-directory-name">{{ account.username }}</span>
+                                    {% if account.is_current %}<span class="admin-directory-you">you</span>{% endif %}
+                                </td>
+                                <td><span class="badge badge-role-backup">Backup (read-only)</span></td>
+                                <td style="color: var(--muted);">All studies, extraction endpoints only</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% if admin_directory.stale_owners %}
+                <div class="admin-directory-stale">
+                    <h3>⚠ Stale study owners</h3>
+                    <p>
+                        These accounts are still listed as owners of a study but are no longer configured as
+                        scientists, so they grant nobody access. Remove them from the study's owner list.
+                    </p>
+                    <ul>
+                        {% for owner in admin_directory.stale_owners %}
+                        <li>
+                            <span class="admin-directory-name">{{ owner.username }}</span>
+                            → {{ owner.studies|join(', ') }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
             </div>
         </div>
         {% endif %}
