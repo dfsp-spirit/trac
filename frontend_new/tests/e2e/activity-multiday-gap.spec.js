@@ -3,7 +3,13 @@
  * opening the form from a gap in the timeline.
  */
 import { test, expect } from '@playwright/test';
-import { addSchlafen, clearActivities, dayEvents, openDiary } from './helpers.js';
+import {
+  addSchlafen,
+  chooseActivity,
+  clearActivities,
+  dayEvents,
+  openDiary,
+} from './helpers.js';
 
 test.describe('multi-day create and gap prefill', () => {
   const pid = 'diary_01';
@@ -14,7 +20,7 @@ test.describe('multi-day create and gap prefill', () => {
   test('copies one entry onto a second day', async ({ page }) => {
     await openDiary(page, pid);
 
-    await page.locator('.t-activity[data-activity-code="1101"]').click();
+    await chooseActivity(page, 1101);
     await page.locator('#form-start').selectOption('600');
     await page.locator('#form-end').selectOption('660');
     // Checked after the time fields: changing the start re-syncs the chips to the
@@ -43,9 +49,15 @@ test.describe('multi-day create and gap prefill', () => {
     await addSchlafen(page, { start: 600, end: 660 });
     await expect(dayEvents(page, 0)).toHaveCount(2);
 
+    // The first entry now also appears in the "Used recently" shortcut row, so
+    // the activity code exists twice on the panel: the catalogue is addressed
+    // through its group.
+    await expect(page.locator('.t-activity-group[data-group="recent"]')).toHaveCount(1);
+    await expect(page.locator('.t-activity[data-activity-code="1101"]')).toHaveCount(2);
+
     // The two entries leave exactly 09:00-10:00 free on Monday.
     await page.locator('.t-gap__btn[data-day="0"][data-start="540"][data-end="600"]').click();
-    await page.locator('.t-activity[data-activity-code="1101"]').click();
+    await chooseActivity(page, 1101);
 
     await expect(page.locator('#form-day')).toHaveValue('0');
     await expect(page.locator('#form-start')).toHaveValue('540');

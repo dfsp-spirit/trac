@@ -12,6 +12,22 @@ export const BASE_URL =
 export const ORIGIN = new URL(BASE_URL).origin;
 export const STUDY = 'newui_06_diary';
 
+/**
+ * The catalogue list without the "Used recently" shortcut row above it: once the
+ * participant has logged something, the same activity code can appear twice.
+ */
+export const CATALOGUE = '.t-activity-group[data-group="catalogue"]';
+
+/**
+ * Pick an activity from the catalogue (never from the shortcut row).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number | string} code
+ */
+export function chooseActivity(page, code) {
+  return page.locator(`${CATALOGUE} .t-activity[data-activity-code="${code}"]`).click();
+}
+
 /** @param {string} [study] */
 export function participantsUrl(study = STUDY) {
   return `${ORIGIN}/tud_backend/api/studies/${study}/participants`;
@@ -51,7 +67,7 @@ export async function openDiary(page, pid, study = STUDY) {
  * @param {{ start: number, end: number }} range
  */
 export async function addSchlafen(page, { start, end }) {
-  await page.locator('.t-activity[data-activity-code="1101"]').click();
+  await chooseActivity(page, 1101);
   await page.locator('#form-start').selectOption(String(start));
   await page.locator('#form-end').selectOption(String(end));
   await page.locator('[data-slot="actions"] .t-btn--primary').click();

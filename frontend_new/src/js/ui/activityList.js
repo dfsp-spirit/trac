@@ -84,9 +84,12 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
   /**
    * @param {string} heading
    * @param {import('./activitySearch.js').SearchHit[]} rows
+   * @param {'recent' | 'catalogue'} groupKind Marked in the DOM so a shortcut row
+   *   above the catalogue is never confused with the catalogue itself.
    */
-  function group(heading, rows) {
+  function group(heading, rows, groupKind) {
     const section = el('section', 't-activity-group');
+    section.dataset.group = groupKind;
     section.append(el('h3', null, heading));
     const list = el('ul', 't-activity-list');
     for (const hit of rows) list.append(row(hit));
@@ -106,10 +109,11 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
   if (recents.length) {
     group(
       t('diary.panel.recent'),
-      recents.map((entry) => ({ entry, child: null, rank: 0, position: 0 }))
+      recents.map((entry) => ({ entry, child: null, rank: 0, position: 0 })),
+      'recent'
     );
   }
-  for (const [category, rows] of groupHits(hits)) group(category, rows);
+  for (const [category, rows] of groupHits(hits)) group(category, rows, 'catalogue');
 
   host.replaceChildren(fragment);
   return hits.length;
