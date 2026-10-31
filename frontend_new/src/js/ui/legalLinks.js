@@ -154,7 +154,7 @@ function listItem(link, t, className) {
  *   footerList: HTMLElement | null,
  *   menuBlock: HTMLElement | null,
  *   menuList: HTMLElement | null,
- *   menu: HTMLElement | null,
+ *   closeMenu: () => void,
  *   t: (key: string) => string,
  *   getLanguage: () => string,
  * }} deps
@@ -164,7 +164,7 @@ export function createLegalLinks({
   footerList,
   menuBlock,
   menuList,
-  menu,
+  closeMenu,
   t,
   getLanguage,
 }) {
@@ -187,10 +187,11 @@ export function createLegalLinks({
     }
   }
 
-  // The drawer is a popover and a new tab does not dismiss it; without this the
-  // menu would still be open over the diary when the participant comes back.
+  // A link that opens a new tab does not dismiss the drawer on its own; without
+  // this the menu would still be open over the diary when the participant comes
+  // back from it.
   const onMenuClick = () => {
-    if (menu && menu.matches(':popover-open')) menu.hidePopover();
+    closeMenu();
   };
 
   return {

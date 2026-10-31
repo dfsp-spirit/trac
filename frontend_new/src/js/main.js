@@ -66,7 +66,6 @@ export function mount({ root, params }) {
     sectionHost,
     dialogHost,
     template,
-    menu,
     menuShortcuts,
     nav,
   } = handles;
@@ -218,8 +217,8 @@ export function mount({ root, params }) {
   const finePointer = window.matchMedia('(pointer: fine)');
   const shortcuts = createShortcuts({
     root,
-    menu,
     menuEntry: menuShortcuts,
+    closeMenu: chrome.closeMenu,
     // Single-key shortcuts only trust focus that is already in the diary (D31).
     regions: [daysHost, sectionHost, dialogHost, railList],
     t,

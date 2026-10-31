@@ -21,7 +21,7 @@
   <header class="t-topbar" id="topbar">
     <div class="t-topbar__inner">
       <div class="t-topbar__row">
-        <button class="t-icon-btn" type="button" popovertarget="menu"
+        <button class="t-icon-btn" type="button" id="menu-open"
                 aria-label="Menu" data-i18n-aria-label="diary.shell.menu">
           <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
@@ -93,49 +93,54 @@
 
   <div class="t-toast-region" id="toast-region" role="status" aria-live="polite"></div>
 
-  <nav popover id="menu" class="t-drawer" aria-labelledby="menu-title">
-    <div class="t-drawer__head">
-      <h2 id="menu-title" data-i18n="diary.shell.menuTitle">Menu</h2>
-      <button class="t-icon-btn" type="button" popovertarget="menu" popovertargetaction="hide"
-              aria-label="Close" data-i18n-aria-label="diary.shell.close">
-        <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-    </div>
-    <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
-      <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
-                  data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
-      <!-- Skipping ends the study's diary part, so it is only offered when the
-           study asks for it (`allow_skip_timeuse`) and never on the phone-only
-           surface: the menu is the one place that needs it (D41). -->
-      <li id="menu-skip-item" hidden>
-        <button class="t-drawer__item" type="button" id="menu-skip"
-                data-i18n="diary.skip.menuEntry">Skip the diary…</button>
-      </li>
-    </ul>
-    <!-- Pages the deployment and the study link to (imprint, data protection,
-         study information, contact). Filled by ui/legalLinks.js from the study
-         config; the whole block stays hidden when nothing is configured, and no
-         entry is rendered without a URL (D28: an entry that does nothing is
-         worse than no entry). Phones get these only here, never in a footer. -->
-    <div id="menu-pages-block" hidden>
-      <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
-      <ul id="menu-pages"></ul>
-    </div>
-    <!-- A study that ships one language has nothing to choose: the whole block
-         (separator included) appears only when the study offers more than one
-         (D40). Filled and unhidden by ui/shellChrome.js. -->
-    <div id="menu-language-block" hidden>
-      <hr>
-      <div class="t-drawer__section">
-        <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
-        <select class="t-select t-select--text" id="language-select">
-          <option value="de" lang="de">Deutsch</option>
-          <option value="en" lang="en">English</option>
-          <option value="sv" lang="sv">Svenska</option>
-        </select>
+  <!-- A modal <dialog>, not a `popover` (ui/drawer.js): the attribute is younger
+       than iOS 17 and, where it is unknown, the drawer cannot be hidden at all.
+       The <nav> inside keeps the landmark a dialog does not provide. -->
+  <dialog id="menu" class="t-drawer" aria-labelledby="menu-title">
+    <nav aria-labelledby="menu-title">
+      <div class="t-drawer__head">
+        <h2 id="menu-title" data-i18n="diary.shell.menuTitle">Menu</h2>
+        <button class="t-icon-btn" type="button" id="menu-close"
+                aria-label="Close" data-i18n-aria-label="diary.shell.close">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
       </div>
-    </div>
-  </nav>
+      <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
+        <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
+                    data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
+        <!-- Skipping ends the study's diary part, so it is only offered when the
+             study asks for it (`allow_skip_timeuse`) and never on the phone-only
+             surface: the menu is the one place that needs it (D41). -->
+        <li id="menu-skip-item" hidden>
+          <button class="t-drawer__item" type="button" id="menu-skip"
+                  data-i18n="diary.skip.menuEntry">Skip the diary…</button>
+        </li>
+      </ul>
+      <!-- Pages the deployment and the study link to (imprint, data protection,
+           study information, contact). Filled by ui/legalLinks.js from the study
+           config; the whole block stays hidden when nothing is configured, and no
+           entry is rendered without a URL (D28: an entry that does nothing is
+           worse than no entry). Phones get these only here, never in a footer. -->
+      <div id="menu-pages-block" hidden>
+        <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
+        <ul id="menu-pages"></ul>
+      </div>
+      <!-- A study that ships one language has nothing to choose: the whole block
+           (separator included) appears only when the study offers more than one
+           (D40). Filled and unhidden by ui/shellChrome.js. -->
+      <div id="menu-language-block" hidden>
+        <hr>
+        <div class="t-drawer__section">
+          <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
+          <select class="t-select t-select--text" id="language-select">
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
+            <option value="sv" lang="sv">Svenska</option>
+          </select>
+        </div>
+      </div>
+    </nav>
+  </dialog>
 
   <!-- One source of truth for the activity panel's markup, cloned into
        #panel-host (desktop) or #dialog-host (mobile) by main.js. -->

@@ -11,6 +11,7 @@
   --topbar-h: 121px;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
   min-height: 100dvh;
   max-width: var(--shell-max);
   margin-inline: auto;
@@ -43,6 +44,7 @@
     display: block;
     position: sticky;
     top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
     height: calc(100dvh - var(--topbar-h));
     overflow: auto;
     padding: var(--space-4) var(--space-3) var(--space-6) var(--space-4);
@@ -63,6 +65,7 @@
     flex-direction: column;
     position: sticky;
     top: var(--topbar-h);
+    height: calc(100vh - var(--topbar-h));
     height: calc(100dvh - var(--topbar-h));
     overflow: hidden;
     border-inline-start: 1px solid var(--line);

@@ -5,9 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
  *
  * Kept separate from the old app's runner in `frontend/`: the rewrite has its
  * own specs and its own CI job, so a change here never waits for the old E2E
- * suite. Chromium is the only project for now - the suite is small and the
- * point is a fast signal while the rewrite is piloted. Firefox/WebKit are added
- * once the suite has grown enough to justify the extra run time.
+ * suite.
+ *
+ * All three engines run. The rewrite is aimed at a nationwide rollout, and the
+ * features that set its browser floor (`<dialog>`, `:has`, `dvh`) are exactly
+ * the ones a Chromium-only run proves nothing about: a WebKit project is the
+ * only thing that catches an iOS regression before the participants do.
  *
  * Start the stack first with `./run_dev_nginx_both.bash`; the rewrite is served
  * at `/report-new/`.
@@ -38,6 +41,14 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'firefox',
+      use: { ...devices['Desktop Firefox'] },
+    },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'] },
     },
   ],
 });

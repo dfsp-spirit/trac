@@ -14,10 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Chromium only while the rewrite's suite is small: the point is a fast
-        # signal that does not wait for the old app's E2E job. Add firefox and
-        # webkit here once the behaviour specs have grown.
-        browser: [chromium]
+        # One leg per engine. The browser floor of the rewrite is set by
+        # <dialog>, :has and dvh - all of them invisible to a Chromium-only run,
+        # and all of them fatal on iOS if they regress.
+        browser: [chromium, firefox, webkit]
 
     services:
       postgres:

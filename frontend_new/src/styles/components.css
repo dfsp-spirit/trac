@@ -71,10 +71,18 @@
 .t-day-chip { position: relative; display: grid; place-items: center; gap: 0; min-height: 56px; padding: var(--space-1) 0; border: 2px solid var(--line-strong); border-radius: var(--radius-md); background: var(--bg); cursor: pointer; text-align: center; }
 .t-day-chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .t-day-chip__wd { font-size: 0.75rem; line-height: 1rem; font-weight: 500; }
-.t-day-chip:has(input:checked) { background: var(--inverse-bg); color: var(--inverse-ink); border-color: var(--inverse-bg); }
+/* The checked state is a class rather than `:has(input:checked)`: the input is
+   invisible, so this is the only signal that a day is selected and it may not
+   depend on a selector Firefox only learned in 121. ui/formFields.js owns it. */
+.t-day-chip--checked { background: var(--inverse-bg); color: var(--inverse-ink); border-color: var(--inverse-bg); }
 .t-day-chip:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* Same ring where :has is missing; the block itself is ignored where @supports
+   selector() is missing, which is also where :has works. */
+@supports not selector(:has(*)) {
+  .t-day-chip:focus-within { outline: 3px solid var(--focus); outline-offset: 2px; }
+}
 .t-day-chip--current { border-style: dashed; }
-.t-day-chip--current:has(input:checked) { border-style: solid; }
+.t-day-chip--current.t-day-chip--checked { border-style: solid; }
 
 /* ---------- Modal (full-screen dialog) ---------- */
 .t-modal { width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 0; border: 0; background: var(--bg); color: var(--ink); display: flex; flex-direction: column; }
@@ -102,7 +110,10 @@ html:has(dialog[open]) { overflow: hidden; }
 /* Bottom sheet: confirmation steps, within thumb reach */
 
 /* ---------- Navigation drawer ---------- */
-.t-drawer { position: fixed; inset: 0 auto 0 0; width: min(320px, 86vw); height: 100dvh; max-height: none; margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); border: 0; border-inline-end: 1px solid var(--line); background: var(--bg); color: var(--ink); box-shadow: var(--shadow-2); overflow-y: auto; overscroll-behavior: contain; }
+.t-drawer { display: none; position: fixed; inset: 0 auto 0 0; width: min(320px, 86vw); height: 100vh; height: 100dvh; max-height: none; margin: 0; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) env(safe-area-inset-left); border: 0; border-inline-end: 1px solid var(--line); background: var(--bg); color: var(--ink); box-shadow: var(--shadow-2); overflow-y: auto; overscroll-behavior: contain; }
+/* Explicit, so the drawer can never leak into the page on an engine that does
+   not know <dialog>: closed is the default here, not a user-agent rule. */
+.t-drawer[open] { display: block; }
 .t-drawer::backdrop { background: var(--overlay); }
 .t-drawer__head { display: flex; align-items: center; gap: var(--space-2); min-height: 64px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); }
 .t-drawer__head h2 { flex: 1; margin: 0; font-size: 1.125rem; line-height: 1.5rem; font-weight: 700; }
@@ -162,13 +173,6 @@ html:has(dialog[open]) { overflow: hidden; }
 .t-toast__action:focus-visible { outline-color: var(--inverse-ink); outline-offset: -4px; }
 .t-toast-region { position: fixed; inset-inline: var(--space-4); bottom: calc(max(var(--space-4), env(safe-area-inset-bottom)) + var(--fab) + var(--space-3)); z-index: var(--z-fab); display: grid; gap: var(--space-2); pointer-events: none; }
 .t-toast-region > * { pointer-events: auto; }
-/* A toast shown as a manual popover sits above everything, open dialogs included */
-.t-toast[popover] { position: fixed; inset: auto max(var(--space-4), env(safe-area-inset-right)) calc(max(var(--space-4), env(safe-area-inset-bottom)) + var(--fab) + var(--space-3)) max(var(--space-4), env(safe-area-inset-left)); width: auto; max-width: 480px; margin: 0 auto; border: 0; }
-.t-toast[popover]:not(:popover-open) { display: none; }
-/* No floating button on screen (menu pages, a locked diary): the toast sits at the bottom */
-.t-fab[hidden] ~ .t-toast[popover] { bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
-/* Add activity open: above its two stacked buttons */
-html:has(.t-modal[open] > form > .t-modal__foot:not([hidden])) .t-toast[popover] { bottom: calc(var(--space-3) + 2 * var(--tap-min) + var(--space-2) + max(var(--space-3), env(safe-area-inset-bottom)) + 1px + var(--space-3)); }
 
 /* ---------- Save status ---------- */
 

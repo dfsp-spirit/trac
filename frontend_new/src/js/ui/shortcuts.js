@@ -13,8 +13,8 @@ import { createShortcutsDialog } from './shortcutsDialog.js';
 /**
  * @param {{
  *   root: HTMLElement,
- *   menu: HTMLElement | null,
  *   menuEntry: HTMLElement | null,
+ *   closeMenu: () => void,
  *   regions: Array<HTMLElement | null>,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   isEnabled: () => boolean,
@@ -33,8 +33,8 @@ import { createShortcutsDialog } from './shortcutsDialog.js';
  */
 export function createShortcuts({
   root,
-  menu,
   menuEntry,
+  closeMenu,
   regions,
   t,
   isEnabled,
@@ -67,7 +67,7 @@ export function createShortcuts({
   /** @param {Event} event */
   const onMenuEntry = (event) => {
     event.preventDefault();
-    if (menu && menu.matches(':popover-open')) menu.hidePopover();
+    closeMenu();
     dialog.open();
   };
   menuEntry?.addEventListener('click', onMenuEntry);

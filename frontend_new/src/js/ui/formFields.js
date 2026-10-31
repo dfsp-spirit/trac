@@ -79,6 +79,12 @@ export function dayChips(days) {
     input.setAttribute('aria-label', day.display_name || day.name);
     const weekday = el('span', 't-day-chip__wd', (day.name || '').slice(0, 2));
     weekday.setAttribute('aria-hidden', 'true');
+    // The chip's selected look is a class, not `:has(input:checked)`, because the
+    // input is invisible and this is the only signal that the day is picked
+    // (components.css; `:has` only reached Firefox in 121).
+    input.addEventListener('change', () =>
+      chip.classList.toggle('t-day-chip--checked', input.checked)
+    );
     chip.append(input, weekday);
     element.append(chip);
     inputs.push(input);
@@ -97,6 +103,8 @@ export function syncChips(inputs, selectedDay) {
   for (const input of inputs) {
     const isCurrent = Number(input.value) === selectedDay;
     input.checked = isCurrent;
-    input.closest('.t-day-chip')?.classList.toggle('t-day-chip--current', isCurrent);
+    const chip = input.closest('.t-day-chip');
+    chip?.classList.toggle('t-day-chip--current', isCurrent);
+    chip?.classList.toggle('t-day-chip--checked', isCurrent);
   }
 }

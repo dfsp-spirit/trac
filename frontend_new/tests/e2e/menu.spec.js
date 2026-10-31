@@ -14,7 +14,7 @@ import { openDiary } from './helpers.js';
 test.describe('drawer menu', () => {
   test('a single-language study has no language entry', async ({ page }) => {
     await openDiary(page, 'diary_02');
-    await page.locator('.t-topbar [popovertarget="menu"]').click();
+    await page.locator('#menu-open').click();
     await expect(page.locator('#menu')).toBeVisible();
 
     await expect(page.locator('#menu-language-block')).toBeHidden();
@@ -22,19 +22,41 @@ test.describe('drawer menu', () => {
 
     // Nothing is left dangling either: the separator above the language entry
     // lives inside the hidden block, so no visible rule ends the menu.
-    const lastVisibleTag = await page.evaluate(() => {
-      const menu = document.getElementById('menu');
-      const visible = [...(menu?.children ?? [])].filter(
-        (node) => node instanceof HTMLElement && !node.hidden
-      );
-      return visible.at(-1)?.tagName ?? null;
-    });
-    expect(lastVisibleTag).not.toBe('HR');
+    await expect(page.locator('#menu hr')).toBeHidden();
+  });
+
+  // The drawer used to be a native popover, which older engines render as a
+  // permanently visible panel. Closed must be the default, whatever the engine.
+  test('the drawer is closed until it is opened, and closes again on Escape', async ({ page }) => {
+    await openDiary(page, 'diary_02');
+    await expect(page.locator('#menu')).toBeHidden();
+
+    await page.locator('#menu-open').click();
+    await expect(page.locator('#menu')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#menu')).toBeHidden();
+    // Focus goes back to the control that opened it, not into the page.
+    await expect(page.locator('#menu-open')).toBeFocused();
+  });
+
+  test('only a click on the backdrop dismisses the drawer', async ({ page }) => {
+    await openDiary(page, 'diary_02');
+    await page.locator('#menu-open').click();
+    await expect(page.locator('#menu')).toBeVisible();
+
+    // Inside the panel: stays open.
+    await page.locator('#menu-title').click();
+    await expect(page.locator('#menu')).toBeVisible();
+
+    // Right of the 320px panel: that is the backdrop.
+    await page.mouse.click(1000, 400);
+    await expect(page.locator('#menu')).toBeHidden();
   });
 
   test('a study that can skip offers the entry, one that cannot does not', async ({ page }) => {
     await openDiary(page, 'diary_02');
-    await page.locator('.t-topbar [popovertarget="menu"]').click();
+    await page.locator('#menu-open').click();
     // `newui_06_diary` sets allow_skip_timeuse: false, so a button that ends the
     // diary part of the study must not be there (D41).
     await expect(page.locator('#menu-skip-item')).toBeHidden();
