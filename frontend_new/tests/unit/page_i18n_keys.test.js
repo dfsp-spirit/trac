@@ -14,10 +14,11 @@ import { fileURLToPath } from 'node:url';
 //  * plural keys carry both `_one` and `_other`.
 //
 // The old frontend has its own copy of this guard over `frontend/src`; this one
-// scans `frontend_new/src` and reads the same shared locale files.
+// scans `frontend_new/src` and reads the locale files the app actually ships
+// (`src/locales/`, kept identical to the shared ones by `npm run sync:locales`).
 
 const SRC_DIR = fileURLToPath(new URL('../../src/', import.meta.url));
-const LOCALES_DIR = fileURLToPath(new URL('../../../frontend/src/locales/', import.meta.url));
+const LOCALES_DIR = fileURLToPath(new URL('../../src/locales/', import.meta.url));
 
 /** Namespaces the new UI may borrow from the surviving pages (D35). */
 const SHELL_ALLOWLIST = ['common.', 'footer.', 'maintenance.', 'idleTimeout.'];

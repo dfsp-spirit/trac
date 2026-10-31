@@ -6,7 +6,11 @@ export const config = {
   apiBaseUrl: '/tud_backend/api',
 
   // Served by nginx from frontend/src/locales (D35: one set of locale files).
-  localesUrl: '/locales',
+    // Locales ship inside the app (src/locales/, kept identical to
+  // frontend/src/locales by `npm run sync:locales`). Resolving against this
+  // module rather than the site root means the app can be mounted anywhere -
+  // /report-new/ today, /report/ after the cutover - with no web-server alias.
+  localesUrl: new URL('../locales/', import.meta.url).href,
 
   supportedLanguages: ['de', 'en', 'sv'],
   defaultLanguage: 'de',

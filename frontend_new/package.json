@@ -10,7 +10,8 @@
     "typecheck": "tsc -p jsconfig.json",
     "test": "npm run test:unit && npm run check:architecture && npm run typecheck",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "sync:locales": "node tools/sync-locales.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

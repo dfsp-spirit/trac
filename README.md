@@ -191,10 +191,40 @@ No build step is required. Once this file is configured, the entire `frontend/sr
 
 In a typical production setup a single web server (or reverse proxy) handles all traffic:
 
-- Static frontend files are served directly from the `frontend/src/` directory.
+- Static frontend files are served directly from the `frontend/src/` directory (the old app) and
+  from `frontend_new/src/` (the participant frontend rewrite).
 - Requests to the backend API path (e.g., `/tud_backend/`) are forwarded to the running backend process.
 
 Make sure the proxy passes the correct `X-Forwarded-*` headers so that the backend can construct correct URLs, and configure `TUD_ROOTPATH` and `TUD_ALLOWED_ORIGINS` accordingly.
+
+#### Serving the participant frontend (`frontend_new/`)
+
+The rewrite is a directory of static files: **copy it, do not build it.** There is no bundler, no
+transpiler and no generated `dist/` — the files you copy are the files the browser runs, which is also
+why a problem can be read straight out of the served source.
+
+It is mounted next to the old app while both are in use (for example `/report-new/` beside `/report/`).
+It does not care which path it lives at: script, style and locale URLs resolve relative to the files
+themselves, so moving it to another path is a copy rather than a configuration change, and no
+web-server alias, redirect or rewrite rule is needed for it.
+
+One file is per-deployment:
+
+- `frontend_new/src/js/config.js` — `apiBaseUrl` must be the API as the browser sees it (for example
+  `/tud_backend/api`), without a trailing slash. **Set it on the copy you deploy.** That file is
+  tracked in git, and the development and CI setups each overwrite it with their own variant, exactly
+  like `frontend/src/settings/tud_settings.js` (see the note in *4. Frontend Configuration*); keep your
+  production version outside the checkout, or restore it after a local run, or a deployment will ship
+  development values.
+
+The rewrite needs a browser with `<dialog>` support: **Safari/iOS 15.4+, Chrome 105+ or Firefox 121+**
+(the last two are set by `:has()`, and the missing pieces below that point are styling rather than
+function). Older engines are not turned away with a message — they simply fail to render — so a study
+aimed at a population with older devices should confirm the requirement before collecting data.
+
+The wiring that can only break in deployment — that the app is served, reaches the API, and finds its
+own locale files — is asserted by `frontend_new/tests/e2e/deployment.spec.js`, which is the quickest
+way to answer "is this frontend deployed correctly?" against a real host.
 
 #### Compression and HTTP/2
 

@@ -11,19 +11,22 @@ import { test, expect } from '@playwright/test';
 
 const NEW_FRONTEND_URL =
   process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
-const ORIGIN = new URL(NEW_FRONTEND_URL).origin;
 
 /** A participant that exists in the shipped study config. */
 const STUDY = 'adult_pilot_de';
 const PARTICIPANT = 'pending_12';
 
 test.describe('frontend rewrite deployment', () => {
-  test('the shared locale files are served where the rewrite expects them', async ({
+  test('the app serves its own locale files where it is mounted', async ({
     request,
   }) => {
+    // Self-contained on purpose: the rewrite carries `locales/` next to itself,
+    // so it works at any mount point and needs no web-server alias (D35). This
+    // would fail if the copy were dropped from `frontend_new/src/`.
     for (const language of ['de', 'en', 'sv']) {
-      const response = await request.get(`${ORIGIN}/locales/${language}.json`);
-      expect(response.ok(), `/locales/${language}.json`).toBeTruthy();
+      const url = new URL(`locales/${language}.json`, NEW_FRONTEND_URL).toString();
+      const response = await request.get(url);
+      expect(response.ok(), url).toBeTruthy();
       const messages = await response.json();
       expect(messages.diary?.stage?.consentTitle).toBeTruthy();
     }

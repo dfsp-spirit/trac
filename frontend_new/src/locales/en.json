@@ -1,0 +1,449 @@
+{
+  "maintenance": {
+    "banner": "Heads-up: we will run brief maintenance soon. Please save your current work."
+  },
+  "instructions": {
+    "pageTitle": "Instructions",
+    "title": "Instructions",
+    "welcomeTitle": "Welcome to Your Weekly Time Diary. Thank you for participating!",
+    "generalInfoTitle": "General Information on the Study",
+    "studyIntroDefault": "This is our time use study.<br><br>We are asking you to <b>reconstruct a typical week</b> of your daily activities using our time use tool.<br><br>Which week should I choose? Please think of your past week (the last 7 days).<br>Exception: If you were sick or on holiday last week, please choose a different recent week that better represents your normal routine.",
+    "instructionsDefault": "## How to fill out the diary\n\nYou will see a list of activities at the bottom of the screen. Click an activity to select it, then click on the timeline to place it, indicating what you were doing throughout the day.\n\n- **Adjust duration:** Drag the left or right edge of a placed activity to set how long it lasted.\n- **Delete an activity:** Right-click an activity on desktop, or long-press it on mobile, and choose \"Delete\".\n\nDepending on the study, there may be more than one timeline for each day. These capture different aspects of your day or allow you to record activities you were doing in parallel.\n\n**Time-Saving Feature:** You do not need to start from scratch every day. After you complete the first day, your schedule will automatically copy over to the next day as a template. Please adapt this template to reflect any changes in your activities for that day.",
+    "visualGuideTitle": "Visual Illustrations of how to use the Interface",
+    "howToSummary": "How do I fill out the diary?",
+    "step1": {
+      "title": "Select and Place an Activity",
+      "horizontal": "Choose an activity from the menu at the bottom of the screen, then place it on the timeline.",
+      "imageAltHorizontal": "Selecting an activity from the bottom menu",
+      "vertical": "Tap the (+) button in the bottom right corner to open the activity menu, then select an activity and tap where you want to place it on the timeline.",
+      "imageAltVertical": "Selecting an activity in vertical layout"
+    },
+    "step2": {
+      "title": "Adjust Activity Duration",
+      "horizontal": "Click and drag the edges horizontally to set the duration. On desktop, you can also right-click an activity and choose \"Show info\" or \"Delete\".",
+      "imageAltHorizontal": "Placing and adjusting activity duration horizontally",
+      "vertical": "Drag the edges vertically to set the duration.",
+      "imageAltVertical": "Placing and adjusting activity duration vertically"
+    },
+    "step3": {
+      "title": "Copy a Day",
+      "horizontal": "If another day looks similar, you can copy this day's activities: click \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.",
+      "imageAltHorizontal": "Copying the activities of a day to another day in horizontal layout",
+      "vertical": "If another day looks similar, you can copy this day's activities: tap \"Copy this day\" next to the day title and choose the day you want to copy it to. You can still adjust the copied entries afterwards.",
+      "imageAltVertical": "Copying the activities of a day to another day in vertical layout"
+    },
+    "step4": {
+      "title": "Saving and Submitting Your Diary",
+      "description": "You do not need to save your day: your entries are saved automatically while you edit. You can still edit a day later. When all days of the study are complete, click the \"Submit Study\" button to send your diary and finish the study.",
+      "submitStudyHelp": "Click to submit your diary when every day is complete"
+    },
+    "helpfulTools": "Helpful tools",
+    "clearTimelineHelp": "Want to start over? Clear the timeline",
+    "customActivityHelp": "Activity not listed? Add a custom activity",
+    "customActivityName": "Other not listed (enter)"
+  },
+  "consent": {
+    "pageTitle": "Consent",
+    "title": "Consent",
+    "eyebrow": "Study consent",
+    "subtitle": "Please read the consent information below before starting the study.",
+    "studyName": "Study Name",
+    "checkboxLabel": "I have read and understood the information on this page.",
+    "checkboxTooltip": "Please tick the checkbox above",
+    "reviewPrompt": "Please review the information before continuing.",
+    "description": "Description",
+    "studyNameShort": "Study Short Name",
+    "saving": "Saving consent...",
+    "saveError": "Could not save consent. Please try again.",
+    "loadError": "Could not load the consent information.",
+    "loadErrorReload": "Could not load the consent information. Please reload the page.",
+    "studyNotFound": "The requested study does not exist.",
+    "accessDenied": "This link is not valid for this study. Please open your personal study link again or contact the study team.",
+    "studyUnavailable": "This study is currently not available. Please try again later.",
+    "saveDenied": "The consent could not be saved: this link is not valid for this study or the study has already been submitted. Please contact the study team."
+  },
+  "common": {
+    "language": "Language",
+    "chooseLanguage": "Choose language",
+    "day": "Day",
+    "loading": "Loading...",
+    "pageTitle": "Time Use Diary",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Error"
+  },
+  "buttons": {
+    "submitStudy": "Submit Study",
+    "start": "Start",
+    "undo": "Undo",
+    "clearTimeline": "Clear timeline",
+    "moreActions": "More actions",
+    "skipReporting": "Skip time reporting",
+    "switchTimeline": "Switch timeline",
+    "giveConsent": "Give consent and continue",
+    "declineConsent": "Decline consent",
+    "ok": "OK",
+    "cancel": "Cancel",
+    "close": "Close",
+    "help": "How to use the diary"
+  },
+  "modals": {
+    "customActivity": {
+      "title": "Enter Custom Activity",
+      "childItemTitle": "Enter custom value for: {parentActivity}",
+      "placeholder": "Enter your activity (max 30 chars)",
+      "frequency": "Frequency",
+      "frequencyNone": "No special frequency"
+    },
+    "addActivity": {
+      "title": "Add Activity"
+    },
+    "childItems": {
+      "title": "Select an option",
+      "titleFor": "Select an option for \"{activityName}\""
+    },
+    "confirmSkip": {
+      "title": "Do you really want to skip all time reporting?",
+      "message": "You will be taken directly to the thank-you page."
+    },
+    "confirmClearTimeline": {
+      "title": "Clear this timeline?",
+      "message": "Are you sure you want to delete all activities in this timeline?"
+    },
+    "activityContext": {
+      "copy": "Copy",
+      "showInfo": "Show info",
+      "moveEarlier": "Move earlier",
+      "moveLater": "Move later",
+      "delete": "Delete",
+      "infoTitle": "Activity details",
+      "start": "Start",
+      "end": "End",
+      "duration": "Duration",
+      "label": "Label",
+      "category": "Category",
+      "name": "Name",
+      "code": "Code"
+    }
+  },
+  "messages": {
+    "activityRemoved": "Activity removed",
+    "timelineCleared": "Timeline cleared",
+    "selectStudy": "Please select a study to continue",
+    "noStudiesAvailable": "No studies available on server.",
+    "studyNotFound": "The requested study does not exist.",
+    "submitError": "Error submitting diary",
+    "sending_retry": "Retrying to save your diary (attempt {{attempt}}/{{maxRetries}})...",
+    "syncNotSaved": "Not saved",
+    "syncRetry": "Retry",
+    "timelineCoverageMet": "✓",
+    "timelineCoverageMetAria": "Minimum coverage met",
+    "dayCompleteAria": "Day complete (meets minimum coverage)",
+    "timelineCoverageMissing": "{{covered}} of {{required}} required minutes covered",
+    "timelineNothingEntered": "nothing entered yet",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Switch to this timeline.",
+    "timelineHoverInactive": "Click to switch to this timeline",
+    "timelineHoverActiveNoSelection": "Select an activity below, then place it here.",
+    "timelineHoverActiveWithSelection": "Click to place the selected activity here.",
+    "invalidPlacement": "Cannot place activity here due to invalid position.",
+    "timelineValidationError": "Timeline validation error: {{message}}",
+    "templateLoadedBannerMobile": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Tap <strong>'Clear timeline'</strong> to start fresh, or edit your activities. To delete an activity, long-press it and choose <strong>'Delete'</strong>.",
+    "templateLoadedBannerDesktop": "We loaded your activities from <strong>{{day}}</strong> as a starting point. Click <strong>'Clear timeline'</strong> to start fresh, or edit the activities below. To delete an activity, right-click it and choose <strong>'Delete'</strong>.",
+    "templateCopiedBanner": "We pre-filled your diary with activities from a template participant. Click <strong>'Clear timeline'</strong> to start fresh or edit the activities below.",
+    "studyDayOf": "Day {{current}} of {{total}}",
+    "currentDayTooltip": "{{dayName}} (Day {{current}} of {{total}})",
+    "goBackToEditPreviousDays": "Switch to day:",
+    "copyDayLink": "Copy this day",
+    "copyDayToAnother": "Copy {{day}} to another day",
+    "goToCopiedDay": "Go to {{day}}",
+    "copyToDay": "Copy to another day",
+    "copySuccess": "Copied {{sourceDay}} to {{targetDay}}",
+    "copyError": "Failed to copy: {{message}}",
+    "copyEmptySource": "Source day has no activities to copy.",
+    "completeOtherDaysFirst": "Complete {{days}} first to finish the study.",
+    "copyDayEmpty": "empty",
+    "copyDayHasData": "has data",
+    "copyOverwriteTitle": "Overwrite day?",
+    "copyOverwriteYes": "Overwrite",
+    "copyOverwriteConfirm": "{{day}} already has data. Overwrite it?",
+    "submitStudyIncomplete": "Incomplete days: {{days}}",
+    "submitStudyIncompleteHint": "Complete all days before submitting"
+  },
+  "errors": {
+    "loadingActivitiesConfigurationTitle": "Error loading activities configuration:",
+    "loadingActivitiesConfigurationHelp": "The application requires a valid backend connection to load the appropriate activities for your study.",
+    "loadingActivitiesShort": "Error loading activities. Please refresh the page to try again. Error:"
+  },
+  "banner": {
+    "instructionsMobile": "Instructions: tap the + button in the bottom right corner to choose an activity, then tap the timeline to place it. Drag its edges to extend it. To delete an activity, long-press it and choose Delete.",
+    "instructionsDesktop": "Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete."
+  },
+  "thankYou": {
+    "title": "Thank You",
+    "heading": "Thank You!",
+    "subtitle": "Your submission has been completed successfully.",
+    "defaultMessage": "Thank you for participating in our study. Your responses have been recorded and will contribute to valuable research.",
+    "continueLink": "Click here to continue."
+  },
+  "taskPage": {
+    "title": "Tasks",
+    "heading": "Final Tasks",
+    "subtitle": "Please complete the following tasks before finishing the study.",
+    "continueLink": "Continue to final page",
+    "statusAlreadyCompleted": "Already completed",
+    "statusNotCompleted": "Not completed",
+    "statusLocked": "Complete the other tasks first",
+    "diaryTaskTitle": "Fill out diary",
+    "diaryTaskDescription": "Complete your time-use diary for all days of the study.",
+    "diaryTaskStatusCompleted": "Completed",
+    "diaryTaskStatusNotCompleted": "Not completed"
+  },
+  "timeout": {
+    "title": "Session Timed Out",
+    "heading": "Session Timed Out",
+    "message": "Your session has ended due to inactivity. Please use your invitation link to return to the diary and continue your work."
+  },
+  "footer": {
+    "opensInNewTab": "opens in a new tab"
+  },
+  "idleTimeout": {
+    "tooltip": "Idle Timeout. Click to confirm you are still here and reset the timer."
+  },
+  "openStudies": {
+    "pageTitle": "Open Studies",
+    "heading": "Open Studies",
+    "noStudies": "No open studies available.",
+    "loadError": "Could not load open studies: {{message}}",
+    "accessStudy": "Access study '{{study}}'"
+  },
+  "diary": {
+    "shell": {
+      "menu": "Menu",
+      "appName": "Time diary",
+      "menuTitle": "Menu",
+      "menuActions": "Actions",
+      "menuPages": "Pages",
+      "submit": "Submit",
+      "dayNav": "Day",
+      "previousDay": "Previous day",
+      "nextDay": "Next day",
+      "days": "Days",
+      "addActivity": "Add activity",
+      "activities": "Activities",
+      "back": "Back",
+      "close": "Close",
+      "searchActivities": "Search activities",
+      "clearSearch": "Clear search",
+      "keyboardShortcuts": "Keyboard shortcuts",
+      "studyInformation": "Study information",
+      "imprint": "Imprint",
+      "dataProtection": "Data protection",
+      "contact": "Contact",
+      "language": "Language",
+      "noScript": "This page needs JavaScript to show your diary."
+    },
+    "timeline": {
+      "continuesNextDay": "continues after midnight",
+      "gap": "Nothing added · {{start}} – {{end}}",
+      "dayActivities": "Activities on {{day}}"
+    },
+    "rail": {
+      "complete": "complete",
+      "toGo": "{{minutes}} min to go",
+      "empty": "empty",
+      "dayLabel": "{{day}}, {{minutes}} minutes covered"
+    },
+    "nav": {
+      "position": "Day {{current}} of {{total}}",
+      "previous": "Previous day",
+      "next": "Next day"
+    },
+    "review": {
+      "title": "Check your diary",
+      "step": "Step {{current}} of {{total}}",
+      "back": "Back to the diary",
+      "edit": "Edit",
+      "dayComplete": "Complete",
+      "dayEmpty": "Nothing added yet",
+      "dayToGo": "{{minutes}} min still to add",
+      "nextDay": "next day",
+      "submit": "Submit diary",
+      "hint": "You confirm on the next step before anything is sent.",
+      "rejectedTitle": "Some days are not complete yet",
+      "rejected": "These days still need minutes: {{days}}. Use Edit to add them.",
+      "rejectedServer": "These days still need minutes. Use Edit to add them.",
+      "confirmTitle": "Submit your diary?",
+      "confirmText": "This sends all {{total}} days to the research team.",
+      "confirmLocked": "After that you can look at it, but not change it.",
+      "confirmYes": "Yes, submit",
+      "confirmNo": "Not yet, keep checking",
+      "sending": "Sending…"
+    },
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "enable": "Use keyboard shortcuts",
+      "days": "Previous or next day",
+      "new": "Add an activity at the time in view",
+      "search": "Search the activity list",
+      "escape": "Back, or clear the search",
+      "nudge": "Move the selected activity by 10 minutes",
+      "nudgeEnd": "Change the end of the selected activity",
+      "confirm": "Save the activity",
+      "delete": "Delete the activity that is selected",
+      "list": "This list"
+    },
+    "stage": {
+      "consentTitle": "Before you start",
+      "consentLead": "Please read this and decide whether you want to take part.",
+      "consentAgree": "I agree",
+      "consentDecline": "I do not agree",
+      "instructionsTitle": "Instructions",
+      "instructionsDone": "I have read this",
+      "thanksTitle": "Thank you",
+      "thanksFallback": "Your diary has been sent to the research team.",
+      "declinedTitle": "Thank you for your time",
+      "tasksTitle": "One thing left",
+      "tasksLead": "The research team needs these to finish your participation.",
+      "taskOpen": "Open",
+      "taskDone": "Done",
+      "tasksRefresh": "Check again",
+      "unavailableTitle": "This study is not available right now",
+      "unavailableText": "It is either paused or no longer collecting. Please contact the research team if you expected to take part.",
+      "unavailablePausedTitle": "This study is paused right now",
+      "unavailablePausedText": "Please try again later using your invitation link.",
+      "unavailableNotStartedTitle": "Data collection has not started yet",
+      "unavailableNotStartedText": "It begins on {{date}}. Please come back with your invitation link then.",
+      "unavailableEndedTitle": "Data collection has ended",
+      "unavailableEndedText": "The collection period ended on {{date}}. Please contact the research team if you have questions.",
+      "failedTitle": "That did not work",
+      "failedText": "Please check your connection and try again.",
+      "retry": "Try again",
+      "noInvitationTitle": "No invitation found",
+      "noInvitationText": "Please open the link from your invitation. It contains the details of your study."
+    },
+    "progress": {
+      "summary": "{{done}} of {{total}} days complete"
+    },
+    "notice": {
+      "submittedTitle": "Your diary is submitted",
+      "submittedText": "The research team has it. You can still read it, but not change it.",
+      "locked": "Submitted. The diary can be read, not changed."
+    },
+    "panel": {
+      "chooseActivity": "Choose an activity",
+      "recent": "Used recently",
+      "addActivity": "Add activity",
+      "editActivity": "Edit activity",
+      "addToTimeline": "Add to timeline",
+      "addAnother": "Save and add another",
+      "saveChanges": "Save changes",
+      "delete": "Delete activity",
+      "noMatches": "No activity matches “{{query}}”",
+      "met": "requirement met",
+      "toGo": "{{minutes}} min to go",
+      "emptyDay": "nothing added yet"
+    },
+    "form": {
+      "option": "Which one?",
+      "chooseOption": "Choose an option",
+      "what": "What did you do?",
+      "frequency": "How often?",
+      "frequencyUnset": "Not specified",
+      "when": "When?",
+      "day": "Day",
+      "start": "Start",
+      "end": "End",
+      "lasts": "Lasts",
+      "nextDay": "(next day)",
+      "midnight": "(midnight)",
+      "lastDayHint": "This is the last day, so activities end by midnight. Add the rest in your next diary.",
+      "alsoOn": "Also on other days?",
+      "hours": "{{count}} h",
+      "minutes": "{{count}} min"
+    },
+    "toast": {
+      "added": "Added: {{name}}, {{range}}",
+      "addedDays": "Also on {{count}} days.",
+      "skipped": "Not added: {{reason}}",
+      "changed": "Changed: {{name}}, {{range}}",
+      "deleted": "Deleted: {{name}}",
+      "undo": "Undo",
+      "dismiss": "Dismiss"
+    },
+    "error": {
+      "noParticipant": "No study or participant in the address.",
+      "generic": {
+        "title": "Not saved",
+        "text": "Something went wrong. Please try again."
+      },
+      "overlap": {
+        "title": "This time is full",
+        "text": "Up to {{max}} activities can run at the same time. Change the time or remove one."
+      },
+      "duplicate": {
+        "title": "Already added",
+        "text": "This activity is already on the timeline at that time."
+      },
+      "lastMidnight": {
+        "title": "The last day ends at midnight",
+        "text": "Add the rest in your next diary."
+      },
+      "endBeforeStart": {
+        "title": "Check the times",
+        "text": "The end must be after the start."
+      },
+      "tooLong": {
+        "title": "Too long",
+        "text": "One activity cannot last more than 24 hours."
+      },
+      "notOnStep": {
+        "title": "Check the times",
+        "text": "Times go in 10-minute steps."
+      },
+      "startOutOfRange": {
+        "title": "Check the times",
+        "text": "The start must be within the day."
+      },
+      "dayRange": {
+        "title": "Day not available",
+        "text": "This day is not part of the study."
+      },
+      "needsOption": {
+        "title": "Choose an option",
+        "text": "Pick the option that describes the activity."
+      },
+      "needsText": {
+        "title": "Say what you did",
+        "text": "Please write a few words."
+      },
+      "submitted": {
+        "title": "Diary submitted",
+        "text": "It can no longer be changed."
+      },
+      "unavailable": {
+        "title": "Study unavailable",
+        "text": "Please try again later."
+      }
+    },
+    "skip": {
+      "menuEntry": "Skip the diary…",
+      "title": "Skip the diary?",
+      "closes": "Your diary will be closed and you will not be able to edit it.",
+      "kept": "Everything you entered so far is kept and sent to the research team.",
+      "visible": "The research team will see that you skipped the diary.",
+      "tasksContinue": "You can still complete the remaining tasks afterwards.",
+      "tasksLocked": "The remaining tasks stay closed, because they require a completed diary.",
+      "reasonLabel": "Reason (optional)",
+      "reasonNone": "Prefer not to say",
+      "reasonNoTimeAndEffort": "It took too much time or effort",
+      "reasonTechnicalProblem": "Technical problems with the app",
+      "reasonDidNotUnderstand": "I did not understand what to enter",
+      "reasonDoNotWantToReport": "I do not want to report my time use",
+      "reasonOther": "Another reason",
+      "noteLabel": "Anything else we should know? (optional)",
+      "ok": "Skip the diary",
+      "cancel": "Keep filling it in",
+      "sending": "Skipping…",
+      "failed": "Could not skip the diary. Please try again."
+    }
+  }
+}

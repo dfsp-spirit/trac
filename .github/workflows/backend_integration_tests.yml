@@ -41,8 +41,7 @@ jobs:
           # E2E workflow uses, and nginx fails on a variable it cannot resolve.
           export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
           export NEW_FRONTEND_PATH="$GITHUB_WORKSPACE/frontend_new/src/"
-          export LOCALES_PATH="$GITHUB_WORKSPACE/frontend/src/locales/"
-          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH $LOCALES_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
+          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
 
           # Copy the frontend settings files (one per app)
           cp dev_tools/ci/frontend_settings/tud_settings.ci.js frontend/src/settings/tud_settings.js

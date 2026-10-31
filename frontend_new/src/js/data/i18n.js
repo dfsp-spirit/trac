@@ -4,8 +4,10 @@
  * (D33 rule: no fetch outside js/data), and it owns no DOM: applying a
  * translation to an element is ui/i18n-dom.js's job.
  *
- * The locale files are the shared ones under frontend/src/locales (D35); keys
- * for this app live under `diary.*` and values are plain text (no HTML).
+ * The locale files are the shared ones from frontend/src/locales (D35), copied
+ * into `src/locales/` by `npm run sync:locales` so the app carries its own
+ * translations; keys for this app live under `diary.*` and values are plain text
+ * (no HTML).
  */
 import { config } from '../config.js';
 

@@ -81,8 +81,7 @@ jobs:
           sudo systemctl stop nginx || true
           export FRONTEND_PATH="$GITHUB_WORKSPACE/frontend/src/"
           export NEW_FRONTEND_PATH="$GITHUB_WORKSPACE/frontend_new/src/"
-          export LOCALES_PATH="$GITHUB_WORKSPACE/frontend/src/locales/"
-          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH $LOCALES_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
+          envsubst '$FRONTEND_PATH $NEW_FRONTEND_PATH' < dev_tools/ci/webserver_config/ci.nginx.conf > /tmp/nginx.conf
           cp dev_tools/ci/frontend_settings/config.new.ci.js frontend_new/src/js/config.js
           # Fail here, with nginx's own message, rather than on the first request.
           sudo nginx -t -c /tmp/nginx.conf -p /tmp/

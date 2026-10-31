@@ -1,0 +1,449 @@
+{
+  "maintenance": {
+    "banner": "Observera: vi utför snart ett kort underhåll. Spara ditt aktuella arbete."
+  },
+  "instructions": {
+    "pageTitle": "Instruktioner",
+    "title": "Instruktioner",
+    "welcomeTitle": "Välkommen till din veckovisa tidsdagbok. Tack för att du deltar!",
+    "generalInfoTitle": "Allmän information om studien",
+    "studyIntroDefault": "Detta är vår tidsanvändningsstudie.<br><br>Vi ber dig att <b>återskapa en typisk vecka</b> av dina dagliga aktiviteter med hjälp av vårt tidsanvändningsverktyg.<br><br>Vilken vecka ska jag välja? Tänk på din senaste vecka (de senaste 7 dagarna).<br>Undantag: Om du var sjuk eller på semester förra veckan, välj en annan nylig vecka som bättre representerar din vanliga rutin.",
+    "instructionsDefault": "## Så fyller du i dagboken\n\nDu ser en lista med aktiviteter längst ner på skärmen. Klicka på en aktivitet för att välja den, och klicka sedan på tidslinjen för att visa vad du gjorde under dagen.\n\n- **Justera varaktighet:** Dra i vänster eller höger kant av en placerad aktivitet för att ställa in hur länge den varade.\n- **Ta bort en aktivitet:** Högerklicka på en aktivitet på datorn, eller tryck länge på den på mobilen, och välj \"Ta bort\".\n\nBeroende på studien kan det finnas mer än en tidslinje för varje dag. Dessa fångar olika aspekter av din dag eller låter dig registrera aktiviteter du gjorde parallellt.\n\n**Tidsbesparande funktion:** Du behöver inte börja från början varje dag. Efter att du har slutfört den första dagen kopieras ditt schema automatiskt till nästa dag som en mall. Anpassa gärna mallen så att den speglar förändringar i dina aktiviteter den dagen.",
+    "visualGuideTitle": "Visuella illustrationer av hur du använder gränssnittet",
+    "howToSummary": "Hur fyller jag i dagboken?",
+    "step1": {
+      "title": "Välj och placera en aktivitet",
+      "horizontal": "Välj en aktivitet från menyn längst ner på skärmen och placera den på tidslinjen.",
+      "imageAltHorizontal": "Välja en aktivitet från menyn längst ned",
+      "vertical": "Tryck på (+) knappen i det nedre högra hörnet för att öppna aktivitetsmenyn, välj sedan en aktivitet och tryck där du vill placera den på tidslinjen.",
+      "imageAltVertical": "Välja en aktivitet i vertikal vy"
+    },
+    "step2": {
+      "title": "Justera aktivitetens längd",
+      "horizontal": "Klicka och dra kanterna horisontellt för att ställa in längden. På dator kan du också högerklicka på en aktivitet och välja \"Visa info\" eller \"Ta bort\".",
+      "imageAltHorizontal": "Placera och justera aktivitetens varaktighet horisontellt",
+      "vertical": "Dra kanterna vertikalt för att ställa in längden.",
+      "imageAltVertical": "Placera och justera aktivitetens varaktighet vertikalt"
+    },
+    "step3": {
+      "title": "Kopiera en dag",
+      "horizontal": "Om en annan dag ser likadan ut kan du kopiera den här dagens aktiviteter: klicka på \"Kopiera denna dag\" bredvid dagens rubrik och välj måldagen. Du kan fortfarande justera de kopierade posterna efteråt.",
+      "imageAltHorizontal": "Kopiera en dags aktiviteter till en annan dag i horisontell vy",
+      "vertical": "Om en annan dag ser likadan ut kan du kopiera den här dagens aktiviteter: tryck på \"Kopiera denna dag\" bredvid dagens rubrik och välj måldagen. Du kan fortfarande justera de kopierade posterna efteråt.",
+      "imageAltVertical": "Kopiera en dags aktiviteter till en annan dag i vertikal vy"
+    },
+    "step4": {
+      "title": "Spara automatiskt och skicka in din dagbok",
+      "description": "Du behöver inte spara dagen: dina uppgifter sparas automatiskt medan du redigerar. Du kan fortfarande redigera dagen senare. När alla dagar i studien är kompletta klickar du på \"Skicka studien\" för att skicka in din dagbok och avsluta studien.",
+      "submitStudyHelp": "Klicka för att skicka in din dagbok när alla dagar är kompletta"
+    },
+    "helpfulTools": "Användbara verktyg",
+    "clearTimelineHelp": "Vill du börja om? Rensa tidslinjen",
+    "customActivityHelp": "Aktiviteten finns inte med? Lägg till en egen aktivitet",
+    "customActivityName": "Annat som inte finns med (ange)"
+  },
+  "consent": {
+    "pageTitle": "Samtycke",
+    "title": "Samtycke",
+    "eyebrow": "Samtycke till studien",
+    "subtitle": "Läs samtyckesinformationen nedan innan du börjar studien.",
+    "studyName": "Studiets namn",
+    "checkboxLabel": "Jag har läst och förstått informationen på denna sida.",
+    "checkboxTooltip": "Vänligen bocka i rutan ovan",
+    "reviewPrompt": "Läs igenom informationen innan du fortsätter.",
+    "description": "Beskrivning",
+    "studyNameShort": "Studiets kortnamn",
+    "saving": "Sparar samtycke...",
+    "saveError": "Kunde inte spara samtycket. Försök igen.",
+    "loadError": "Kunde inte läsa in samtyckesinformationen.",
+    "loadErrorReload": "Kunde inte ladda samtyckesinformationen. Ladda om sidan.",
+    "studyNotFound": "Den begärda studien finns inte.",
+    "accessDenied": "Den här länken är inte giltig för den här studien. Öppna din personliga studielänk igen eller kontakta studieteamet.",
+    "studyUnavailable": "Den här studien är inte tillgänglig just nu. Försök igen senare.",
+    "saveDenied": "Samtycket kunde inte sparas: länken är inte giltig för den här studien eller så har studien redan skickats in. Kontakta studieteamet."
+  },
+  "common": {
+    "language": "Språk",
+    "chooseLanguage": "Välj språk",
+    "day": "Dag",
+    "loading": "Laddar ...",
+    "pageTitle": "Tidsdagbok",
+    "pageTitleWithStudy": "{{study}} - {{page}}",
+    "error": "Fel"
+  },
+  "buttons": {
+    "submitStudy": "Skicka studien",
+    "start": "Starta",
+    "undo": "Ångra",
+    "clearTimeline": "Rensa tidslinjen",
+    "moreActions": "Fler åtgärder",
+    "skipReporting": "Hoppa över tidsrapportering",
+    "switchTimeline": "Byt tidslinje",
+    "giveConsent": "Jag samtycker och fortsätter",
+    "declineConsent": "Jag samtycker inte",
+    "ok": "OK",
+    "cancel": "Avbryt",
+    "close": "Stäng",
+    "help": "Så fungerar dagboken"
+  },
+  "modals": {
+    "customActivity": {
+      "title": "Ange egen aktivitet",
+      "childItemTitle": "Ange eget värde för: {parentActivity}",
+      "placeholder": "Ange din aktivitet (max 30 tecken)",
+      "frequency": "Frekvens",
+      "frequencyNone": "Ingen speciell frekvens"
+    },
+    "addActivity": {
+      "title": "Lägg till aktivitet"
+    },
+    "childItems": {
+      "title": "Välj ett alternativ",
+      "titleFor": "Välj ett alternativ för \"{activityName}\""
+    },
+    "confirmSkip": {
+      "title": "Vill du verkligen hoppa över all tidsrapportering?",
+      "message": "Du kommer att skickas direkt till tack-sidan."
+    },
+    "confirmClearTimeline": {
+      "title": "Rensa denna tidslinje?",
+      "message": "Är du säker på att du vill ta bort alla aktiviteter i denna tidslinje?"
+    },
+    "activityContext": {
+      "copy": "Kopiera",
+      "showInfo": "Visa info",
+      "moveEarlier": "Flytta tidigare",
+      "moveLater": "Flytta senare",
+      "delete": "Ta bort",
+      "infoTitle": "Aktivitetsdetaljer",
+      "start": "Start",
+      "end": "Slut",
+      "duration": "Varaktighet",
+      "label": "Etikett",
+      "category": "Kategori",
+      "name": "Namn",
+      "code": "Kod"
+    }
+  },
+  "messages": {
+    "activityRemoved": "Aktivitet borttagen",
+    "timelineCleared": "Tidslinjen rensad",
+    "selectStudy": "Välj en studie för att fortsätta",
+    "noStudiesAvailable": "Inga studier finns på servern.",
+    "studyNotFound": "Den begärda studien finns inte.",
+    "submitError": "Fel vid inskickning av dagbok",
+    "sending_retry": "Nytt försök att spara dagboken (försök {{attempt}}/{{maxRetries}})...",
+    "syncNotSaved": "Inte sparat",
+    "syncRetry": "Försök igen",
+    "timelineCoverageMet": "✓",
+    "timelineCoverageMetAria": "Minsta täckning uppfylld",
+    "dayCompleteAria": "Dagen är klar (uppfyller minsta täckningen)",
+    "timelineCoverageMissing": "{{covered}} av {{required}} obligatoriska minuter täckta",
+    "timelineNothingEntered": "inget ifyllt ännu",
+    "timelineSwitchHintAria": "{{timeline}}: {{state}}. Byt till denna tidslinje.",
+    "timelineHoverInactive": "Klicka för att byta till den här tidslinjen",
+    "timelineHoverActiveNoSelection": "Välj en aktivitet nedan och placera den sedan här.",
+    "timelineHoverActiveWithSelection": "Klicka för att placera den valda aktiviteten här.",
+    "invalidPlacement": "Kan inte placera aktiviteten här på grund av ogiltig position.",
+    "timelineValidationError": "Valideringsfel i tidslinje: {{message}}",
+    "templateLoadedBannerMobile": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Tryck på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera dina aktiviteter. För att ta bort en aktivitet, håll den intryckt och välj <strong>'Ta bort'</strong>.",
+    "templateLoadedBannerDesktop": "Vi har laddat dina aktiviteter från <strong>{{day}}</strong> som utgångspunkt. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan. För att ta bort en aktivitet, högerklicka på den och välj <strong>'Ta bort'</strong>.",
+    "templateCopiedBanner": "Vi har fyllt i din dagbok med aktiviteter från en malldeltagare. Klicka på <strong>'Rensa tidslinjen'</strong> för att börja om eller redigera aktiviteterna nedan.",
+    "studyDayOf": "Dag {{current}} av {{total}}",
+    "currentDayTooltip": "{{dayName}} (Dag {{current}} av {{total}})",
+    "goBackToEditPreviousDays": "Byt till dag:",
+    "copyDayLink": "Kopiera denna dag",
+    "copyDayToAnother": "Kopiera {{day}} till en annan dag",
+    "goToCopiedDay": "Gå till {{day}}",
+    "copyToDay": "Kopiera till en annan dag",
+    "copySuccess": "Kopierade {{sourceDay}} till {{targetDay}}",
+    "copyError": "Kunde inte kopiera: {{message}}",
+    "copyEmptySource": "Källdagen har inga aktiviteter att kopiera.",
+    "completeOtherDaysFirst": "Fyll först i {{days}} för att avsluta studien.",
+    "copyDayEmpty": "tom",
+    "copyDayHasData": "har data",
+    "copyOverwriteTitle": "Skriva över dagen?",
+    "copyOverwriteYes": "Skriv över",
+    "copyOverwriteConfirm": "{{day}} har redan data. Skriva över?",
+    "submitStudyIncomplete": "Ofullständiga dagar: {{days}}",
+    "submitStudyIncompleteHint": "Slutför alla dagar innan du skickar in"
+  },
+  "errors": {
+    "loadingActivitiesConfigurationTitle": "Fel vid laddning av aktivitetskonfiguration:",
+    "loadingActivitiesConfigurationHelp": "Applikationen kräver en giltig backend-anslutning för att ladda rätt aktiviteter för din studie.",
+    "loadingActivitiesShort": "Fel vid laddning av aktiviteter. Uppdatera sidan och försök igen. Fel:"
+  },
+  "banner": {
+    "instructionsMobile": "Instruktioner: tryck på +-knappen längst ned till höger för att välja en aktivitet och tryck sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, håll den intryckt och välj Ta bort.",
+    "instructionsDesktop": "Instruktioner: välj en aktivitet nedan och klicka sedan på tidslinjen för att placera den. Dra i kanterna för att förlänga den. För att ta bort en aktivitet, högerklicka på den och välj Ta bort."
+  },
+  "thankYou": {
+    "title": "Tack",
+    "heading": "Tack!",
+    "subtitle": "Din inskickning har slutförts framgångsrikt.",
+    "defaultMessage": "Tack för att du deltar i vår studie. Dina svar har registrerats och kommer att bidra till värdefull forskning.",
+    "continueLink": "Klicka här för att fortsätta."
+  },
+  "taskPage": {
+    "title": "Uppgifter",
+    "heading": "Slutliga uppgifter",
+    "subtitle": "Vänligen genomför följande uppgifter innan du avslutar studien.",
+    "continueLink": "Fortsätt till slutsidan",
+    "statusAlreadyCompleted": "Redan slutförd",
+    "statusNotCompleted": "Inte slutförd",
+    "statusLocked": "Slutför andra uppgifter först",
+    "diaryTaskTitle": "Fyll i dagboken",
+    "diaryTaskDescription": "Fyll i din tidsanvändningsdagbok för alla dagar i studien.",
+    "diaryTaskStatusCompleted": "Slutförd",
+    "diaryTaskStatusNotCompleted": "Inte slutförd"
+  },
+  "timeout": {
+    "title": "Sessionen har gått ut",
+    "heading": "Sessionen har gått ut",
+    "message": "Din session avslutades på grund av inaktivitet. Använd din inbjudningslänk för att återgå till dagboken och fortsätta."
+  },
+  "footer": {
+    "opensInNewTab": "öppnas i en ny flik"
+  },
+  "idleTimeout": {
+    "tooltip": "Inaktivitetstimeout. Klicka för att bekräfta att du fortfarande är här och återställ timern."
+  },
+  "openStudies": {
+    "pageTitle": "Öppna studier",
+    "heading": "Öppna studier",
+    "noStudies": "Inga öppna studier tillgängliga.",
+    "loadError": "Kunde inte ladda öppna studier: {{message}}",
+    "accessStudy": "Öppna studien '{{study}}'"
+  },
+  "diary": {
+    "shell": {
+      "menu": "Meny",
+      "appName": "Tidsdagbok",
+      "menuTitle": "Meny",
+      "menuActions": "Åtgärder",
+      "menuPages": "Sidor",
+      "submit": "Skicka in",
+      "dayNav": "Dag",
+      "previousDay": "Föregående dag",
+      "nextDay": "Nästa dag",
+      "days": "Dagar",
+      "addActivity": "Lägg till aktivitet",
+      "activities": "Aktiviteter",
+      "back": "Tillbaka",
+      "close": "Stäng",
+      "searchActivities": "Sök aktiviteter",
+      "clearSearch": "Rensa sökningen",
+      "keyboardShortcuts": "Tangentbordsgenvägar",
+      "studyInformation": "Information om studien",
+      "imprint": "Impressum",
+      "dataProtection": "Dataskydd",
+      "contact": "Kontakt",
+      "language": "Språk",
+      "noScript": "Den här sidan behöver JavaScript för att visa din dagbok."
+    },
+    "timeline": {
+      "continuesNextDay": "fortsätter efter midnatt",
+      "gap": "Inget tillagt · {{start}} – {{end}}",
+      "dayActivities": "Aktiviteter på {{day}}"
+    },
+    "rail": {
+      "complete": "klar",
+      "toGo": "{{minutes}} min kvar",
+      "empty": "tom",
+      "dayLabel": "{{day}}, {{minutes}} minuter täckta"
+    },
+    "nav": {
+      "position": "Dag {{current}} av {{total}}",
+      "previous": "Föregående dag",
+      "next": "Nästa dag"
+    },
+    "review": {
+      "title": "Kontrollera din dagbok",
+      "step": "Steg {{current}} av {{total}}",
+      "back": "Tillbaka till dagboken",
+      "edit": "Ändra",
+      "dayComplete": "Komplett",
+      "dayEmpty": "Inget tillagt än",
+      "dayToGo": "{{minutes}} min kvar att fylla i",
+      "nextDay": "nästa dag",
+      "submit": "Skicka in dagboken",
+      "hint": "Du bekräftar i nästa steg innan något skickas.",
+      "rejectedTitle": "Några dagar är inte kompletta än",
+      "rejected": "De här dagarna saknar fortfarande minuter: {{days}}. Använd Ändra för att fylla i dem.",
+      "rejectedServer": "De här dagarna saknar fortfarande minuter. Använd Ändra för att fylla i dem.",
+      "confirmTitle": "Skicka in din dagbok?",
+      "confirmText": "Det här skickar alla {{total}} dagar till forskargruppen.",
+      "confirmLocked": "Efter det kan du läsa den men inte ändra den.",
+      "confirmYes": "Ja, skicka in",
+      "confirmNo": "Inte än, fortsätt kontrollera",
+      "sending": "Skickar …"
+    },
+    "shortcuts": {
+      "title": "Tangentbordsgenvägar",
+      "enable": "Använd tangentbordsgenvägar",
+      "days": "Föregående eller nästa dag",
+      "new": "Lägg till en aktivitet vid tiden i vyn",
+      "search": "Sök i aktivitetslistan",
+      "escape": "Tillbaka, eller rensa sökningen",
+      "nudge": "Flytta den valda aktiviteten 10 minuter",
+      "nudgeEnd": "Ändra slutet på den valda aktiviteten",
+      "confirm": "Spara aktiviteten",
+      "delete": "Ta bort den valda aktiviteten",
+      "list": "Den här listan"
+    },
+    "stage": {
+      "consentTitle": "Innan du börjar",
+      "consentLead": "Läs det här och bestäm om du vill delta.",
+      "consentAgree": "Jag samtycker",
+      "consentDecline": "Jag samtycker inte",
+      "instructionsTitle": "Instruktioner",
+      "instructionsDone": "Jag har läst detta",
+      "thanksTitle": "Tack",
+      "thanksFallback": "Din dagbok har skickats till forskargruppen.",
+      "declinedTitle": "Tack för din tid",
+      "tasksTitle": "En sak kvar",
+      "tasksLead": "Forskargruppen behöver detta för att slutföra ditt deltagande.",
+      "taskOpen": "Öppna",
+      "taskDone": "Klar",
+      "tasksRefresh": "Kontrollera igen",
+      "unavailableTitle": "Studien är inte tillgänglig just nu",
+      "unavailableText": "Den är pausad eller tar inte längre emot data. Kontakta forskargruppen om du hade väntat dig att delta.",
+      "unavailablePausedTitle": "Studien är pausad just nu",
+      "unavailablePausedText": "Försök igen senare med din inbjudningslänk.",
+      "unavailableNotStartedTitle": "Datainsamlingen har inte börjat än",
+      "unavailableNotStartedText": "Den börjar den {{date}}. Kom tillbaka med din inbjudningslänk då.",
+      "unavailableEndedTitle": "Datainsamlingen är avslutad",
+      "unavailableEndedText": "Insamlingsperioden avslutades den {{date}}. Kontakta forskargruppen om du har frågor.",
+      "failedTitle": "Det gick inte",
+      "failedText": "Kontrollera din anslutning och försök igen.",
+      "retry": "Försök igen",
+      "noInvitationTitle": "Ingen inbjudan hittades",
+      "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie."
+    },
+    "progress": {
+      "summary": "{{done}} av {{total}} dagar klara"
+    },
+    "notice": {
+      "submittedTitle": "Din dagbok är inskickad",
+      "submittedText": "Forskargruppen har fått den. Du kan fortfarande läsa den, men inte ändra den.",
+      "locked": "Inskickad. Dagboken kan läsas men inte ändras."
+    },
+    "panel": {
+      "chooseActivity": "Välj en aktivitet",
+      "recent": "Senast använd",
+      "addActivity": "Lägg till aktivitet",
+      "editActivity": "Redigera aktivitet",
+      "addToTimeline": "Lägg till i tidslinjen",
+      "addAnother": "Spara och lägg till en till",
+      "saveChanges": "Spara ändringar",
+      "delete": "Ta bort aktivitet",
+      "noMatches": "Ingen aktivitet matchar ”{{query}}”",
+      "met": "kravet uppfyllt",
+      "toGo": "{{minutes}} min kvar",
+      "emptyDay": "inget tillagt än"
+    },
+    "form": {
+      "option": "Vilken variant?",
+      "chooseOption": "Välj ett alternativ",
+      "what": "Vad gjorde du?",
+      "frequency": "Hur ofta?",
+      "frequencyUnset": "Ej angivet",
+      "when": "När?",
+      "day": "Dag",
+      "start": "Start",
+      "end": "Slut",
+      "lasts": "Varar",
+      "nextDay": "(nästa dag)",
+      "midnight": "(midnatt)",
+      "lastDayHint": "Detta är sista dagen, så aktiviteter slutar vid midnatt. Lägg till resten i nästa dagbok.",
+      "alsoOn": "Även andra dagar?",
+      "hours": "{{count}} tim",
+      "minutes": "{{count}} min"
+    },
+    "toast": {
+      "added": "Tillagt: {{name}}, {{range}}",
+      "addedDays": "Även på {{count}} dagar.",
+      "skipped": "Inte tillagt: {{reason}}",
+      "changed": "Ändrat: {{name}}, {{range}}",
+      "deleted": "Borttaget: {{name}}",
+      "undo": "Ångra",
+      "dismiss": "Stäng"
+    },
+    "error": {
+      "noParticipant": "Ingen studie eller deltagare i adressen.",
+      "generic": {
+        "title": "Inte sparat",
+        "text": "Något gick fel. Försök igen."
+      },
+      "overlap": {
+        "title": "Den tiden är full",
+        "text": "Upp till {{max}} aktiviteter kan pågå samtidigt. Ändra tiden eller ta bort en."
+      },
+      "duplicate": {
+        "title": "Redan tillagt",
+        "text": "Den här aktiviteten finns redan i tidslinjen vid den tiden."
+      },
+      "lastMidnight": {
+        "title": "Sista dagen slutar vid midnatt",
+        "text": "Lägg till resten i nästa dagbok."
+      },
+      "endBeforeStart": {
+        "title": "Kontrollera tiderna",
+        "text": "Slutet måste vara efter starten."
+      },
+      "tooLong": {
+        "title": "För lång",
+        "text": "En aktivitet kan inte vara längre än 24 timmar."
+      },
+      "notOnStep": {
+        "title": "Kontrollera tiderna",
+        "text": "Tiderna går i 10-minuterssteg."
+      },
+      "startOutOfRange": {
+        "title": "Kontrollera tiderna",
+        "text": "Starten måste ligga inom dagen."
+      },
+      "dayRange": {
+        "title": "Dagen är inte tillgänglig",
+        "text": "Den här dagen ingår inte i studien."
+      },
+      "needsOption": {
+        "title": "Välj ett alternativ",
+        "text": "Välj alternativet som beskriver aktiviteten."
+      },
+      "needsText": {
+        "title": "Beskriv vad du gjorde",
+        "text": "Skriv några ord."
+      },
+      "submitted": {
+        "title": "Dagboken är inlämnad",
+        "text": "Den kan inte längre ändras."
+      },
+      "unavailable": {
+        "title": "Studien är inte tillgänglig",
+        "text": "Försök igen senare."
+      }
+    },
+    "skip": {
+      "menuEntry": "Hoppa över dagboken…",
+      "title": "Hoppa över dagboken?",
+      "closes": "Din dagbok stängs och du kan inte längre redigera den.",
+      "kept": "Allt du har fyllt i hittills sparas och skickas till forskarteamet.",
+      "visible": "Forskarteamet ser att du hoppade över dagboken.",
+      "tasksContinue": "Du kan fortfarande göra de återstående uppgifterna efteråt.",
+      "tasksLocked": "De återstående uppgifterna förblir låsta, eftersom de kräver en ifylld dagbok.",
+      "reasonLabel": "Orsak (valfritt)",
+      "reasonNone": "Vill inte uppge",
+      "reasonNoTimeAndEffort": "Det tog för mycket tid eller kraft",
+      "reasonTechnicalProblem": "Tekniska problem med appen",
+      "reasonDidNotUnderstand": "Jag förstod inte vad jag skulle fylla i",
+      "reasonDoNotWantToReport": "Jag vill inte redovisa min tidsanvändning",
+      "reasonOther": "En annan orsak",
+      "noteLabel": "Något annat vi borde känna till? (valfritt)",
+      "ok": "Hoppa över dagboken",
+      "cancel": "Fortsätt fylla i",
+      "sending": "Hoppar över…",
+      "failed": "Dagboken kunde inte hoppas över. Försök igen."
+    }
+  }
+}
