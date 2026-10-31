@@ -7,10 +7,23 @@
  * last day) is refused instead of written.
  */
 import { test, expect } from '@playwright/test';
-import { addActivity, addSchlafen, clearActivities, dayEvents, openDiary } from './helpers.js';
+import {
+  addActivity,
+  addSchlafen,
+  clearActivities,
+  dayEvents,
+  isPhone,
+  openDiary,
+} from './helpers.js';
 
 test.describe('activity nudging', () => {
   const pid = 'diary_01';
+
+  // Arrow keys are the keyboard path for a fine pointer (D31): on a touch screen
+  // the shortcuts are switched off by design, so there is nothing to test there.
+  test.beforeEach(({}, testInfo) => {
+    test.skip(isPhone(testInfo), 'arrow-key nudging needs a keyboard and a fine pointer');
+  });
 
   test.beforeEach(async ({ request }) => clearActivities(request, pid));
   test.afterEach(async ({ request }) => clearActivities(request, pid));

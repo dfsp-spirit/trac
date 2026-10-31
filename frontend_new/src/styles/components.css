@@ -67,7 +67,11 @@
 /* ---------- Day chips ---------- */
 .t-days { border: 0; margin: 0; padding: 0; min-width: 0; }
 .t-days > legend { padding: 0; margin-bottom: var(--space-1); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
-.t-days__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
+/* Seven across is the shape a week wants, but seven columns of a 288px phone
+   leave 34px per target - under the 44px minimum and under our own --tap-min.
+   The track minimum wins over the shape: it wraps to five or six wide chips on
+   narrow phones and stays one row from ~390px up. */
+.t-days__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); gap: var(--space-2); margin-top: var(--space-3); }
 .t-day-chip { position: relative; display: grid; place-items: center; gap: 0; min-height: 56px; padding: var(--space-1) 0; border: 2px solid var(--line-strong); border-radius: var(--radius-md); background: var(--bg); cursor: pointer; text-align: center; }
 .t-day-chip input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .t-day-chip__wd { font-size: 0.75rem; line-height: 1rem; font-weight: 500; }

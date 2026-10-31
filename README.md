@@ -196,6 +196,35 @@ In a typical production setup a single web server (or reverse proxy) handles all
 
 Make sure the proxy passes the correct `X-Forwarded-*` headers so that the backend can construct correct URLs, and configure `TUD_ROOTPATH` and `TUD_ALLOWED_ORIGINS` accordingly.
 
+#### Compression and HTTP/2
+
+The participant frontend is served as plain ES modules with no build step: `frontend_new/src/js/` holds
+roughly sixty small `.js` files that the browser fetches individually instead of one bundle. That is
+deliberate — there is no toolchain to install, run or keep in sync before a deployment, and the files
+in the browser are exactly the files a maintainer reads. The price is paid at delivery time, so the
+web server has to cover two things:
+
+- **Compression (gzip or brotli) on text assets.** HTML, JS, CSS and JSON compress by roughly a factor
+  of three: the frontend is around 270 KB raw and around 100 KB gzipped. Without it a first visit
+  transfers nearly three times as much, which is the difference that matters on a mobile connection.
+- **HTTP/2.** It lets the browser fetch those sixty modules over a single connection in parallel. Over
+  HTTP/1.1 they queue six at a time, which is noticeably slower on anything with real latency. Browsers
+  only negotiate HTTP/2 over TLS, so this comes with the HTTPS setup above but still has to be enabled
+  explicitly (`listen 443 ssl http2;` or `http2 on;`).
+
+Neither setting changes what the app does, so neither shows up in the tests: verify them against the
+deployed host, where `<frontend-url>` is the URL the participants use:
+
+```sh
+curl -sI -H 'Accept-Encoding: gzip' <frontend-url>/js/main.js | grep -i content-encoding
+curl -sI <frontend-url>/js/main.js | grep -i content-type
+curl -so /dev/null -w '%{http_version}\n' <frontend-url>/index.html
+```
+
+The first should report `gzip` (or `br`), the second a JavaScript MIME type, and the third `2` or `3`.
+A missing or wrong `Content-Type` breaks ES modules outright if `X-Content-Type-Options: nosniff` is
+set, and the failure looks like a blank page rather than a serving problem.
+
 
 ### 6. Admin Interface
 

@@ -55,7 +55,9 @@ test.describe('multi-day create and gap prefill', () => {
     await expect(page.locator('.t-activity-group[data-group="recent"]')).toHaveCount(1);
     await expect(page.locator('.t-activity[data-activity-code="1101"]')).toHaveCount(2);
 
-    // The two entries leave exactly 09:00-10:00 free on Monday.
+    // The two entries leave exactly 09:00-10:00 free on Monday, and saving
+    // returned to the diary so the timeline is reachable again.
+    await expect(page.locator('#dialog-host')).toBeHidden();
     await page.locator('.t-gap__btn[data-day="0"][data-start="540"][data-end="600"]').click();
     await chooseActivity(page, 1101);
 

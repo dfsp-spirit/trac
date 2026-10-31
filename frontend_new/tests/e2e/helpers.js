@@ -19,13 +19,38 @@ export const STUDY = 'newui_06_diary';
 export const CATALOGUE = '.t-activity-group[data-group="catalogue"]';
 
 /**
+ * Open the activity panel where it needs opening.
+ *
+ * Below 1200px the panel is a modal dialog that starts closed and is reached
+ * through the floating button; above it, the panel is the third column and is
+ * already on screen. Every phone-width spec needs this, so it lives here rather
+ * than in each spec.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openPanel(page) {
+  const fab = page.locator('#fab');
+  if (!(await fab.isVisible())) return;
+  const dialog = page.locator('#dialog-host');
+  if (await dialog.evaluate((el) => el.hasAttribute('open'))) return;
+  await fab.click();
+  await dialog.waitFor({ state: 'visible' });
+}
+
+/**
  * Pick an activity from the catalogue (never from the shortcut row).
  *
  * @param {import('@playwright/test').Page} page
  * @param {number | string} code
  */
-export function chooseActivity(page, code) {
+export async function chooseActivity(page, code) {
+  await openPanel(page);
   return page.locator(`${CATALOGUE} .t-activity[data-activity-code="${code}"]`).click();
+}
+
+/** True for a project that emulates a phone (see playwright.config.js). */
+export function isPhone(testInfo) {
+  return testInfo.project.name.startsWith('mobile-');
 }
 
 /** @param {string} [study] */

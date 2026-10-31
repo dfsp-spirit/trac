@@ -75,6 +75,10 @@ test.describe('review modal', () => {
       .locator(`${REVIEW} .t-modal__head button[data-i18n-aria-label="diary.shell.close"]`)
       .click();
     await expect(page.locator(`${REVIEW}[open]`)).toHaveCount(0);
-    await expect(page.locator('.t-rail')).toBeVisible();
+    // The day rail is the desktop summary column; a phone has the day selector
+    // in the top bar instead (layout.css), so only assert it where it exists.
+    if ((page.viewportSize()?.width ?? 0) >= 1200) {
+      await expect(page.locator('.t-rail')).toBeVisible();
+    }
   });
 });

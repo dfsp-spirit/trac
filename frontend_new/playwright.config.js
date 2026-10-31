@@ -50,5 +50,17 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+    // The participants are on phones, so the two engines are also covered at the
+    // widths that actually hurt: 320px (iPhone SE, the narrowest phone still in
+    // use) and 393px (Pixel 5). Both expose the panel as a modal dialog instead
+    // of the third desktop column, which is a different code path.
+    {
+      name: 'mobile-safari',
+      use: { ...devices['iPhone SE'], browserName: 'webkit' },
+    },
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'], browserName: 'chromium' },
+    },
   ],
 });

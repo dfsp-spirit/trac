@@ -49,8 +49,12 @@ test.describe('drawer menu', () => {
     await page.locator('#menu-title').click();
     await expect(page.locator('#menu')).toBeVisible();
 
-    // Right of the 320px panel: that is the backdrop.
-    await page.mouse.click(1000, 400);
+    // The panel is 320px wide (or 86vw), so the far edge of the viewport is the
+    // backdrop on every project, phone widths included.
+    const viewport = page.viewportSize();
+    expect(viewport).not.toBeNull();
+    if (!viewport) return;
+    await page.mouse.click(viewport.width - 10, Math.round(viewport.height / 2));
     await expect(page.locator('#menu')).toBeHidden();
   });
 

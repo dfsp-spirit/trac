@@ -40,11 +40,12 @@ function el(tag, className, text) {
  *   onCreate: (body: { items: any[], group_id?: string }) => Promise<any>,
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
+ *   onFinished?: (intent?: 'close' | 'another') => void,
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
  * }} deps
  */
 export function createActivityPanel(deps) {
-  const { host, t, language, getDiary, getCatalogue, onCreate, onUpdate, onDelete, toast } = deps;
+  const { host, t, language, getDiary, getCatalogue, onCreate, onUpdate, onDelete, toast, onFinished } = deps;
 
   /**
    * @template {keyof HTMLElementTagNameMap} K
@@ -155,7 +156,10 @@ export function createActivityPanel(deps) {
     onUpdate,
     onDelete,
     toast,
-    onDone: () => showCatalogue(),
+    onDone: (intent) => {
+      showCatalogue();
+      onFinished?.(intent);
+    },
   });
 
   searchInput.addEventListener('input', () => {

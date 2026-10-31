@@ -14,10 +14,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # One leg per engine. The browser floor of the rewrite is set by
-        # <dialog>, :has and dvh - all of them invisible to a Chromium-only run,
-        # and all of them fatal on iOS if they regress.
-        browser: [chromium, firefox, webkit]
+        # One leg per project (see frontend_new/playwright.config.js). The
+        # desktop legs guard the engines and the browser floor (<dialog>, :has,
+        # dvh); the phone legs guard the layout the participants actually use,
+        # where the panel is a modal dialog instead of the third column.
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: mobile-chrome
+            browser: chromium
+          - project: mobile-safari
+            browser: webkit
 
     services:
       postgres:
@@ -104,13 +115,13 @@ jobs:
           timeout 60s bash -c 'until curl -fsS http://127.0.0.1:3000/report-new/index.html > /dev/null; do sleep 2; done'
 
           cd frontend_new
-          npx playwright test --project=${{ matrix.browser }}
+          npx playwright test --project=${{ matrix.project }}
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: frontend-new-playwright-report-${{ matrix.browser }}
+          name: frontend-new-playwright-report-${{ matrix.project }}
           path: |
             frontend_new/playwright-report/
             frontend_new/test-results/
@@ -120,7 +131,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: frontend-new-backend-log-${{ matrix.browser }}
+          name: frontend-new-backend-log-${{ matrix.project }}
           path: /tmp/backend.log
           if-no-files-found: ignore
 
@@ -128,6 +139,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: frontend-new-nginx-logs-${{ matrix.browser }}
+          name: frontend-new-nginx-logs-${{ matrix.project }}
           path: /tmp/*.log
           if-no-files-found: ignore

@@ -40,7 +40,7 @@ function el(tag, className, text) {
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
- *   onDone: () => void,
+ *   onDone: (intent?: 'close' | 'another') => void,
  * }} deps
  */
 export function createFormController(deps) {
@@ -156,7 +156,7 @@ export function createFormController(deps) {
           endMinutes: Math.min((values.end_minutes % MINUTES_PER_DAY) + 60, MINUTES_PER_DAY - 10),
         };
       }
-      onDone();
+      onDone(then);
     } catch (error) {
       const failure = /** @type {{ code?: string, detail?: Record<string, unknown> }} */ (error);
       const message = describeError(t, failure.code, failure.detail || {});

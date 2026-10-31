@@ -71,6 +71,21 @@ export function createPanelController({
       label: t('diary.toast.undo'),
       run: undo,
     });
+    // On a phone the panel is a modal dialog in the top layer: it covers the
+    // diary *and* the Undo toast, so the delete has to return to the timeline
+    // for the participant to be able to take it back.
+    if (!isWide() && dialogHost?.open) dialogHost.close();
+  }
+
+  /**
+   * The form is done: back to the diary on a phone, unless the participant asked
+   * for another entry. Same top-layer reason as `deleteWithUndo`.
+   *
+   * @param {'close' | 'another'} [intent]
+   */
+  function finishForm(intent = 'close') {
+    if (intent === 'another') return;
+    if (!isWide() && dialogHost?.open) dialogHost.close();
   }
 
   function create() {
@@ -104,6 +119,7 @@ export function createPanelController({
       onUpdate: (clientUuid, changes) => actions.update(clientUuid, changes),
       onDelete: deleteWithUndo,
       toast,
+      onFinished: finishForm,
     });
     panel.showCatalogue();
   }
