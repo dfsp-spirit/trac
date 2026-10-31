@@ -240,7 +240,18 @@ web server has to cover two things:
 - **HTTP/2.** It lets the browser fetch those sixty modules over a single connection in parallel. Over
   HTTP/1.1 they queue six at a time, which is noticeably slower on anything with real latency. Browsers
   only negotiate HTTP/2 over TLS, so this comes with the HTTPS setup above but still has to be enabled
-  explicitly (`listen 443 ssl http2;` or `http2 on;`).
+  explicitly.
+
+On nginx, two details decide whether either setting does anything:
+
+- `gzip on;` compresses only `text/html` until you add the types, so the application's JavaScript and
+  CSS stay uncompressed: `gzip_types text/css application/javascript application/json;` (plus
+  `gzip_vary on;` if a cache sits in front). Stock nginx has no brotli module, so treat gzip as the
+  realistic option.
+- `http2 on;` requires nginx 1.25.1 or newer. On older versions — including the 1.24 that Ubuntu 24.04
+  ships — append it to the TLS `listen` line instead: `listen 443 ssl http2;`. Where both forms work,
+  prefer `http2 on;`, because `certbot --nginx` rewrites `listen` lines and would drop the appended
+  flag.
 
 Neither setting changes what the app does, so neither shows up in the tests: verify them against the
 deployed host, where `<frontend-url>` is the URL the participants use:
