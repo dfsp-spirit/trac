@@ -979,6 +979,115 @@
       "require_diary_before_external_tasks": false,
       "external_tasks": [],
       "activities_logged_by_userid": {}
+    },
+    {
+      "name": "Fixture: Tagebuch überspringen",
+      "name_short": "newui_11_skip",
+      "description": {
+        "de": "Fixture für den Skip-Flow (D41): überspringen erlaubt, und die verbleibende Aufgabe setzt ein ausgefülltes Tagebuch voraus, damit der Dialog sagen muss, dass sie gesperrt bleibt."
+      },
+      "allow_skip_timeuse": true,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben."
+      },
+      "study_text_end_skipped": {
+        "de": "Fixture: Das Tagebuch wurde übersprungen."
+      },
+      "require_consent": false,
+      "study_participant_ids": [
+        "skip_01",
+        "skip_02"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_files": {
+        "de": "activities_newui_main.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": true,
+      "external_tasks": [
+        {
+          "task_key": "fixture_survey",
+          "task_level": 1,
+          "name": {
+            "de": "Fixture: Umfrage ausfüllen"
+          },
+          "description": {
+            "de": "Externe Aufgabe, die ein ausgefülltes Tagebuch voraussetzt."
+          },
+          "confirmation_type": "callback",
+          "outbound_url": "https://example.org/fixture-survey?participant_id={participant_id}&study_name={study_name}&task={task_key}&token={survey_token}",
+          "outbound_tokens": [
+            {
+              "name": "survey_token",
+              "by_participant": {
+                "skip_01": "fixture-token-skip-01",
+                "skip_02": "fixture-token-skip-02"
+              }
+            }
+          ],
+          "callback_token_name": "survey_token"
+        }
+      ],
+      "activities_logged_by_userid": {}
     }
   ]
 }

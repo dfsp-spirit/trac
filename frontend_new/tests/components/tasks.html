@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: tasks</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameters:
+        confirmed    1 renders the task as already done
+        description  0 drops it, so the hint line has to disappear
+        fail         1 makes "check again" reject, for the busy/error path
+
+      `window.__refreshes` counts the calls: the button must disable itself while
+      a refresh is in flight and enable itself again afterwards.
+    -->
+    <script type="module">
+      import { context, flag, param, session } from './fixture.js';
+      import { renderTasks } from '/src/js/ui/views/tasks.js';
+
+      const { root, t } = await context();
+      const confirmed = flag('confirmed');
+      const withDescription = flag('description', true);
+      const shouldFail = flag('fail');
+
+      window.__refreshes = 0;
+
+      renderTasks(root, {
+        t,
+        session: session({
+          stage: 'tasks',
+          external_tasks: [
+            {
+              task_key: 'fixture_survey',
+              name: 'Fixture: Umfrage ausfüllen',
+              description: withDescription ? 'Externe Aufgabe für den Test.' : '',
+              confirmation_type: 'callback',
+              assigned_token: 'fixture-token',
+              continuation_url: '/tud_backend/api/studies/demo/external-tasks/launch?token=fixture-token',
+              is_confirmed: confirmed,
+            },
+          ],
+        }),
+        onRefresh: async () => {
+          window.__refreshes += 1;
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          if (shouldFail) throw new Error('fixture: refresh failed');
+        },
+      });
+    </script>
+  </body>
+</html>

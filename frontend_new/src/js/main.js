@@ -79,7 +79,8 @@ export function mount({ root, params }) {
     t,
     getLanguage: () => store.get().language,
     onLanguageChange: (next) => void setLanguage(next),
-    onSkip: (body) => (actions ? actions.skip(body).then((r) => stageMachine.applyStage(r.stage)) : undefined),
+    onSkip: (body) =>
+      actions ? actions.skip(body).then(() => stageMachine.refresh()) : undefined,
   });
 
   const api =

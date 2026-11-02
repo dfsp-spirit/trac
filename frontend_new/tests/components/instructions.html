@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: instructions</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameters:
+        fail   1 rejects the confirmation
+        title  0 withholds the study's own instructions title, so the frame's
+               generic heading has to be used.
+    -->
+    <script type="module">
+      import { context, flag, session } from './fixture.js';
+      import { renderInstructions } from '/src/js/ui/views/instructions.js';
+
+      const { root, t } = await context();
+      const shouldFail = flag('fail');
+      const withTitle = flag('title', true);
+
+      window.__completions = 0;
+
+      renderInstructions(root, {
+        t,
+        session: session({
+          study_text_instructions_title: withTitle ? 'Fixture: Anleitung' : null,
+          study_text_instructions: '# Fixture: Anleitung\n\n1. Aktivität wählen.',
+        }),
+        onComplete: async () => {
+          window.__completions += 1;
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          if (shouldFail) throw new Error('fixture: completion failed');
+        },
+      });
+    </script>
+  </body>
+</html>

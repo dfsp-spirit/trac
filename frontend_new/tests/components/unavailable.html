@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: unavailable</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameters:
+        reason  paused | not_started | ended | unknown | empty (default: empty)
+        nodate  1 omits the collection window, so a "say when" reason has
+                nothing to say and must fall back to the generic sentence.
+    -->
+    <script type="module">
+      import { context, flag, param, session } from './fixture.js';
+      import { renderUnavailable } from '/src/js/ui/views/unavailable.js';
+
+      const { root, t } = await context();
+      const withDate = !flag('nodate');
+
+      renderUnavailable(root, {
+        t,
+        session: session({
+          unavailable_reason: param('reason', ''),
+          data_collection_start: withDate ? '2030-01-01T00:00:00Z' : null,
+          data_collection_end: withDate ? '2025-01-31T23:59:59Z' : null,
+        }),
+      });
+    </script>
+  </body>
+</html>

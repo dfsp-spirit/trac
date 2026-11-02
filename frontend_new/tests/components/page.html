@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: page frame</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      The frame every non-diary stage uses (D40). Query parameters toggle the
+      optional parts: eyebrow=0, lead=0, actions=0, mark=0.
+    -->
+    <script type="module">
+      import { context, flag } from './fixture.js';
+      import { renderPage, prose } from '/src/js/ui/page.js';
+
+      const { root } = await context();
+
+      renderPage(root, {
+        eyebrow: flag('eyebrow', true) ? 'Fixture: Komponentenmontage' : null,
+        title: 'Seitentitel',
+        lead: flag('lead', false) ? 'Ein Satz unter der Überschrift.' : null,
+        body: [prose('# Studienabschnitt\n\nEin Absatz.')],
+        actions: flag('actions', false)
+          ? [Object.assign(document.createElement('button'), { textContent: 'Weiter' })]
+          : [],
+        mark: flag('mark', false) ? ['M5 13l4 4L19 7'] : null,
+      });
+    </script>
+  </body>
+</html>

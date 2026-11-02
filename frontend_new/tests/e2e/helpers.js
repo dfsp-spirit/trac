@@ -59,6 +59,21 @@ export function participantsUrl(study = STUDY) {
 }
 
 /**
+ * The stage payload the app itself reads, so a spec can assert on the server's
+ * view of the stage instead of guessing it from the screen.
+ *
+ * @param {string} pid
+ * @param {string} [study]
+ * @param {string} [language]
+ */
+export function studyConfigUrl(pid, study = STUDY, language = 'de') {
+  return (
+    `${ORIGIN}/tud_backend/api/studies/${study}/study-config` +
+    `?participant_id=${pid}&lang=${language}`
+  );
+}
+
+/**
  * @param {import('@playwright/test').APIRequestContext} request
  * @param {string} pid
  * @param {string} [study]

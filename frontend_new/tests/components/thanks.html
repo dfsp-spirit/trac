@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: thanks</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameters:
+        reason  completed | noconsent | skipped (default: completed)
+        text    1 gives the study its closing text, 0 leaves it out so the
+                fallback sentence has to carry the page.
+        skipped 1 adds a *different* skipped text, to prove which one wins.
+    -->
+    <script type="module">
+      import { context, flag, param, session } from './fixture.js';
+      import { renderThanks } from '/src/js/ui/views/thanks.js';
+
+      const { root, t } = await context();
+      const withText = flag('text', true);
+
+      renderThanks(root, {
+        t,
+        session: session({
+          done_reason: param('reason', 'completed'),
+          study_text_end_completed: withText ? 'Fixture: Das Tagebuch wurde abgegeben.' : null,
+          study_text_end_noconsent: withText ? 'Fixture: Keine Einwilligung erteilt.' : null,
+          study_text_end_skipped: withText && flag('skipped')
+            ? 'Fixture: Das Tagebuch wurde übersprungen.'
+            : null,
+        }),
+      });
+    </script>
+  </body>
+</html>

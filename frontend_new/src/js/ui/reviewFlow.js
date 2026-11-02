@@ -14,7 +14,7 @@ import { createReviewModal } from './reviewModal.js';
  *   root: HTMLElement,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   actions: { submit: () => Promise<{ stage: string }> } | null,
- *   stageMachine: { applyStage: (stage: string) => void },
+ *   stageMachine: { refresh: () => Promise<void> },
  *   getState: () => { diary: any, language: string },
  *   isLocked: () => boolean,
  *   onEdit: (dayIndex: number) => void,
@@ -27,8 +27,12 @@ export function createReviewFlow({ root, t, actions, stageMachine, getState, isL
     onEdit,
     onSubmit: async () => {
       if (!actions) throw new Error('no participant');
-      const result = await actions.submit();
-      stageMachine.applyStage(result.stage);
+      await actions.submit();
+      // Ask the server again instead of applying the stage to the cached
+      // payload: the next page is built from fields the submit response does not
+      // carry (`external_tasks[].continuation_url` is empty until the diary gate
+      // lifts), so reusing the cached session renders a dead "Open" link.
+      await stageMachine.refresh();
     },
   });
 

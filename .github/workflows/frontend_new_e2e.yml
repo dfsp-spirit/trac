@@ -9,6 +9,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # D33 rule 8: each view is mounted on a fixture page. No backend, no database,
+  # no nginx - just a static file server and one browser - so this job finishes in
+  # well under a minute and fails with the view's name instead of an e2e timeout.
+  component-mount-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend_new/package-lock.json
+
+      - name: Install frontend_new Playwright dependencies
+        working-directory: frontend_new
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run component mount tests
+        working-directory: frontend_new
+        run: npm run test:components
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-new-component-report
+          path: |
+            frontend_new/playwright-report/
+            frontend_new/test-results/
+          if-no-files-found: ignore
+
   e2e:
     runs-on: ubuntu-latest
     strategy:
