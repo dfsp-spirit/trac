@@ -943,7 +943,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_migrations.sh` | docker, or `TUD_MIGRATION_TEST_DATABASE_URL` | 18 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash --test-db` running | the old app's suite: 114 tests in 43 specs (four browser/timezone legs in CI) |
 | `cd frontend_new && npm run test:components` | nothing but a static server (`python3`, started by the runner) | 29 component mount tests (chromium) |
-| `cd frontend_new && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | 46 rewrite tests in 17 specs, five browser legs (230 executions; 211 of them run in CI, where each leg has its own database) |
+| `cd frontend_new && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | 53 rewrite tests in 18 specs, five browser legs (265 executions; 246 of them run in CI, where each leg has its own database) |
 
 ### 9.4 Fresh machine: getting to a green run
 
@@ -1058,7 +1058,7 @@ The e2e suite runs **five** browser legs, one CI job each with its own throwaway
 legs are not decoration - below 1200px the activity panel is a modal dialog instead of the third
 column, which is a different code path. 29 tests × 5 legs = 145 executions; the arrow-key nudge is
 skipped on the phone legs, and a local run against one database reaches the one-way specs only once
-(see below), so CI executes 211 and a full local matrix executes 191.
+(see below), so CI executes 246 and a full local matrix executes 226.
 
 | Spec | Tests | Pins |
 | --- | --- | --- |
@@ -1066,6 +1066,7 @@ skipped on the phone legs, and a local run against one database reaches the one-
 | `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the panel, and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
 | `activity-multiday-gap.spec.js` | 2 | copying one entry onto a second day, and opening the form from a clicked gap |
 | `activity-nudge.spec.js` | 4 | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
+| `activity-search.spec.js` | 7 | a matching **sub-activity** is its own row (title = child, hint = parent) and one click opens the form with it preselected - saved as `activity_code 1171` under `parent_activity_code 1166`; the query survives *back*, the search box keeps focus while the list is replaced, no match says so, clearing restores the categories, and "Used recently" appears once something is logged and only while browsing |
 | `menu.spec.js` | 4 | no language entry for a single-language study, the drawer's open/Escape/backdrop behaviour, and that a study which does not allow skipping has no entry |
 | `review-modal.spec.js` | 2 | complete/incomplete day states, *Edit* back to a day, the confirmation step |
 | `skip-diary.spec.js` | 3 | the entry, the dialog's copy (including "the remaining task stays locked"), the note field following the reason, cancel changing nothing, and the one-way skip landing on `done`/`skipped` with its own closing text |
@@ -1081,8 +1082,8 @@ skipped on the phone legs, and a local run against one database reaches the one-
 | `shortcuts.spec.js` | 5 | `PageUp`/`PageDown` move the day, `/` is confined to the diary and dead while typing (WCAG 2.1.4), `n` opens the add form for the day in view, `?` lists the shortcuts and `Esc` closes them, and a phone with no fine pointer gets none of it |
 
 **Writes and the fixtures.** The specs that write (`activity-lifecycle`, `activity-multiday-gap`,
-`activity-nudge`) clear their activities through the public diary API first, so repeated local runs
-start from the same state. Four specs close something for good: `submit-readonly.spec.js` submits
+`activity-nudge`, `activity-search`, `coverage`) clear their activities through the public diary API
+first, so repeated local runs start from the same state. Four specs close something for good: `submit-readonly.spec.js` submits
 `newui_08_prefilled/ready_01`, `stage-walk.spec.js` submits `newui_10_walkthrough/walk_01`,
 `tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, `skip-diary.spec.js` skips
 `newui_11_skip/skip_01`, and `language.spec.js` consents as `newui_12_language/lang_02`. They guard on the stored state and skip with a reset message (see 9.5), which
@@ -1149,15 +1150,12 @@ asks for, and it keeps the mount honest about scripts, modules and relative URLs
    sets (the rewrite's fixtures use 0, the model default) stops being a compatibility concern and
    becomes ordinary configuration, port or retire the 43 old E2E specs (114 tests; they pin the
    old interaction model), and then `/report/` disappears while `/report-new/` becomes `/report/`.
-5. **The e2e coverage that is still missing.** The diary and every stage page are covered now; these
-   are not, in the order they are worth closing:
+5. **The e2e coverage that is still missing.** The diary, its panel and every stage page are covered
+   now; these are not, in the order they are worth closing:
    - *An axe gate.* 9.1 says five pages were verified with axe and zero violations, but there is no
      `axe-core` dependency and no spec, so that claim is a memory. Either add it to
      `playwright.components.config.js` (the fixture pages are already mounted with the real styles not
      loaded, so this needs the app shell too) or to the e2e suite over the five stage URLs.
-   - *The search box in a browser.* `domain`/`ui/activitySearch.js` is well unit-tested, but "type
-     `Joggen`, click the child row, get the form with the child preselected" - the behaviour 9.1
-     advertises - is only asserted against functions, never against the panel.
    - *Day labels after a language switch* are only covered for a study that already reaches the
      diary (`language.spec.js` spends `lang_02` consenting to get there). A multi-language study that
      starts in the diary would make that test read-only.
