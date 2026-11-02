@@ -826,7 +826,8 @@
       },
       "study_participant_ids": [
         "tasks_01",
-        "tasks_02"
+        "tasks_02",
+        "tasks_03"
       ],
       "allow_unlisted_participants": false,
       "default_language": "de",
@@ -857,7 +858,8 @@
               "name": "survey_token",
               "by_participant": {
                 "tasks_01": "fixture-token-tasks-01",
-                "tasks_02": "fixture-token-tasks-02"
+                "tasks_02": "fixture-token-tasks-02",
+                "tasks_03": "fixture-token-tasks-03"
               }
             }
           ],
@@ -875,6 +877,15 @@
           "sunday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }]
         },
         "tasks_02": {
+          "monday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "tuesday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "wednesday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "thursday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "friday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "saturday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
+          "sunday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }]
+        },
+        "tasks_03": {
           "monday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
           "tuesday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],
           "wednesday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }],

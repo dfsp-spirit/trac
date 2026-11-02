@@ -249,8 +249,7 @@
     "rail": {
       "complete": "vollständig",
       "toGo": "{{minutes}} Min. fehlen",
-      "empty": "leer",
-      "dayLabel": "{{day}}, {{minutes}} Minuten abgedeckt"
+      "empty": "leer"
     },
     "nav": {
       "position": "Tag {{current}} von {{total}}",

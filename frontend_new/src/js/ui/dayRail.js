@@ -60,10 +60,11 @@ export function renderDayRail(host, { diary, language, t, currentDay }) {
     bar.append(fill);
     row.append(bar);
 
-    row.setAttribute(
-      'aria-label',
-      t('diary.rail.dayLabel', { day: label, minutes })
-    );
+    // No `aria-label`: the row's own text is its accessible name, and the two
+    // must not drift apart. A hand-written label ("Montag, 0 Minuten abgedeckt")
+    // is not a superset of what is on screen ("Montag", "leer"), which fails
+    // WCAG 2.5.3 - a voice-control user saying "click Montag leer" would not
+    // match the control they can see.
 
     item.append(row);
     fragment.append(item);

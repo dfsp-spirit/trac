@@ -249,8 +249,7 @@
     "rail": {
       "complete": "klar",
       "toGo": "{{minutes}} min kvar",
-      "empty": "tom",
-      "dayLabel": "{{day}}, {{minutes}} minuter täckta"
+      "empty": "tom"
     },
     "nav": {
       "position": "Dag {{current}} av {{total}}",

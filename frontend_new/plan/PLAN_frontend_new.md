@@ -885,9 +885,9 @@ The rewrite is built and runs **next to** the old app, not instead of it:
   (`completed` / `noconsent`). Views in `src/js/ui/views/`, router in `src/js/{domain,ui}/router.js`,
   one guard redirect, hash routes, URL carries identity only.
 - **Stage pages** (D40): one `Page` component, one `h1` each, study Markdown demoted under the page
-  heading, reason-aware `unavailable` copy, a real failure page with *Try again*. Verified once by
-  hand with axe (five pages, zero violations); that is not a committed check yet - see 9.7.
-  The structural half of D40 (one `h1`, the eyebrow, the heading offset) is now a component test.
+  heading, reason-aware `unavailable` copy, a real failure page with *Try again*. The structural half
+  of D40 (one `h1`, the eyebrow, the heading offset) is a component test; WCAG A/AA is a committed
+  axe gate over every surface, running clean (9.6b).
 - **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `?`, confined to the diary region,
   with the list and its session-scoped switch under the menu. A **focused** block can also be nudged
   with `↑`/`↓` and `Shift+↑`/`Shift+↓` (D14); adjusting is otherwise the form, and there is no
@@ -943,7 +943,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_migrations.sh` | docker, or `TUD_MIGRATION_TEST_DATABASE_URL` | 18 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash --test-db` running | the old app's suite: 114 tests in 43 specs (four browser/timezone legs in CI) |
 | `cd frontend_new && npm run test:components` | nothing but a static server (`python3`, started by the runner) | 29 component mount tests (chromium) |
-| `cd frontend_new && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | 53 rewrite tests in 18 specs, five browser legs (265 executions; 246 of them run in CI, where each leg has its own database) |
+| `cd frontend_new && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | 64 rewrite tests in 19 specs, five browser legs (320 executions; 268 of them run in CI, where each leg has its own database) |
 
 ### 9.4 Fresh machine: getting to a green run
 
@@ -1057,8 +1057,9 @@ The e2e suite runs **five** browser legs, one CI job each with its own throwaway
 `firefox`, `webkit`, `mobile-safari` (iPhone SE, 320px) and `mobile-chrome` (Pixel 5, 393px). The phone
 legs are not decoration - below 1200px the activity panel is a modal dialog instead of the third
 column, which is a different code path. 29 tests × 5 legs = 145 executions; the arrow-key nudge is
-skipped on the phone legs, and a local run against one database reaches the one-way specs only once
-(see below), so CI executes 246 and a full local matrix executes 226.
+skipped on the phone legs, the accessibility scans run on two legs, and a local run against one
+database reaches the one-way specs only once (see below) - so CI executes 268 and a full local matrix
+executes 247.
 
 | Spec | Tests | Pins |
 | --- | --- | --- |
@@ -1122,6 +1123,45 @@ start date, a thank-you page with no closing text, a rejected consent) is one qu
 Add a fixture page for a new view rather than a `page.evaluate()` blob: a real page is what the rule
 asks for, and it keeps the mount honest about scripts, modules and relative URLs.
 
+### 9.6b The accessibility gate
+
+`tests/e2e/a11y.spec.js` runs axe-core (`@axe-core/playwright`) against **every surface a participant
+can be looking at**, WCAG 2.0 / 2.1 / 2.2 level A + AA:
+
+| Scans | |
+| --- | --- |
+| pages | `unavailable`, `consent`, `instructions`, the failure page, the diary (with a filled day), `tasks`, `thanks` |
+| open dialogs | the drawer menu, the activity panel's form step, the review dialog, the skip dialog, the shortcut list |
+
+Decisions worth knowing:
+
+- **It runs in the e2e suite, not on the component fixtures.** Those pages load no stylesheet, so
+  anything about colour, visibility or "is this text rendered" would be a guess.
+- **Two legs only** - `chromium` (three columns, panel as a column) and `mobile-chrome` (393px, panel
+  as a modal) - because axe's rules are DOM/ARIA-based and do not vary by engine, and five legs would
+  cost five times as much for the same findings. The other three skip with that reason printed.
+- **`best-practice` rules are outside the gate.** The one that would fire is `region` (the floating
+  add button and the toast region sit outside a landmark), which is a structural decision about a
+  fixed-position control, not a conformance failure.
+- **`a11y-allowlist.js` exists but is empty.** A finding is tolerated only through an entry that names
+  a reason and a node count, and the helper still fails when a rule exceeds its node count - so an old
+  entry cannot absorb new breakage. It prints what it tolerated on every run. Prefer fixing: the two
+  findings below were fixed rather than listed.
+
+Two real defects came out of the first run, both the same class - a hand-written `aria-label` that was
+not a superset of what is on screen, which breaks WCAG 2.5.3 (Label in Name) for voice-control users:
+
+1. **The day rail** labelled each row "Montag, 0 Minuten abgedeckt" while showing "Montag" and "leer".
+   The label is gone; the row's own text is its name, and the now-unused `diary.rail.dayLabel` key was
+   deleted from the shared locale files rather than left to rot.
+2. **The timeline activity block** did the same with a comma where the layout has a line break. Same
+   fix - its name is now its content, including the visually hidden "continues next day" sentence.
+
+A third finding, `scrollable-region-focusable` on the shortcut list, was real too: the list is taller
+than a laptop viewport, so it scrolls, and a scroll container a keyboard cannot reach is not scrollable
+for everyone (WCAG 2.1.1). It now takes `tabindex="0"` and therefore the same focus ring as everything
+else.
+
 ### 9.7 What is left
 
 1. **Idle timeout** - recorded, not built, priority Z (see section 8). Stakeholders must decide first;
@@ -1150,12 +1190,8 @@ asks for, and it keeps the mount honest about scripts, modules and relative URLs
    sets (the rewrite's fixtures use 0, the model default) stops being a compatibility concern and
    becomes ordinary configuration, port or retire the 43 old E2E specs (114 tests; they pin the
    old interaction model), and then `/report/` disappears while `/report-new/` becomes `/report/`.
-5. **The e2e coverage that is still missing.** The diary, its panel and every stage page are covered
-   now; these are not, in the order they are worth closing:
-   - *An axe gate.* 9.1 says five pages were verified with axe and zero violations, but there is no
-     `axe-core` dependency and no spec, so that claim is a memory. Either add it to
-     `playwright.components.config.js` (the fixture pages are already mounted with the real styles not
-     loaded, so this needs the app shell too) or to the e2e suite over the five stage URLs.
+5. **The e2e coverage that is still missing.** The diary, its panel, every stage page and the WCAG
+   A/AA gate are covered now; these are not:
    - *Day labels after a language switch* are only covered for a study that already reaches the
      diary (`language.spec.js` spends `lang_02` consenting to get there). A multi-language study that
      starts in the diary would make that test read-only.
@@ -1188,3 +1224,6 @@ asks for, and it keeps the mount honest about scripts, modules and relative URLs
 - CSS: tokens only, no colour literals, no id selectors, no `!important` (except `base.css`).
 - Locale keys: `diary.*` plus a small shell allowlist; values are plain text; `_one`/`_other` for
   plurals. `tests/unit/page_i18n_keys.test.js` enforces all of it across de/en/sv.
+- A new surface (page, dialog, sheet) needs an entry in `tests/e2e/a11y.spec.js`. Hand-written
+  `aria-label`s are the usual way Label in Name breaks: let the content be the name unless the label
+  says something the content cannot.

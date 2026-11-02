@@ -68,6 +68,10 @@ export function createShortcutsDialog({ root, t, isEnabled, onToggle }) {
   head.append(closeButton);
 
   const body = el('div', 't-modal__body');
+  // The list is taller than a laptop viewport, so the body scrolls - and a
+  // scroll container a keyboard cannot reach is not scrollable for everyone
+  // (WCAG 2.1.1). `:focus-visible` gives it the same ring as everything else.
+  body.tabIndex = 0;
   const facts = el('dl', 't-facts');
   body.append(facts);
 

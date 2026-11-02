@@ -94,10 +94,11 @@ function renderEvent(activity, segment, dayStart, t) {
   }
 
   button.append(top, time);
-  button.setAttribute(
-    'aria-label',
-    `${activity.activity_name}, ${range}${continuesAfter ? `, ${t('diary.timeline.continuesNextDay')}` : ''}`
-  );
+  // No `aria-label`: the name comes from the content - the activity, its time
+  // range, and the "continues next day" sentence that is already in the
+  // visually hidden span above. A hand-written label would have to reproduce
+  // every one of those in the visible order, and the moment it does not (a comma
+  // where the layout has a line break) it breaks WCAG 2.5.3 instead of helping.
   item.append(button);
   return item;
 }
