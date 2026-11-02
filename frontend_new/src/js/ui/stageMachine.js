@@ -212,14 +212,6 @@ export function createStageMachine({
       applyChrome();
     },
 
-    /**
-     * Re-render the route that is on screen (used when the UI language changed).
-     * A no-op for the diary, which re-renders from the store instead.
-     */
-    rerender() {
-      if (shownRoute) render(shownRoute);
-    },
-
     /** Ask the server again; used when the URL changes from outside the app. */
     refresh,
 

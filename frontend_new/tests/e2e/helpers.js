@@ -6,6 +6,8 @@
  * repeatable without reaching into the database.
  */
 import { expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export const BASE_URL =
   process.env.PLAYWRIGHT_NEW_FRONTEND_URL || 'http://127.0.0.1:3000/report-new/';
@@ -56,6 +58,37 @@ export function isPhone(testInfo) {
 /** @param {string} [study] */
 export function participantsUrl(study = STUDY) {
   return `${ORIGIN}/tud_backend/api/studies/${study}/participants`;
+}
+
+/**
+ * Basic-auth credentials for the admin endpoints.
+ *
+ * Only used by specs that have to read stored data back - what the participant
+ * sees cannot prove that the server received it. The values come from
+ * `backend/.env`, which both the dev script and the CI job write before the
+ * tests run, so a spec never carries a credential of its own.
+ *
+ * @returns {{ username: string, password: string }}
+ */
+export function adminAuth() {
+  if (process.env.TUD_API_ADMIN_USERNAME && process.env.TUD_API_ADMIN_PASSWORD) {
+    return {
+      username: process.env.TUD_API_ADMIN_USERNAME,
+      password: process.env.TUD_API_ADMIN_PASSWORD,
+    };
+  }
+  const envFile = fileURLToPath(new URL('../../../backend/.env', import.meta.url));
+  const contents = readFileSync(envFile, 'utf8');
+  /** @param {string} key */
+  const read = (key) => {
+    const match = contents.match(new RegExp(`^${key}=(.*)$`, 'm'));
+    if (!match) throw new Error(`${key} is not set in ${envFile}`);
+    return match[1].trim().replace(/^['"]|['"]$/g, '');
+  };
+  return {
+    username: read('TUD_API_ADMIN_USERNAME'),
+    password: read('TUD_API_ADMIN_PASSWORD'),
+  };
 }
 
 /**

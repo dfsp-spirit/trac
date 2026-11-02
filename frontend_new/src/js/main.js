@@ -11,7 +11,7 @@ import { config } from './config.js';
 import { createApi } from './data/api.js';
 import { reportClientInfo } from './data/clientInfo.js';
 import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
-import { followStudyLanguage, pickInitialLanguage } from './domain/language.js';
+import { pickInitialLanguage } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
 import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
@@ -22,6 +22,7 @@ import { createPanelController } from './ui/panelController.js';
 import { createPanelHost } from './ui/panelHost.js';
 import { createRouter } from './ui/router.js';
 import { createStageMachine } from './ui/stageMachine.js';
+import { createLanguageSwitch } from './ui/languageSwitch.js';
 import { loadFirstStage } from './ui/boot.js';
 import { createReviewFlow } from './ui/reviewFlow.js';
 import { readShell } from './ui/shell.js';
@@ -78,7 +79,7 @@ export function mount({ root, params }) {
     shell: handles,
     t,
     getLanguage: () => store.get().language,
-    onLanguageChange: (next) => void setLanguage(next),
+    onLanguageChange: (next) => void languageSwitch.setLanguage(next),
     onSkip: (body) =>
       actions ? actions.skip(body).then(() => stageMachine.refresh()) : undefined,
   });
@@ -128,6 +129,24 @@ export function mount({ root, params }) {
     onSession: chrome.apply,
   });
 
+  const languageSwitch = createLanguageSwitch({
+    config,
+    store,
+    chrome,
+    stageMachine,
+    loadMessages: (language) => loadLocaleWithFallback(language, config.defaultLanguage),
+    createTranslator,
+    setTranslator: (next) => {
+      translator = next;
+    },
+    setDocumentLanguage: (language) => {
+      document.documentElement.lang = language;
+    },
+    loadDiary: async () => {
+      await actions?.load();
+    },
+  });
+
   const view = createDiaryView({
     root,
     timelineHost: daysHost,
@@ -173,29 +192,6 @@ export function mount({ root, params }) {
       locked,
     });
     panels.sync(locked);
-  }
-
-  /** @param {string} next */
-  async function setLanguage(next) {
-    if (!config.supportedLanguages.includes(next)) return;
-    const loaded = await loadLocaleWithFallback(next, config.defaultLanguage);
-    translator = createTranslator(loaded.messages);
-    document.documentElement.lang = loaded.language;
-    applyTranslations(document, translator);
-    store.set({ language: loaded.language });
-    chrome.syncLanguage(loaded.language);
-    stageMachine.rerender();
-  }
-
-  /** @param {any} session Follow the study's language unless the URL named one (D40). */
-  async function adoptStudyLanguage(session) {
-    const next = followStudyLanguage({
-      selected: session.selected_language,
-      explicit: identity.language,
-      current: store.get().language,
-      supported: config.supportedLanguages,
-    });
-    if (next) await setLanguage(next);
   }
 
   const onFab = () => {
@@ -257,7 +253,7 @@ export function mount({ root, params }) {
 
   void (async () => {
     try {
-      await setLanguage(language);
+      await languageSwitch.setLanguage(language);
     } catch (error) {
       console.error('[i18n] falling back to the markup text:', error);
     }
@@ -271,7 +267,7 @@ export function mount({ root, params }) {
       t,
       onLoaded: async (session) => {
         reportClientInfo(api, session);
-        await adoptStudyLanguage(session);
+        await languageSwitch.adoptStudyLanguage(session, identity.language);
       },
     });
   })();

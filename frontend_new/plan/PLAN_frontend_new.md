@@ -902,6 +902,9 @@ The rewrite is built and runs **next to** the old app, not instead of it:
 - **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text. The UI
   language follows `?lang`, then the browser, then the study's `selected_language`; the menu offers
   only the study's `supported_languages`, and no language entry at all when that is a single language.
+  Switching language re-fetches what it has to: the session (the study's own texts) and, on the diary,
+  the diary itself (day and catalogue names). Re-rendering the cached payload would leave the chrome in
+  one language and the study text in another, which is the failure D40 was written about.
 - **No help page** (Q9): there is no separate help/documentation page and nothing links to one. The
   old app's *How do I use this?* modal - which loaded the study's instructions in `?embed=1` while
   the participant was mid-diary - has no equivalent: the instructions text is rendered on the
@@ -915,14 +918,15 @@ The rewrite is built and runs **next to** the old app, not instead of it:
 ```
 src/js/
   config.js        deployment config (replaced per environment at deploy time)
-  main.js          composition root, 299 lines, cap 300
+  main.js          composition root, 295 lines, cap 300
   data/            api.js (only network), i18n.js (locales + translator), clientInfo.js
   domain/          time, geometry, validation, diary, color, review, markdown, router,
                    dates, language, nudge, skip, clientInfo, participantId, uuid  (pure)
   state/           store.js (one state object + the initial state), diary.js (the only writers)
   ui/              components; page.js/notice.js are the stage-page frame, reviewFlow.js the
                    review-then-submit seam, panelController.js the panel, shellChrome.js the menu,
-                   skipDialog.js the skip confirmation, views/ the stage pages
+                   skipDialog.js the skip confirmation, languageSwitch.js the language switch,
+                   views/ the stage pages
   styles/          tokens, base, components (kit), page, topbar, layout (shell), stage, panel, dialogs
 tools/check-architecture.mjs   enforces D33: import direction, no globals, no device storage,
                                no network outside data/, CSS rules, file size caps
@@ -939,7 +943,7 @@ tools/check-architecture.mjs   enforces D33: import direction, no globals, no de
 | `sh test_backend_migrations.sh` | docker, or `TUD_MIGRATION_TEST_DATABASE_URL` | 18 tests |
 | `sh test_e2e.sh` | `./run_dev_nginx_both.bash --test-db` running | the old app's suite: 114 tests in 43 specs (four browser/timezone legs in CI) |
 | `cd frontend_new && npm run test:components` | nothing but a static server (`python3`, started by the runner) | 29 component mount tests (chromium) |
-| `cd frontend_new && npm run test:e2e` | the same nginx stack | 29 rewrite tests in 12 specs, five browser legs (145 executions; 137 run per CI run) |
+| `cd frontend_new && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | 46 rewrite tests in 17 specs, five browser legs (230 executions; 211 of them run in CI, where each leg has its own database) |
 
 ### 9.4 Fresh machine: getting to a green run
 
@@ -1002,6 +1006,8 @@ pointing at `activities_newui_main.json`, so a spec can start from a known stage
 | `newui_09_tasks` | `diary` | `tasks_01/02` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
 | `newui_10_walkthrough` | `consent` | `walk_01/02` | consent **and** instructions, so the full stage walk is possible |
 | `newui_11_skip` | `diary` | `skip_01/02` | `allow_skip_timeuse` **and** `require_diary_before_external_tasks`, so the skip dialog has to say the task stays locked (D41). `skip_02` is only read; `skip_01` is the one that gets skipped |
+| `newui_12_language` | `consent` | `lang_01/02` | the only **multi-language** study (`de` + `en`), with own texts and `footer_links` in both. `lang_01` is read-only; `lang_02` consents once to reach the diary |
+| `newui_13_clientinfo` | `diary` | `client_01/02` | the only study with `save_browser_identification`, so the participant export has the `client_*` block |
 
 The three `unavailable` fixtures only reach the page because the rewrite asks for
 `GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 - that
@@ -1027,7 +1033,7 @@ means deleting the study and re-importing it. The fixtures expect a fresh databa
 manual reset:
 
 ```sh
-for study in newui_08_prefilled newui_09_tasks newui_10_walkthrough newui_11_skip; do
+for study in newui_08_prefilled newui_09_tasks newui_10_walkthrough newui_11_skip newui_12_language; do
   curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
     "http://localhost:3000/tud_backend/api/admin/studies/$study"
 done
@@ -1051,12 +1057,12 @@ The e2e suite runs **five** browser legs, one CI job each with its own throwaway
 `firefox`, `webkit`, `mobile-safari` (iPhone SE, 320px) and `mobile-chrome` (Pixel 5, 393px). The phone
 legs are not decoration - below 1200px the activity panel is a modal dialog instead of the third
 column, which is a different code path. 29 tests × 5 legs = 145 executions; the arrow-key nudge is
-skipped on the two phone legs, and a local run against one database reaches them all only once (see
-below), so CI executes 137 and a full local matrix executes 121.
+skipped on the phone legs, and a local run against one database reaches the one-way specs only once
+(see below), so CI executes 211 and a full local matrix executes 191.
 
 | Spec | Tests | Pins |
 | --- | --- | --- |
-| `deployment.spec.js` | 2 | the locale files are served where the rewrite expects them, and the app loads, routes to a stage and gets one from the backend |
+| `deployment.spec.js` | 3 | the locale files are served where the rewrite expects them, and the app loads, routes to the stage the backend reports - once for the diary (which owns the shell) and once for a page-frame stage. Both use rewrite fixtures, not a participant from `studies_config.json` |
 | `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the panel, and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
 | `activity-multiday-gap.spec.js` | 2 | copying one entry onto a second day, and opening the form from a clicked gap |
 | `activity-nudge.spec.js` | 4 | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
@@ -1068,13 +1074,18 @@ below), so CI executes 137 and a full local matrix executes 121.
 | `tasks-stage.spec.js` | 1 | submit → the tasks page, the launch link carrying the participant's token, "check again" not inventing a confirmation, and the callback moving the participant on |
 | `touch-targets.spec.js` | 1 | the seven day chips stay ≥44px and on screen at the narrowest phone width |
 | `unavailable-stages.spec.js` | 4 | `paused` / `ended` / `not_started` each render their own copy and date, the generic sentence never stands in for a known reason, and no diary chrome is offered |
+| `client-identification.spec.js` | 2 | the device blob reaches the database (read back through the admin participant export) for a study that collects it, and leaves no `client_*` block for one that does not |
+| `coverage.spec.js` | 2 | the progress note and the rail count a day only at `min_coverage` (1440 in the rewrite's catalogue), and the note agrees with the review dialog's open/complete markers |
+| `failure-page.spec.js` | 2 | a URL without an invitation says so and offers no reload, and a failed `study-config` explains itself and recovers on *Try again* |
+| `language.spec.js` | 5 | a single-language study beats an English browser, `?lang` beats the study, the menu offers exactly the study's languages, and picking one re-fetches the study text, the footer links *and* the diary's day names |
+| `shortcuts.spec.js` | 5 | `PageUp`/`PageDown` move the day, `/` is confined to the diary and dead while typing (WCAG 2.1.4), `n` opens the add form for the day in view, `?` lists the shortcuts and `Esc` closes them, and a phone with no fine pointer gets none of it |
 
 **Writes and the fixtures.** The specs that write (`activity-lifecycle`, `activity-multiday-gap`,
 `activity-nudge`) clear their activities through the public diary API first, so repeated local runs
 start from the same state. Four specs close something for good: `submit-readonly.spec.js` submits
 `newui_08_prefilled/ready_01`, `stage-walk.spec.js` submits `newui_10_walkthrough/walk_01`,
-`tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, and `skip-diary.spec.js` skips
-`newui_11_skip/skip_01`. They guard on the stored state and skip with a reset message (see 9.5), which
+`tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, `skip-diary.spec.js` skips
+`newui_11_skip/skip_01`, and `language.spec.js` consents as `newui_12_language/lang_02`. They guard on the stored state and skip with a reset message (see 9.5), which
 means **a local run of the whole matrix consumes them in the first leg** - CI is unaffected because
 every leg starts from its own database.
 
@@ -1083,10 +1094,11 @@ the note field are still exercised on the legs that run after the fixture has be
 read-only twin whenever a spec exists to look at something, and spend the mutating participant only on
 the one test that has to mutate.
 
-Four real bugs were found only by driving the browser, which is the argument for this list: `Esc`
+Five real bugs were found only by driving the browser, which is the argument for this list: `Esc`
 stopped closing the review modal once the shortcut handler ran, `Enter` in the activity form reloaded
 the page, the stage guard compared its cached route instead of the URL (a same-page hash change stayed
-on `#/diary` while the consent page was shown), and a skip or a submit applied the returned stage to
+on `#/diary` while the consent page was shown), switching language re-rendered the cached payload so
+German chrome sat around English study text, and a skip or a submit applied the returned stage to
 the **cached** session - so the tasks page rendered a dead "Open" link and a skipper was thanked with
 the *completed* text. The last one is the reason `reviewFlow.js` and the skip wiring now call
 `stageMachine.refresh()` instead of `applyStage(result.stage)`.
@@ -1146,22 +1158,25 @@ asks for, and it keeps the mount honest about scripts, modules and relative URLs
    - *The search box in a browser.* `domain`/`ui/activitySearch.js` is well unit-tested, but "type
      `Joggen`, click the child row, get the form with the child preselected" - the behaviour 9.1
      advertises - is only asserted against functions, never against the panel.
-   - *The language select's positive branch.* Every rewrite fixture is single-language, so only the
-     "no entry" case runs. A multi-language fixture would also cover the menu and footer re-render on
-     switch, which is the part that can silently break.
-   - *`deployment.spec.js` still points at a legacy study.* It uses `adult_pilot_de/pending_12`, which
-     lives in `studies_config.json` - the file cutover deletes. Point it at a rewrite fixture before
-     step 5, or it takes the rewrite's deployment gate down with the old config.
-   - *Browser identification.* `data/clientInfo.js` and the CMS contract are unit-tested; nothing
-     drives a browser that sends it and reads it back.
-   - *The failure page.* `stageMachine.fail()` and its *Try again* button have no test, because every
-     spec starts from a working stack. A fixture page or a routed 500 would cover it.
-6. **`activity-multiday-gap.spec.js` "prefills the form from the clicked gap" timed out three times on a
-   phone leg of a full local matrix run** (40s), and passed 8/8 in isolation on the same engines. The
-   failing snapshot shows only the *first* of the two entries on Monday, so it is the second
-   `addSchlafen` that hangs, not the gap click - most likely `openPanel`/`chooseActivity` against the
-   modal panel at 320-393px once the run is warm. Pre-existing (untouched by the work above) and
-   unverified as a real layout bug, but it is the only red in the matrix.
+   - *Day labels after a language switch* are only covered for a study that already reaches the
+     diary (`language.spec.js` spends `lang_02` consenting to get there). A multi-language study that
+     starts in the diary would make that test read-only.
+   - *The consent and instructions failure paths* are component tests only: the e2e suite never makes
+     a decision request fail, because that needs a routed 500 in the middle of a one-way stage.
+6. **An intermittent hang when adding an activity on a phone leg.** Two specs hit it:
+   `activity-multiday-gap.spec.js` "prefills the form from the clicked gap" and
+   `coverage.spec.js` "counts a day only when min_coverage is met", both 40s timeouts, both on
+   `mobile-chrome` (393px), both at the **third** consecutive add of the test. The snapshot always
+   shows the same thing: the entries added before it are on the timeline, `#fab` is focused (so the
+   click landed), and `#dialog-host` never opened - `helpers.openPanel` waits for a dialog that
+   `panelController.openAt` did not show.
+   Both specs pass when run alone (3/3 and 8/8) and when driven by a script at the same viewport, so
+   it is neither width-specific nor deterministic. The suspicion is `dialogHost.showModal()` being
+   skipped or throwing because the dialog is still in a transitional state after the previous save's
+   re-render; nothing guards that call with a try/catch, so a throw would be an uncaught page error
+   and the dialog would simply not appear. Not chased further (it is pre-existing, and CI retries
+   twice per leg), but it is the one red in a full local matrix run and the next person to see it
+   should capture the page error rather than the timeout.
 
 ### 9.8 Rules that are easy to break (the checks will fail)
 

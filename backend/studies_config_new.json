@@ -1088,6 +1088,207 @@
         }
       ],
       "activities_logged_by_userid": {}
+    },
+    {
+      "name": "Fixture: Zwei Sprachen",
+      "name_short": "newui_12_language",
+      "description": {
+        "de": "Fixture für den Sprachwechsel: zwei unterstützte Sprachen, eigene Seitentexte und Footer-Links in beiden.",
+        "en": "Fixture for the language switch: two supported languages, own page texts and footer links in both."
+      },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag",
+            "en": "Monday"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag",
+            "en": "Tuesday"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch",
+            "en": "Wednesday"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag",
+            "en": "Thursday"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag",
+            "en": "Friday"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag",
+            "en": "Saturday"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag",
+            "en": "Sunday"
+          }
+        }
+      ],
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben.",
+        "en": "Fixture: The diary was submitted."
+      },
+      "require_consent": true,
+      "study_text_consent": {
+        "de": "# Fixture: Einwilligung\n\nDies ist ein **Testtext** für automatisierte Tests, keine echte Studie.",
+        "en": "# Fixture: Consent\n\nThis is a **test text** for automated tests, not a real study."
+      },
+      "study_text_end_noconsent": {
+        "de": "Fixture: Keine Einwilligung erteilt.",
+        "en": "Fixture: No consent given."
+      },
+      "study_participant_ids": [
+        "lang_01",
+        "lang_02"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de",
+        "en"
+      ],
+      "activities_json_files": {
+        "de": "activities_newui_main.json",
+        "en": "activities_newui_main.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": false,
+      "external_tasks": [],
+      "footer_links": [
+        {
+          "title": {
+            "de": "Studieninformation",
+            "en": "Study information"
+          },
+          "target_url": "https://example.com/study-info"
+        },
+        {
+          "title": {
+            "de": "Kontakt",
+            "en": "Contact"
+          },
+          "target_url": "https://example.com/contact"
+        }
+      ],
+      "activities_logged_by_userid": {}
+    },
+    {
+      "name": "Fixture: Browser-Identifikation",
+      "name_short": "newui_13_clientinfo",
+      "description": {
+        "de": "Fixture für die Geräte-Identifikation: die einzige Studie mit save_browser_identification, damit der Export client_*-Spalten hat."
+      },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": true,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben."
+      },
+      "require_consent": false,
+      "study_participant_ids": [
+        "client_01",
+        "client_02"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_files": {
+        "de": "activities_newui_main.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": false,
+      "external_tasks": [],
+      "activities_logged_by_userid": {}
     }
   ]
 }
