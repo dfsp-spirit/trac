@@ -36,9 +36,19 @@ from .parsers.activities_config import (
 )
 from .parsers.studies_config import (
     CfgFileExternalTask,
+    OLDEST_READABLE_STUDIES_CONFIG_SCHEMA_VERSION,
     get_external_task_callback_tokens,
     get_external_task_effective_config,
     validate_external_tasks_for_study,
+)
+from .formats import (
+    ACTIVITIES_SCHEMA_VERSION,
+    EXPORT_SCHEMA_VERSION,
+    EXPORT_SCHEMA_VERSION_HEADER,
+    STUDIES_CONFIG_SCHEMA_VERSION,
+    UnsupportedSchemaVersionError,
+    coerce_schema_version,
+    ensure_supported_schema_version,
 )
 import secrets
 from .logging_config import setup_logging, get_admin_audit_logger
@@ -2799,9 +2809,24 @@ class UpdateConsentRequest(BaseModel):
 class ImportStudiesConfigRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # Present when a runtime-config export is posted back unchanged; absent in
+    # hand-written payloads, which are read as version 1.
+    schema_version: int = STUDIES_CONFIG_SCHEMA_VERSION
     mode: str = "create_only"
     transaction_mode: str = "all_or_nothing"
     studies: List[ImportStudiesConfigStudy]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_schema_version(cls, value: Any) -> int:
+        # Same policy as the file parser: a newer payload is refused rather than
+        # interpreted with the wrong field meanings.
+        version = coerce_schema_version(value)
+        if version > STUDIES_CONFIG_SCHEMA_VERSION:
+            raise UnsupportedSchemaVersionError(
+                "studies_config", version, STUDIES_CONFIG_SCHEMA_VERSION
+            )
+        return version
 
 
 def _normalize_languages(languages: List[str]) -> List[str]:
@@ -3290,6 +3315,11 @@ def _format_exception_for_client(error: Exception) -> List[Dict[str, Any]]:
             if error_type == "extra_forbidden":
                 unknown_field = str(location[-1]) if location else "<unknown>"
                 message = f"Unknown field '{unknown_field}' is not allowed"
+                if unknown_field == "schema_version":
+                    message += (
+                        " - the file declares a format version this server does not "
+                        "know. It was most likely written by a newer TRAC."
+                    )
 
             formatted_errors.append(
                 {
@@ -3546,6 +3576,15 @@ def _extract_study_from_studies_config_for_validation(
     studies_config_json: Dict[str, Any],
     selected_study_name_short: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], List[str], bool]:
+    # Checked before anything else: a file from a newer TRAC may mean something
+    # else entirely, so its per-study fields must not be interpreted.
+    ensure_supported_schema_version(
+        studies_config_json,
+        "studies_config",
+        STUDIES_CONFIG_SCHEMA_VERSION,
+        oldest_readable=OLDEST_READABLE_STUDIES_CONFIG_SCHEMA_VERSION,
+    )
+
     studies = studies_config_json.get("studies")
     if not isinstance(studies, list) or not studies:
         raise ValueError("studies_config must contain a non-empty 'studies' array")
@@ -4617,6 +4656,23 @@ async def remove_study_owner(
     }
 
 
+def _with_activities_schema_version(payload: Any) -> Any:
+    """Return an exported activities payload that declares its schema version.
+
+    The stored blob is the file as it was imported, so files written before
+    schema versioning have no key. Adding it on export keeps every generated
+    activities file self-describing without rewriting stored configuration.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    activities = dict(payload)
+    general = activities.get("general")
+    general = dict(general) if isinstance(general, dict) else {}
+    general.setdefault("schema_version", ACTIVITIES_SCHEMA_VERSION)
+    activities["general"] = general
+    return activities
+
+
 @app.get("/api/admin/export/studies-runtime-config")
 async def export_runtime_studies_config(
     study_name: Optional[str] = Query(
@@ -4679,7 +4735,10 @@ async def export_runtime_studies_config(
             .where(StudyActivityConfigBlob.study_id == study.id)
             .order_by(StudyActivityConfigBlob.language)
         ).all()
-        blob_by_lang = {blob.language: blob.activities_json_data for blob in blob_rows}
+        blob_by_lang = {
+            blob.language: _with_activities_schema_version(blob.activities_json_data)
+            for blob in blob_rows
+        }
 
         if blob_by_lang:
             supported_languages = sorted(blob_by_lang.keys())
@@ -4855,9 +4914,13 @@ async def export_runtime_studies_config(
 
     response_payload = {
         "studies_config": {
+            # The version sits with the part that gets parsed back, not only in
+            # the envelope, so a bare studies_config.json is self-describing.
+            "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
             "studies": exported_studies,
         },
         "activities": activities_by_study,
+        "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
         "tud_backend_version": tud_version,  # Export app version for traceability of exported data (not all versions will be able to import all exports due to potential format changes, so this is important metadata to include in the export)
     }
 
@@ -4924,7 +4987,10 @@ async def export_runtime_studies_config(
                 study_entry["activities_json_files"] = activities_json_files
                 split_studies.append(jsonable_encoder(study_entry))
 
-            studies_config_payload = {"studies": split_studies}
+            studies_config_payload = {
+                "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
+                "studies": split_studies,
+            }
             archive.writestr(
                 "studies_config.json",
                 json.dumps(
@@ -4940,6 +5006,7 @@ async def export_runtime_studies_config(
                         "mode": "split_zip",
                         "exported_at": utc_now().isoformat(),
                         "study_count": len(split_studies),
+                        "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
                         "tud_backend_version": tud_version,
                     },
                     indent=2,
@@ -8981,6 +9048,10 @@ def export_csv(data: list, filename: str, allow_empty: bool = False) -> Response
     response = Response(content=content, media_type="text/csv")
     response.headers["Content-Disposition"] = f"attachment; filename={filename}.csv"
     response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    # CSV cannot carry the version in-band without breaking csv.reader and Excel,
+    # so it travels in a header. Within one schema version columns may be added,
+    # never removed or renamed.
+    response.headers[EXPORT_SCHEMA_VERSION_HEADER] = str(EXPORT_SCHEMA_VERSION)
 
     return response
 
@@ -9012,7 +9083,11 @@ def export_json(
         "export_timestamp": utc_now().isoformat(),
         "total_records": len(data),
         "format": "json",
-        "version": "1.0",
+        # Export schema version, not the app version: consumers compare this to
+        # decide whether the columns they read still exist.
+        "version": str(EXPORT_SCHEMA_VERSION),
+        "schema_version": EXPORT_SCHEMA_VERSION,
+        "tud_backend_version": tud_version,
     }
     if extra_metadata:
         metadata.update(extra_metadata)

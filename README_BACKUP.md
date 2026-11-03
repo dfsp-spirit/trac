@@ -4,7 +4,7 @@ A small, read-only HTTP API for copying the collected time-use diary data off
 the TRAC server into a separate system.
 
 It is deliberately *not* the scientific export: that one is built for
-statistical analysis (SPSS/R/pandas) and repeats participant-level columns on
+statistical analysis (R/pandas) and repeats participant-level columns on
 every activity row. This API splits the data by grain so your copy can be loaded
 with plain inserts and no de-duplication.
 
@@ -93,7 +93,9 @@ Shortened real response from our dev installation (study `default`):
     "export_timestamp": "2026-10-14T12:53:04.108358+00:00",
     "total_records": 45,
     "format": "json",
-    "version": "1.0"
+    "schema_version": 1,
+    "version": "1",
+    "tud_backend_version": "0.30.0"
   },
   "data": [
     {
@@ -158,7 +160,9 @@ per day, so 7 rows in total):
     "export_timestamp": "2026-10-14T12:59:12.004921+00:00",
     "total_records": 7,
     "format": "json",
-    "version": "1.0",
+    "schema_version": 1,
+    "version": "1",
+    "tud_backend_version": "0.30.0",
     "limit": 200, "cursor": null, "participants_returned": 1,
     "has_more": false, "next_cursor": null, "paged": false
   },
@@ -254,7 +258,7 @@ Shortened real response from our dev installation:
 
 ```jsonc
 {
-  "metadata": { "total_records": 1, "format": "json", "version": "1.0", ... },
+  "metadata": { "total_records": 1, "format": "json", "schema_version": 1, "version": "1", ... },
   "data": [
     {
       "study_id": 1,
@@ -381,5 +385,26 @@ Stability notes:
 `json` responses are `application/json` with a `metadata` + `data` envelope.
 `csv` responses are a file download (`Content-Disposition: attachment`); the
 paging state travels in the `X-*` headers, and an empty result is an empty file.
+
+### Format version
+
+Every response carries an **export schema version**, an integer:
+
+| Where | Key |
+|---|---|
+| `json` | `metadata.schema_version` |
+| `csv` | `X-Export-Schema-Version` response header |
+
+Read it before relying on a column. Within one schema version columns may be
+**added**, never removed or renamed; a rename or removal bumps the version.
+`metadata.version` (a string) carries the same number for older consumers, and
+`metadata.tud_backend_version` names the TRAC release that produced the file -
+useful for bug reports, but it is not what you compare against.
+
+The same rule applies to the runtime-config export
+(`/api/admin/export/studies-runtime-config`): it declares
+`studies_config.schema_version`, every activities payload declares
+`general.schema_version`, and an import of a file from a newer TRAC is refused
+with an explicit message rather than silently dropping fields.
 
 

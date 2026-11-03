@@ -1,7 +1,14 @@
 # config/study_config.py
 from typing import List, Optional, Any, Dict, Union
 from datetime import datetime, timezone
-from pydantic import BaseModel, model_validator, Field, ConfigDict, ValidationError
+from pydantic import (
+    BaseModel,
+    model_validator,
+    field_validator,
+    Field,
+    ConfigDict,
+    ValidationError,
+)
 import yaml
 import json
 from pathlib import Path
@@ -14,6 +21,15 @@ from .activities_config import (
     get_activity_codes_set,
     get_all_activity_codes,
 )
+from ..formats import (
+    STUDIES_CONFIG_SCHEMA_VERSION,
+    UnsupportedSchemaVersionError,
+    coerce_schema_version,
+)
+
+# Oldest studies_config schema this reader still parses. Currently only the
+# current shape is understood, so the floor equals the version above.
+OLDEST_READABLE_STUDIES_CONFIG_SCHEMA_VERSION = 1
 
 logger = logging.getLogger(__name__)
 
@@ -908,7 +924,29 @@ class CfgFileStudy(BaseModel):
 class CfgFileStudies(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    # Absent in files written before the key existed; see formats.py for the
+    # reading policy (absent means version 1).
+    schema_version: int = Field(
+        default=STUDIES_CONFIG_SCHEMA_VERSION,
+        description=(
+            "Version of the studies_config schema this file was written against. "
+            "Omit only for files predating schema versioning (treated as 1)."
+        ),
+    )
     studies: List[CfgFileStudy]
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_schema_version(cls, value: Any) -> int:
+        version = coerce_schema_version(value)
+        if (
+            version > STUDIES_CONFIG_SCHEMA_VERSION
+            or version < OLDEST_READABLE_STUDIES_CONFIG_SCHEMA_VERSION
+        ):
+            raise UnsupportedSchemaVersionError(
+                "studies_config", version, STUDIES_CONFIG_SCHEMA_VERSION
+            )
+        return version
 
 
 def _format_validation_error(error: ValidationError) -> str:
@@ -923,6 +961,11 @@ def _format_validation_error(error: ValidationError) -> str:
         if error_type == "extra_forbidden":
             unknown_field = str(location[-1]) if location else "<unknown>"
             message = f"Unknown field '{unknown_field}' is not allowed"
+            if unknown_field == "schema_version":
+                message += (
+                    " - the file declares a format version this server does not "
+                    "know. It was most likely written by a newer TRAC."
+                )
 
         formatted_items.append(f"- {path}: {message}")
 

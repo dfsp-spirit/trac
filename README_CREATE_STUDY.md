@@ -15,6 +15,7 @@ deployment instructions.
   - [Quick Start](#quick-start)
   - [Configuration Overview](#configuration-overview)
     - [The Two File Types](#the-two-file-types)
+    - [File Format Versions](#file-format-versions)
     - [Open vs. Invite-Only Studies](#open-vs-invite-only-studies)
     - [Languages and Internationalization](#languages-and-internationalization)
     - [Importing Your Configuration on the command line (server admin only)](#importing-your-configuration-on-the-command-line-server-admin-only)
@@ -91,6 +92,33 @@ The `studies_config.json` **references** the activities files via the
 `activities_json_files` field, which maps each language code to a file name.
 You can also embed activities data directly via `activities_json_data` (useful
 for API-based import workflows).
+
+### File Format Versions
+
+Both files declare a **schema version**, an integer that tells TRAC which shape
+the file has:
+
+| File | Where | Current |
+|---|---|---|
+| `studies_config.json` | top level: `"schema_version": 1` | `1` |
+| Activities file | `general.schema_version` | `1` |
+
+Both keys are optional for files written before versioning existed - a file
+without them is read as version `1`. You can safely omit them in hand-written
+files.
+
+What the version buys you:
+
+- **A file from a newer TRAC is refused, not half-read.** If someone prepares a
+  `studies_config.json` with a newer release and you import it on an older
+  server, you get an explicit "written by a newer TRAC (schema version 2; this
+  server supports 1)" message instead of silently losing fields.
+- **Files stay portable between installations.** The admin runtime-config export
+  writes the same key into `studies_config` and into every activities payload, so
+  exported studies re-import cleanly elsewhere.
+
+Do not repurpose `general.version` in an activities file - that field is free-form
+authoring metadata and says nothing about the schema.
 
 ### Open vs. Invite-Only Studies
 

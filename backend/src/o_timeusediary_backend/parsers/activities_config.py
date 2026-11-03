@@ -6,6 +6,16 @@ import json
 from pathlib import Path
 from functools import lru_cache
 
+from ..formats import (
+    ACTIVITIES_SCHEMA_VERSION,
+    UnsupportedSchemaVersionError,
+    coerce_schema_version,
+)
+
+# Oldest activities schema this reader still parses. Only the current shape is
+# understood, so the floor equals the supported version.
+OLDEST_READABLE_ACTIVITIES_SCHEMA_VERSION = 1
+
 
 class FrequencyOption(BaseModel):
     key: str
@@ -106,12 +116,31 @@ class TimelineConfig(BaseModel):
 class GeneralConfig(BaseModel):
     experimentID: Optional[str] = None
     app_name: Optional[str] = None
+    # Free-form authoring metadata (which app/version produced the file). NOT the
+    # schema version - that is `schema_version` below.
     version: Optional[str] = None
     author: Optional[str] = None
     language: Optional[str] = None
     instructions: Optional[bool] = None
     primary_redirect_url: Optional[str] = None
     fallbackToCSV: Optional[bool] = None
+    # Absent in files written before the key existed (treated as version 1).
+    schema_version: Optional[int] = None
+
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def validate_schema_version(cls, value: Optional[int]) -> Optional[int]:
+        if value is None:
+            return value
+        version = coerce_schema_version(value)
+        if (
+            version > ACTIVITIES_SCHEMA_VERSION
+            or version < OLDEST_READABLE_ACTIVITIES_SCHEMA_VERSION
+        ):
+            raise UnsupportedSchemaVersionError(
+                "activities", version, ACTIVITIES_SCHEMA_VERSION
+            )
+        return version
 
 
 class ActivitiesConfig(BaseModel):
