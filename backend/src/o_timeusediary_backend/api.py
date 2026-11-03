@@ -83,6 +83,7 @@ from .coverage import (
     coverage_by_day_and_timeline,
     day_meets_requirements,
     required_coverage_by_timeline,
+    to_study_relative_minutes,
 )
 from .api_deps.available_activities import (
     get_activities_cfg_text_for_config,
@@ -7502,6 +7503,13 @@ async def export_study_activities(
     Export activities for a specific study in CSV or JSON format.
     Defaults to CSV format for scientific analysis.
 
+    Rows are ordered by participant, then day label display order, then start
+    time. On top of the stored clock values each row carries
+    `start_minutes_since_diary_start` / `end_minutes_since_diary_start`: derived,
+    non-authoritative minutes since the start of the first reporting day (day
+    label 0), so day 0 22:00 is 1320 and 04:00 on day 1 is 1440.
+    `study_day_start_minutes` (metadata) documents the origin of that axis.
+
     @param request FastAPI request object.
     @param study_name_short Short name of the study to export.
     @param format Output format, either `csv` or `json`.
@@ -7534,7 +7542,7 @@ async def export_study_activities(
         .join(Timeline, Activity.timeline_id == Timeline.id)
         .where(Activity.study_id == study.id)
         .order_by(
-            Activity.participant_id, Activity.day_label_id, Activity.start_minutes
+            Activity.participant_id, DayLabel.display_order, Activity.start_minutes
         )
     ).all()
 
@@ -7585,6 +7593,19 @@ async def export_study_activities(
             "start_minutes": activity.start_minutes,
             "end_minutes": activity.end_minutes,
             "duration_minutes": duration_minutes,
+            # Derived on read for the scientists, never stored: minutes since the
+            # start of the first reporting day, so day 0 22:00 -> 1320 and 04:00
+            # on day 1 -> 1440 instead of restarting at 0 every day.
+            "start_minutes_since_diary_start": to_study_relative_minutes(
+                day_label.display_order,
+                activity.start_minutes,
+                study.day_start_minutes,
+            ),
+            "end_minutes_since_diary_start": to_study_relative_minutes(
+                day_label.display_order,
+                activity.end_minutes,
+                study.day_start_minutes,
+            ),
             "category": activity.category,
             # Row identity (D17). Additive columns: existing analyses are
             # unaffected, and the new frontend can be reconciled against an
@@ -7598,6 +7619,7 @@ async def export_study_activities(
             # Context data
             "participant_id": participant.id,
             "day_label": day_label.name,
+            "day_label_index": day_label.display_order,
             "timeline_name": timeline.name,
             "timeline_display_name": timeline.display_name,
             "timeline_mode": timeline.mode,
@@ -7688,6 +7710,9 @@ async def export_study_activities(
                     "participant_created_at": participant.created_at.isoformat(),
                     "timeline_description": timeline.description or "",
                     "timeline_min_coverage": timeline.min_coverage or 0,
+                    # Origin of the *_since_diary_start columns, so an analysis
+                    # can move them to any other anchor (e.g. midnight).
+                    "study_day_start_minutes": study.day_start_minutes,
                 }
             )
 

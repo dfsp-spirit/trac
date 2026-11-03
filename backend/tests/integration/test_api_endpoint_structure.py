@@ -592,6 +592,134 @@ async def test_admin_activities_export_end_times_are_wrapped_to_24h():
 
 
 @pytest.mark.asyncio
+async def test_admin_activities_export_has_minutes_since_diary_start():
+    """The activities export carries the derived, non-authoritative
+    start/end_minutes_since_diary_start columns: minutes since the start of the
+    first reporting day, so they keep growing across day labels instead of
+    restarting every day. Rows must also come back ordered by day display order."""
+    # "default" is an open study (data collection window includes "now"),
+    # so participants do not need to be pre-assigned.
+    study_name_short = "default"
+
+    async with httpx.AsyncClient() as client:
+        participant_id = f"it_since_start_{uuid.uuid4().hex[:8]}"
+
+        study_cfg_resp = await client.get(
+            f"{BASE_URL}/api/studies/{study_name_short}/study-config",
+            params={"participant_id": participant_id},
+        )
+        assert study_cfg_resp.status_code == 200
+        day_labels = study_cfg_resp.json()["day_labels"]
+        assert len(day_labels) >= 2, "test needs at least two day labels"
+        assert day_labels[0]["name"] != day_labels[1]["name"]
+
+        selection = await _get_first_activity_selection(
+            client, study_name_short, participant_id
+        )
+
+        def activity_item(start_minutes: int, end_minutes: int) -> dict:
+            item = {
+                "timeline_key": selection["timeline_key"],
+                "activity": selection["activity_name"],
+                "category": selection["category_name"],
+                "start_minutes": start_minutes,
+                "end_minutes": end_minutes,
+                "mode": selection["timeline_mode"],
+            }
+            if selection["timeline_mode"] == "single-choice":
+                item["code"] = selection["activity_code"]
+            else:
+                item["codes"] = [selection["activity_code"]]
+            return item
+
+        # Day 0 gets two records (one submitted request per day, because a
+        # submit replaces all activities of that participant-day), day 1 gets
+        # one. For the 04:00 day the default study uses: 04:00 is minute 0 of
+        # the axis and 02:00 the next morning is minute 1320 of the same day.
+        submissions = [
+            (day_labels[0]["name"], [(240, 300), (1560, 1620)]),
+            (day_labels[1]["name"], [(240, 300)]),
+        ]
+        for day_label_name, ranges in submissions:
+            submit_resp = await client.post(
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
+                json={"activities": [activity_item(s, e) for s, e in ranges]},
+            )
+            assert submit_resp.status_code == 200, submit_resp.text
+
+        export_resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "json"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert export_resp.status_code == 200
+        records = [
+            r
+            for r in export_resp.json()["data"]
+            if r["participant_id"] == participant_id
+        ]
+        assert len(records) == 3
+
+        # The default study is a 04:00 study; the axis origin is exported so an
+        # analysis can move the values to any other anchor.
+        assert {r["study_day_start_minutes"] for r in records} == {240}
+
+        by_key = {(r["day_label_index"], r["start_minutes"]): r for r in records}
+        assert set(by_key) == {(0, 240), (0, 1560), (1, 240)}
+
+        assert by_key[(0, 240)]["start_minutes_since_diary_start"] == 0
+        assert by_key[(0, 1560)]["start_minutes_since_diary_start"] == 1320
+        assert by_key[(1, 240)]["start_minutes_since_diary_start"] == 1440
+        assert by_key[(1, 240)]["end_minutes_since_diary_start"] == 1500
+
+        # The derived values stay continuous: same clock time one day later is
+        # exactly one day further along the axis, and end - start is preserved.
+        for record in records:
+            assert (
+                record["end_minutes_since_diary_start"]
+                - record["start_minutes_since_diary_start"]
+                == record["duration_minutes"]
+            )
+
+        # Rows are ordered by day display order, not by the internal day label id.
+        ordered = sorted(
+            records, key=lambda r: (r["day_label_index"], r["start_minutes"])
+        )
+        assert records == ordered
+
+        # Both formats carry the new columns; CSV adds them by itself because
+        # its header is the union of the record keys.
+        csv_resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "csv"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert csv_resp.status_code == 200
+        csv_rows = list(csv.DictReader(StringIO(csv_resp.text)))
+        csv_record = next(r for r in csv_rows if r["participant_id"] == participant_id)
+        assert csv_record["start_minutes_since_diary_start"]
+        assert csv_record["end_minutes_since_diary_start"]
+        assert csv_record["day_label_index"]
+        assert csv_record["study_day_start_minutes"] == "240"
+
+        # Metadata can be dropped without losing the derived columns (they are
+        # core data), but then the axis origin is gone too.
+        no_meta_resp = await client.get(
+            f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
+            params={"format": "json", "include_metadata": "false"},
+            auth=(settings.admin_username, settings.admin_password),
+        )
+        assert no_meta_resp.status_code == 200
+        no_meta_record = next(
+            r
+            for r in no_meta_resp.json()["data"]
+            if r["participant_id"] == participant_id
+        )
+        assert "study_day_start_minutes" not in no_meta_record
+        assert no_meta_record["start_minutes_since_diary_start"] == 0
+
+
+@pytest.mark.asyncio
 async def test_export_includes_instructions_completed_at():
     """The activities export must include participant_instructions_completed_at
     (the best available 'start of diary filling' proxy) and it should be set

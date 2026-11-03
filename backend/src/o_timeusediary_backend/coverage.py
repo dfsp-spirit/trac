@@ -48,6 +48,24 @@ def to_day_relative(minutes: int, day_start_minutes: int = 0) -> int:
     return shifted
 
 
+def to_study_relative_minutes(
+    day_index: int, minutes: int, day_start_minutes: int = 0
+) -> int:
+    """Clock minutes on a labelled day -> minutes since the first day started.
+
+    The anchor is the start of the reporting day with ``display_order`` 0, so the
+    result grows across days instead of restarting: 22:00 on day 0 is 1320, and
+    04:00 on day 1 is 1440. Used for derived export columns only - the stored
+    clock values remain the authoritative ones.
+
+    @param day_index ``DayLabel.display_order`` of the activity's day.
+    @param minutes The activity's clock ``start_minutes`` or ``end_minutes``.
+    @param day_start_minutes Where the reporting day starts.
+    @returns Minutes since the first reporting day started.
+    """
+    return day_index * MINUTES_PER_DAY + to_day_relative(minutes, day_start_minutes)
+
+
 def union_minutes(intervals: Iterable[tuple[int, int]]) -> int:
     """Total length covered by a set of intervals, overlaps counted once."""
     ordered = sorted((start, end) for start, end in intervals if end > start)

@@ -15,6 +15,7 @@ from o_timeusediary_backend.coverage import (
     next_day_label_ids,
     required_coverage_by_timeline,
     to_day_relative,
+    to_study_relative_minutes,
     union_minutes,
 )
 
@@ -41,6 +42,25 @@ def test_to_day_relative_shifts_into_the_study_day():
     assert to_day_relative(240, 240) == 0, "04:00 is the start of a 04:00 study day"
     assert to_day_relative(120, 240) == 1320, "02:00 belongs to the end of that day"
     assert to_day_relative(1560, 240) == 1320, "02:00 next day, same place"
+
+
+def test_to_study_relative_minutes_keeps_days_consecutive():
+    # A midnight-start study: the axis is simply day_index * 1440 + clock.
+    assert to_study_relative_minutes(0, 0, 0) == 0
+    assert to_study_relative_minutes(0, 1320, 0) == 1320, "day 0, 22:00"
+    assert to_study_relative_minutes(1, 0, 0) == 1440, "day 1, 00:00 follows it"
+    assert to_study_relative_minutes(1, 120, 0) == 1560, "day 1, 02:00 = 26 h"
+
+    # A 04:00 study day starts at zero, so its late-night hours are already
+    # counted against day 0 and must not be shifted a day further.
+    assert to_study_relative_minutes(0, 240, 240) == 0
+    assert to_study_relative_minutes(0, 1560, 240) == 1320, "02:00 on day 0"
+    assert to_study_relative_minutes(1, 240, 240) == 1440, "04:00 on day 1"
+    assert to_study_relative_minutes(1, 1560, 240) == 2760, "02:00 on day 1"
+
+    # An end after midnight stays continuous with its start (no wrap to 0).
+    assert to_study_relative_minutes(0, 1680, 240) == 1440
+    assert to_study_relative_minutes(1, 1500, 240) == 2700
 
 
 # --- coverage -------------------------------------------------------------

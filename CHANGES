@@ -348,6 +348,21 @@ Version 0.24.0 -- Mobile improvements, backup endpoints, many fixes
   ids sort before the first study's, invalid/empty cursors, cursor+participant
   rejected) and a two-page-over-HTTP walk in
   `tests/integration/test_admin_extract_endpoints.py`.
+- NEW: the scientist activities export (`GET /api/admin/export/{study}/activities`)
+  can now be analysed on a continuous time axis. Each row gains the derived
+  columns `start_minutes_since_diary_start` and `end_minutes_since_diary_start`
+  (minutes since the start of the first reporting day, so day 0 22:00 is 1320 and
+  04:00 on day 1 is 1440) plus `day_label_index`, and `study_day_start_minutes`
+  (metadata columns) documents the origin. These are computed on read from the
+  stored clock values - nothing new is written to the database, and
+  `start_minutes`/`end_minutes` stay the authoritative pair. The values are
+  anchored to the first reporting day, not to midnight, because the day window of
+  every current study starts at 04:00. The same endpoint now also orders rows by
+  `DayLabel.display_order`; it previously used the internal `day_label_id`, so a
+  study whose label ids were not in display order produced a non-chronological
+  file. Pinned by `tests/unit/test_coverage.py` (both day windows) and
+  `test_api_endpoint_structure.py::test_admin_activities_export_has_minutes_since_diary_start`
+  (values, ordering, CSV header, metadata on/off).
 
 
 Version 0.23.0 -- Minor text adjustments
