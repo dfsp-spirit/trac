@@ -120,3 +120,61 @@ async def test_create_from_files_accepts_windows_style_subdir_activity_reference
                 f"{BASE_URL}/api/admin/studies/{study_name_short}",
                 auth=ADMIN_AUTH,
             )
+
+
+@pytest.mark.asyncio
+async def test_validate_full_study_returns_the_review_fields():
+    """The review panel on /admin/file-validation reads these summary values."""
+    study_name_short = f"it_review_{uuid.uuid4().hex[:8]}"
+
+    studies_config = {
+        "studies": [
+            {
+                "name": f"Review Fields Study {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Integration test for the validation review summary",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": False,
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {"en": _minimal_activities_payload()},
+                "require_consent": True,
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ]
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{BASE_URL}/api/admin/validate/files",
+            data={"mode": "full_study_embedded"},
+            files={
+                "studies_config_file": (
+                    "studies_config.json",
+                    json.dumps(studies_config),
+                    "application/json",
+                )
+            },
+            auth=ADMIN_AUTH,
+        )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["ok"] is True, payload
+    summary = payload["summary"]
+
+    assert summary["study_name"] == f"Review Fields Study {study_name_short}"
+    assert summary["study_name_short"] == study_name_short
+    assert summary["allow_unlisted_participants"] is False
+    assert summary["require_consent"] is True
+    assert summary["day_label_count"] == 1
+    assert summary["external_task_count"] == 0
+    assert summary["creation_eligible"] is True

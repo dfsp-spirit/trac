@@ -1,0 +1,24 @@
+{# Shared admin navigation. Call from a page with the active page id:
+   admin_nav('overview'|'participants'|'file-validation'|'tools'|'study', study)
+   Pass `study` to add the per-study second row. #}
+{% macro admin_nav(active, study=None) -%}
+<nav class="admin-nav">
+    <a class="admin-nav-link{% if active == 'overview' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin">Overview</a>
+    <a class="admin-nav-link{% if active == 'participants' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/participant-management">Participant Management</a>
+    <a class="admin-nav-link{% if active == 'file-validation' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
+    <a class="admin-nav-link{% if active == 'tools' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/tools">Tools</a>
+</nav>
+{% if study %}
+<nav class="admin-nav" aria-label="Selected study">
+    <span class="admin-nav-context">{{ study.name_short }}</span>
+    <a class="admin-nav-link{% if active == 'study' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/study/{{ study.name_short|urlencode }}">Study Details</a>
+    <a class="admin-nav-link{% if active == 'participants' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short|urlencode }}">Participants</a>
+</nav>
+{% endif %}
+{%- endmacro %}

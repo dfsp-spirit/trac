@@ -1,339 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TUD Admin - Participant Management</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "admin_base.html" %}
+{% from "partials/admin_nav.html" import admin_nav with context %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
+{% block title %}Participant Management · TRAC{% endblock %}
+{% block nav %}{{ admin_nav('participants', selected_study) }}{% endblock %}
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .admin-nav {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-
-        .admin-nav-link {
-            display: inline-block;
-            padding: 0.55rem 0.9rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #374151;
-            background: #e5e7eb;
-        }
-
-        .admin-nav-link.active {
-            color: white;
-            background: #4f46e5;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .header-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-            margin-top: 1rem;
-            padding-top: 1rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 1.5rem;
-        }
-
-        .select-row {
-            display: flex;
-            gap: 0.75rem;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        select, textarea {
-            width: 100%;
-            border: 1px solid #d1d5db;
-            border-radius: 6px;
-            padding: 0.6rem 0.75rem;
-            font-size: 14px;
-        }
-
-        select {
-            flex: 1;
-            min-width: 280px;
-        }
-
-        button {
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            padding: 0.6rem 0.9rem;
-        }
-
-        .btn-primary {
-            background: #4f46e5;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #e5e7eb;
-            color: #374151;
-        }
-
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-            padding: 0.45rem 0.7rem;
-            font-size: 12px;
-        }
-
-        .hint {
-            color: #6b7280;
-            font-size: 13px;
-            margin-top: 0.35rem;
-        }
-
-        .status {
-            margin-top: 0.8rem;
-            font-size: 14px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            border-bottom: 1px solid #e5e7eb;
-            text-align: left;
-            padding: 0.65rem;
-            font-size: 14px;
-        }
-
-        th {
-            background: #f9fafb;
-            color: #374151;
-            font-weight: 700;
-        }
-
-        code {
-            background: #f3f4f6;
-            border-radius: 4px;
-            padding: 0.15rem 0.35rem;
-        }
-
-        .empty {
-            color: #6b7280;
-            font-style: italic;
-            padding: 0.6rem 0;
-        }
-
-        :root {
-            --bg: #f7f4ed;
-            --surface: #f7f4ed;
-            --text: #1c1c1c;
-            --muted: #5f5f5d;
-            --border: #eceae4;
-            --border-strong: rgba(28, 28, 28, 0.4);
-            --danger: #8b1d1d;
-            --dark-btn-text: #fcfbf8;
-            --focus-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
-            --inset-shadow: rgba(255, 255, 255, 0.2) 0px 0.5px 0px 0px inset,
-                            rgba(0, 0, 0, 0.2) 0px 0px 0px 0.5px inset,
-                            rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
-        }
-
-        body {
-            font-family: "Camera Plain Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-            color: var(--text);
-            background: var(--bg);
-        }
-
-        .container { max-width: 1280px; }
-
-        .admin-nav-link {
-            font-weight: 400;
-            color: var(--text);
-            background: transparent;
-            border: 1px solid var(--border-strong);
-        }
-
-        .admin-nav-link.active {
-            color: var(--dark-btn-text);
-            background: var(--text);
-            border-color: var(--text);
-            box-shadow: var(--inset-shadow);
-        }
-
-        .header,
-        .card {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-            box-shadow: none;
-            border-radius: 12px;
-        }
-
-        .header h1 {
-            font-weight: 600;
-            line-height: 1.05;
-            letter-spacing: -1.2px;
-        }
-
-        .header p,
-        .hint,
-        .status,
-        .empty { color: var(--muted); }
-
-        .header-info { border-top-color: var(--border); }
-
-        select,
-        textarea {
-            border-color: var(--border);
-            background: var(--surface);
-            color: var(--text);
-        }
-
-        button {
-            font-weight: 400;
-            border: 1px solid transparent;
-        }
-
-        .btn-primary {
-            background: var(--text);
-            color: var(--dark-btn-text);
-            border-color: var(--text);
-            box-shadow: var(--inset-shadow);
-        }
-
-        .btn-secondary {
-            background: transparent;
-            color: var(--text);
-            border-color: var(--border-strong);
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: var(--dark-btn-text);
-            border-color: var(--danger);
-            box-shadow: var(--inset-shadow);
-        }
-
-        .btn-primary:hover,
-        .btn-secondary:hover,
-        .btn-danger:hover,
-        .admin-nav-link:hover {
-            box-shadow: var(--focus-shadow);
-        }
-
-        th {
-            background: rgba(28, 28, 28, 0.03);
-            color: var(--text);
-            font-weight: 600;
-        }
-
-        th,
-        td,
-        table { border-color: var(--border); }
-
-        code {
-            background: rgba(28, 28, 28, 0.03);
-            border: 1px solid var(--border);
-            color: var(--text);
-        }
-
-        /* Modal overlay */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.4);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-overlay.active {
-            display: flex;
-        }
-        .modal-dialog {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 2rem;
-            max-width: 440px;
-            width: 90%;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
-        }
-        .modal-dialog h3 {
-            margin-top: 0;
-            margin-bottom: 0.75rem;
-            font-size: 1.25rem;
-        }
-        .modal-dialog p {
-            color: var(--muted);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-        }
-        .modal-actions {
-            display: flex;
-            gap: 0.75rem;
-            justify-content: flex-end;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav class="admin-nav">
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin">Overview</a>
-            <a class="admin-nav-link active" href="{{ request.scope.root_path }}/admin/participant-management">Participant Management</a>
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
-        </nav>
-        {% if selected_study %}
-        <nav class="admin-nav" style="margin-top: 0.25rem;">
-            <span class="admin-nav-link" style="font-weight: 600; border: none; background: transparent;">{{ selected_study.name_short }}</span>
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/study/{{ selected_study.name_short }}">📋 Study Details</a>
-        </nav>
-        {% endif %}
-
+{% block content %}
         <div class="header">
             <h1>Participant Management</h1>
             <p>Add or remove participants for a study, and assign task tokens.</p>
@@ -368,13 +39,58 @@
         </div>
 
         {% if selected_study %}
+        {% set study_qs = selected_study.name_short|urlencode %}
+        {% macro page_href(target_page) -%}
+{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study_qs }}&amp;page={{ target_page }}&amp;per_page={{ per_page }}{% if participant_query %}&amp;q={{ participant_query|urlencode }}{% endif %}
+{%- endmacro %}
+        <div class="pm-tabs" data-tab-group data-tab-persist>
+            <div class="tabs">
+                <button class="tab active" type="button" onclick="switchTab('pm-participants', this)">Participants ({{ total_participants }})</button>
+                <button class="tab" type="button" onclick="switchTab('pm-tokens', this)">External tasks &amp; tokens</button>
+                <button class="tab" type="button" onclick="switchTab('pm-danger', this)">Danger zone</button>
+            </div>
+            <div class="tab-content">
+                <div id="pm-participants" class="tab-panel active">
         <div class="card">
-            {% set total_participants = current_participants|length %}
-            {% set shown = current_participants[:10]|length %}
-            <h2 style="margin-bottom: 0.75rem;">Participants in study {{ selected_study.name_short }} (showing {{ shown }} of {{ total_participants }})</h2>
+            <div class="participant-toolbar">
+                <h2 style="margin: 0;">Participants in study {{ selected_study.name_short }} ({{ total_participants }})</h2>
+                <span class="hint">
+                    {% if total_participants %}
+                        showing {{ first_row }}&ndash;{{ last_row }}
+                    {% elif participant_query %}
+                        no matches for &ldquo;{{ participant_query }}&rdquo;
+                    {% else %}
+                        no participants
+                    {% endif %}
+                </span>
+            </div>
             {% if selected_study_requires_consent %}
-            <div class="hint" style="margin-bottom: 0.75rem;">This study requires consent. Consent status is shown below. If the study contains external tasks, task tokens are displayed as well.</div>
+            <div class="hint" style="margin-top: 0.75rem;">This study requires consent. Consent status is shown below. If the study contains external tasks, task tokens are displayed as well.</div>
             {% endif %}
+            <div class="participant-toolbar" style="margin-top: 0.75rem;">
+                <form class="filter-form" method="get" action="{{ request.scope.root_path }}/admin/participant-management">
+                    <input type="hidden" name="study_name_short" value="{{ selected_study.name_short }}">
+                    <input type="search" id="participantFilter" name="q" value="{{ participant_query }}" placeholder="Filter by participant ID" aria-label="Filter participants by participant ID">
+                    {% set page_sizes = [25, 50, 100, 200] %}
+                    {% if per_page not in page_sizes %}{% set page_sizes = [per_page] + page_sizes %}{% endif %}
+                    <select id="participantPageSize" name="per_page" aria-label="Rows per page" style="width: auto; min-width: 0; flex: 0 0 auto;">
+                        {% for size in page_sizes %}
+                        <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }} rows</option>
+                        {% endfor %}
+                    </select>
+                    <button class="btn-secondary" type="submit">Filter</button>
+                    {% if participant_query %}
+                    <a class="btn-secondary" href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study_qs }}&amp;per_page={{ per_page }}">Clear</a>
+                    {% endif %}
+                </form>
+                <div>
+                    {% if study_participant_total %}
+                    <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links-csv" title="All participants of this study (ignores the ID filter): pid and invitation link">&#11015; Invitation links CSV ({{ study_participant_total }})</a>
+                    {% else %}
+                    <span class="hint">Invitation links CSV unavailable: no participants yet.</span>
+                    {% endif %}
+                </div>
+            </div>
             {% if current_participants %}
             <table>
                 <thead>
@@ -393,7 +109,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for participant in current_participants[:10] %}
+                    {% for participant in current_participants %}
                     <tr>
                         <td><code>{{ participant.id }}</code></td>
                         <td>{{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else '-' }}</td>
@@ -420,6 +136,27 @@
                     {% endfor %}
                 </tbody>
             </table>
+            {% if total_pages > 1 %}
+            <nav class="pager" aria-label="Participant table pages">
+                {% if page > 1 %}
+                <a class="btn-secondary" href="{{ page_href(1) }}" rel="first">&laquo; First</a>
+                <a class="btn-secondary" href="{{ page_href(page - 1) }}" rel="prev">&lsaquo; Previous</a>
+                {% else %}
+                <span class="btn-secondary disabled">&laquo; First</span>
+                <span class="btn-secondary disabled">&lsaquo; Previous</span>
+                {% endif %}
+                <span class="pager-status">Page {{ page }} of {{ total_pages }}</span>
+                {% if page < total_pages %}
+                <a class="btn-secondary" href="{{ page_href(page + 1) }}" rel="next">Next &rsaquo;</a>
+                <a class="btn-secondary" href="{{ page_href(total_pages) }}" rel="last">Last &raquo;</a>
+                {% else %}
+                <span class="btn-secondary disabled">Next &rsaquo;</span>
+                <span class="btn-secondary disabled">Last &raquo;</span>
+                {% endif %}
+            </nav>
+            {% endif %}
+            {% elif participant_query %}
+            <div class="empty">No participant ID contains &ldquo;{{ participant_query }}&rdquo;.</div>
             {% else %}
                 {% if selected_study_is_open %}
                 <div class="empty">No participants assigned yet. This study is open, so no need to assign participants.</div>
@@ -439,6 +176,9 @@
                 <div id="addStatus" class="status"></div>
             </div>
         </div>
+
+                </div>
+                <div id="pm-tokens" class="tab-panel">
 
         {% if not selected_study_is_open %}
         <div class="card">
@@ -491,6 +231,55 @@
             {% endif %}
         </div>
         {% endif %}
+
+        {% if selected_study and not selected_study_is_open %}
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
+            {% if selected_study_external_task_keys|length > 0 %}
+            <div class="hint" style="margin-bottom: 0.75rem;">
+            Typically external service providers generate tokens and you import them into our system. This section is useful when an external service provider asks us to provide the tokens.
+            </div>
+            <div class="hint" style="margin-bottom: 0.75rem;">
+                Generate random tokens for participants that are missing external-task assignments,
+                then download them as a CSV file (with <code>pid</code> column) to share with external service operators.
+                Generated tokens are 20-character alphanumeric strings.
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
+                <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
+                <div id="exportStatus" class="status"></div>
+            </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Export is disabled.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% if selected_study and selected_study_is_open %}
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Export pool tokens for study {{ selected_study.name_short }}</h2>
+            {% if selected_study_external_task_keys|length > 0 %}
+            <div class="hint" style="margin-bottom: 0.75rem;">
+                Generate tokens into the pool for all external tasks of this open study.
+                Then download them as a CSV file (no <code>pid</code> column — pool tokens are unassigned)
+                to share with external service operators.
+            </div>
+            <div style="margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <label for="poolTokenCount" style="white-space: nowrap;">Tokens per task:</label>
+                <input type="number" id="poolTokenCount" min="1" max="10000" value="100" style="width: 100px;" />
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
+                <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
+                <div id="poolExportStatus" class="status"></div>
+            </div>
+            {% else %}
+            <div class="empty">This study has no external tasks configured. Pool token export is disabled.</div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+                </div>
+                <div id="pm-danger" class="tab-panel">
 
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
@@ -576,56 +365,10 @@
             {% endif %}
         </div>
         {% endif %}
-
-        {% if selected_study and not selected_study_is_open %}
-        <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
-            {% if selected_study_external_task_keys|length > 0 %}
-            <div class="hint" style="margin-bottom: 0.75rem;">
-            Typically external service providers generate tokens and you import them into our system. This section is useful when an external service provider asks us to provide the tokens.
+                </div>
             </div>
-            <div class="hint" style="margin-bottom: 0.75rem;">
-                Generate random tokens for participants that are missing external-task assignments,
-                then download them as a CSV file (with <code>pid</code> column) to share with external service operators.
-                Generated tokens are 20-character alphanumeric strings.
-            </div>
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
-                <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
-                <div id="exportStatus" class="status"></div>
-            </div>
-            {% else %}
-            <div class="empty">This study has no external tasks configured. Export is disabled.</div>
-            {% endif %}
         </div>
         {% endif %}
-
-        {% if selected_study and selected_study_is_open %}
-        <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Export pool tokens for study {{ selected_study.name_short }}</h2>
-            {% if selected_study_external_task_keys|length > 0 %}
-            <div class="hint" style="margin-bottom: 0.75rem;">
-                Generate tokens into the pool for all external tasks of this open study.
-                Then download them as a CSV file (no <code>pid</code> column — pool tokens are unassigned)
-                to share with external service operators.
-            </div>
-            <div style="margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <label for="poolTokenCount" style="white-space: nowrap;">Tokens per task:</label>
-                <input type="number" id="poolTokenCount" min="1" max="10000" value="100" style="width: 100px;" />
-            </div>
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
-                <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
-                <div id="poolExportStatus" class="status"></div>
-            </div>
-            {% else %}
-            <div class="empty">This study has no external tasks configured. Pool token export is disabled.</div>
-            {% endif %}
-        </div>
-        {% endif %}
-        {% endif %}
-    </div>
-
     <!-- Mass delete confirmation modal -->
     <div id="massDeleteModal" class="modal-overlay">
         <div class="modal-dialog">
@@ -637,7 +380,9 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
+{% block scripts %}
     <script>
         const rootPath = "{{ request.scope.root_path }}";
         // Use absolute origin for fetch() to avoid credential-in-URL errors
@@ -1324,5 +1069,4 @@
             }
         })();
     </script>
-</body>
-</html>
+{% endblock %}

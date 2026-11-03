@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import ValidationError
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import logging
 import string
 import uuid
@@ -1087,6 +1088,12 @@ async def favicon():
     if favicon_path.exists():
         return FileResponse(favicon_path)
     return Response(status_code=204)
+
+
+# Shared CSS/JS for the admin templates (templates/admin_*.html). Mounted on the
+# app root so the pages can link `{{ request.scope.root_path }}/static/...`; the
+# files contain no instance data and need no authentication.
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 def _ensure_study_is_currently_available(study: Study) -> None:
@@ -4972,14 +4979,26 @@ async def export_runtime_studies_config(
 async def admin_participant_management(
     request: Request,
     study_name_short: Optional[str] = Query(None),
+    q: Optional[str] = Query(
+        None, description="Filter participants by a participant ID substring."
+    ),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=10, le=500),
     identity: AdminIdentity = Depends(require_admin_identity),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
     """Render participant-management page for assigning/removing study participants.
 
+    The participant table is paginated in the database: ``page``/``per_page``
+    become ``LIMIT``/``OFFSET`` and ``q`` an ID substring filter, so the page cost
+    stays constant for studies with thousands of participants.
+
     @param request FastAPI request object for template rendering.
     @param study_name_short Optional selected study short name.
+    @param q Optional participant ID substring filter.
+    @param page 1-based page number of the participant table.
+    @param per_page Page size of the participant table.
     @param identity Authenticated admin identity (role + study scope).
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
@@ -5021,6 +5040,15 @@ async def admin_participant_management(
     current_participants = []
     selected_study_requires_consent = False
 
+    # Pagination/filter state, also needed by the template when no study is selected.
+    participant_query = (q or "").strip()
+    page_number = page
+    total_participants = 0
+    total_pages = 1
+    first_row = 0
+    last_row = 0
+    study_participant_total = 0
+
     if study_name_short:
         selected_study = session.exec(
             select(Study).where(Study.name_short == study_name_short)
@@ -5036,11 +5064,55 @@ async def admin_participant_management(
 
         selected_study_requires_consent = bool(selected_study.require_consent)
 
+        participant_filters = [StudyParticipant.study_id == selected_study.id]
+        if participant_query:
+            # Escape LIKE wildcards so a pasted '%' or '_' searches literally.
+            escaped_query = (
+                participant_query.replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_")
+            )
+            participant_filters.append(
+                StudyParticipant.participant_id.ilike(f"%{escaped_query}%", escape="\\")
+            )
+
+        total_participants = (
+            session.exec(
+                select(func.count(StudyParticipant.id)).where(*participant_filters)
+            ).first()
+            or 0
+        )
+        total_pages = max(1, -(-total_participants // per_page))
+        # A stale bookmark or a shrinking result set must not show an empty table.
+        page_number = min(page, total_pages)
+
+        # The invitation-link export covers the whole study, so its button must
+        # not disappear when the filter happens to match nothing.
+        study_participant_total = total_participants
+        if participant_query:
+            study_participant_total = (
+                session.exec(
+                    select(func.count(StudyParticipant.id)).where(
+                        StudyParticipant.study_id == selected_study.id
+                    )
+                ).first()
+                or 0
+            )
+
         study_participants = session.exec(
             select(StudyParticipant)
-            .where(StudyParticipant.study_id == selected_study.id)
-            .order_by(StudyParticipant.created_at.desc())
+            .where(*participant_filters)
+            # participant_id breaks created_at ties so pages never overlap or skip rows.
+            .order_by(
+                StudyParticipant.created_at.desc(), StudyParticipant.participant_id
+            )
+            .offset((page_number - 1) * per_page)
+            .limit(per_page)
         ).all()
+
+        if total_participants:
+            first_row = (page_number - 1) * per_page + 1
+            last_row = min(page_number * per_page, total_participants)
 
         # Load external tasks and assignments for this study to include tokens in the UI
         external_tasks = session.exec(
@@ -5051,10 +5123,15 @@ async def admin_participant_management(
         external_task_ids = [t.id for t in external_tasks]
 
         assignments = []
-        if external_task_ids:
+        page_participant_ids = [sp.participant_id for sp in study_participants]
+        if external_task_ids and page_participant_ids:
+            # Only the tokens for the visible page are needed to render it.
             assignments = session.exec(
                 select(StudyExternalTaskAssignment).where(
-                    StudyExternalTaskAssignment.external_task_id.in_(external_task_ids)
+                    StudyExternalTaskAssignment.external_task_id.in_(external_task_ids),
+                    StudyExternalTaskAssignment.participant_id.in_(
+                        page_participant_ids
+                    ),
                 )
             ).all()
 
@@ -5114,6 +5191,14 @@ async def admin_participant_management(
         "selected_study_is_open": False,
         "current_participants": current_participants,
         "current_time": utc_now(),
+        "participant_query": participant_query,
+        "page": page_number,
+        "per_page": per_page,
+        "total_participants": total_participants,
+        "total_pages": total_pages,
+        "first_row": first_row,
+        "last_row": last_row,
+        "study_participant_total": study_participant_total,
     }
     if selected_study:
         external_tasks = session.exec(
@@ -5866,6 +5951,99 @@ async def export_tokens_csv(
     )
 
 
+@app.get(
+    "/api/admin/studies/{study_name_short}/export-invitation-links-csv",
+    name="Export participant invitation links as CSV",
+)
+async def export_participant_invitation_links_csv(
+    study_name_short: str,
+    frontend: str = Query(
+        "new",
+        description=(
+            "Participant frontend the links point to: 'new' for the rewrite "
+            "(default) or 'legacy' for the classic client."
+        ),
+    ),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Export one CSV row per study participant with pid and invitation link.
+
+    The whole list is returned in one file, unpaginated: the recipients are a
+    mailing list, so a partial download would silently drop invitees.
+
+    A participant's ``pid`` link *is* their access credential for a closed
+    study, so the response is marked ``no-store`` and the download is audited.
+    Only ``pid`` and the link are exported - consent state and external task
+    tokens belong to different exports with a different audience.
+
+    @param study_name_short Short name of the study to export.
+    @param frontend Which participant frontend the links point to.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
+    @returns A CSV download with columns `pid` and `invitation_link`.
+    """
+    normalized_frontend = (frontend or "new").strip().lower()
+    if normalized_frontend not in {"new", "legacy"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported frontend. Allowed values: new, legacy",
+        )
+
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    participants = session.exec(
+        select(Participant)
+        .join(StudyParticipant)
+        .where(StudyParticipant.study_id == study.id)
+        .order_by(StudyParticipant.participant_id)
+    ).all()
+
+    build_invitation_link = (
+        _build_frontend_new_study_join_url
+        if normalized_frontend == "new"
+        else _build_frontend_study_join_url
+    )
+
+    # Written explicitly instead of via export_csv(), which sorts column names
+    # and would put the link before the pid.
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["pid", "invitation_link"])
+    for participant in participants:
+        writer.writerow(
+            [
+                participant.id,
+                build_invitation_link(study.name_short, participant.id),
+            ]
+        )
+
+    csv_content = output.getvalue()
+    filename = f"{study_name_short}_invitation_links.csv"
+
+    audit_admin_action(
+        current_admin,
+        f"exported participant invitation links CSV for study '{study_name_short}' "
+        f"(frontend={normalized_frontend}, {len(participants)} participants)",
+    )
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            # The pid links are participant credentials; never let them be cached.
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 class GeneratePoolTokensRequest(BaseModel):
     count: int = Field(gt=0, le=10000)
 
@@ -6320,6 +6498,13 @@ async def validate_files_in_memory(
             "mode": mode,
             "summary": {
                 "study_name_short": import_study_payload.name_short,
+                # Review data: the admin confirms this card before creating, so it
+                # must carry what the study will actually be, not just the counts.
+                "study_name": import_study_payload.name,
+                "allow_unlisted_participants": import_study_payload.allow_unlisted_participants,
+                "require_consent": import_study_payload.require_consent,
+                "day_label_count": len(import_study_payload.day_labels),
+                "external_task_count": len(import_study_payload.external_tasks),
                 "available_studies": sorted(available_studies),
                 "supported_languages": validated["supported_languages"],
                 "default_language": validated["default_language"],

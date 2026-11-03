@@ -713,3 +713,78 @@ async def test_delete_users_section_visible_on_page():
         assert "Delete users (and their tokens)" in page.text
         assert 'id="deleteUsersInput"' in page.text
         assert 'id="deleteUsersBtn"' in page.text
+
+
+@pytest.mark.asyncio
+async def test_participant_table_is_filtered_and_paginated_in_the_database():
+    """The table shows one page of matching participants, not the first ten overall."""
+    study_name_short = "default"
+    prefix = f"it_page_{uuid.uuid4().hex[:8]}"
+    participant_ids = [f"{prefix}_{index:02d}" for index in range(12)]
+
+    async with httpx.AsyncClient() as client:
+        assign_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": participant_ids},
+            auth=ADMIN_AUTH,
+        )
+        assert assign_response.status_code == 200, assign_response.text
+
+        try:
+
+            async def fetch_page(target_page: int, per_page: int = 10) -> str:
+                page = await client.get(
+                    f"{BASE_URL}/admin/participant-management",
+                    params={
+                        "study_name_short": study_name_short,
+                        "q": prefix,
+                        "per_page": per_page,
+                        "page": target_page,
+                    },
+                    auth=ADMIN_AUTH,
+                )
+                assert page.status_code == 200, page.text
+                return page.text
+
+            first_page = await fetch_page(1)
+            second_page = await fetch_page(2)
+
+            ids_on_first_page = {pid for pid in participant_ids if pid in first_page}
+            ids_on_second_page = {pid for pid in participant_ids if pid in second_page}
+
+            assert len(ids_on_first_page) == 10
+            assert len(ids_on_second_page) == 2
+            assert ids_on_first_page.isdisjoint(ids_on_second_page)
+            assert "Participants in study default (12)" in first_page
+            assert "showing 1&ndash;10" in first_page
+            assert "Page 1 of 2" in first_page
+            assert "Page 2 of 2" in second_page
+
+            # A page beyond the end clamps to the last page instead of showing nothing.
+            clamped_page = await fetch_page(99)
+            assert "Page 2 of 2" in clamped_page
+            assert len({pid for pid in participant_ids if pid in clamped_page}) == 2
+
+            empty_page = await client.get(
+                f"{BASE_URL}/admin/participant-management",
+                params={
+                    "study_name_short": study_name_short,
+                    "q": f"{prefix}_no_such_participant",
+                },
+                auth=ADMIN_AUTH,
+            )
+            assert empty_page.status_code == 200
+            assert "No participant ID contains" in empty_page.text
+            # The invitation export covers the whole study, so it survives a
+            # filter that matches nothing.
+            assert (
+                f"/api/admin/studies/{study_name_short}/export-invitation-links-csv"
+                in empty_page.text
+            )
+        finally:
+            for participant_id in participant_ids:
+                await client.delete(
+                    f"{BASE_URL}/api/admin/studies/{study_name_short}"
+                    f"/participants/{participant_id}",
+                    auth=ADMIN_AUTH,
+                )

@@ -1,315 +1,163 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TUD Admin - File Validation</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --bg: #f7f4ed;
-            --surface: #f7f4ed;
-            --text: #1c1c1c;
-            --muted: #5f5f5d;
-            --border: #eceae4;
-            --border-strong: rgba(28, 28, 28, 0.4);
-            --ok: #1f6f43;
-            --error: #b3261e;
-            --focus-shadow: rgba(0, 0, 0, 0.1) 0px 4px 12px;
-            --inset-shadow: rgba(255, 255, 255, 0.2) 0px 0.5px 0px 0px inset,
-                            rgba(0, 0, 0, 0.2) 0px 0px 0px 0.5px inset,
-                            rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
-        }
-        body {
-            font-family: "Camera Plain Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-            line-height: 1.5;
-            color: var(--text);
-            background: var(--bg);
-            padding: 20px;
-        }
-        .container { max-width: 1280px; margin: 0 auto; }
-        .admin-nav {
-            display: flex;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-        }
-        .admin-nav-link {
-            display: inline-block;
-            padding: 0.55rem 0.9rem;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 400;
-            font-size: 0.9rem;
-            color: var(--text);
-            background: transparent;
-            border: 1px solid var(--border-strong);
-        }
-        .admin-nav-link.active {
-            color: #fcfbf8;
-            background: var(--text);
-            border-color: var(--text);
-            box-shadow: var(--inset-shadow);
-        }
-        .admin-nav-link:hover { box-shadow: var(--focus-shadow); }
-        .header,
-        .card,
-        .result-box {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
-        .header {
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .header h1 {
-            font-size: 2rem;
-            line-height: 1.05;
-            letter-spacing: -1px;
-        }
-        .header p,
-        .hint,
-        .meta,
-        .subtle { color: var(--muted); }
-        .meta {
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid var(--border);
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1rem;
-        }
-        .card { padding: 1rem; }
-        h2 {
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-        }
-        .field { margin-top: 0.65rem; }
-        label {
-            display: block;
-            margin-bottom: 0.35rem;
-            font-size: 0.92rem;
-            font-weight: 600;
-        }
-        input[type="text"],
-        select,
-        input[type="file"],
-        textarea {
-            width: 100%;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 0.65rem;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-            font-size: 0.86rem;
-            background: var(--surface);
-            color: var(--text);
-        }
-        textarea {
-            min-height: 92px;
-            resize: vertical;
-        }
-        .actions {
-            margin-top: 0.9rem;
-            display: flex;
-            gap: 0.6rem;
-            flex-wrap: wrap;
-        }
-        button {
-            border-radius: 6px;
-            border: 1px solid transparent;
-            padding: 0.58rem 0.9rem;
-            cursor: pointer;
-            font-weight: 500;
-            background: var(--text);
-            color: #fcfbf8;
-            box-shadow: var(--inset-shadow);
-        }
-        button:disabled {
-            cursor: not-allowed;
-            opacity: 0.6;
-        }
-        .result-box {
-            margin-top: 1rem;
-            padding: 1rem;
-        }
-        .result-title {
-            font-weight: 700;
-            margin-bottom: 0.35rem;
-        }
-        .ok { color: var(--ok); }
-        .error { color: var(--error); }
-        .create-status {
-            margin-top: 0.5rem;
-            font-weight: 600;
-        }
-        ul {
-            margin-left: 1.2rem;
-            margin-top: 0.45rem;
-        }
-        li { margin-bottom: 0.28rem; }
-        code {
-            background: rgba(28, 28, 28, 0.03);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.05rem 0.28rem;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav class="admin-nav">
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin">Overview</a>
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/participant-management">Participant Management</a>
-            <a class="admin-nav-link" href="{{ request.scope.root_path }}/admin/tools">Tools</a>
-            <a class="admin-nav-link active" href="{{ request.scope.root_path }}/admin/file-validation">File Validation</a>
-        </nav>
+{% extends "admin_base.html" %}
+{% from "partials/admin_nav.html" import admin_nav with context %}
 
+{% block title %}File Validation · TRAC{% endblock %}
+{% block nav %}{{ admin_nav('file-validation') }}{% endblock %}
+
+{% block content %}
         <div class="header">
-            <h1>File Validation</h1>
-            <p>Validate studies and activities files in-memory without creating or deleting studies by default.</p>
-            <ul>
-                <li>Modes 1 and 2 only validate activity files, without requiring a full study specification.</li>
-                <li>Modes 3 and 4 both validate the full configuration needed to create a new study: the relevant studies_config.json section and the related activities files. After successful validation, the study can be created on this page.</li>
-                <li>Note that modes 3 and 4 only differ in the required input format. If you have your activities for a study in separate files (specified in field 'activities_json_files'), use mode 3. If your activities are embedded into the studies_config.json file in field 'activities_json_data', use mode 4.</li>
-            </ul>
-            <div class="meta">
+            <h1>Study Setup</h1>
+            <p>Validate a <code>studies_config.json</code> and create the study from it. Validation runs in memory and never modifies existing studies; creation happens only after you confirm the review.</p>
+            <div class="header-info">
                 <div><strong>Admin:</strong> {{ current_admin }}</div>
                 <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
             </div>
         </div>
 
-        <div class="grid">
-            <form class="card validation-form" data-mode="single_activities">
-                <h2>1) Single activities file</h2>
-                <p class="subtle">Checks one activities JSON file only (schema + internal validations).</p>
+        <div class="card">
+            <h2>Create a study</h2>
+            <form id="studyForm" novalidate>
                 <div class="field">
-                    <label for="singleActivitiesFile">Activities file (.json)</label>
-                    <input id="singleActivitiesFile" name="activities_file" type="file" accept=".json" required>
+                    <label for="studiesConfigFile">studies_config.json</label>
+                    <input id="studiesConfigFile" name="studies_config_file" type="file" accept=".json">
+                    <p class="hint">The file may contain one or several studies. Activities are either embedded (<code>activities_json_data</code>) or referenced as separate files (<code>activities_json_files</code>); this page detects which and asks only for what is missing.</p>
                 </div>
-                <div class="actions">
-                    <button type="submit">Validate single file</button>
-                </div>
-                <p class="hint">Language-cross checks are not possible in this mode. If you have several activity files in different languages and need to ensure consistency, prefer mode 2.</p>
-            </form>
 
-            <form class="card validation-form" data-mode="activities_multilang">
-                <h2>2) Activities cross-language set</h2>
-                <p class="subtle">Checks consistency across several activity files (one per language).</p>
-                <div class="field">
-                    <label for="multiSupportedLanguages">Supported languages (comma-separated)</label>
-                    <input id="multiSupportedLanguages" name="supported_languages_csv" type="text" placeholder="en,de,sv" required>
-                </div>
-                <div class="field">
-                    <label for="multiDefaultLanguage">Default language</label>
-                    <input id="multiDefaultLanguage" name="default_language" type="text" placeholder="en" required>
-                </div>
-                <div class="field">
-                    <label for="multiActivitiesFiles">Activities files (.json, one per language)</label>
-                    <input id="multiActivitiesFiles" name="activities_files" type="file" accept=".json" multiple required>
-                </div>
-                <div class="field">
-                    <label for="multiLanguageMap">Optional language map JSON (lang -&gt; filename)</label>
-                    <textarea id="multiLanguageMap" name="activities_language_map" placeholder='{"en":"activities_default.json","de":"activities_default.de.json"}'></textarea>
-                </div>
-                <p class="hint">If no language map is provided, the 'language' field in each activities file is used to map uploaded files.</p>
-                <div class="actions">
-                    <button type="submit">Validate language set</button>
-                </div>
-            </form>
-
-            <form class="card validation-form" data-mode="full_study">
-                <h2>3) Full study package</h2>
-                <p class="subtle">Checks one selected study from studies_config plus all related language activities files.</p>
-                <div class="field">
-                    <label for="fullStudyConfigFile">studies_config.json (can contain one or multiple studies)</label>
-                    <input id="fullStudyConfigFile" name="studies_config_file" type="file" accept=".json" required>
-                </div>
-                <div class="field" id="fullStudySelectorField" style="display:none;">
-                    <label for="fullStudyNameShort">Study to validate (from uploaded studies_config)</label>
+                <div class="field" id="studySelectorField" style="display: none;">
+                    <label for="fullStudyNameShort">Study in this file</label>
                     <select id="fullStudyNameShort" name="full_study_name_short"></select>
-                    <p class="hint">If multiple studies are found, select one and validate again.</p>
+                    <p class="hint">This file contains several studies; pick the one to validate and create.</p>
                 </div>
-                <div class="field">
-                    <label for="fullActivitiesFiles">Activities files referenced by that study</label>
-                    <input id="fullActivitiesFiles" name="activities_files" type="file" accept=".json" multiple required>
+
+                <div class="field" id="activitiesFilesField" style="display: none;">
+                    <label for="fullActivitiesFiles">Activities files referenced by the study</label>
+                    <input id="fullActivitiesFiles" name="activities_files" type="file" accept=".json" multiple>
                 </div>
-                <div class="field">
-                    <label for="fullLanguageMap">Optional language map JSON (lang -&gt; filename)</label>
+
+                <div class="field" id="languageMapField" style="display: none;">
+                    <label for="fullLanguageMap">Optional language map JSON (language &rarr; filename)</label>
                     <textarea id="fullLanguageMap" name="activities_language_map" placeholder='{"en":"activities_default.json","de":"activities_default.de.json"}'></textarea>
+                    <p class="hint">Without a map, the <code>language</code> field inside each activities file is used.</p>
                 </div>
-                <p class="hint">If no language map is provided, filenames from studies_config.json and the the 'language' field in each activities filea re used to map uploaded files.</p>
-                <div class="actions">
-                    <button type="submit">Validate full study</button>
-                    <button type="button" id="createStudyBtn" disabled>Create study</button>
-                </div>
-                <p id="createStudyStatus" class="create-status subtle" aria-live="polite"></p>
 
-                <p class="hint" id="createStudyHint">Validate full study first. Creation is only allowed when no existing study uses the same name_short.</p>
+                <div class="actions">
+                    <button type="submit" class="btn-primary" id="validateStudyBtn" disabled>Validate</button>
+                    <span class="hint" id="packageMode">Select a studies_config.json to start.</span>
+                </div>
             </form>
 
-            <form class="card validation-form" data-mode="full_study_embedded">
-                <h2>4) Full study from one embedded studies_config</h2>
-                <p class="subtle">Checks one selected study from studies_config where activities are embedded as activities_json_data.</p>
-                <div class="field">
-                    <label for="embeddedStudyConfigFile">studies_config.json (contains activities_json_data)</label>
-                    <input id="embeddedStudyConfigFile" name="studies_config_file" type="file" accept=".json" required>
+            <div class="result-box" id="validationResult" hidden>
+                <div class="result-title" id="validationTitle"></div>
+                <p class="hint" id="validationMode"></p>
+                <div id="reviewPanel" hidden>
+                    <h3 style="margin-top: 0.75rem;">Review before creating</h3>
+                    <div class="table-container">
+                        <table id="reviewTable"><tbody></tbody></table>
+                    </div>
+                    <label class="inline-label" for="reviewConfirmed">
+                        <input type="checkbox" id="reviewConfirmed">
+                        I reviewed this study definition and want to create it.
+                    </label>
+                    <div class="actions">
+                        <button type="button" class="btn-primary" id="createStudyBtn" disabled>Create study</button>
+                        <span class="status" id="createStudyStatus" role="status" aria-live="polite"></span>
+                    </div>
                 </div>
-                <div class="field" id="embeddedStudySelectorField" style="display:none;">
-                    <label for="embeddedStudyNameShort">Study to validate (from uploaded studies_config)</label>
-                    <select id="embeddedStudyNameShort" name="full_study_name_short"></select>
-                    <p class="hint">If multiple studies are found, select one and validate again.</p>
-                </div>
+                <div id="summaryBlock"></div>
+                <div id="errorsBlock"></div>
+                <div id="warningsBlock"></div>
+            </div>
+
+            <div class="result-box" id="successPanel" hidden>
+                <div class="result-title ok">Study created</div>
+                <p id="successMessage"></p>
                 <div class="actions">
-                    <button type="submit">Validate embedded full study</button>
-                    <button type="button" id="createEmbeddedStudyBtn" disabled>Create study</button>
+                    <a class="btn-secondary" id="successStudyLink" href="#">Open study details</a>
+                    <a class="btn-secondary" id="successParticipantsLink" href="#">Manage participants</a>
+                    <a class="btn-secondary" id="successInvitesLink" href="#">Download invitation links CSV</a>
                 </div>
-                <p id="createEmbeddedStudyStatus" class="create-status subtle" aria-live="polite"></p>
-                <p class="hint" id="createEmbeddedStudyHint">Validate embedded full study first. Creation is only allowed when no existing study uses the same name_short.</p>
-            </form>
+            </div>
         </div>
 
-        <div id="validationResult" class="result-box" style="display:none;"></div>
-    </div>
+        <details class="card" id="activityChecks">
+            <summary style="cursor: pointer; font-weight: 600;">Check activity files only (advanced)</summary>
+            <p class="hint">Use this while preparing an activities file. Nothing is created; results are shown above.</p>
+            <div class="grid" style="margin-top: 0.75rem;">
+                <form class="validation-form" data-mode="single_activities">
+                    <h2>1) Single activities file</h2>
+                    <p class="subtle">Checks one activities JSON file only (schema + internal validations).</p>
+                    <div class="field">
+                        <label for="singleActivitiesFile">Activities file (.json)</label>
+                        <input id="singleActivitiesFile" name="activities_file" type="file" accept=".json" required>
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn-primary">Validate single file</button>
+                    </div>
+                    <p class="hint">Language-cross checks are not possible in this mode. If you have several activity files in different languages, prefer the next one.</p>
+                </form>
 
+                <form class="validation-form" data-mode="activities_multilang">
+                    <h2>2) Activities cross-language set</h2>
+                    <p class="subtle">Checks consistency across several activity files (one per language).</p>
+                    <div class="field">
+                        <label for="multiSupportedLanguages">Supported languages (comma-separated)</label>
+                        <input id="multiSupportedLanguages" name="supported_languages_csv" type="text" placeholder="en,de,sv" required>
+                    </div>
+                    <div class="field">
+                        <label for="multiDefaultLanguage">Default language</label>
+                        <input id="multiDefaultLanguage" name="default_language" type="text" placeholder="en" required>
+                    </div>
+                    <div class="field">
+                        <label for="multiActivitiesFiles">Activities files (.json, one per language)</label>
+                        <input id="multiActivitiesFiles" name="activities_files" type="file" accept=".json" multiple required>
+                    </div>
+                    <div class="field">
+                        <label for="multiLanguageMap">Optional language map JSON (language &rarr; filename)</label>
+                        <textarea id="multiLanguageMap" name="activities_language_map" placeholder='{"en":"activities_default.json","de":"activities_default.de.json"}'></textarea>
+                    </div>
+                    <div class="actions">
+                        <button type="submit" class="btn-primary">Validate language set</button>
+                    </div>
+                </form>
+            </div>
+        </details>
+{% endblock %}
+
+{% block scripts %}
     <script>
-        const forms = document.querySelectorAll('.validation-form');
+        const rootPath = document.documentElement.dataset.rootPath || '';
+
+        const studyForm = document.getElementById('studyForm');
+        const configInput = document.getElementById('studiesConfigFile');
+        const studySelectorField = document.getElementById('studySelectorField');
+        const studySelect = document.getElementById('fullStudyNameShort');
+        const activitiesField = document.getElementById('activitiesFilesField');
+        const activitiesInput = document.getElementById('fullActivitiesFiles');
+        const languageMapField = document.getElementById('languageMapField');
+        const languageMapInput = document.getElementById('fullLanguageMap');
+        const validateBtn = document.getElementById('validateStudyBtn');
+        const packageMode = document.getElementById('packageMode');
+
         const resultBox = document.getElementById('validationResult');
-        const fullStudyForm = document.querySelector('.validation-form[data-mode="full_study"]');
-        const fullStudySelectorField = document.getElementById('fullStudySelectorField');
-        const fullStudyNameShortSelect = document.getElementById('fullStudyNameShort');
-        const createStudyBtn = document.getElementById('createStudyBtn');
-        const createStudyHint = document.getElementById('createStudyHint');
-        const createStudyStatus = document.getElementById('createStudyStatus');
-        const embeddedStudyForm = document.querySelector('.validation-form[data-mode="full_study_embedded"]');
-        const embeddedStudySelectorField = document.getElementById('embeddedStudySelectorField');
-        const embeddedStudyNameShortSelect = document.getElementById('embeddedStudyNameShort');
-        const createEmbeddedStudyBtn = document.getElementById('createEmbeddedStudyBtn');
-        const createEmbeddedStudyHint = document.getElementById('createEmbeddedStudyHint');
-        const createEmbeddedStudyStatus = document.getElementById('createEmbeddedStudyStatus');
-        let lastFullStudyValidationEligible = false;
-        let lastEmbeddedStudyValidationEligible = false;
+        const resultTitle = document.getElementById('validationTitle');
+        const resultMode = document.getElementById('validationMode');
+        const reviewPanel = document.getElementById('reviewPanel');
+        const reviewTableBody = document.querySelector('#reviewTable tbody');
+        const reviewConfirmed = document.getElementById('reviewConfirmed');
+        const createBtn = document.getElementById('createStudyBtn');
+        const createStatus = document.getElementById('createStudyStatus');
+        const summaryBlock = document.getElementById('summaryBlock');
+        const errorsBlock = document.getElementById('errorsBlock');
+        const warningsBlock = document.getElementById('warningsBlock');
 
-        function setCreateStatus(message, statusClass = 'subtle') {
-            if (!createStudyStatus) {
-                return;
-            }
-            createStudyStatus.className = `create-status ${statusClass}`;
-            createStudyStatus.textContent = message || '';
-        }
+        const successPanel = document.getElementById('successPanel');
+        const successMessage = document.getElementById('successMessage');
+        const successStudyLink = document.getElementById('successStudyLink');
+        const successParticipantsLink = document.getElementById('successParticipantsLink');
+        const successInvitesLink = document.getElementById('successInvitesLink');
 
-        function setEmbeddedCreateStatus(message, statusClass = 'subtle') {
-            if (!createEmbeddedStudyStatus) {
-                return;
-            }
-            createEmbeddedStudyStatus.className = `create-status ${statusClass}`;
-            createEmbeddedStudyStatus.textContent = message || '';
-        }
+        // Which backend mode the selected study needs; null until a config is read.
+        const state = { studies: [], mode: null, creationAllowed: false };
 
         function escapeHtml(value) {
             return String(value)
@@ -320,680 +168,403 @@
                 .replace(/'/g, '&#039;');
         }
 
+        function resetValidation() {
+            resultBox.hidden = true;
+            successPanel.hidden = true;
+            reviewPanel.hidden = true;
+            reviewConfirmed.checked = false;
+            createBtn.disabled = true;
+            state.creationAllowed = false;
+            setStatus(createStatus, '');
+        }
+
+        function studyNameShort(study) {
+            return String(study && study.name_short ? study.name_short : '').trim();
+        }
+
+        function hasEmbeddedActivities(study) {
+            const data = study && study.activities_json_data;
+            return Boolean(data && typeof data === 'object' && Object.keys(data).length > 0);
+        }
+
+        function selectedStudy() {
+            if (state.studies.length === 1) {
+                return state.studies[0];
+            }
+            return state.studies.find((study) => studyNameShort(study) === studySelect.value) || null;
+        }
+
+        function applySelectedStudy() {
+            const study = selectedStudy();
+            if (!study) {
+                state.mode = null;
+                validateBtn.disabled = true;
+                packageMode.textContent = 'Select the study to validate.';
+                return;
+            }
+
+            state.mode = hasEmbeddedActivities(study) ? 'full_study_embedded' : 'full_study';
+            const embedded = state.mode === 'full_study_embedded';
+            activitiesField.style.display = embedded ? 'none' : 'block';
+            languageMapField.style.display = embedded ? 'none' : 'block';
+            validateBtn.disabled = false;
+            packageMode.textContent = embedded
+                ? 'Activities are embedded in the config - no extra files needed.'
+                : 'Activities are referenced as separate files - select them below.';
+        }
+
+        async function readConfigStudies(file) {
+            const parsed = JSON.parse(await file.text());
+            const studies = Array.isArray(parsed && parsed.studies) ? parsed.studies : [];
+            if (!studies.length) {
+                throw new Error('The file has no non-empty "studies" array.');
+            }
+            return studies;
+        }
+
+        async function onConfigSelected() {
+            resetValidation();
+            state.studies = [];
+            studySelect.innerHTML = '';
+            studySelectorField.style.display = 'none';
+            activitiesField.style.display = 'none';
+            languageMapField.style.display = 'none';
+            validateBtn.disabled = true;
+
+            const file = configInput.files && configInput.files[0];
+            if (!file) {
+                packageMode.textContent = 'Select a studies_config.json to start.';
+                return;
+            }
+
+            try {
+                state.studies = await readConfigStudies(file);
+            } catch (error) {
+                packageMode.textContent = error.message || String(error);
+                packageMode.style.color = '#b3261e';
+                return;
+            }
+            packageMode.style.color = '';
+
+            const names = state.studies.map(studyNameShort).filter(Boolean);
+            if (names.length > 1) {
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '-- Select study_name_short --';
+                studySelect.appendChild(placeholder);
+                names.forEach((name) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    studySelect.appendChild(option);
+                });
+                studySelectorField.style.display = 'block';
+                validateBtn.disabled = true;
+                packageMode.textContent = `This file contains ${names.length} studies - select one.`;
+                return;
+            }
+
+            applySelectedStudy();
+        }
+
+        function buildStudyFormData() {
+            if (!state.mode) {
+                throw new Error('Select a studies_config.json first.');
+            }
+            const file = configInput.files && configInput.files[0];
+            if (!file) {
+                throw new Error('Select a studies_config.json first.');
+            }
+
+            const formData = new FormData();
+            formData.append('mode', state.mode);
+            formData.append('studies_config_file', file);
+
+            const nameShort = state.studies.length > 1 ? studySelect.value : '';
+            if (nameShort) {
+                formData.append('full_study_name_short', nameShort);
+            }
+
+            if (state.mode === 'full_study') {
+                if (!activitiesInput.files || !activitiesInput.files.length) {
+                    throw new Error('Select the activities files referenced by this study.');
+                }
+                for (const activitiesFile of activitiesInput.files) {
+                    formData.append('activities_files', activitiesFile);
+                }
+                const languageMap = languageMapInput.value.trim();
+                if (languageMap) {
+                    formData.append('activities_language_map', languageMap);
+                }
+            }
+            return formData;
+        }
+
+        function listBlock(title, entries, renderEntry) {
+            if (!entries || !entries.length) {
+                return '';
+            }
+            const items = entries.map((entry) => `<li>${renderEntry(entry)}</li>`).join('');
+            return `<div><strong>${escapeHtml(title)}</strong><ul>${items}</ul></div>`;
+        }
+
+        function renderReview(summary) {
+            const rows = [
+                ['Study name', summary.study_name || '-'],
+                ['Short name', summary.study_name_short || '-'],
+                [
+                    'Languages',
+                    `${(summary.supported_languages || []).join(', ') || '-'} (default: ${summary.default_language || '-'})`,
+                ],
+                ['Days', summary.day_label_count ?? '-'],
+                [
+                    'Participants',
+                    summary.allow_unlisted_participants ? 'Open - anyone with the link can join' : 'Closed - pre-assigned IDs only',
+                ],
+                ['Consent', summary.require_consent ? 'Required' : 'Not required'],
+                [
+                    'Activities',
+                    `${summary.activity_count ?? 0} in ${summary.timeline_count ?? 0} timeline(s), ${summary.category_count ?? 0} categories`,
+                ],
+                ['External tasks', summary.external_task_count ?? 0],
+            ];
+
+            reviewTableBody.innerHTML = rows
+                .map(
+                    ([label, value]) =>
+                        `<tr><th scope="row" style="width: 12rem;">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+                )
+                .join('');
+
+            reviewPanel.hidden = false;
+            state.creationAllowed = Boolean(summary.creation_eligible);
+            createBtn.disabled = !(state.creationAllowed && reviewConfirmed.checked);
+            reviewConfirmed.disabled = !state.creationAllowed;
+
+            if (state.creationAllowed) {
+                setStatus(createStatus, 'Ready to create.');
+            } else if ((summary.creation_conflicts || []).length) {
+                const conflict = summary.creation_conflicts[0];
+                setStatus(
+                    createStatus,
+                    `Creation blocked: name_short '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'.`,
+                    'error'
+                );
+            } else {
+                setStatus(createStatus, 'Creation is blocked for this study.', 'error');
+            }
+        }
+
         function renderResult(payload) {
-            resultBox.style.display = 'block';
+            const summary = (payload && payload.summary) || {};
+            const mode = (payload && payload.mode) || 'unknown';
 
-            const mode = payload.mode || 'unknown';
-            let titleClass = payload.ok ? 'ok' : 'error';
-            let titleText = payload.ok ? 'Validation passed' : 'Validation failed';
+            resultBox.hidden = false;
+            reviewPanel.hidden = true;
+            createBtn.disabled = true;
+            state.creationAllowed = false;
 
-            if (mode === 'create_only') {
-                titleText = payload.ok ? 'Study creation succeeded' : 'Study creation failed';
-            }
+            const creationFailed = mode === 'create_only' && !payload.ok;
+            resultTitle.textContent = creationFailed
+                ? 'Study creation failed'
+                : payload.ok
+                  ? 'Validation passed'
+                  : 'Validation failed';
+            resultTitle.className = `result-title ${payload.ok ? 'ok' : 'error'}`;
+            resultMode.innerHTML = `Mode: <code>${escapeHtml(mode)}</code>`;
 
-            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
-                ? payload.summary.creation_conflicts
-                : [];
+            const summaryRows = Object.entries(summary)
+                .filter(([key]) => key !== 'creation_conflicts' && key !== 'available_studies')
+                .filter(([key]) => !key.startsWith('creation_'))
+                .map(([key, value]) => {
+                    const text = Array.isArray(value)
+                        ? value.join(', ')
+                        : typeof value === 'object'
+                          ? JSON.stringify(value)
+                          : String(value);
+                    return `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(text)}</li>`;
+                })
+                .join('');
+            summaryBlock.innerHTML = summaryRows ? `<div><strong>Summary</strong><ul>${summaryRows}</ul></div>` : '';
 
-            let summaryHtml = '';
-            if (payload.summary && Object.keys(payload.summary).length > 0) {
-                const parts = Object.entries(payload.summary)
-                    .filter(([key]) => key !== 'creation_conflicts')
-                    .map(([key, value]) => {
-                        const formattedValue = Array.isArray(value)
-                            ? value.join(', ')
-                            : (typeof value === 'object' ? JSON.stringify(value) : String(value));
-                        return `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(formattedValue)}</li>`;
-                    }).join('');
-                summaryHtml = `<div><strong>Summary</strong><ul>${parts}</ul></div>`;
-            }
-
-            let conflictsHtml = '';
-            if (creationConflicts.length > 0) {
-                const conflictItems = creationConflicts.map((conflict) => {
-                    const field = conflict.field === 'name_short' ? 'name_short' : 'name';
-                    const existingStudy = conflict.existing_study_name_short
+            const conflicts = summary.creation_conflicts || [];
+            errorsBlock.innerHTML =
+                listBlock('Uniqueness conflicts', conflicts, (conflict) => {
+                    const existing = conflict.existing_study_name_short
                         ? ` is already used by study <code>${escapeHtml(conflict.existing_study_name_short)}</code>`
                         : ' already exists';
-                    const existingStudyName = conflict.existing_study_name
-                        ? ` (study name: ${escapeHtml(conflict.existing_study_name)})`
-                        : '';
-                    return `<li><strong>${escapeHtml(field)}</strong> '${escapeHtml(conflict.value)}'${existingStudy}${existingStudyName}</li>`;
-                }).join('');
-                conflictsHtml = `<div><strong>Uniqueness conflicts</strong><ul>${conflictItems}</ul></div>`;
-            }
+                    return `<strong>${escapeHtml(conflict.field)}</strong> '${escapeHtml(conflict.value)}'${existing}`;
+                }) +
+                listBlock('Errors', payload.errors || [], (error) => {
+                    const path = error.path ? `<br><span class="hint">Path: ${escapeHtml(error.path)}</span>` : '';
+                    const type = error.type ? `<br><span class="hint">Type: ${escapeHtml(error.type)}</span>` : '';
+                    return `${escapeHtml(error.message || 'Validation error')}${path}${type}`;
+                });
 
-            let errorsHtml = '';
-            if (payload.errors && payload.errors.length > 0) {
-                const items = payload.errors.map((error) => {
-                    const message = escapeHtml(error.message || 'Validation error');
-                    const path = error.path ? `<br><span class="subtle">Path: ${escapeHtml(error.path)}</span>` : '';
-                    const type = error.type ? `<br><span class="subtle">Type: ${escapeHtml(error.type)}</span>` : '';
-                    return `<li>${message}${path}${type}</li>`;
-                }).join('');
-                errorsHtml = `<div><strong>Errors</strong><ul>${items}</ul></div>`;
-            }
-
-            let warningsHtml = '';
-            if (payload.warnings && payload.warnings.length > 0) {
-                const items = payload.warnings.map((warning) => {
-                    const message = escapeHtml(warning.message || 'Warning');
-                    const path = warning.path ? `<br><span class="subtle">Path: ${escapeHtml(warning.path)}</span>` : '';
-                    return `<li>${message}${path}</li>`;
-                }).join('');
-                warningsHtml = `<div><strong>Notes</strong><ul>${items}</ul></div>`;
-            }
-
-            resultBox.innerHTML = `
-                <div class="result-title ${titleClass}">${titleText}</div>
-                <p class="subtle">Mode: <code>${escapeHtml(mode)}</code></p>
-                ${summaryHtml}
-                ${conflictsHtml}
-                ${errorsHtml}
-                ${warningsHtml}
-            `;
-
-            updateFullStudySelector(payload);
-            updateCreateStudyActionState(payload);
-            updateEmbeddedStudySelector(payload);
-            updateEmbeddedCreateStudyActionState(payload);
-        }
-
-        function updateCreateStudyActionState(payload) {
-            if (!createStudyBtn || !createStudyHint) {
-                return;
-            }
-
-            const isFullStudyPayload = payload && payload.mode === 'full_study';
-            const isValidationSuccess = isFullStudyPayload && payload.ok === true;
-            const creationEligible = Boolean(payload?.summary?.creation_eligible);
-
-            lastFullStudyValidationEligible = isValidationSuccess && creationEligible;
-            createStudyBtn.disabled = !lastFullStudyValidationEligible;
-
-            if (!isFullStudyPayload) {
-                createStudyHint.textContent =
-                    'Validate full study first. Creation is only allowed when no existing study uses the same name_short.';
-                return;
-            }
-
-            if (!isValidationSuccess) {
-                createStudyHint.textContent =
-                    'Validation failed. Fix errors before creating a study.';
-                return;
-            }
-
-            if (creationEligible) {
-                const duplicateNameWarnings = Array.isArray(payload?.summary?.creation_warnings)
-                    ? payload.summary.creation_warnings
-                    : [];
-                if (duplicateNameWarnings.length > 0) {
-                    const details = duplicateNameWarnings
-                        .map((warning) => `'${warning.value}' is also used by study '${warning.existing_study_name_short}'`)
-                        .join('; ');
-                    createStudyHint.textContent =
-                        `Validation passed, you can create this study now. Note: ${details} ` +
-                        'Long study names do not have to be unique; the name_short identifies a study.';
-                    return;
-                }
-                createStudyHint.textContent =
-                    'Validation passed and no conflicts found. You can create this study now.';
-                return;
-            }
-
-            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
-                ? payload.summary.creation_conflicts
-                : [];
-            if (creationConflicts.length > 0) {
-                const details = creationConflicts
-                    .map((conflict) => `name_short '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`)
-                    .join('; ');
-                createStudyHint.textContent =
-                    `Validation passed, but creation is blocked: ${details}. ` +
-                    'Look up that study by its name_short on the overview page.';
-                return;
-            }
-
-            createStudyHint.textContent =
-                'Validation passed, but creation is blocked because the name_short already exists.';
-        }
-
-        function setFullStudySelectorOptions(studyNameShorts, preserveCurrentValue = true) {
-            if (!fullStudySelectorField || !fullStudyNameShortSelect) {
-                return;
-            }
-
-            const previousValue = preserveCurrentValue
-                ? fullStudyNameShortSelect.value
-                : '';
-            const uniqueStudies = [...new Set(
-                (studyNameShorts || [])
-                    .map((value) => String(value || '').trim())
-                    .filter((value) => value.length > 0)
-            )];
-
-            fullStudyNameShortSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = '-- Select study_name_short --';
-            fullStudyNameShortSelect.appendChild(placeholderOption);
-
-            uniqueStudies.forEach((studyNameShort) => {
-                const option = document.createElement('option');
-                option.value = studyNameShort;
-                option.textContent = studyNameShort;
-                fullStudyNameShortSelect.appendChild(option);
+            warningsBlock.innerHTML = listBlock('Notes', payload.warnings || [], (warning) => {
+                const path = warning.path ? `<br><span class="hint">Path: ${escapeHtml(warning.path)}</span>` : '';
+                return `${escapeHtml(warning.message || 'Note')}${path}`;
             });
 
-            if (previousValue && uniqueStudies.includes(previousValue)) {
-                fullStudyNameShortSelect.value = previousValue;
-            } else if (uniqueStudies.length === 1) {
-                fullStudyNameShortSelect.value = uniqueStudies[0];
-            } else {
-                fullStudyNameShortSelect.value = '';
-            }
-
-            fullStudySelectorField.style.display = uniqueStudies.length > 1 ? 'block' : 'none';
-        }
-
-        function setEmbeddedStudySelectorOptions(studyNameShorts, preserveCurrentValue = true) {
-            if (!embeddedStudySelectorField || !embeddedStudyNameShortSelect) {
-                return;
-            }
-
-            const previousValue = preserveCurrentValue
-                ? embeddedStudyNameShortSelect.value
-                : '';
-            const uniqueStudies = [...new Set(
-                (studyNameShorts || [])
-                    .map((value) => String(value || '').trim())
-                    .filter((value) => value.length > 0)
-            )];
-
-            embeddedStudyNameShortSelect.innerHTML = '';
-            const placeholderOption = document.createElement('option');
-            placeholderOption.value = '';
-            placeholderOption.textContent = '-- Select study_name_short --';
-            embeddedStudyNameShortSelect.appendChild(placeholderOption);
-
-            uniqueStudies.forEach((studyNameShort) => {
-                const option = document.createElement('option');
-                option.value = studyNameShort;
-                option.textContent = studyNameShort;
-                embeddedStudyNameShortSelect.appendChild(option);
-            });
-
-            if (previousValue && uniqueStudies.includes(previousValue)) {
-                embeddedStudyNameShortSelect.value = previousValue;
-            } else if (uniqueStudies.length === 1) {
-                embeddedStudyNameShortSelect.value = uniqueStudies[0];
-            } else {
-                embeddedStudyNameShortSelect.value = '';
-            }
-
-            embeddedStudySelectorField.style.display = uniqueStudies.length > 1 ? 'block' : 'none';
-        }
-
-        async function updateFullStudySelectorFromUploadedFile() {
-            if (!fullStudyForm) {
-                return;
-            }
-
-            const studiesFileInput = fullStudyForm.querySelector('input[name="studies_config_file"]');
-            if (!studiesFileInput || !studiesFileInput.files || !studiesFileInput.files.length) {
-                setFullStudySelectorOptions([], false);
-                return;
-            }
-
-            const studiesFile = studiesFileInput.files[0];
-            try {
-                const rawText = await studiesFile.text();
-                const parsed = JSON.parse(rawText);
-                const studies = Array.isArray(parsed?.studies) ? parsed.studies : [];
-                const names = studies
-                    .map((study) => (study && typeof study === 'object' ? study.name_short : null))
-                    .filter((name) => typeof name === 'string' && name.trim().length > 0)
-                    .map((name) => name.trim());
-
-                setFullStudySelectorOptions(names, false);
-            } catch (_error) {
-                // Keep selector hidden when file is invalid; backend submission will show validation details.
-                setFullStudySelectorOptions([], false);
-            }
-        }
-
-        async function updateEmbeddedStudySelectorFromUploadedFile() {
-            if (!embeddedStudyForm) {
-                return;
-            }
-
-            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
-            if (!studiesFileInput || !studiesFileInput.files || !studiesFileInput.files.length) {
-                setEmbeddedStudySelectorOptions([], false);
-                return;
-            }
-
-            const studiesFile = studiesFileInput.files[0];
-            try {
-                const rawText = await studiesFile.text();
-                const parsed = JSON.parse(rawText);
-                const studies = Array.isArray(parsed?.studies) ? parsed.studies : [];
-                const names = studies
-                    .map((study) => (study && typeof study === 'object' ? study.name_short : null))
-                    .filter((name) => typeof name === 'string' && name.trim().length > 0)
-                    .map((name) => name.trim());
-
-                setEmbeddedStudySelectorOptions(names, false);
-            } catch (_error) {
-                // Keep selector hidden when file is invalid; backend submission will show validation details.
-                setEmbeddedStudySelectorOptions([], false);
-            }
-        }
-
-        function updateFullStudySelector(payload) {
-            if (!fullStudyForm || !fullStudySelectorField || !fullStudyNameShortSelect) {
-                return;
-            }
-
-            const mode = payload && payload.mode;
-            const summary = (payload && payload.summary) || {};
-            const availableStudies = Array.isArray(summary.available_studies)
-                ? summary.available_studies
-                : [];
-            const needsSelection = mode === 'full_study' && summary.selection_required === true;
-
-            if (!needsSelection) {
-                if (payload && payload.ok) {
-                    fullStudySelectorField.style.display = 'none';
-                }
-                return;
-            }
-
-            setFullStudySelectorOptions(availableStudies, true);
-            fullStudySelectorField.style.display = 'block';
-        }
-
-        function updateEmbeddedStudySelector(payload) {
-            if (!embeddedStudyForm || !embeddedStudySelectorField || !embeddedStudyNameShortSelect) {
-                return;
-            }
-
-            const mode = payload && payload.mode;
-            const summary = (payload && payload.summary) || {};
-            const availableStudies = Array.isArray(summary.available_studies)
-                ? summary.available_studies
-                : [];
-            const needsSelection = mode === 'full_study_embedded' && summary.selection_required === true;
-
-            if (!needsSelection) {
-                if (payload && payload.ok) {
-                    embeddedStudySelectorField.style.display = 'none';
-                }
-                return;
-            }
-
-            setEmbeddedStudySelectorOptions(availableStudies, true);
-            embeddedStudySelectorField.style.display = 'block';
-        }
-
-        async function submitValidationForm(form, mode) {
-            const submitButton = form.querySelector('button[type="submit"]');
-            const fd = new FormData();
-            fd.append('mode', mode);
-
-            if (mode === 'single_activities') {
-                const fileInput = form.querySelector('input[name="activities_file"]');
-                if (!fileInput.files.length) {
-                    throw new Error('Please select one activities file.');
-                }
-                fd.append('activities_file', fileInput.files[0]);
-            }
-
-            if (mode === 'activities_multilang') {
-                const supported = form.querySelector('input[name="supported_languages_csv"]').value.trim();
-                const defaultLanguage = form.querySelector('input[name="default_language"]').value.trim();
-                const languageMap = form.querySelector('textarea[name="activities_language_map"]').value.trim();
-                const filesInput = form.querySelector('input[name="activities_files"]');
-
-                if (!supported || !defaultLanguage) {
-                    throw new Error('Please provide supported languages and a default language.');
-                }
-                if (!filesInput.files.length) {
-                    throw new Error('Please upload activities files for all languages.');
-                }
-
-                fd.append('supported_languages_csv', supported);
-                fd.append('default_language', defaultLanguage);
-                if (languageMap) {
-                    fd.append('activities_language_map', languageMap);
-                }
-                for (const file of filesInput.files) {
-                    fd.append('activities_files', file);
-                }
-            }
-
-            if (mode === 'full_study') {
-                const studiesFileInput = form.querySelector('input[name="studies_config_file"]');
-                const activitiesInput = form.querySelector('input[name="activities_files"]');
-                const languageMap = form.querySelector('textarea[name="activities_language_map"]').value.trim();
-                const selectedStudyNameShort = form.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
-
-                if (!studiesFileInput.files.length) {
-                    throw new Error('Please upload one studies_config file.');
-                }
-                if (!activitiesInput.files.length) {
-                    throw new Error('Please upload related activities files.');
-                }
-
-                fd.append('studies_config_file', studiesFileInput.files[0]);
-                if (selectedStudyNameShort) {
-                    fd.append('full_study_name_short', selectedStudyNameShort);
-                }
-                if (languageMap) {
-                    fd.append('activities_language_map', languageMap);
-                }
-                for (const file of activitiesInput.files) {
-                    fd.append('activities_files', file);
-                }
-            }
-
-            if (mode === 'full_study_embedded') {
-                const studiesFileInput = form.querySelector('input[name="studies_config_file"]');
-                const selectedStudyNameShort = form.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
-
-                if (!studiesFileInput.files.length) {
-                    throw new Error('Please upload one studies_config file.');
-                }
-
-                fd.append('studies_config_file', studiesFileInput.files[0]);
-                if (selectedStudyNameShort) {
-                    fd.append('full_study_name_short', selectedStudyNameShort);
-                }
-            }
-
-            submitButton.disabled = true;
-            submitButton.textContent = 'Validating...';
-
-            try {
-                const response = await fetch('{{ request.scope.root_path }}/api/admin/validate/files', {
-                    method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin',
+            // Several studies in one file and none selected yet: ask for the choice.
+            if (summary.selection_required && Array.isArray(summary.available_studies)) {
+                studySelectorField.style.display = 'block';
+                studySelect.innerHTML = '';
+                summary.available_studies.forEach((name, index) => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    if (index === 0) {
+                        option.selected = true;
+                    }
+                    studySelect.appendChild(option);
                 });
-                const payload = await response.json();
-                renderResult(payload);
-            } finally {
-                submitButton.disabled = false;
-                submitButton.textContent = mode === 'single_activities'
-                    ? 'Validate single file'
-                    : (mode === 'activities_multilang'
-                        ? 'Validate language set'
-                        : (mode === 'full_study' ? 'Validate full study' : 'Validate embedded full study'));
+                validateBtn.disabled = false;
             }
+
+            if (payload.ok && summary.study_name_short) {
+                renderReview(summary);
+            }
+
+            resultBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        async function createStudyFromFullStudyForm() {
-            if (!fullStudyForm) {
+        function showSuccess(nameShort) {
+            if (!nameShort) {
                 return;
             }
-            if (!lastFullStudyValidationEligible) {
-                throw new Error('Please run a successful full study validation without conflicts before creating.');
-            }
+            const encoded = encodeURIComponent(nameShort);
+            successMessage.textContent = `Study '${nameShort}' was created successfully.`;
+            successStudyLink.href = `${rootPath}/admin/study/${encoded}`;
+            successParticipantsLink.href = `${rootPath}/admin/participant-management?study_name_short=${encoded}`;
+            successInvitesLink.href = `${rootPath}/api/admin/studies/${encoded}/export-invitation-links-csv`;
+            successPanel.hidden = false;
+            successPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
 
-            const studiesFileInput = fullStudyForm.querySelector('input[name="studies_config_file"]');
-            const activitiesInput = fullStudyForm.querySelector('input[name="activities_files"]');
-            const languageMap = fullStudyForm.querySelector('textarea[name="activities_language_map"]').value.trim();
-            const selectedStudyNameShort = fullStudyForm.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
+        // --- create-study form -------------------------------------------------
 
-            if (!studiesFileInput.files.length) {
-                throw new Error('Please upload one studies_config file.');
-            }
-            if (!activitiesInput.files.length) {
-                throw new Error('Please upload related activities files.');
-            }
+        configInput.addEventListener('change', onConfigSelected);
+        studySelect.addEventListener('change', () => {
+            resetValidation();
+            applySelectedStudy();
+        });
+        activitiesInput.addEventListener('change', () => {
+            resetValidation();
+            setStatus(createStatus, '');
+        });
+        languageMapInput.addEventListener('input', resetValidation);
+        reviewConfirmed.addEventListener('change', () => {
+            createBtn.disabled = !(state.creationAllowed && reviewConfirmed.checked);
+        });
 
-            const fd = new FormData();
-            fd.append('mode', 'full_study');
-            fd.append('studies_config_file', studiesFileInput.files[0]);
-            if (selectedStudyNameShort) {
-                fd.append('full_study_name_short', selectedStudyNameShort);
-            }
-            if (languageMap) {
-                fd.append('activities_language_map', languageMap);
-            }
-            for (const file of activitiesInput.files) {
-                fd.append('activities_files', file);
-            }
-
-            createStudyBtn.disabled = true;
-            createStudyBtn.textContent = 'Creating...';
-            setCreateStatus('Creating study...', 'subtle');
+        studyForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            resetValidation();
             try {
-                const response = await fetch('{{ request.scope.root_path }}/api/admin/studies/create-from-files', {
+                validateBtn.disabled = true;
+                validateBtn.textContent = 'Validating...';
+                const payload = await adminFetch('/api/admin/validate/files', {
                     method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin',
+                    body: buildStudyFormData(),
                 });
-                const payload = await response.json();
                 renderResult(payload);
-
-                if (payload && payload.ok) {
-                    const createdStudyNameShort = payload?.summary?.study_name_short || selectedStudyNameShort || 'selected study';
-                    setCreateStatus(`Study '${createdStudyNameShort}' was created successfully.`, 'ok');
-                } else {
-                    const firstErrorMessage = payload?.errors?.[0]?.message || 'Study creation failed. Please review the errors below.';
-                    setCreateStatus(firstErrorMessage, 'error');
-                }
+            } catch (error) {
+                renderResult({
+                    ok: false,
+                    mode: state.mode || 'unknown',
+                    summary: {},
+                    errors: [{ message: error.message || String(error), type: 'client_error' }],
+                });
             } finally {
-                createStudyBtn.textContent = 'Create study (create_only, all_or_nothing)';
-                createStudyBtn.disabled = !lastFullStudyValidationEligible;
+                validateBtn.textContent = 'Validate';
+                validateBtn.disabled = !state.mode;
             }
-        }
+        });
 
-        function updateEmbeddedCreateStudyActionState(payload) {
-            if (!createEmbeddedStudyBtn || !createEmbeddedStudyHint) {
-                return;
-            }
-
-            const isEmbeddedPayload = payload && payload.mode === 'full_study_embedded';
-            const isValidationSuccess = isEmbeddedPayload && payload.ok === true;
-            const creationEligible = Boolean(payload?.summary?.creation_eligible);
-
-            lastEmbeddedStudyValidationEligible = isValidationSuccess && creationEligible;
-            createEmbeddedStudyBtn.disabled = !lastEmbeddedStudyValidationEligible;
-
-            if (!isEmbeddedPayload) {
-                createEmbeddedStudyHint.textContent =
-                    'Validate embedded full study first. Creation is only allowed when no existing study uses the same name_short.';
-                return;
-            }
-
-            if (!isValidationSuccess) {
-                createEmbeddedStudyHint.textContent =
-                    'Validation failed. Fix errors before creating a study.';
-                return;
-            }
-
-            if (creationEligible) {
-                const duplicateNameWarnings = Array.isArray(payload?.summary?.creation_warnings)
-                    ? payload.summary.creation_warnings
-                    : [];
-                if (duplicateNameWarnings.length > 0) {
-                    const details = duplicateNameWarnings
-                        .map((warning) => `'${warning.value}' is also used by study '${warning.existing_study_name_short}'`)
-                        .join('; ');
-                    createEmbeddedStudyHint.textContent =
-                        `Validation passed, you can create this study now. Note: ${details} ` +
-                        'Long study names do not have to be unique; the name_short identifies a study.';
-                    return;
-                }
-                createEmbeddedStudyHint.textContent =
-                    'Validation passed and no conflicts found. You can create this study now.';
-                return;
-            }
-
-            const creationConflicts = Array.isArray(payload?.summary?.creation_conflicts)
-                ? payload.summary.creation_conflicts
-                : [];
-            if (creationConflicts.length > 0) {
-                const details = creationConflicts
-                    .map((conflict) => `name_short '${conflict.value}' is already used by study '${conflict.existing_study_name_short}'`)
-                    .join('; ');
-                createEmbeddedStudyHint.textContent =
-                    `Validation passed, but creation is blocked: ${details}. ` +
-                    'Look up that study by its name_short on the overview page.';
-                return;
-            }
-
-            createEmbeddedStudyHint.textContent =
-                'Validation passed, but creation is blocked because the name_short already exists.';
-        }
-
-        async function createStudyFromEmbeddedForm() {
-            if (!embeddedStudyForm) {
-                return;
-            }
-            if (!lastEmbeddedStudyValidationEligible) {
-                throw new Error('Please run a successful embedded full study validation without conflicts before creating.');
-            }
-
-            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
-            const selectedStudyNameShort = embeddedStudyForm.querySelector('select[name="full_study_name_short"]')?.value?.trim() || '';
-
-            if (!studiesFileInput.files.length) {
-                throw new Error('Please upload one studies_config file.');
-            }
-
-            const fd = new FormData();
-            fd.append('mode', 'full_study_embedded');
-            fd.append('studies_config_file', studiesFileInput.files[0]);
-            if (selectedStudyNameShort) {
-                fd.append('full_study_name_short', selectedStudyNameShort);
-            }
-
-            createEmbeddedStudyBtn.disabled = true;
-            createEmbeddedStudyBtn.textContent = 'Creating...';
-            setEmbeddedCreateStatus('Creating study...', 'subtle');
+        createBtn.addEventListener('click', async () => {
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+            setStatus(createStatus, 'Creating study...');
             try {
-                const response = await fetch('{{ request.scope.root_path }}/api/admin/studies/create-from-files', {
+                const payload = await adminFetch('/api/admin/studies/create-from-files', {
                     method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin',
+                    body: buildStudyFormData(),
                 });
-                const payload = await response.json();
                 renderResult(payload);
-
                 if (payload && payload.ok) {
-                    const createdStudyNameShort = payload?.summary?.study_name_short || selectedStudyNameShort || 'selected study';
-                    setEmbeddedCreateStatus(`Study '${createdStudyNameShort}' was created successfully.`, 'ok');
-                } else {
-                    const firstErrorMessage = payload?.errors?.[0]?.message || 'Study creation failed. Please review the errors below.';
-                    setEmbeddedCreateStatus(firstErrorMessage, 'error');
+                    const created = (payload.summary && payload.summary.study_name_short) || studySelect.value;
+                    setStatus(createStatus, 'Created.', 'ok');
+                    showSuccess(created);
                 }
+            } catch (error) {
+                setStatus(createStatus, error.message || String(error), 'error');
             } finally {
-                createEmbeddedStudyBtn.textContent = 'Create study (create_only, all_or_nothing)';
-                createEmbeddedStudyBtn.disabled = !lastEmbeddedStudyValidationEligible;
+                createBtn.textContent = 'Create study';
+                createBtn.disabled = !(state.creationAllowed && reviewConfirmed.checked);
             }
-        }
+        });
 
-        forms.forEach((form) => {
+        // --- activity-only checks (secondary forms) ----------------------------
+
+        document.querySelectorAll('.validation-form').forEach((form) => {
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
                 const mode = form.dataset.mode;
+                const submitButton = form.querySelector('button[type="submit"]');
                 try {
-                    await submitValidationForm(form, mode);
+                    const formData = new FormData();
+                    formData.append('mode', mode);
+
+                    if (mode === 'single_activities') {
+                        const fileInput = form.querySelector('input[name="activities_file"]');
+                        if (!fileInput.files.length) {
+                            throw new Error('Please select one activities file.');
+                        }
+                        formData.append('activities_file', fileInput.files[0]);
+                    } else {
+                        const supported = form.querySelector('input[name="supported_languages_csv"]').value.trim();
+                        const defaultLanguage = form.querySelector('input[name="default_language"]').value.trim();
+                        const languageMap = form.querySelector('textarea[name="activities_language_map"]').value.trim();
+                        const filesInput = form.querySelector('input[name="activities_files"]');
+                        if (!supported || !defaultLanguage) {
+                            throw new Error('Please provide supported languages and a default language.');
+                        }
+                        if (!filesInput.files.length) {
+                            throw new Error('Please upload activities files for all languages.');
+                        }
+                        formData.append('supported_languages_csv', supported);
+                        formData.append('default_language', defaultLanguage);
+                        if (languageMap) {
+                            formData.append('activities_language_map', languageMap);
+                        }
+                        for (const file of filesInput.files) {
+                            formData.append('activities_files', file);
+                        }
+                    }
+
+                    submitButton.disabled = true;
+                    const originalText = submitButton.textContent;
+                    submitButton.textContent = 'Validating...';
+                    try {
+                        const payload = await adminFetch('/api/admin/validate/files', {
+                            method: 'POST',
+                            body: formData,
+                        });
+                        renderResult(payload);
+                    } finally {
+                        submitButton.textContent = originalText;
+                        submitButton.disabled = false;
+                    }
                 } catch (error) {
                     renderResult({
                         ok: false,
                         mode,
                         summary: {},
-                        errors: [{ message: error.message || String(error), path: null, type: 'client_error' }],
+                        errors: [{ message: error.message || String(error), type: 'client_error' }],
                     });
                 }
             });
         });
-
-        if (fullStudyForm) {
-            const studiesFileInput = fullStudyForm.querySelector('input[name="studies_config_file"]');
-            if (studiesFileInput) {
-                studiesFileInput.addEventListener('change', () => {
-                    updateFullStudySelectorFromUploadedFile();
-                    lastFullStudyValidationEligible = false;
-                    updateCreateStudyActionState(null);
-                    setCreateStatus('');
-                });
-            }
-
-            const activitiesInput = fullStudyForm.querySelector('input[name="activities_files"]');
-            if (activitiesInput) {
-                activitiesInput.addEventListener('change', () => {
-                    lastFullStudyValidationEligible = false;
-                    updateCreateStudyActionState(null);
-                    setCreateStatus('');
-                });
-            }
-
-            const languageMapInput = fullStudyForm.querySelector('textarea[name="activities_language_map"]');
-            if (languageMapInput) {
-                languageMapInput.addEventListener('input', () => {
-                    lastFullStudyValidationEligible = false;
-                    updateCreateStudyActionState(null);
-                    setCreateStatus('');
-                });
-            }
-
-            if (createStudyBtn) {
-                createStudyBtn.addEventListener('click', async () => {
-                    try {
-                        await createStudyFromFullStudyForm();
-                    } catch (error) {
-                        setCreateStatus(error.message || String(error), 'error');
-                        renderResult({
-                            ok: false,
-                            mode: 'create_only',
-                            summary: {},
-                            errors: [{
-                                message: error.message || String(error),
-                                path: null,
-                                type: 'client_error',
-                            }],
-                        });
-                    }
-                });
-            }
-        }
-
-        if (embeddedStudyForm) {
-            const studiesFileInput = embeddedStudyForm.querySelector('input[name="studies_config_file"]');
-            if (studiesFileInput) {
-                studiesFileInput.addEventListener('change', () => {
-                    updateEmbeddedStudySelectorFromUploadedFile();
-                    lastEmbeddedStudyValidationEligible = false;
-                    updateEmbeddedCreateStudyActionState(null);
-                    setEmbeddedCreateStatus('');
-                });
-            }
-
-            if (createEmbeddedStudyBtn) {
-                createEmbeddedStudyBtn.addEventListener('click', async () => {
-                    try {
-                        await createStudyFromEmbeddedForm();
-                    } catch (error) {
-                        setEmbeddedCreateStatus(error.message || String(error), 'error');
-                        renderResult({
-                            ok: false,
-                            mode: 'create_only',
-                            summary: {},
-                            errors: [{
-                                message: error.message || String(error),
-                                path: null,
-                                type: 'client_error',
-                            }],
-                        });
-                    }
-                });
-            }
-        }
     </script>
-</body>
-</html>
+{% endblock %}
