@@ -7,11 +7,9 @@
 [![E2E Tests](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml)
 
 
-TRAC is a web-based research software for time-use research: users can report what they did during one or more days by selecting activities and placing them on one or more timelines per day. E.g., depending on the study, there may be one timeline for 'Primary Activity', and another one for 'Secondary Activity', allowing users to report things like listening to music while riding on the subway.
+TRAC is a web-based research software for time-use research: users can report what they did during one or more days by selecting activities and placing them on one a timeline that can cover several days, similar to filling out a calendar. You can report several activities at once, like listening to music while cooking.
 
-A very early version of the frontend was based on [o-timeusediary](https://github.com/andreifoldes/o-timeusediary) by Andrei Tamas Foldes *et al.* but heavily adapted, and the backend was written from scratch.
-
-When using the software in this repo for academical research, please cite it using this [DOI](https://doi.org/10.5281/zenodo.19594929). We highly recommend you also cite [Andrei Tamas Foldes' paper](https://doi.org/10.32797/jtur-2020-1) `Time use diary design for our times - an overview, presenting a Click-and-Drag Diary Instrument (CaDDI) for online application`.
+When using the software in this repo for academical research, please cite it using this [DOI](https://doi.org/10.5281/zenodo.19594929).
 
 
 ## Installation Instructions
@@ -395,7 +393,7 @@ TRAC was written by Tim Schäfer as part of employment at the [Department of Cog
 
 Copyright 2025-2026 Max-Planck Institute for Empirical Aesthetics.
 
-The frontend is based on [o-timeusediary (O-TUD) by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary).
+The old frontend in `frontend/` is based on [o-timeusediary (O-TUD) by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary), the new mobile-first frontend in `frontend-new/` is **not**.
 
 Both O-TUD and TRAC are published under the very permissive [MIT License](./LICENSE).
 
