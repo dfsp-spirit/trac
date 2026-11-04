@@ -21,14 +21,13 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, delete, select
 
-from .api_deps.activities import get_study_activity_codes
 from .api_deps.available_activities import get_study_activities_config_model
 from .api_deps.diary_access import (
     DiaryContext,
@@ -43,6 +42,10 @@ from .coverage import (
     day_meets_requirements,
     required_coverage_by_timeline,
     to_day_relative,
+)
+from .parsers.activities_config import (
+    get_activity_codes_by_timeline,
+    get_activity_codes_set,
 )
 
 from .database import get_session
@@ -303,11 +306,16 @@ def _overlap_violation(
 # --------------------------------------------------------------------------- #
 # Serialisation
 # --------------------------------------------------------------------------- #
-def _serialize_activity(row: Activity, index_by_day_id: Dict[int, int]) -> dict:
+def _serialize_activity(
+    row: Activity,
+    index_by_day_id: Dict[int, int],
+    timeline_names: Optional[Dict[int, str]] = None,
+) -> dict:
     return {
         "client_uuid": row.client_uuid,
         "group_id": row.group_id,
         "day_label_index": index_by_day_id.get(row.day_label_id),
+        "timeline_key": (timeline_names or {}).get(row.timeline_id),
         "activity_code": row.activity_code,
         "activity_name": row.activity_name,
         "activity_path": row.activity_path_frontend,
@@ -335,16 +343,21 @@ def _row_uuid(client_uuid: Optional[str], day_index: int) -> str:
 
 
 def _activity_rows(
-    session: Session, study: Study, participant_id: str
+    session: Session, study: Study, participant_id: str, timeline_id: Optional[int] = None
 ) -> List[Activity]:
-    return list(
-        session.exec(
-            select(Activity).where(
-                Activity.study_id == study.id,
-                Activity.participant_id == participant_id,
-            )
-        ).all()
+    statement = select(Activity).where(
+        Activity.study_id == study.id,
+        Activity.participant_id == participant_id,
     )
+    if timeline_id is not None:
+        statement = statement.where(Activity.timeline_id == timeline_id)
+    return list(session.exec(statement).all())
+
+
+def _timeline_names(session: Session, study: Study) -> Dict[int, str]:
+    """``{timeline_id: key}`` so a row can say which timeline it belongs to."""
+    timelines = session.exec(select(Timeline).where(Timeline.study_id == study.id)).all()
+    return {int(timeline.id): timeline.name for timeline in timelines}
 
 
 def _validate_codes_and_frequency(
@@ -353,9 +366,20 @@ def _validate_codes_and_frequency(
     study: Study,
     items: Sequence[ActivityFields],
 ) -> None:
-    valid_codes = get_study_activity_codes(study.name_short, session)
+    activities_config, _source, _lang = get_study_activities_config_model(
+        session=session, study=study, lang=None
+    )
+    # Codes are unique across timelines (the catalogue parser enforces it), so a
+    # named timeline can be checked on its own.
+    codes_by_timeline = get_activity_codes_by_timeline(activities_config)
+    all_codes = get_activity_codes_set(activities_config)
+
+    def allowed_codes(item: ActivityFields) -> Set[int]:
+        """A code from another timeline is refused instead of being re-homed."""
+        return codes_by_timeline.get(item.timeline_key or "", all_codes)
+
     invalid = [
-        item.activity_code for item in items if item.activity_code not in valid_codes
+        item.activity_code for item in items if item.activity_code not in allowed_codes(item)
     ]
     if invalid:
         raise HTTPException(
@@ -367,9 +391,6 @@ def _validate_codes_and_frequency(
             },
         )
 
-    activities_config, _source, _lang = get_study_activities_config_model(
-        session=session, study=study, lang=None
-    )
     allowed_by_code = allowed_frequency_keys_by_code(activities_config)
     errors: List[dict] = []
     for item in items:
@@ -400,16 +421,41 @@ def _validate_codes_and_frequency(
 def get_diary(
     context: DiaryContext = Depends(get_readable_diary_context),
     session: Session = Depends(get_session),
+    timelines: str = Query(
+        "all",
+        description=(
+            "`resolved` returns only the timeline this participant's diary uses "
+            "(the new frontend's mode, D1); `all` returns every timeline's rows."
+        ),
+    ),
 ):
     """The whole diary in one request: days, coverage, activities and limits."""
     study = context.study
     participant_id = context.study_participant.participant_id
 
+    if timelines not in ("all", "resolved"):
+        raise HTTPException(
+            status_code=400,
+            detail="`timelines` must be 'all' or 'resolved'.",
+        )
+
     day_labels = _ordered_day_labels(session, study)
     index_by_day_id = _index_by_day_id(day_labels)
     timeline = _resolve_timeline(session, study)
-    rows = _activity_rows(session, study, participant_id)
+    single = timelines == "resolved"
+    rows = _activity_rows(
+        session, study, participant_id, timeline.id if single else None
+    )
     _, covered, required = _coverage_snapshot(session, study, rows)
+    if single:
+        # A timeline the participant cannot see must not hold the day back: with
+        # every requirement kept, a two-timeline study would never complete.
+        required = {
+            timeline_id: minutes
+            for timeline_id, minutes in required.items()
+            if timeline_id == timeline.id
+        }
+    timeline_names = _timeline_names(session, study)
 
     days = []
     for label in day_labels:
@@ -448,7 +494,9 @@ def get_diary(
             "max_overlap": timeline.max_overlap,
         },
         "days": days,
-        "activities": [_serialize_activity(row, index_by_day_id) for row in rows],
+        "activities": [
+            _serialize_activity(row, index_by_day_id, timeline_names) for row in rows
+        ],
     }
 
 
@@ -803,7 +851,10 @@ def create_activities(
         "group_id": group_id,
         "created": len(created),
         "results": results,
-        "activities": [_serialize_activity(row, index_by_day_id) for row in created],
+        "activities": [
+            _serialize_activity(row, index_by_day_id, _timeline_names(session, study))
+            for row in created
+        ],
     }
 
 
@@ -922,7 +973,7 @@ def update_activity(
         )
     session.refresh(row)
 
-    return _serialize_activity(row, index_by_day_id)
+    return _serialize_activity(row, index_by_day_id, _timeline_names(session, study))
 
 
 @router.delete("/activities/{client_uuid}")

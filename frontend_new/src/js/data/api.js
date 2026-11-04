@@ -73,8 +73,13 @@ export function createApi(baseUrl, studyName, participantId) {
   }
 
   return {
-    /** @returns {Promise<import('../domain/diary.js').ApiDiary>} */
-    getDiary: () => request(`${diaryRoot}/diary`),
+    /**
+     * @param {{ singleTimeline?: boolean }} [options] `singleTimeline` asks for
+     *   the one timeline this diary uses, which is the rewrite's mode (D1).
+     * @returns {Promise<import('../domain/diary.js').ApiDiary>}
+     */
+    getDiary: ({ singleTimeline = false } = {}) =>
+      request(`${diaryRoot}/diary${singleTimeline ? '?timelines=resolved' : ''}`),
 
     /**
      * The study's activity catalogue, in the interface language.

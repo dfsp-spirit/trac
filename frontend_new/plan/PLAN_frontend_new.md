@@ -41,7 +41,7 @@ new, small, component-structured implementation of the entry page, not a rewrite
 
 | # | Decision |
 | --- | --- |
-| D1 | **One timeline per study.** The `primary`/`secondary` split disappears from the participant UI and the catalogue: no tabs, no switch button, no "what may I log as secondary". One `timelines` row per study is kept, so admin and exports are unaffected. |
+| D1 | **One timeline per study.** The `primary`/`secondary` split disappears from the participant UI and the catalogue: no tabs, no switch button, no "what may I log as secondary". One `timelines` row per study is kept, so admin and exports are unaffected. The app reads `GET /diary?timelines=resolved` (only the timeline the server resolved, including its coverage and its requirement) and sends `timeline_key` on every create, which the server checks against that timeline's codes. A study that still defines two timelines is handled per deployment by `multiTimelinePolicy` in `js/config.js`: `ignore` (default, the behaviour the app will keep), `merge` (one picker for both, study-wide settings from the **first** timeline - the last one used to win and reset `min_coverage` to the secondary's 0) or `error` (refuse the study). The key is deleted when multi-timeline support goes. |
 | D2 | **Concurrency is overlap, not a second lane group.** Up to N activities may occupy the same minute on the one timeline; display lanes are computed, the data has no lane. N is configurable; Q1 answered **2** and that is the model default (`max_overlap`). |
 | D3 | **Vertical timeline, continuous across the study's days.** Day sections with headings and anchors; prev/next buttons and a day rail jump (never a mode switch); scroll-spy label ("Day 2 of 7 · Tuesday"); `PageUp`/`PageDown` move one day. A `daysToRender` value in state (`7` = continuous, `1` = paged) keeps the alternative available as a one-line change. |
 | D4 | **The reporting day starts at 00:00** (see Q2 for the 04:00 alternative). |
@@ -1014,6 +1014,7 @@ pointing at `activities_newui_main.json`, so a spec can start from a known stage
 | `newui_11_skip` | `diary` | `skip_01/02` | `allow_skip_timeuse` **and** `require_diary_before_external_tasks`, so the skip dialog has to say the task stays locked (D41). `skip_02` is only read; `skip_01` is the one that gets skipped |
 | `newui_12_language` | `consent` | `lang_01/02` | the only **multi-language** study (`de` + `en`), with own texts and `footer_links` in both. `lang_01` is read-only; `lang_02` consents once to reach the diary |
 | `newui_13_clientinfo` | `diary` | `client_01/02` | the only study with `save_browser_identification`, so the participant export has the `client_*` block |
+| `newui_14_two_timelines` | `diary` | `two_01` | the only study whose activities config still defines **two** timelines (`primary` 11xx, `secondary` 21xx, own catalogue inline as `activities_json_data`), so `multiTimelinePolicy` and the single-timeline read have a fixture |
 
 The three `unavailable` fixtures only reach the page because the rewrite asks for
 `GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 - that
@@ -1071,6 +1072,7 @@ executes 247.
 | --- | --- | --- |
 | `deployment.spec.js` | 3 | the locale files are served where the rewrite expects them, and the app loads, routes to the stage the backend reports - once for the diary (which owns the shell) and once for a page-frame stage. Both use rewrite fixtures, not a participant from `studies_config.json` |
 | `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the phone panel open while the desktop footer hides it (both legs assert the outcome they can have), and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
+| `two-timelines.spec.js` | 3 | the second timeline is invisible: the picker offers `primary`'s codes only, a `secondary` row seeded through the API is not rendered, and a create lands on `primary` - the row the server stores says `timeline_key: "primary"` |
 | `activity-multiday-gap.spec.js` | 2 | copying one entry onto a second day, and opening the form from a clicked gap |
 | `activity-nudge.spec.js` | 4 | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
 | `activity-search.spec.js` | 7 | a matching **sub-activity** is its own row (title = child, hint = parent) and one click opens the form with it preselected - saved as `activity_code 1171` under `parent_activity_code 1166`; the query survives *back*, the search box keeps focus while the list is replaced, no match says so, clearing restores the categories, and "Used recently" appears once something is logged and only while browsing |

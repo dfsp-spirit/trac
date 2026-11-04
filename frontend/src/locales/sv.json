@@ -317,7 +317,9 @@
       "failedText": "Kontrollera din anslutning och försök igen.",
       "retry": "Försök igen",
       "noInvitationTitle": "Ingen inbjudan hittades",
-      "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie."
+      "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie.",
+      "incompatibleTitle": "Den här studien kan inte visas här",
+      "incompatibleText": "Den här versionen av dagboken stöder en tidslinje per studie. Kontakta forskningsteamet och berätta vilken länk du använde."
     },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"

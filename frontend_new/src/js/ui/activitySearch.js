@@ -8,12 +8,14 @@
  * strings the study shipped, which is why folding has to cope with German and
  * Swedish diacritics.
  */
+import { generalTimelineSettings } from '../domain/timelines.js';
 
 /**
  * @typedef {Object} CatalogueEntry
  * @property {number} code
  * @property {string} name
  * @property {string} category
+ * @property {string} timelineKey Which timeline defined this activity.
  * @property {string | null} color
  * @property {string | null} examples
  * @property {boolean} isCustomInput
@@ -63,21 +65,26 @@ function locate(haystack, needle) {
  * Flatten a study activities config into searchable entries.
  *
  * @param {any} catalogue Response of /activities-config
+ * @param {string[] | null} [timelineKeys] Timelines to include, in config order;
+ *   `null` means every timeline (see `domain/timelines.js` for the policy that
+ *   decides this).
  * @returns {{ entries: CatalogueEntry[], categories: string[], minCoverage: number | null, maxOverlap: number | null }}
  */
-export function flattenCatalogue(catalogue) {
+export function flattenCatalogue(catalogue, timelineKeys = null) {
   /** @type {CatalogueEntry[]} */
   const entries = [];
   /** @type {string[]} */
   const categories = [];
-  let minCoverage = null;
-  let maxOverlap = null;
 
   const timelines = (catalogue && catalogue.timeline) || {};
-  for (const timeline of Object.values(timelines)) {
-    const config = /** @type {any} */ (timeline);
-    if (typeof config.min_coverage === 'number') minCoverage = config.min_coverage;
-    if (typeof config.max_overlap === 'number') maxOverlap = config.max_overlap;
+  const keys = timelineKeys ?? Object.keys(timelines);
+  // Study-wide settings come from the first timeline, never the last one: a
+  // second timeline used to overwrite `min_coverage` with its own 0.
+  const { minCoverage, maxOverlap } = generalTimelineSettings(catalogue, keys);
+
+  for (const key of keys) {
+    const config = /** @type {any} */ (timelines[key]);
+    if (!config) continue;
 
     for (const category of config.categories || []) {
       if (!categories.includes(category.name)) categories.push(category.name);
@@ -92,6 +99,7 @@ export function flattenCatalogue(catalogue) {
           code: Number(activity.code),
           name: String(activity.name),
           category: category.name,
+          timelineKey: key,
           color: activity.color || category.color || null,
           examples: activity.examples || null,
           isCustomInput: Boolean(activity.is_custom_input),

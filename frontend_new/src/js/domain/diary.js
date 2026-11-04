@@ -17,6 +17,7 @@ import { layoutDay } from './geometry.js';
  * @property {string} client_uuid
  * @property {string | null} [group_id]
  * @property {number} day_label_index
+ * @property {string | null} [timeline_key] Which timeline the row sits on.
  * @property {number} activity_code
  * @property {string} activity_name
  * @property {string | null} [category]
@@ -33,7 +34,7 @@ import { layoutDay } from './geometry.js';
  * @typedef {Object} ApiDiary
  * @property {number} schema_version
  * @property {{ day_start_minutes: number, submitted_at: string | null }} study
- * @property {{ min_coverage: number | null, max_overlap: number }} timeline
+ * @property {{ key: string, display_name?: string, min_coverage: number | null, max_overlap: number }} timeline
  * @property {Array<{ index: number, name: string, display_name: string, display_names: Record<string, string>, has_data: boolean, coverage_minutes: number, meets_requirement: boolean }>} days
  * @property {ApiActivity[]} activities
  */

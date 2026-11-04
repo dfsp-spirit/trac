@@ -317,7 +317,9 @@
       "failedText": "Please check your connection and try again.",
       "retry": "Try again",
       "noInvitationTitle": "No invitation found",
-      "noInvitationText": "Please open the link from your invitation. It contains the details of your study."
+      "noInvitationText": "Please open the link from your invitation. It contains the details of your study.",
+      "incompatibleTitle": "This study cannot be shown here",
+      "incompatibleText": "This version of the diary supports one timeline per study. Please contact the research team and tell them which link you used."
     },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"

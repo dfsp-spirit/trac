@@ -9,6 +9,7 @@
  */
 
 import { toCreateItem } from '../domain/diary.js';
+import { normalizePolicy, selectTimelineKeys } from '../domain/timelines.js';
 import { newUuid } from '../domain/uuid.js';
 
 /**
@@ -63,16 +64,35 @@ function withoutUuids(uuids, diary) {
  *   store: Store,
  *   api: Api,
  *   getLanguage: () => string,
+ *   multiTimelinePolicy?: string,
  * }} deps
  */
-export function createDiaryActions({ store, api, getLanguage }) {
+export function createDiaryActions({ store, api, getLanguage, multiTimelinePolicy = 'ignore' }) {
   async function load() {
     store.set({ status: 'loading', error: null });
     try {
+      const policy = normalizePolicy(multiTimelinePolicy);
       const [diary, catalogue] = await Promise.all([
-        api.getDiary(),
+        // `merge` is the one policy that shows another timeline's rows; every
+        // other mode reads the single timeline the backend resolved (D1).
+        api.getDiary({ singleTimeline: policy !== 'merge' }),
         api.getCatalogue(getLanguage()),
       ]);
+      const { error } = selectTimelineKeys(catalogue, {
+        policy,
+        timelineKey: diary?.timeline?.key ?? null,
+      });
+      if (error) {
+        // A study the app must not show. Reported through the ordinary error
+        // state, so the composition root can put up the page for it.
+        store.set({
+          status: 'error',
+          error: Object.assign(new Error('The study defines more than one timeline.'), {
+            code: error,
+          }),
+        });
+        return;
+      }
       store.set((state) => ({
         ...state,
         status: 'ready',

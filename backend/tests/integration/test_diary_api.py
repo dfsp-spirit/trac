@@ -55,7 +55,11 @@ def _activities_config(max_overlap: int = 2, min_coverage: int = 0) -> dict:
 
 
 async def _create_study(
-    client: httpx.AsyncClient, *, max_overlap: int = 2, min_coverage: int = 0
+    client: httpx.AsyncClient,
+    *,
+    max_overlap: int = 2,
+    min_coverage: int = 0,
+    config: dict | None = None,
 ) -> str:
     study_name_short = f"it_diary_{uuid.uuid4().hex[:8]}"
     payload = {
@@ -80,7 +84,7 @@ async def _create_study(
                 "default_language": "en",
                 "supported_languages": ["en"],
                 "activities_json_data": {
-                    "en": _activities_config(max_overlap, min_coverage)
+                    "en": config or _activities_config(max_overlap, min_coverage)
                 },
                 "data_collection_start": "2024-01-01T00:00:00Z",
                 "data_collection_end": "2028-12-31T23:59:59Z",
@@ -107,8 +111,9 @@ def _item(
     end: int = 600,
     days=(0,),
     client_uuid: str | None = None,
+    timeline: str | None = None,
 ) -> dict:
-    return {
+    item = {
         "client_uuid": client_uuid or str(uuid.uuid4()),
         "activity_code": code,
         "activity_name": f"Activity {code}",
@@ -117,6 +122,43 @@ def _item(
         "end_minutes": end,
         "day_label_indexes": list(days),
     }
+    if timeline is not None:
+        item["timeline_key"] = timeline
+    return item
+
+
+def _two_timeline_config(
+    *, primary_min_coverage: int = 0, secondary_min_coverage: int = 0
+) -> dict:
+    """A study with a "things done in parallel" second timeline.
+
+    The codes are disjoint, as `ActivitiesConfig` requires: 900/901 belong to the
+    secondary timeline only.
+    """
+    config = _activities_config(min_coverage=primary_min_coverage)
+    config["timeline"]["secondary"] = {
+        "name": "Secondary",
+        "description": "",
+        "mode": "single-choice",
+        "min_coverage": secondary_min_coverage,
+        "max_overlap": 2,
+        "categories": [
+            {
+                "name": "In parallel",
+                "activities": [
+                    {
+                        "name": f"Parallel {code}",
+                        "code": code,
+                        "label": f"parallel-{code}",
+                        "color": "#111111",
+                        "childItems": [],
+                    }
+                    for code in (900, 901)
+                ],
+            }
+        ],
+    }
+    return config
 
 
 async def _diary(client: httpx.AsyncClient, study: str, participant: str) -> dict:
@@ -546,3 +588,90 @@ async def test_the_submit_gate_matches_the_coverage_the_diary_reports():
     assert diary["days"][0]["meets_requirement"] is True
     assert response.status_code == 400, "days 1 and 2 are still empty"
     assert response.json()["detail"]["incomplete_day_indices"] == [1, 2]
+
+
+@pytest.mark.asyncio
+async def test_a_second_timeline_is_invisible_when_the_diary_asks_for_one():
+    """`timelines=resolved` is the rewrite's mode (D1): one timeline, one rule.
+
+    The two reads have to differ in three places at once - the rows, the coverage
+    sum, and the requirement the day is judged against - or a participant would
+    either see data they did not enter or never reach a complete day.
+    """
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(
+            client,
+            config=_two_timeline_config(
+                primary_min_coverage=60, secondary_min_coverage=120
+            ),
+        )
+        primary = await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=100, start=480, end=600, timeline="primary")]},
+        )
+        secondary = await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=900, start=480, end=540, timeline="secondary")]},
+        )
+        assert primary.status_code == 201, primary.text
+        assert secondary.status_code == 201, secondary.text
+
+        everything = await _diary(client, study, participant)
+        single_response = await client.get(
+            _url(study, participant, "/diary"), params={"timelines": "resolved"}
+        )
+        assert single_response.status_code == 200, single_response.text
+        single = single_response.json()
+
+    assert {activity["timeline_key"] for activity in everything["activities"]} == {
+        "primary",
+        "secondary",
+    }
+    assert everything["days"][0]["coverage_minutes"] == 180
+    assert everything["days"][0]["meets_requirement"] is False, (
+        "with both timelines in view the secondary requirement is unmet"
+    )
+
+    assert [activity["timeline_key"] for activity in single["activities"]] == ["primary"]
+    assert single["timeline"]["key"] == "primary"
+    assert single["days"][0]["coverage_minutes"] == 120
+    assert single["days"][0]["meets_requirement"] is True, (
+        "a timeline the participant cannot see must not hold the day back"
+    )
+
+
+@pytest.mark.asyncio
+async def test_a_code_from_another_timeline_is_refused():
+    """Sending `timeline_key` makes the write target explicit, so a code that
+    belongs to another timeline is an error instead of a silent re-homing."""
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client, config=_two_timeline_config())
+        wrong = await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=900, start=480, end=540, timeline="primary")]},
+        )
+        right = await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=900, start=480, end=540, timeline="secondary")]},
+        )
+        diary = await _diary(client, study, participant)
+
+    assert wrong.status_code == 400, wrong.text
+    assert wrong.json()["detail"]["code"] == "invalid_activity_code"
+    assert wrong.json()["detail"]["activity_codes"] == [900]
+    assert right.status_code == 201, right.text
+    assert [activity["timeline_key"] for activity in diary["activities"]] == ["secondary"]
+
+
+@pytest.mark.asyncio
+async def test_an_unknown_timelines_value_is_refused():
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client)
+        response = await client.get(
+            _url(study, participant, "/diary"), params={"timelines": "some"}
+        )
+
+    assert response.status_code == 400, response.text

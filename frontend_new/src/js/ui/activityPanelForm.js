@@ -50,6 +50,9 @@ export function createFormController(deps) {
   let form = null;
   /** @type {import('../domain/diary.js').ApiActivity | null} */
   let editing = null;
+  /** The timeline this write belongs to; sent with every create (D1). */
+  /** @type {string | null} */
+  let timelineKey = null;
   /** @type {{ dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null }} */
   let prefill = { dayIndex: 0, startMinutes: 8 * 60, endMinutes: 9 * 60 };
 
@@ -122,6 +125,9 @@ export function createFormController(deps) {
         items: [
           {
             ...values,
+            // Explicit, so the row lands on the timeline the catalogue entry
+            // belongs to; the server refuses a code from another timeline.
+            timeline_key: timelineKey,
             client_uuid: newUuid(),
             catalogue_version: getCatalogue()?.general?.version || null,
           },
@@ -176,6 +182,7 @@ export function createFormController(deps) {
      */
     show(entry, activity = null, child = null) {
       editing = activity;
+      timelineKey = activity?.timeline_key || entry.timelineKey || null;
       foot.hidden = false;
       const diary = getDiary();
       const dayStart = diary.study.day_start_minutes || 0;

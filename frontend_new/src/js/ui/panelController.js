@@ -10,6 +10,7 @@
 import { toTimedActivity, timedActivities } from '../domain/diary.js';
 import { nudgeRange } from '../domain/nudge.js';
 import { STEP_MINUTES } from '../domain/time.js';
+import { timelineKeysFor } from '../domain/timelines.js';
 import { validateActivity } from '../domain/validation.js';
 import { createActivityPanel } from './activityPanel.js';
 import { describeError } from './messages.js';
@@ -32,6 +33,7 @@ const NO_PARTICIPANT = {
  *   isLocked: () => boolean,
  *   getDiary: () => import('../domain/diary.js').ApiDiary,
  *   getCatalogue: () => any,
+ *   multiTimelinePolicy?: string,
  *   getLanguage: () => string,
  *   actions?: {
  *     create: (body: { items: any[], group_id?: string }) => Promise<any>,
@@ -50,6 +52,7 @@ export function createPanelController({
   isLocked,
   getDiary,
   getCatalogue,
+  multiTimelinePolicy = 'ignore',
   getLanguage,
   actions = NO_PARTICIPANT,
   toastRegion,
@@ -115,6 +118,8 @@ export function createPanelController({
       language: getLanguage(),
       getDiary,
       getCatalogue,
+      // Policy and resolved key live here; the panel only asks which to show (D1).
+      getTimelineKeys: () => timelineKeysFor(getCatalogue(), getDiary(), multiTimelinePolicy),
       onCreate: (body) => actions.create(body),
       onUpdate: (clientUuid, changes) => actions.update(clientUuid, changes),
       onDelete: deleteWithUndo,

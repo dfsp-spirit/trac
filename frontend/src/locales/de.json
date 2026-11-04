@@ -317,7 +317,9 @@
       "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
       "retry": "Erneut versuchen",
       "noInvitationTitle": "Keine Einladung gefunden",
-      "noInvitationText": "Bitte öffnen Sie den Link aus Ihrer Einladung. Er enthält die Angaben zu Ihrer Studie."
+      "noInvitationText": "Bitte öffnen Sie den Link aus Ihrer Einladung. Er enthält die Angaben zu Ihrer Studie.",
+      "incompatibleTitle": "Diese Studie kann hier nicht angezeigt werden",
+      "incompatibleText": "Diese Version des Tagebuchs unterstützt eine Zeitleiste pro Studie. Bitte wenden Sie sich an das Forschungsteam und nennen Sie den Link, den Sie benutzt haben."
     },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"

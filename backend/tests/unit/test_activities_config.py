@@ -5,6 +5,7 @@ import pytest
 
 from o_timeusediary_backend.parsers.activities_config import (
     ActivitiesConfig,
+    get_activity_codes_by_timeline,
     get_activity_codes_set,
     get_all_activity_codes,
     validate_multiple_activity_codes,
@@ -164,3 +165,48 @@ def test_shipped_activity_configs_keep_the_app_name_for_the_legacy_app():
         "these activity configs are served to the old app but have no "
         f"general.app_name: {missing}"
     )
+
+
+def test_rejects_a_code_that_appears_in_two_timelines():
+    """Codes are the identity the whole app keys on (rows, exports, the picker),
+    so a code may name exactly one activity across every timeline."""
+    payload = _example_activities_payload()
+    payload["timeline"]["secondary"] = {
+        "name": "Secondary",
+        "mode": "single-choice",
+        "categories": [
+            {
+                "name": "Parallel",
+                "activities": [{"name": "Listening to music", "code": 200}],
+            }
+        ],
+    }
+
+    with pytest.raises(Exception) as error:
+        ActivitiesConfig(**payload)
+
+    assert "200" in str(error.value)
+    assert "unique" in str(error.value).lower()
+
+
+def test_codes_per_timeline_are_disjoint_and_complete():
+    payload = _example_activities_payload()
+    payload["timeline"]["secondary"] = {
+        "name": "Secondary",
+        "mode": "single-choice",
+        "categories": [
+            {
+                "name": "Parallel",
+                "activities": [
+                    {"name": "Music", "code": 900, "childItems": [{"name": "Radio", "code": 901}]}
+                ],
+            }
+        ],
+    }
+    config = ActivitiesConfig(**payload)
+
+    by_timeline = get_activity_codes_by_timeline(config)
+
+    assert by_timeline["primary"] == {100, 101, 200}
+    assert by_timeline["secondary"] == {900, 901}
+    assert get_activity_codes_set(config) == {100, 101, 200, 900, 901}

@@ -1300,6 +1300,145 @@
       "require_diary_before_external_tasks": false,
       "external_tasks": [],
       "activities_logged_by_userid": {}
+    },
+    {
+      "name": "Fixture: Zwei Zeitleisten",
+      "name_short": "newui_14_two_timelines",
+      "description": {
+        "de": "Fixture für eine Studie, deren Aktivitäten-Konfiguration noch eine zweite Zeitleiste definiert (D1: der Rewrite zeigt nur die aufgelöste Zeitleiste)."
+      },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben."
+      },
+      "require_consent": false,
+      "study_text_end_noconsent": {
+        "de": "Fixture: Keine Einwilligung erteilt."
+      },
+      "study_participant_ids": [
+        "two_01"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_data": {
+        "de": {
+          "general": {
+            "app_name": "TRAC",
+            "version": "fixture",
+            "language": "de"
+          },
+          "timeline": {
+            "primary": {
+              "name": "Hauptaktivität",
+              "description": "",
+              "mode": "single-choice",
+              "min_coverage": 0,
+              "max_overlap": 2,
+              "categories": [
+                {
+                  "name": "Haupt",
+                  "activities": [
+                    {
+                      "name": "Schlafen",
+                      "code": 1101,
+                      "label": "schlafen",
+                      "childItems": []
+                    },
+                    {
+                      "name": "Arbeiten",
+                      "code": 1102,
+                      "label": "arbeiten",
+                      "childItems": []
+                    }
+                  ]
+                }
+              ]
+            },
+            "secondary": {
+              "name": "Nebenher",
+              "description": "",
+              "mode": "single-choice",
+              "min_coverage": 0,
+              "max_overlap": 2,
+              "categories": [
+                {
+                  "name": "Nebenher",
+                  "activities": [
+                    {
+                      "name": "Musik hören",
+                      "code": 2101,
+                      "label": "musik hören",
+                      "childItems": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": false,
+      "external_tasks": [],
+      "activities_logged_by_userid": {}
     }
   ]
 }

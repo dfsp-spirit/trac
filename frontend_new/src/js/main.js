@@ -86,8 +86,9 @@ export function mount({ root, params }) {
 
   const api =
     studyName && participantId ? createApi(config.apiBaseUrl, studyName, participantId) : null;
+  const diaryDeps = { store, getLanguage: () => store.get().language };
   const actions = api
-    ? createDiaryActions({ store, api, getLanguage: () => store.get().language })
+    ? createDiaryActions({ ...diaryDeps, api, multiTimelinePolicy: config.multiTimelinePolicy })
     : null;
 
   const { hostPanel } = createPanelHost({
@@ -109,6 +110,7 @@ export function mount({ root, params }) {
     isLocked,
     getDiary: () => /** @type {import('./domain/diary.js').ApiDiary} */ (store.get().diary),
     getCatalogue: () => store.get().catalogue,
+    multiTimelinePolicy: config.multiTimelinePolicy,
     getLanguage: () => store.get().language,
     actions: actions ?? undefined,
     toastRegion,
@@ -181,6 +183,8 @@ export function mount({ root, params }) {
 
   /** @param {import('./state/store.js').DiaryState} state */
   function render(state) {
+    const failure = /** @type {{ code?: string } | null} */ (state.error);
+    if (failure?.code === 'multi_timeline') return stageMachine.incompatible();
     if (!state.diary) return;
     const locked = isLocked();
     stageMachine.setLocked(locked);

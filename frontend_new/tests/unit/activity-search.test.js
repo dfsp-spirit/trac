@@ -306,3 +306,79 @@ test('an empty query has no hits with children', () => {
   assert.equal(hits.length, SPORT_ENTRIES.length);
   assert.ok(hits.every((hit) => hit.child === null));
 });
+
+const twoTimelines = {
+  general: { version: '1' },
+  timeline: {
+    primary: {
+      min_coverage: 600,
+      max_overlap: 3,
+      categories: [
+        {
+          name: 'Main',
+          activities: [
+            { code: 100, name: 'Sleeping' },
+            { code: 101, name: 'Gaming' },
+          ],
+        },
+      ],
+    },
+    secondary: {
+      min_coverage: 0,
+      max_overlap: 2,
+      categories: [
+        {
+          name: 'In parallel',
+          // Same real-world activity as primary's 101, but its own code: codes are
+          // unique across timelines, the parser refuses anything else.
+          activities: [{ code: 2101, name: 'Gaming' }],
+        },
+      ],
+    },
+  },
+};
+
+test('merging takes the study limits from the first timeline, never the last', () => {
+  const { minCoverage, maxOverlap } = flattenCatalogue(twoTimelines);
+
+  assert.equal(minCoverage, 600, 'the secondary timeline used to reset this to its 0');
+  assert.equal(maxOverlap, 3);
+});
+
+test('merging adds the activities of both timelines and says where each came from', () => {
+  const { entries, categories } = flattenCatalogue(twoTimelines);
+
+  assert.deepEqual(
+    entries.map((entry) => [entry.code, entry.timelineKey]),
+    [
+      [100, 'primary'],
+      [101, 'primary'],
+      [2101, 'secondary'],
+    ]
+  );
+  assert.deepEqual(categories, ['Main', 'In parallel']);
+});
+
+test('a single selected timeline drops the other one entirely', () => {
+  const { entries, categories, minCoverage, maxOverlap } = flattenCatalogue(twoTimelines, [
+    'primary',
+  ]);
+
+  assert.deepEqual(
+    entries.map((entry) => entry.code),
+    [100, 101]
+  );
+  assert.deepEqual(categories, ['Main']);
+  assert.equal(minCoverage, 600);
+  assert.equal(maxOverlap, 3);
+});
+
+test('a catalogue without timelines flattens to nothing instead of throwing', () => {
+  assert.deepEqual(flattenCatalogue({ timeline: {} }, []), {
+    entries: [],
+    categories: [],
+    minCoverage: null,
+    maxOverlap: null,
+  });
+  assert.deepEqual(flattenCatalogue(null, ['primary']).entries, []);
+});

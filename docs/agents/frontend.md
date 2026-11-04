@@ -7,6 +7,7 @@
 
 ## Configuration & Integration
 - Primary frontend settings file: `frontend/src/settings/tud_settings.js`.
+- Participant rewrite (`frontend_new/`): `frontend_new/src/js/config.js`, copied per environment from `dev_tools/*/frontend_settings/config.new.*.js`. It also carries `multiTimelinePolicy` (`ignore` | `merge` | `error`, default `ignore`) - the deployment's answer to a study whose activities config still defines two timelines. The rewrite otherwise assumes one timeline per study: it reads `GET …/diary?timelines=resolved` and sends `timeline_key` with every create. Remove the key when multi-timeline support is dropped.
 - Backend API is typically mounted under `/api` (or deployment-specific prefixes).
 - Participant context is URL-driven (`pid`, optional `lang`), not login-driven.
 

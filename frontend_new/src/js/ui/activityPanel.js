@@ -37,6 +37,7 @@ function el(tag, className, text) {
  *   language: string,
  *   getDiary: () => import('../domain/diary.js').ApiDiary,
  *   getCatalogue: () => any,
+ *   getTimelineKeys: () => string[],
  *   onCreate: (body: { items: any[], group_id?: string }) => Promise<any>,
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
@@ -45,7 +46,19 @@ function el(tag, className, text) {
  * }} deps
  */
 export function createActivityPanel(deps) {
-  const { host, t, language, getDiary, getCatalogue, onCreate, onUpdate, onDelete, toast, onFinished } = deps;
+  const {
+    host,
+    t,
+    language,
+    getDiary,
+    getCatalogue,
+    getTimelineKeys,
+    onCreate,
+    onUpdate,
+    onDelete,
+    toast,
+    onFinished,
+  } = deps;
 
   /**
    * @template {keyof HTMLElementTagNameMap} K
@@ -74,7 +87,7 @@ export function createActivityPanel(deps) {
   let scrollOffset = 0;
 
   function entries() {
-    return flattenCatalogue(getCatalogue()).entries;
+    return flattenCatalogue(getCatalogue(), getTimelineKeys()).entries;
   }
 
   function updateContext() {

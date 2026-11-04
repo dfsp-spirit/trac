@@ -16,6 +16,13 @@ export const config = {
   defaultLanguage: 'de',
 
   // Per participant from the query string; these are the fallbacks.
+  // Temporary, until every study is single-timeline (D1). What to do when a
+  // study's activities config still defines a second timeline ("things done in
+  // parallel"): 'ignore' offers only the timeline this diary resolved to,
+  // 'merge' puts every timeline's activities in one picker, and 'error' refuses
+  // to run so an unconverted study is reported instead of shown wrongly.
+  multiTimelinePolicy: 'ignore',
+
   studyName: null,
   participantId: null,
 };

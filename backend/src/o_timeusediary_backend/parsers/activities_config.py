@@ -331,6 +331,35 @@ def get_all_activity_codes(config: ActivitiesConfig) -> Dict[int, Dict[str, Any]
     return codes_info
 
 
+def get_activity_codes_by_timeline(config: ActivitiesConfig) -> Dict[str, Set[int]]:
+    """
+    Activity codes per timeline key, e.g. ``{"primary": {1101, ...}}``.
+
+    A code belongs to exactly one timeline: `ActivitiesConfig` rejects duplicates
+    across timelines, so these sets are disjoint. Lookups use them to keep a write
+    on the timeline the client named instead of silently re-homing a code that
+    belongs to another one.
+
+    @param config Parsed activities configuration model.
+    @return Mapping of timeline key to the codes it defines.
+    """
+
+    def collect(activities: List[ActivityItem], out: Set[int]) -> None:
+        for activity in activities:
+            out.add(activity.code)
+            if activity.childItems:
+                collect(activity.childItems, out)
+
+    by_timeline: Dict[str, Set[int]] = {}
+    for timeline_name, timeline_config in config.timeline.items():
+        codes: Set[int] = set()
+        for category in timeline_config.categories:
+            collect(category.activities, codes)
+        by_timeline[timeline_name] = codes
+
+    return by_timeline
+
+
 def get_activity_codes_set(config: ActivitiesConfig) -> Set[int]:
     """
     Get a simple set of all activity codes.
