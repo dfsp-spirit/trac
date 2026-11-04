@@ -65,4 +65,11 @@
   /* The desktop panel is always open, so it has nothing to close. The mobile
      dialog hosts the same markup and keeps the button. */
   .t-activity-panel [data-slot="close"] { display: none; }
+
+  /* Same reason, one step further: "Save and add another" exists because a
+     modal hides the timeline after a save, so the next range cannot be tapped.
+     The docked column keeps the timeline - and its gaps - in view, so the button
+     would only duplicate "Add to timeline": both return to the catalogue, and
+     only the invisible prefill differed. */
+  .t-activity-panel [data-slot="save-another"] { display: none; }
 }

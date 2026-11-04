@@ -435,9 +435,15 @@ content region and a sticky foot:
   browsing the catalogue, for the target day when the form is open ("6 h 45 min · requirement met",
   or "1 h 20 min to go"). This is where the external reviewer's point A lands; it replaces the
   prototype's explanatory copy and removes the need for a separate instructions block.
-- **The foot stays sticky** (Add to timeline / Save and add another / Save changes / Delete), so the
-  primary action remains visible even when the form's lower fields scroll. Worst case at 768 px
-  viewport height: content region 568 px, form ≈ 400–590 px.
+- **The foot stays sticky** (Add to timeline / Save changes / Delete), so the primary action remains
+  visible even when the form's lower fields scroll. Worst case at 768 px viewport height: content
+  region 568 px, form ≈ 400–590 px.
+- **"Save and add another" is dialog-only.** The button exists because a modal covers the timeline
+  after a save, so the participant cannot tap the next range; it is hidden from 1200 px up
+  (`[data-slot="save-another"]`), next to the close button that is hidden for the same reason. On
+  the docked column both save buttons returned to the catalogue and differed only in the prefill
+  they left behind, which the participant could not see - and the next gap is one click away in
+  the column beside it.
 - **Consequence for the write path:** a palette click never creates a block. It opens the form
   prefilled with the time at the top of the viewport, and D8's duplicate rule applies to form
   submits only. One create path, one undo path.
@@ -1064,7 +1070,7 @@ executes 247.
 | Spec | Tests | Pins |
 | --- | --- | --- |
 | `deployment.spec.js` | 3 | the locale files are served where the rewrite expects them, and the app loads, routes to the stage the backend reports - once for the diary (which owns the shell) and once for a page-frame stage. Both use rewrite fixtures, not a participant from `studies_config.json` |
-| `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the panel, and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
+| `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the phone panel open while the desktop footer hides it (both legs assert the outcome they can have), and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
 | `activity-multiday-gap.spec.js` | 2 | copying one entry onto a second day, and opening the form from a clicked gap |
 | `activity-nudge.spec.js` | 4 | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
 | `activity-search.spec.js` | 7 | a matching **sub-activity** is its own row (title = child, hint = parent) and one click opens the form with it preselected - saved as `activity_code 1171` under `parent_activity_code 1166`; the query survives *back*, the search box keeps focus while the list is replaced, no match says so, clearing restores the categories, and "Used recently" appears once something is logged and only while browsing |

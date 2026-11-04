@@ -61,7 +61,11 @@ test.describe('activity lifecycle', () => {
   // after a save hides the diary and makes the Undo toast untappable. Returning
   // to the timeline is also what the participant expects - except when they ask
   // for the next entry, which keeps the panel open on the catalogue.
-  test('a save returns to the diary, "add another" keeps the panel', async ({
+  //
+  // Above 1200px the panel is a column that never closes, so "add another" has
+  // no job: the timeline and its gaps stay in view, and both save buttons landed
+  // on the catalogue anyway. It is hidden there (panel.css, D29).
+  test('a save closes the phone panel, "add another" keeps it open', async ({
     page,
   }, testInfo) => {
     await openDiary(page, pid);
@@ -69,17 +73,31 @@ test.describe('activity lifecycle', () => {
     await page.locator('#form-start').selectOption('480');
     await page.locator('#form-end').selectOption('540');
 
-    // "Add another" saves and goes back to the catalogue with the next range
-    // prefilled, so the panel has a reason to stay open.
-    await page.locator('[data-slot="actions"] .t-btn--secondary').click();
-    await expect(page.locator('.t-activity').first()).toBeVisible();
+    const actions = page.locator('[data-slot="actions"]');
+    const another = actions.locator('[data-slot="save-another"]');
+
     if (isPhone(testInfo)) {
+      // "Add another" saves and goes back to the catalogue with the next range
+      // prefilled, so the panel has a reason to stay open.
+      await another.click();
+      await expect(page.locator('.t-activity').first()).toBeVisible();
       await expect(page.locator('#dialog-host')).toHaveAttribute('open', '');
+    } else {
+      // Create mode on desktop has one action: the same markup as the phone
+      // (the panel is host-agnostic), hidden by panel.css. Delete only appears
+      // when editing.
+      await expect(another).toHaveCount(1);
+      await expect(another).toBeHidden();
+      await expect(actions.locator('button:visible')).toHaveCount(1);
+      await actions.locator('.t-btn--primary').click();
+      await expect(page.locator('.t-activity').first()).toBeVisible();
     }
 
     // Picking again starts from that prefill; saving this one returns to the
     // diary, and on a phone it closes the panel.
     await chooseActivity(page, 1101);
+    await page.locator('#form-start').selectOption('600');
+    await page.locator('#form-end').selectOption('650');
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(page.locator('#dialog-host')).toBeHidden();
     await expect(page.locator('.t-event')).toHaveCount(2);

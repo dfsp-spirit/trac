@@ -65,8 +65,12 @@ export function createFormController(deps) {
     primary.type = 'button';
     primary.addEventListener('click', () => void submit('close'));
 
+    // Only the dialog host needs this: a phone cannot tap the next gap while the
+    // panel covers the timeline. The docked column stays open and keeps the gaps
+    // in view, so the button is hidden there (panel.css, D29).
     const secondary = el('button', 't-btn t-btn--secondary t-btn--block', t('diary.panel.addAnother'));
     secondary.type = 'button';
+    secondary.dataset.slot = 'save-another';
     secondary.addEventListener('click', () => void submit('another'));
     if (activity) secondary.hidden = true;
 
