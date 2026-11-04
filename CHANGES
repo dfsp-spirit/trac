@@ -2,6 +2,34 @@ TRAC MPIAE Changes
 ===================
 
 
+Version 0.25.0 -- New mobile-first frontend variant
+----------------------------------------------------
+- NEW: add new frontend under frontend_new/, as an alternative to the old part of
+  the frontend that was used to add activities.
+  The new one is mobile first and component-based, without global state. It also
+  computes participant state in the backend via a state machine instead of
+  relying on redirects in the frontend. It is limited to one timeline, but
+  supports several parallel activities in that timeline now. Basically it consists
+  of 3 components: activity list, timeline, form to specify/edit activity details.
+  The mobile version switches between them, the desktop version always shows the
+  timeline and only switches, in a 2nd column, between activity selector and form.
+  The timeline has all days under one another, in one long list, similar to a
+  calendar. The desktop version also permanently shows a synced day reel on the
+  left in a small third column to make navigation easier.
+  This solves various problems of the old frontend, including the need for many
+  buttons to switch the days and timelines, people not noticing the 2nd timeline,
+  usability issues on mobile, and more.
+  The current version also offers the old frontend, still functional. But study
+  configuration should be adapted to the frontend/number of timelines.
+  The new frontend saves activities (and can save one for several days at once),
+  while the old one saved snapshots of entire days. This means they currently use
+  different saving mechanisms and backend endpoints for loading and saving.
+  Great care must be taken for these not to drift apart, and in the long term,
+  a decision for one of the frontends is needed. This is an interim version that
+  has both, but that won't be the state for long.
+
+
+
 Version 0.24.0 -- Mobile improvements, backup endpoints, many fixes
 ----------------------------------------------------------------------------------
 - NEW: on phones the timeline switcher is a pair of tabs naming both timelines,
