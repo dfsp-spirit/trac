@@ -9,15 +9,6 @@ portal, the participant text pages (consent, instructions, thank-you, timeout) a
 API surface were to stay as they are, except where this plan says otherwise - it later did say
 otherwise (D37 stage machine, D39 `unavailable` reasons, D40 stage pages), and those sections win.
 
-Inputs used for this plan:
-
-- UX prototype by Alex Horré: `~/develop_mpiae/time-diary-frontend-prototype-alex/`
-  (mobile entry flow only; its product framing — multiple diaries, waves, calendar days,
-  device-only storage — was a misreading of the study and is **not** adopted).
-- `diary_UX.md` in that repository (pathways, goals, 17 recommendations).
-- Current frontend: `../frontend/src/js/script.js` (~7.5k lines), `ui.js` (~2.8k),
-  `styles.css` (~3.8k); backend models in `../backend/src/o_timeusediary_backend/models.py`.
-
 Why we are doing this: the diary view grew into one interlocking module that is no longer
 understandable, and the mobile experience has a demonstrated failure — participants did not
 discover the optional second timeline and left it empty without intending to. The fix is a
@@ -81,225 +72,6 @@ new, small, component-structured implementation of the entry page, not a rewrite
 
 ---
 
-## 3. Implicit consequences for the data model and analysis
-
-The following is the part the study leads must see. **Sections 3 and 4 are written in German**
-because they are meant to be forwarded to the PI / study designers.
-
-### Was die PI über die Änderungen wissen muss
-
-Aus meiner Sicht müssen wir uns neben dem offensichtlichen Aufwand noch über diese Dinge
-klar werden, die sich erst im Verlauf der Diskussion ergeben haben:
-
-**a) Tage sind keine getrennten Ansichten mehr; eine Aktivität darf über Mitternacht gehen**
-
-Bisher musste ein Schlaf von Montag 22 Uhr bis Dienstag 8 Uhr als zwei Einträge erfasst
-werden (Montag 22–4 Uhr, Dienstag 4–8 Uhr). Künftig ist das **ein** Datensatz, der am
-Montag beginnt und am Dienstag endet.
-
-Implikationen:
-
-- Weniger Datensätze pro Person; die Anzahl der Einträge ist nicht mehr mit früheren
-  Erhebungen vergleichbar.
-- Ein Datensatz kann länger als 24 h nicht, aber deutlich länger als eine übliche Aktivität
-  sein (z. B. 10 h Schlaf). Analysen, die „alle Aktivitäten liegen innerhalb eines Tages"
-  annehmen, müssen angepasst werden.
-- **Zurechnung:** Der Datensatz gehört zu dem Tag, an dem er **beginnt**. Für die
-  Tagesabdeckung (min_coverage) wird er an der Tagesgrenze **abgeschnitten** und zählt
-  anteilig zu beiden Tagen. Diese Regel muss in der Datendokumentation stehen, weil sonst
-  Tages-Summen nicht reproduzierbar sind.
-- Ohne diese Abschneide-Regel wäre ein Tag mit einem über Mitternacht gehenden Schlaf bei
-  `min_coverage: 1440` (wie im deutschen Pilot-Setting) nicht mehr erfüllbar.
-
-**b) Es gibt nur noch eine Timeline**
-
-Bisher gab es `primary` (Hauptaktivität, verpflichtend) und `secondary` (parallele
-Aktivitäten, optional, `min_coverage: 0`). Künftig gibt es eine Zeitleiste mit bis zu N
-gleichzeitigen Aktivitäten.
-
-Implikationen:
-
-- **Die Unterscheidung „Hauptaktivität" vs. „parallele Aktivität" verschwindet aus den
-  Daten.** Analysen, die danach gefragt haben („Wie viel Zeit wurde mit Hauptaktivität X
-  verbracht, während parallel Y lief?"), sind ohne ein zusätzliches Feld nicht mehr möglich.
-  Wenn das gebraucht wird, brauchen wir ein explizites Feld (`role` / `is_primary`), das
-  die teilnehmende Person setzt – nicht aus der Reihenfolge erraten. **Das ist die
-  wichtigste offene Frage** (Q3).
-- Gleichzeitige Aktivitäten sind datenmäßig **gleichrangig**. Es gibt keine implizite
-  „Hauptaktivität pro Minute" mehr, auf die man Analysen stützen könnte.
-- **Summen können 1440 Minuten pro Tag überschreiten.** Wenn drei Aktivitäten gleichzeitig
-  laufen, ist die Summe der Dauern größer als der Tag. „Abgedeckte Zeit" (Union) und
-  „Zeit pro Aktivität" (Summe) sind ab jetzt zwei verschiedene Kennzahlen und dürfen nicht
-  verwechselt werden.
-- **Aktivitätscodes ändern sich:** Der zweite Katalog (Codes `2xxx`, z. B. `2200 Streaming
-  Video`) wird gelöscht, weil die Inhalte im Hauptkatalog bereits vorhanden sind (`1200`).
-  Jede Code-basierte Zuordnung (Auswertungsskripte, Veröffentlichungen) muss
-  auf die neuen Codes umgestellt werden.
-- Die Option „zweite Timeline bleibt leer" existiert nicht mehr. Wer bisher bewusst nur die
-  Hauptaktivität erhoben hat, erhält jetzt automatisch die Möglichkeit, parallele
-  Aktivitäten einzutragen (und ggf. eine Mindestabdeckung, die für alle gilt).
-
-**c) Tagesbeginn: Mitternacht statt 4 Uhr**
-
-Der 4-Uhr-Tagesbeginn war in der alten Oberfläche unsichtbar (jeder Tag war eine eigene
-Ansicht). In einer durchgehend scrollbaren Woche wird er sichtbar und wirkt erklärungs-
-bedürftig. Deshalb schlagen wir **Mitternacht** vor.
-
-Implikationen:
-
-- Die Zurechnung von Aktivitäten zwischen 00:00 und 04:00 ändert sich gegenüber der
-  bisherigen Export-Logik: bisher gehörten sie zum Vortag, künftig zum Kalendertag.
-- **Der 4-Uhr-Tagesbeginn ist kein Zufall, sondern die Konvention amtlicher
-  Zeitverwendungserhebungen** (u. a. American Time Use Survey, https://www.bls.gov/tus/,
-  in der Regel als 4-Uhr-bis-4-Uhr-Tag beschrieben). Wenn Vergleichbarkeit mit solchen
-  Erhebungen eine Rolle spielt, ist Mitternacht ein methodischer Nachteil. Bitte prüfen
-  (Q2).
-- Vorher (getrennte Tagesansichten) war beides problemlos möglich. Mit einer durchgehenden
-  Woche hängen die beiden Entscheidungen zusammen: eine Tagesgrenze um 4 Uhr mitten in
-  einem durchgehenden Band sieht falsch aus.
-- Technisch ist die Alternative billig: ein `dayStartHour`-Wert (Standard 0) in der
-  Geometrie- und Abdeckungslogik. Es geht also um eine Methoden-Entscheidung, nicht um
-  Aufwand.
-
-**d) Mehrere Tage auf einmal erfassen / kopieren**
-
-Geplant ist, eine Aktivität beim Anlegen direkt mehreren Tagen zuweisen zu können, und
-ausgewählte Aktivitäten auf andere Tage zu kopieren (ausdrücklich **keine** „ganzen Tage
-kopieren", das ersetzt bisher den Zieltagg vollständig und war eine Fehlerquelle).
-
-Implikationen:
-
-- Kopierte Einträge sind **bewusste Duplikate** über Tage hinweg. Analysen dürfen sie nicht
-  als unabhängige Beobachtungen behandeln, ohne dass das entschieden ist. Eine
-  Herkunftsmarkierung (`copy_source_uuid`) wird **nicht** gespeichert (siehe Q5).
-- Es besteht ein Risiko, dass Teilnehmende Tage „gleich machen", um schneller fertig zu
-  werden. Das ist ein Datenqualitäts-Thema, kein UI-Thema, aber die Funktion macht es
-  leichter. Wenn das unerwünscht ist, lassen wir das Mehrfach-Anlegen weg und behalten nur
-  das Kopieren einzelner Aktivitäten (oder gar nichts).
-
-==> It does not make a difference whether an activity was created manually on its own or copied. It is an activitiy, thats it. we do not need to know where it was copied from.
-
-**e) Änderungsverlauf: es wird weiterhin nur der Endzustand gespeichert**
-
-- Auch mit dem neuen Schreibmodell speichern wir keine Bearbeitungshistorie. Ein Löschen
-  ist ein echtes Löschen (Undo stellt den Datensatz neu her, mit neuer ID).
-- Neu ist `updated_at`: damit lässt sich sehen, **wann** ein Eintrag zuletzt geändert wurde
-  (und wie kurz vor der Abgabe noch editiert wurde). Das ist ein zusätzliches Feld in
-  Exporten, wenn gewünscht (Q8).
-- Falls für Datenschutz/Qualitätssicherung ein Änderungsprotokoll nötig ist, muss das
-  ausdrücklich entschieden werden – es ist ein zusätzlicher Aufwand.
-
-**f) Speichern nach jeder Interaktion bleibt**
-
-- Kein Verhalten ändert sich für die Teilnehmenden: jede Änderung geht sofort an den Server,
-  mit sichtbarem Speicherstatus und lokalem Entwurf als Rückfallebene.
-- Technisch gibt es dadurch **mehr, kleinere Schreibvorgänge** statt eines Tages-Snapshots.
-  Für die Auswertung ist das besser (kein Datensatz wird durch eine spätere Speicherung
-  neu erzeugt), für den Server ist es mehr Last. Für die erwarteten Teilnehmerzahlen
-  unproblematisch.
-
-**g) Vor der Abgabe gibt es einen Prüfschritt (Review)**
-
-- Teilnehmende sehen vor dem Absenden alle Tage als Liste zur Kontrolle und können
-  zurückgehen und korrigieren.
-- Folge für die Daten: es wird häufiger **kurz vor der Abgabe** noch geändert. Der
-  Abgabezeitpunkt bleibt `study_submitted_at`, aber „letzte Änderung" und „Abgabe" liegen
-  jetzt häufiger nah beieinander.
-
-**h) Grenzen, die konfiguriert werden müssen**
-
-- **Maximale Gleichzeitigkeit** (Vorschlag: 3). Höher heißt mehr Daten, aber auch mehr
-  Verwirrung; niedriger heißt, dass seltene echte Parallelität nicht erfasst werden kann.
-  Bitte festlegen (Q1).
-- **Mindestabdeckung pro Tag** bleibt grundsätzlich, gilt aber jetzt für die eine
-  Zeitleiste und wird als Union gemessen. Für Studien mit `min_coverage: 1440` ändert sich
-  dadurch, welche Tage als vollständig gelten (siehe a).
-
-**i) Studienkonfiguration und Texte müssen angepasst werden**
-
-- Bestehende Studien, die mit zwei Timelines definiert wurden, sind nach der Umstellung
-  **nicht mehr gültig** und müssen neu erzeugt werden (Kataloge, `activities_*.json`,
-  `studies_config.json`). Da noch keine echten Daten erhoben wurden, ist das unkritisch –
-  aber es ist Arbeit und braucht eine Freigabe (Q7).
-- **Anleitungstexte, Einwilligungstexte und Studienbeschreibungen**, die von „zwei
-  Timelines" oder „Hauptaktivität / paralleler Aktivität" sprechen, müssen neu geschrieben
-  werden. Das betrifft auch die im Admin-Portal gepflegten Studien-Texte (Q9).
-- Farben pro Aktivität bleiben eine Aufgabe der Studiendesigner. Die App rendert sie nur
-  (und wählt die Schriftfarbe so, dass sie lesbar bleibt). Ohne Farbe wird neutral
-  dargestellt.
-
-**j) Was sich ausdrücklich nicht ändert**
-
-- Keine Kalenderdaten, keine Wellen, keine mehreren Tagebücher, keine Belege/Quittungen.
-- Keine Offline-/PWA-Speicherung nur auf dem Gerät.
-- Kein Wechsel der Granularität: 10-Minuten-Schritte bleiben.
-- Admin-Portal, Teilnehmer-Textseiten, Exporte (außer zusätzlichen Spalten), Einwilligung,
-  Inaktivitäts-Timeout, externe Aufgaben: unverändert.
-
----
-
-## 4. Open questions for the PI
-
-| # | Question | Why it blocks |
-| --- | --- | --- |
-| Q1 | **Maximale Gleichzeitigkeit:** 3? Darf dieselbe Aktivität sich selbst überlappen? | Sets `max_overlap`, validation, lane rendering and the coverage rule. |
-
-=>  PI Answer: set max parallel to 2, but keep as a variable. we do not check anything regaring self-overlap for now, no special rules here. users fill in things, thats it.
-
-| Q2 | **Tagesbeginn 00:00 oder 04:00?** Ist die 4-Uhr-Konvention (ATUS-Vergleichbarkeit) für uns relevant? | Determines attribution, coverage clipping, migration of fixtures, and whether the continuous timeline needs the paged fallback. |
-
-=>  Due to the constinuozus scroll and calendar style, we use 00:00.
-
-| Q3 | **Muss „Hauptaktivität vs. parallel" in den Daten überleben?** Falls ja: wer setzt es (teilnehmende Person, Reihenfolge, Regel)? | Decides whether `activities` gets an explicit `role` field. Cheap now, expensive after data collection. |
-
-=>  We do not collect this info anymore.
-
-| Q4 | **Abdeckung als Union mit Abschneiden an der Tagesgrenze** – bestätigt? Und bleibt `min_coverage: 1440` (volle Abdeckung) sinnvoll, wenn Nächte über Mitternacht gehen? | Changes which days count as complete; affects submit gate, admin progress and analysis. |
-
-=>  yes, there still needs to be support to require a coverage. the value (1440) stays a configuration detail. time slots in which several things were done in parallel do not count twice. so if min_coverage = 200, we require 200 minutes of the day to be covered (with 1 or more activities).
-
-| Q5 | **Kopieren/Sammel-Anlegen:** erlaubt? Wenn ja, mit oder ohne Herkunftsmarkierung (`copy_source_uuid`)? Obergrenze an Tagen? | Data-quality and analysis rule; also endpoint design. |
-
-=>  When adding an activiity, one can select several days (up to all days of study) on which this has happened, no limits.
-
-| Q6 | **Katalog-Merge:** Löschen der `2xxx`-Codes und der zweiten Timeline bestätigt? Wer legt finale Aktivitätsliste und Farben fest? | Content ownership; blocks fixture |
-
-=> Yes, the 2xxx codes and 2nd timeline make no sense anymore, they need to go. colors and acitivites are a study configuration, like they have always been. this software aloow scientists to create studies, the studies we ship are NOTHING but examples and test data.
-
-| Q7 | **Bestehende Studien neu aufsetzen** (zwei Timelines → eine) – Freigabe? | Import/validation changes; study configs must be regenerated. |
-
-=> We will adapt the test data in studies_config.json to work with the new system, of course. This includes removing 2nd timeline.
-
-| Q8 | **Änderungsprotokoll nötig?** Reicht der Endzustand, oder braucht es Historie/`updated_at` in Exporten? | Data protection requirement; schema and export design. |
-
-=> No history required.
-
-| Q9 | **Wer schreibt die Texte um** (Anleitung, Einwilligung, Studienbeschreibung), die „zwei Timelines" erwähnen? | Content work must start before the new UI ships. |
-
-=> The study creators are responsible for changing study-specific text, we are responsible for chaing app--specfific text. Study-specific text is changed in studies_config.json fields, app specific text in frontend i18n files.
-
-We drop the help page with screenshots entirely. Its outdated and hopefully not needed anymore, now that UI is easier, like calendar. People dont read this anyways.
-
----
-
-## 5. Implementation plan
-
-Order matters: the data model first, so there is exactly one write path when the UI lands.
-
-| Step | Content | Rough effort |
-| --- | --- | --- |
-| 0 | Behaviour checklist: every current diary behaviour that must survive (day labels, timelines→lanes, min_coverage, save state, drafts, idle timeout, study params, browser check, i18n, custom text, frequency options, context menu/delete, accessibility). Wireframes for mobile sheet and desktop 3 columns. | 3–5 days |
-| 1 | Backend: row identity + migration, incremental endpoints, coverage union helper with day clipping, multi-day create/copy, duplicate rule, `max_overlap`, delete of the second catalogue and its fixtures, export/test updates. | 1.5–2 weeks |
-| 2 | Domain/state layer: store, selectors, pure geometry (minutes↔px, lanes, clipping), API client, save-state machine. Unit tests, no DOM. | 1 week |
-| 3 | Mobile view: continuous vertical timeline with lanes, day rail/pager, bottom sheet form, edit/delete/undo, gaps, recent, coverage display, review, submit. Behind a temporary entry point so running pilots keep working. | 3–4 weeks |
-| 4 | Desktop layout: same components, 3 columns, searchable palette, keyboard shortcuts, optional drag-to-move module. | 1–2 weeks |
-| 5 | Cutover: port the e2e specs to the new flows (45 specs today, most pin the old interaction model), accessibility pass, i18n pass over the 3 remaining locales (en, de, sv), then delete the old timeline modules, drag/long-press engine, switch-timeline code, old save endpoints and dead CSS. | 1–2 weeks |
-
-Order of magnitude: **8–12 weeks for one developer**, with mobile usable around week 6–7.
-
-Where this stands now (2026-10-30): steps 0-4 are done; the "optional drag-to-move module" listed in
-step 4 was dropped entirely (D14), and the arrow-key nudges took its place as a keyboard extra. Step 5
-is untouched and must not be started without an explicit instruction - see section 9.7.
 
 ### Success criteria
 
@@ -326,54 +98,6 @@ study import format beyond dropping the second timeline.
 
 ---
 
-## 7. Decisions from the 2026-10-27 prototype review
-
-Source: `~/develop_mpiae/time-diary-frontend-prototype-alex/` (design system, `src/page.py`,
-`src/app.js`, its README/HANDOFF and Playwright checks). These decisions settle the questions
-that section 5 assumed; where they contradict earlier text, this section wins.
-
-### D23 — Prototype reuse: hybrid
-
-Keep the design layer, rewrite the JS. The prototype is two artefacts with different value.
-
-| From the prototype | What we do |
-| --- | --- |
-| `design-system/components/bundle.css` (125 `td-` classes), `tokens.css`, `tokens.json` | Copy. Drop the `prefers-color-scheme: dark` block (D11: no dark mode) instead of shipping it untested. |
-| 11 component READMEs, `screens.md`, `accessibility.md`, `data.md` | Copy as the behaviour + accessibility spec; they are step 0's checklist, already written. |
-| Static shell markup in `src/page.py` (topbar, main, `<dialog>`, drawer, popover, toast) | Copy by hand (~200 lines). Not the generator, not the demo catalogue. |
-| `segmentsFor` (lanes), `coverageFor` (union), gap generation, `fillEnd` (+1 day), `fullAt` (overlap limit), multi-day `targets`/`group`, `dayInView`/`timeInView` | Port into pure modules with unit tests. |
-| `src/app.js` as a whole, `src/page.py` as a generator, generated root files, `dist/`, `tools/` | Do not copy. IndexedDB-only persistence, fixed demo clock, diary/date model, no server, no i18n, one IIFE with module-scope state — the coupling D15/D16 remove. |
-| `tests/*.cjs` | Convert into e2e specs: last day ends at midnight, one jump per day-nav tap, toast/live-region placement, one `<main>` per view. |
-
-Consequences to plan for: the prototype needs `<dialog>`, the `popover` attribute and `:has()`,
-so the `bowser` floor in `js/client_info.js` has to be re-decided; and the prototype is English-only
-where we need the 3 locales (D34).
-
-### D24 — Granularity stays 10 minutes
-
-The prototype works in 15-minute steps (`Q = 96`); the app keeps `INCREMENT_MINUTES = 10`
-(`frontend/src/js/constants.js`). Geometry is px-per-minute, so the prototype's `--quarter`
-token becomes `--ten-min`.
-
-### D25 — The old whole-day save path stays until cutover
-
-- New `activities` columns are nullable/defaulted so the existing
-  `POST …/day_labels/{name}/activities` keeps working unchanged.
-- No translation layer between snapshot saves and row writes: the new UI uses only the new
-  endpoints, one write path once the UI lands.
-- Shared semantics (coverage union, overlap, duplicate rule, collection-window/paused/submitted
-  guards) live in one place so the two writers cannot drift.
-- Dropping the second timeline and the `2xxx` codes moves from step 1 to step 5 (cutover): the
-  old frontend and ~43 e2e specs still pin them, and they cost nothing to keep.
-- The old endpoint's day-wide delete does not touch new rows beyond the day it rewrites. One
-  participant uses one frontend; write that down rather than code around it.
-
-### D26 — `day_start_minutes` becomes a study field
-
-Old frontend day window is 04:00–04:00 (`TIMELINE_START_HOUR = 4`); the new UI is 00:00 (Q2).
-Two frontends over one table with different day windows is a data-semantics bug, so the window
-moves into the study: `Study.day_start_minutes`, default `0`, legacy studies imported with `240`.
-Coverage clips to that window; the geometry reads it from study config instead of a constant.
 
 ### D27 — Additions to the backend list (section 5, step 1)
 
@@ -386,35 +110,6 @@ Coverage clips to that window; the geometry reads it from study config instead o
   admin progress and the "days meeting min coverage" helper — and `_get_completed_day_indices`
   ("has any data") guards copy-overwrite.
 - `GET …/participants/{id}/diary`: the continuous view needs the whole diary in one request.
-- `copy_source_uuid` was added by migration 0013 and dropped again by 0014: provenance is not
-  recorded (Q5), so no code path sets or exports it.
-
-### D28 — Desktop UI/UX (external review, 27 Oct 2026)
-
-The three "extra content" blocks the review flags are prototype-only text in `src/page.py`:
-the topbar note ("Desktop layout prototype · 7 days · sample data"), the rail note, and the
-docked panel's idle copy. All three go. In their place:
-
-- **Rail (column 1):** days with real coverage (already there) plus per-day state
-  (complete / incomplete) against `min_coverage`, submission state, and Submit — one place,
-  not two.
-- **Dock (column 3):** coverage feedback for the day being edited ("1 h 20 min to go") instead
-  of instructions, plus *Used recently*.
-- **Topbar:** a compact progress figure ("4 of 7 days complete") instead of the prototype note.
-- **Completion is not minutes.** The prototype gates Submit on "every day has any activity";
-  the real rule is `min_coverage` per day, and that is the signal the UI shows (already D20).
-- **Toast** is `position: fixed` today and lands viewport-right when the panel is docked; anchor
-  it to the third column instead. Do not rely on `html:has(#add[open])` for scroll lock.
-- **Gap blocks stay** (the fastest catch-up path), limited to gaps of at least 30 minutes and
-  never leading/trailing, as in the prototype.
-- **Colour** stays study-config only; the `td-pat--*` category patterns are only the
-  no-colour fallback.
-
-Settled by D29: the catalogue is always visible on desktop and a palette click opens the form
-(prefilled) rather than creating a block.
-
-Settled since: D30 (search), D31 (keyboard), D32 (Review as a modal). Step 4 no longer has open
-questions; D33 is the binding architecture contract for all of steps 2–5.
 
 ### D29 — Desktop column 3: one panel whose content swaps
 
@@ -448,9 +143,6 @@ content region and a sticky foot:
   prefilled with the time at the top of the viewport, and D8's duplicate rule applies to form
   submits only. One create path, one undo path.
 
-Rejected alternatives: a sticky form sheet over the scrolling list (eats 50–60 % of a 380 px column
-and leaves two scroll regions in one narrow column), and the prototype's on-demand dock (costs a
-click and idles the column).
 
 ### D30 — Activity search in the panel head
 
@@ -501,16 +193,11 @@ Built in `src/js/ui/keyboard.js` (rules, pure) + `ui/shortcuts.js` (binding + me
   the diary, and a `<select>` never fires it. `Enter` now saves (except in a textarea), which is
   what the list promises.
 
-The menu's instruction-page entries (study information, data protection, contact) are removed
-until the pages exist: an entry that does nothing is worse than no entry.
-
 ### D32 — Review is a modal
 
 Review keeps the prototype's presentation: a centred modal, max-width ~720 px, sticky head and foot,
 focus trapped, one scroll region, days in order with *Edit* links back to the day, then the confirm
-step. It does not replace the middle column: reviewing is a focused task, and swapping the timeline
-out would add a third state to column 2 for no gain. On desktop it is deliberately not docked into
-column 3 — it is wider than that column and unrelated to the activity palette.
+step.
 
 ### D33 — Component architecture: separate, testable components instead of a god module
 
@@ -765,36 +452,7 @@ through other means, outside the app, so the consent stage is a latch and not a 
 re-entered by the participant. This is what makes the `consent` row of the D37 table a simple
 one-shot check rather than a review screen.
 
-### D39 — "Unavailable" says why, and a submitted diary outranks a closed window
 
-Found while building the fixture studies, and fixed in three parts.
-
-**One page, three situations, one sentence.** Paused, not started yet and already over all resolved
-to `available = False` and the same copy, which told a participant who arrived a week early to
-"contact the research team" - the wrong advice for every situation except the last. The server now
-reports `unavailable_reason` (`paused` | `not_started` | `ended`) next to `stage`, computed by one
-function (`study_availability` in `api_deps/diary_access.py`) that the 403, the stage machine and the
-page all share. The page names the date for the two window reasons. Precedence is `ended` →
-`not_started` → `paused`: the date is what the participant can act on, so it wins over the pause
-switch, and "paused" only describes a study that would otherwise be open. Dates come from the study
-payload and are formatted in **UTC** (`formatStudyDate`), because the collection window is a study
-administrative boundary, not a local appointment - and it keeps the four timezone legs of the e2e
-suite deterministic.
-
-**The read endpoint refused to answer.** `GET …/study-config` raised 403 for an unavailable study
-*before* computing the placement, so the rewrite could never render the page at all: it landed in its
-generic failure text instead. The endpoint gained `include_unavailable=true`, off by default. The
-rewrite passes it and receives `stage=unavailable` plus the reason; the old frontend keeps its 403
-signal until cutover (D25), and every write endpoint still refuses with `study_unavailable`.
-
-**Submitted outranks availability.** `resolve_placement` checked availability before submission, so a
-participant who had handed in a diary saw "study not available" on any revisit after the window
-closed, and could not reach an external task they still owed. The order is now
-`declined → submitted (tasks / done) → unavailable → consent → instructions → diary`: a finished
-participant is finished, for the same reason D38 gives for consent, and outstanding tasks stay
-reachable after the window so they can be completed. This is a change to the D37 table and is pinned
-per row in `tests/unit/test_stages.py`; the seam between old and new client is covered by
-`tests/integration/test_study_config_unavailable.py`.
 
 ### Open, deferred: idle timeout that tears down the session
 
@@ -813,48 +471,6 @@ What the new frontend does instead, and what D37 already gives us: the stage is 
 server on every load, so a stale tab cannot act on stale permissions. A blank-screen "continue"
 overlay is all the idle behaviour we ship until a decision is made.
 
-### D40 — One `Page`, one header, study name as eyebrow
-
-The five stage pages had grown five different anatomies: the study name as `h1` on consent and
-unavailable, the study's own instructions title as `h1` on instructions, a generic title on tasks and
-no `h1` at all on thanks; three of them indented their heading 16 px relative to their own body text
-because `.t-stage` and `.t-page-head` both added page padding; the thanks page then centred everything
-inside a third layer. Measured at 1440 px: heading at x=416, prose at x=400 and buttons at x=400 with
-a 640 px width while prose stopped at 595 px. On top of that, `.t-topbar` was a flex item with
-`margin-inline: auto`, so it **shrink-wrapped to 173 px and floated centred** instead of spanning the
-app - the border under the header stopped mid-screen, and on desktop the header sat over the middle
-column only.
-
-Three decisions, implemented together because they are the same surface:
-
-1. **One `Page` component** (`ui/page.js` + `styles/page.css`) for every stage: an optional eyebrow
-   (the study name), one `h1` (the stage's own purpose), an optional lead, a body and an action
-   footer. Variants `--confirm` (thank-you: mark, centred) and a notice body (unavailable). Each view
-   now only supplies content; none of them owns padding, headings or alignment. Exactly one `h1`
-   per page, always the stage title.
-2. **Study text is content, not page structure.** The page owns the `h1`, so
-   `renderMarkdown(text, { headingOffset: 1 })` demotes study headings by one level (h1 → h2 … h6 →
-   h6). That is what removes the "three `h1`s and an `h2` → `h4` jump" axe failure without asking
-   study authors to renumber their texts. `.t-prose` gained rules for `a` (ink, underlined - the
-   browser-blue default was the only chroma on a monochrome page), `h2`–`h6` (never smaller than body
-   text) and `overflow-wrap: anywhere` (a long URL in a consent text must not scroll the page
-   sideways).
-3. **The header is a bar, not a pill.** `.t-topbar` is owned by `layout.css` alone (it was defined in
-   `components.css` too, with `position: fixed` and `margin-inline: auto`), spans the app width, and
-   carries an inner row aligned to `--shell-max`, so the header, the day rail and the timeline start on
-   the same edge. The app title stays the study name for now; a per-stage document title is a later,
-   separate change.
-
-Consequences: `.t-prose`, `.t-confirm*` and `.t-page-head` left `components.css` (one owner per
-class), the dead prototype page frame (`.t-pages`, `.t-page__head`, `.t-page__body`) and the unused
-category patterns, popovers and save chips were deleted, and the failure state is a real page with a
-title and a *Try again* action instead of one grey sentence.
-
-Same pass, same reasons: the UI language now follows the study when the URL does not name one (it
-used to fall back to `en` around German study text), switching language re-renders the stage that is
-on screen, the menu offers only the study's `supported_languages` - and no language entry at all when
-that is a single language, because a select with one option is not a choice - and a stage transition
-moves focus to the new `h1` instead of dropping it on `<body>`.
 
 ---
 
@@ -1156,19 +772,6 @@ Decisions worth knowing:
   entry cannot absorb new breakage. It prints what it tolerated on every run. Prefer fixing: the two
   findings below were fixed rather than listed.
 
-Two real defects came out of the first run, both the same class - a hand-written `aria-label` that was
-not a superset of what is on screen, which breaks WCAG 2.5.3 (Label in Name) for voice-control users:
-
-1. **The day rail** labelled each row "Montag, 0 Minuten abgedeckt" while showing "Montag" and "leer".
-   The label is gone; the row's own text is its name, and the now-unused `diary.rail.dayLabel` key was
-   deleted from the shared locale files rather than left to rot.
-2. **The timeline activity block** did the same with a comma where the layout has a line break. Same
-   fix - its name is now its content, including the visually hidden "continues next day" sentence.
-
-A third finding, `scrollable-region-focusable` on the shortcut list, was real too: the list is taller
-than a laptop viewport, so it scrolls, and a scroll container a keyboard cannot reach is not scrollable
-for everyone (WCAG 2.1.1). It now takes `tabindex="0"` and therefore the same focus ring as everything
-else.
 
 ### 9.7 What is left
 
