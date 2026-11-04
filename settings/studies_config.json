@@ -11,11 +11,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -24,11 +20,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -37,11 +29,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -50,11 +38,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -63,11 +47,7 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
           }
         },
         {
@@ -76,11 +56,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -89,11 +65,7 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Söndag",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],
@@ -165,11 +137,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -178,11 +146,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -191,11 +155,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -204,11 +164,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -217,11 +173,7 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
           }
         },
         {
@@ -230,11 +182,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -243,11 +191,7 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Sunday",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],
@@ -301,11 +245,7 @@
           "display_names": {
             "en": "Monday",
             "sv": "Måndag",
-            "de": "Montag",
-            "pl": "Poniedziałek",
-            "fi": "Maanantai",
-            "fr": "Lundi",
-            "es": "Lunes"
+            "de": "Montag"
           }
         },
         {
@@ -314,11 +254,7 @@
           "display_names": {
             "en": "Tuesday",
             "sv": "Tisdag",
-            "de": "Dienstag",
-            "pl": "Wtorek",
-            "fi": "Tiistai",
-            "fr": "Mardi",
-            "es": "Martes"
+            "de": "Dienstag"
           }
         },
         {
@@ -327,11 +263,7 @@
           "display_names": {
             "en": "Wednesday",
             "sv": "Onsdag",
-            "de": "Mittwoch",
-            "pl": "Środa",
-            "fi": "Keskiviikko",
-            "fr": "Mercredi",
-            "es": "Miércoles"
+            "de": "Mittwoch"
           }
         },
         {
@@ -340,11 +272,7 @@
           "display_names": {
             "en": "Thursday",
             "sv": "Torsdag",
-            "de": "Donnerstag",
-            "pl": "Czwartek",
-            "fi": "Torstai",
-            "fr": "Jeudi",
-            "es": "Jueves"
+            "de": "Donnerstag"
           }
         },
         {
@@ -353,11 +281,7 @@
           "display_names": {
             "en": "Friday",
             "sv": "Fredag",
-            "de": "Freitag",
-            "pl": "Piątek",
-            "fi": "Perjantai",
-            "fr": "Vendredi",
-            "es": "Viernes"
+            "de": "Freitag"
           }
         },
         {
@@ -366,11 +290,7 @@
           "display_names": {
             "en": "Saturday",
             "sv": "Lördag",
-            "de": "Samstag",
-            "pl": "Sobota",
-            "fi": "Lauantai",
-            "fr": "Samedi",
-            "es": "Sábado"
+            "de": "Samstag"
           }
         },
         {
@@ -379,11 +299,7 @@
           "display_names": {
             "en": "Sunday",
             "sv": "Söndag",
-            "de": "Sonntag",
-            "pl": "Niedziela",
-            "fi": "Sunnuntai",
-            "fr": "Dimanche",
-            "es": "Domingo"
+            "de": "Sonntag"
           }
         }
       ],

@@ -3,7 +3,9 @@
 ## Test Suite Intent
 - Backend unit tests (`backend/tests/unit/`) validate isolated backend logic.
 - Backend integration tests (`backend/tests/integration/`) validate API/database behavior.
-- Frontend E2E tests (`frontend/tests/e2e/`) validate complete user flows.
+- Frontend E2E tests (`frontend/tests/e2e/`) validate complete user flows in the old app.
+- Frontend rewrite E2E tests (`frontend_new/tests/e2e/`) validate the participant UI rewrite with its
+  own Playwright runner and CI job; chromium-only until the suite grows.
 
 ## Guard Specs (cheap, non-flow checks)
 - `frontend/tests/e2e/participant_pages.js` lists the participant pages; the static-asset, accessibility and mobile guards all sweep it.
@@ -11,15 +13,22 @@
 - `accessibility.spec.js` runs axe-core via `@axe-core/playwright` (dev dependency) over each page plus the activity dialogs and fails on any WCAG A/AA violation; animations are frozen before analysis so colour is measured on a settled page.
 - `keyboard_accessibility.spec.js` and `mobile_layout.spec.js` cover Tab/Escape focus behaviour and the 390x844 phone layout (no sideways scrolling, >= 24x24 targets, touch placement).
 - Gestures that depend on `touch-action`, touch listeners or the browser's own scroll arbitration need **real** touch: `mobile_block_scroll.spec.js` and `mobile_day_scroll.spec.js` inject it over CDP (`Input.dispatchTouchEvent`, hence `test.skip(browserName !== 'chromium')`). A mouse never goes through any of that, which is how the diary could be stuck at the end of its day - every downward swipe moved it 0 px - with the whole phone suite green; `event.defaultPrevented`/stack-instrumented `preventDefault` is what named the culprit. Note `scroll-behavior: smooth` keeps a programmatic `scrollTo` animating for about a second, so poll for the settled position instead of measuring right after it.
-- Install/refresh browsers with the repo-local binary and from `frontend/` (`npx playwright install firefox webkit`): running `npx playwright ...` from the repo root resolves to an unrelated `playwright` release and stops at an interactive "Ok to proceed?" prompt, which looks like a stalled download.
+- Install/refresh browsers with the repo-local binary and from `frontend/` (`npx playwright install firefox webkit`): running `npx playwright ...` from the repo root resolves to an unrelated `playwright` release and stops at an interactive "Ok to proceed?" prompt, which looks like a stalled download. The rewrite has its own package copy in `frontend_new/`; install and run its browser from there.
 - Playwright renders differently per engine, so a layout-dependent tap/click point can pass on chromium and fail elsewhere: ask the page which element is on top at a candidate point (`document.elementFromPoint`, see `findTimelinePoint()` in `e2e_helpers.js`) instead of computing a point from a bounding box alone.
 
 ## Preferred Entry Commands
 - `./test_backend_unit.sh`
-- `./test_backend_integration.sh`
+- `./test_backend_integration.sh` (self-contained: prepares a disposable database, starts a backend for it, stops it again; a database it created itself is also dropped, one that already existed is left in place)
 - `./test_backend_migrations.sh` (real migrations; starts a throwaway database or uses `TUD_MIGRATION_TEST_DATABASE_URL`)
-- `./test_e2e.sh`
+- `./test_e2e.sh` (requires the dev stack started with `./run_dev_nginx_both.bash --test-db`)
+- `cd frontend_new && npm run test:e2e` (rewrite only; requires `./run_dev_nginx_both.bash --test-db`)
+
+## Test Data Hygiene
+- Integration and E2E tests create studies, participants and activities through the real API. They must not use the development database.
+- `backend/tests/support/database_tools.py` manages the disposable test database (`url`, `reset`, `drop`). It derives `<development database>_test` from `TUD_DATABASE_URL`, refuses to touch the development database, and refuses names without "test" unless `--force` is given.
+- `./test_backend_integration.sh` uses `TUD_TEST_DATABASE_URL` when set, otherwise the local `<development database>_test`, otherwise a throwaway PostgreSQL container.
+- `./run_dev_nginx_both.bash --test-db` serves that test database; it is created, migrated and seeded on every start.
 
 ## Environment Notes
 - Recommended local integration topology uses Nginx/dev reverse proxy to mirror deployed routing.
-- E2E tests require required app services to be running before invocation.
+- E2E tests require required app services to be running before invocation, started with `--test-db`.
