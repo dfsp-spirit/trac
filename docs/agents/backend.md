@@ -114,6 +114,45 @@ call entirely when the study has the flag off (it answers `saved: false`).
   participant, so join on `participant_id`. `only_with_client_info=true` is a 400
   on a study that does not collect the data.
 
+## Usability signals (`save_ux_events`)
+
+Opt-in per study, **off by default**, and unlinked by design: these rows exist to
+answer "where do participants get stuck?" without observing *who* got stuck.
+
+- **Endpoint:** `POST /api/studies/{s}/ux-events` — study-scoped, so there is no
+  participant id in the path, body or storage. A study with the flag off answers
+  `accepted: 0, reason: ux_events_disabled` and stores nothing.
+- **Storage:** one `ux_events` table, migrated by 0016:
+  `study_id`, `load_id`, `name`, `occurred_at`, `received_at`, `language`,
+  `app_version`, `props` (JSON). `load_id` is a random UUID for one page load,
+  kept in memory by the client, and only used for `COUNT(DISTINCT load_id)`; no
+  view renders it. There is no participant id, IP, user agent, referrer or
+  cookie in the table.
+- **Vocabulary:** `ux_events.py` holds the complete catalogue (`EVENT_PROPS`)
+  and the closed value sets (`ENUM_PROPS`). Seven events cover what the database
+  cannot see: `session.started`, `activity.form.opened`/`.closed`,
+  `diary.blocked` (validation refusals with their machine code),
+  `search.no_result`, `api.error` (5xx and unmapped failures) and
+  `client.error`. A coded 4xx is reported as a refusal, not as an error, so the
+  two tables stay disjoint.
+- **Filtering:** unknown event names are dropped, properties are filtered to the
+  event's allow-list, enumerated properties refuse free text, `api.error` routes
+  are rewritten so `/participants/<pid>/` becomes `/participants/:pid`, and the
+  search term is folded and capped at 48 characters. Caps: 20 events per batch,
+  32 KB body, 512 B of properties per event, 200 events per load per hour
+  (in-memory, per worker).
+- **Consent:** the client only reports when the study flag is on *and* — for a
+  consent-requiring study — the participant consented (the same rule as
+  `save_browser_identification`, D38). The server cannot check consent, because
+  it never learns who is asking; that is the price of the rows staying
+  unlinkable, and it belongs in the consent text.
+- **Reading it:** `/admin/ux-signals` (aggregates per study and window) and
+  `/admin/ux-signals/export.csv?study_name_short=…&dataset=queries|blocked|…`.
+  The "searches that found nothing" table is the alias shortlist for
+  `activities_*.json`.
+- **Retention:** `TUD_UX_EVENT_RETENTION_DAYS` (default 90) and
+  `tud ux-events purge [--days N] [--study S] [--dry-run]`.
+
 ## Skipping the diary (`allow_skip_timeuse`)
 
 Opt-in per study (**off by default**: a diary-only study never offers it).
