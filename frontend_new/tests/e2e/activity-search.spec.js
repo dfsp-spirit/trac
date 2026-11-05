@@ -42,6 +42,34 @@ async function search(page, query) {
   await expect(searchBox(page)).toHaveValue(query);
 }
 
+/**
+ * A custom-input row exactly as the form writes it: the typed text is part of
+ * the stored name, and the entry code is both code and parent.
+ *
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} text
+ */
+async function seedCustomWork(request, text, { start = 600, end = 660 } = {}) {
+  const diary = await (await request.get(`${participantsUrl()}/${PID}/diary`)).json();
+  const response = await request.post(`${participantsUrl()}/${PID}/activities`, {
+    data: {
+      items: [
+        {
+          client_uuid: `e2e-custom-${text}`,
+          timeline_key: diary.timeline.key,
+          activity_code: 1120,
+          activity_name: `Bezahlte Arbeit: ${text}`,
+          parent_activity_code: 1120,
+          start_minutes: start,
+          end_minutes: end,
+          day_label_indexes: [0],
+        },
+      ],
+    },
+  });
+  expect(response.ok(), 'seeding a custom activity').toBeTruthy();
+}
+
 test.describe('activity search', () => {
   test.beforeEach(async ({ request }) => clearActivities(request, PID));
   test.afterEach(async ({ request }) => clearActivities(request, PID));
@@ -175,5 +203,59 @@ test.describe('activity search', () => {
     // With a query the matches are the whole answer.
     await searchBox(page).fill('Schlafen');
     await expect(recentGroup(page)).toHaveCount(0);
+  });
+
+  test('a custom entry is a shortcut of its own, named by the typed text', async ({
+    page,
+    request,
+  }) => {
+    // "Bezahlte Arbeit" (1120) asks for the task; the answer becomes the name.
+    await seedCustomWork(request, 'Programmieren');
+    await openDiary(page, PID);
+    await openPanel(page);
+
+    const chip = recentGroup(page).locator('.t-activity');
+    await expect(chip).toHaveCount(1);
+    // The shortcut says what was typed, and the parent entry is the hint - a
+    // generic "Bezahlte Arbeit" chip would be no shortcut at all.
+    await expect(chip.locator('.t-activity__title')).toHaveText('Programmieren');
+    await expect(chip.locator('.t-activity__hint')).toHaveText('Bezahlte Arbeit');
+
+    // One tap reopens the form with the text already in place.
+    await chip.click();
+    await expect(page.locator('#form-text')).toHaveValue('Programmieren');
+  });
+
+  test('two texts of the same custom entry are two shortcuts', async ({
+    page,
+    request,
+  }) => {
+    // Both rows before the page loads: the client reads the diary once.
+    await seedCustomWork(request, 'Programmieren', { start: 600, end: 660 });
+    await seedCustomWork(request, 'E-Mails', { start: 700, end: 730 });
+    await openDiary(page, PID);
+    await openPanel(page);
+    await expect(recentGroup(page).locator('.t-activity__title')).toHaveText([
+      'E-Mails',
+      'Programmieren',
+    ]);
+  });
+
+  test('editing a custom activity keeps one entry name, not two', async ({
+    page,
+    request,
+  }) => {
+    await seedCustomWork(request, 'Programmieren');
+    await openDiary(page, PID);
+
+    await page.locator('.t-event__btn').first().click();
+    // The text field holds the typed text; the entry name belongs to the form.
+    await expect(page.locator('#form-text')).toHaveValue('Programmieren');
+    await page.locator('#form-end').selectOption('690');
+    await page.locator('[data-slot="actions"] .t-btn--primary').click();
+
+    await expect(page.locator('.t-event__title')).toHaveText(
+      'Bezahlte Arbeit: Programmieren'
+    );
   });
 });

@@ -112,6 +112,11 @@ const entry = (code) => ({
   haystack: `activity ${code}`,
 });
 
+/** A custom-input row exactly as the form writes it: "<entry>: <typed text>". */
+function custom(code, name, timestamp) {
+  return { activity_code: code, parent_activity_code: code, activity_name: name, created_at: timestamp };
+}
+
 test('nothing used yet means no shortcut row', () => {
   assert.deepEqual(recentEntries(RECENT_ENTRIES, []), []);
   assert.deepEqual(recentEntries(RECENT_ENTRIES, null), []);
@@ -121,7 +126,7 @@ test('the most recently touched activity comes first', () => {
   const codes = recentEntries(RECENT_ENTRIES, [
     used(100, '2026-10-01T10:00:00+00:00'),
     used(101, '2026-10-02T10:00:00+00:00'),
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [101, 100]);
 });
@@ -131,7 +136,7 @@ test('an activity used on several days counts once, at its latest use', () => {
     used(100, '2026-10-01T10:00:00+00:00'),
     used(101, '2026-10-02T10:00:00+00:00'),
     used(100, '2026-10-03T10:00:00+00:00'),
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [100, 101]);
 });
@@ -139,7 +144,7 @@ test('an activity used on several days counts once, at its latest use', () => {
 test('a sub-activity counts as the row the participant picked', () => {
   const codes = recentEntries(RECENT_ENTRIES, [
     { ...used(1021, '2026-10-02T10:00:00+00:00'), parent_activity_code: 102 },
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [102]);
 });
@@ -151,11 +156,11 @@ test('the list is capped', () => {
   );
 
   assert.deepEqual(
-    recentEntries(entries, activities).map((item) => item.code),
-    [5, 4, 3, 2]
+    recentEntries(entries, activities).map((item) => item.entry.code),
+    [5, 4, 3, 2, 1]
   );
   assert.deepEqual(
-    recentEntries(entries, activities, { limit: 2 }).map((item) => item.code),
+    recentEntries(entries, activities, { limit: 2 }).map((item) => item.entry.code),
     [5, 4]
   );
 });
@@ -164,19 +169,49 @@ test('codes no longer in the catalogue are skipped', () => {
   const codes = recentEntries(RECENT_ENTRIES, [
     used(4242, '2026-10-03T10:00:00+00:00'),
     used(100, '2026-10-01T10:00:00+00:00'),
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [100]);
 });
 
-test('a custom input is not a useful shortcut', () => {
-  // The fixture's code 200 is "Paid work" with is_custom_input: true.
-  const codes = recentEntries(RECENT_ENTRIES, [
-    used(200, '2026-10-03T10:00:00+00:00'),
-    used(100, '2026-10-01T10:00:00+00:00'),
-  ]).map((item) => item.code);
+test('a custom input is a shortcut per typed text, not per code', () => {
+  // The fixture's code 200 is "Paid work" with is_custom_input: true. The
+  // participant's own words are the activity, so two texts are two shortcuts.
+  const recents = recentEntries(RECENT_ENTRIES, [
+    custom(200, 'Paid work: Programming', '2026-10-01T10:00:00+00:00'),
+    custom(200, 'Paid work: Email', '2026-10-03T10:00:00+00:00'),
+    used(100, '2026-10-02T10:00:00+00:00'),
+  ]);
 
-  assert.deepEqual(codes, [100]);
+  assert.deepEqual(
+    recents.map((item) => [item.entry.code, item.label, item.prefillText]),
+    [
+      [200, 'Email', 'Email'],
+      [100, null, null],
+      [200, 'Programming', 'Programming'],
+    ]
+  );
+});
+
+test('the same custom text used on several days counts once', () => {
+  const recents = recentEntries(RECENT_ENTRIES, [
+    custom(200, 'Paid work: Programming', '2026-10-01T10:00:00+00:00'),
+    custom(200, 'Paid work: Programming', '2026-10-04T10:00:00+00:00'),
+  ]);
+
+  assert.equal(recents.length, 1);
+  assert.equal(recents[0].label, 'Programming');
+});
+
+test('a custom shortcut without readable text falls back to the entry name', () => {
+  // An older row, or one written by a client that did not compose the name.
+  const recents = recentEntries(RECENT_ENTRIES, [
+    { activity_code: 200, activity_name: '', created_at: '2026-10-01T10:00:00+00:00' },
+  ]);
+
+  assert.deepEqual(recents, [
+    { entry: RECENT_ENTRIES.find((item) => item.code === 200), label: null, prefillText: null },
+  ]);
 });
 
 test('order follows the instant, not the string', () => {
@@ -185,7 +220,7 @@ test('order follows the instant, not the string', () => {
   const codes = recentEntries(RECENT_ENTRIES, [
     used(100, '2026-10-01T09:00:00+02:00'),
     used(101, '2026-10-01T08:00:00+00:00'),
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [101, 100]);
 });
@@ -194,7 +229,7 @@ test('the creation time is the fallback when nothing was edited', () => {
   const codes = recentEntries(RECENT_ENTRIES, [
     { activity_code: 100, created_at: '2026-10-01T10:00:00+00:00' },
     { activity_code: 101, created_at: '2026-10-02T10:00:00+00:00' },
-  ]).map((item) => item.code);
+  ]).map((item) => item.entry.code);
 
   assert.deepEqual(codes, [101, 100]);
 });

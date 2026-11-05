@@ -129,7 +129,8 @@ export function createActivityPanel(deps) {
       recents: query ? [] : recentEntries(all, diary?.activities ?? []),
       query,
       t,
-      onChoose: (entry, child, groupKind) => showForm(entry, null, child, groupKind),
+      onChoose: (hit, groupKind) =>
+        showForm(hit.entry, null, hit.child, groupKind, hit.prefillText ?? null),
     });
     // A search that found nothing is the most actionable signal this app can
     // produce: it names vocabulary the catalogue is missing.
@@ -153,15 +154,22 @@ export function createActivityPanel(deps) {
    * @param {import('../domain/diary.js').ApiActivity | null} [activity]
    * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
    * @param {'recent' | 'catalogue'} [groupKind] Which list the entry was clicked in.
+   * @param {string | null} [prefillText] Typed text of a custom shortcut, if any.
    */
-  function showForm(entry, activity = null, child = null, groupKind = 'catalogue') {
+  function showForm(
+    entry,
+    activity = null,
+    child = null,
+    groupKind = 'catalogue',
+    prefillText = null
+  ) {
     mode = 'form';
     scrollOffset = content.scrollTop;
     visit.begin({ entry, editing: Boolean(activity), groupKind, query });
     if (title) title.textContent = activity ? t('diary.panel.editActivity') : t('diary.panel.addActivity');
     searchRow.hidden = true;
     if (backButton) backButton.hidden = false;
-    formController.show(entry, activity, child);
+    formController.show(entry, activity, child, prefillText);
     updateContext();
     // The list item that was just clicked is gone, so focus would fall back to
     // the body; move it to the first field so the form is where the next key

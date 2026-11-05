@@ -27,12 +27,11 @@ function el(tag, className, text) {
  * @param {HTMLElement} host
  * @param {{
  *   entries: import('./activitySearch.js').CatalogueEntry[],
- *   recents?: import('./activitySearch.js').CatalogueEntry[],
+ *   recents?: import('./activitySearch.js').RecentEntry[],
  *   query: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   onChoose: (
- *     entry: import('./activitySearch.js').CatalogueEntry,
- *     child: { code: number, name: string } | null,
+ *     hit: import('./activitySearch.js').SearchHit,
  *     groupKind: 'recent' | 'catalogue'
  *   ) => void,
  * }} view
@@ -52,7 +51,8 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
    * @param {'recent' | 'catalogue'} groupKind Which list the row came from.
    * @returns {HTMLLIElement}
    */
-  function row({ entry, child }, groupKind) {
+  function row(hit, groupKind) {
+    const { entry, child } = hit;
     const item = el('li');
     const button = el('button', 't-activity');
     button.type = 'button';
@@ -66,8 +66,10 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
     button.append(swatch);
 
     const body = el('span', 't-activity__body');
-    body.append(el('span', 't-activity__title', child ? child.name : entry.name));
-    const hint = child ? entry.name : entry.examples;
+    // A custom shortcut is titled with the typed text, so the parent entry goes
+    // where a matched sub-activity's parent goes: the hint.
+    body.append(el('span', 't-activity__title', hit.label ?? (child ? child.name : entry.name)));
+    const hint = child || hit.label ? entry.name : entry.examples;
     if (hint) body.append(el('span', 't-activity__hint', hint));
     button.append(body);
 
@@ -78,7 +80,7 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
       button.append(end);
     }
 
-    button.addEventListener('click', () => onChoose(entry, child, groupKind));
+    button.addEventListener('click', () => onChoose(hit, groupKind));
     item.append(button);
     return item;
   }
@@ -111,7 +113,14 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
   if (recents.length) {
     group(
       t('diary.panel.recent'),
-      recents.map((entry) => ({ entry, child: null, rank: 0, position: 0 })),
+      recents.map((recent) => ({
+        entry: recent.entry,
+        child: null,
+        rank: 0,
+        position: 0,
+        label: recent.label ?? undefined,
+        prefillText: recent.prefillText,
+      })),
       'recent'
     );
   }

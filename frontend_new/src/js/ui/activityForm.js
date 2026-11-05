@@ -8,7 +8,9 @@
  */
 import { MINUTES_PER_DAY, STEP_MINUTES, toDayRelative } from '../domain/time.js';
 import { validateActivity } from '../domain/validation.js';
+import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayChips, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
+import { createTimeNeighbours } from './timeNeighbours.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -31,8 +33,8 @@ function el(tag, className, text) {
  *   days: Array<{ index: number, name: string, display_names?: Record<string, string>, display_name: string }>,
  *   language: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
- *   prefill: { dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null },
- *   existing: Array<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number, activityCode: string | number }>,
+ *   prefill: { dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null, text?: string | null },
+ *   existing: Array<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number, activityCode: string | number, name?: string }>,
  *   dayStartMinutes: number,
  *   maxOverlap: number,
  *   mode: 'create' | 'edit',
@@ -78,8 +80,11 @@ export function renderActivityForm(host, view) {
     textInput.type = 'text';
     textInput.maxLength = 200;
     textInput.autocomplete = 'off';
+    // A stored name carries the entry prefix; a shortcut holds just the text.
     if (current && current.parent_activity_code === entry.code) {
-      textInput.value = current.activity_name;
+      textInput.value = customActivityText(entry.name, current.activity_name);
+    } else if (prefill.text) {
+      textInput.value = prefill.text;
     }
     form.append(field(t('diary.form.what'), 'form-text', textInput));
   }
@@ -127,7 +132,25 @@ export function renderActivityForm(host, view) {
   const endHint = el('p', 't-hint');
   endHint.hidden = true;
 
-  timeFieldset.append(dayField, row, duration, endHint);
+  const neighbours = createTimeNeighbours({
+    t,
+    dayStartMinutes,
+    existing,
+    getSelection: () => ({
+      dayIndex: Number(daySelect.value),
+      start: Number(startSelect.value),
+      end: Number(endSelect.value),
+    }),
+    getCurrentId: () => (current ? current.client_uuid : null),
+    // Snapping keeps the length the participant already chose.
+    onSnap: (start) => {
+      const duration = Number(endSelect.value) - Number(startSelect.value);
+      startSelect.value = String(start);
+      fillEnd(start + duration);
+    },
+  });
+
+  timeFieldset.append(dayField, row, duration, neighbours.element, endHint);
   form.append(timeFieldset);
 
   const daysFieldset = el('fieldset', 't-days');
@@ -169,6 +192,7 @@ export function renderActivityForm(host, view) {
     );
     syncChips();
     showDuration();
+    neighbours.refresh();
   }
 
   function showDuration() {
@@ -186,7 +210,10 @@ export function renderActivityForm(host, view) {
   }
 
   startSelect.addEventListener('change', () => fillEnd(Number(endSelect.value)));
-  endSelect.addEventListener('change', showDuration);
+  endSelect.addEventListener('change', () => {
+    showDuration();
+    neighbours.refresh();
+  });
   daySelect.addEventListener('change', () => fillEnd(Number(endSelect.value)));
 
   fillEnd(current ? current.end_minutes : prefill.endMinutes);
@@ -219,7 +246,7 @@ export function renderActivityForm(host, view) {
     if (textInput) {
       const text = textInput.value.trim();
       if (!text) return { ok: false, code: 'form.needsText' };
-      activityName = `${entry.name}: ${text}`;
+      activityName = composeCustomName(entry.name, text);
       parentCode = entry.code;
     }
 

@@ -197,8 +197,9 @@ export function createFormController(deps) {
      * @param {import('./activitySearch.js').CatalogueEntry} entry
      * @param {import('../domain/diary.js').ApiActivity | null} [activity]
      * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
+     * @param {string | null} [text] Already-typed text, from a custom shortcut.
      */
-    show(entry, activity = null, child = null) {
+    show(entry, activity = null, child = null, text = null) {
       editing = activity;
       timelineKey = activity?.timeline_key || entry.timelineKey || null;
       foot.hidden = false;
@@ -216,13 +217,15 @@ export function createFormController(deps) {
               startMinutes: activity.start_minutes,
               endMinutes: activity.end_minutes,
             }
-          : { ...prefill, childCode: child ? child.code : null },
+          : { ...prefill, childCode: child ? child.code : null, text },
         existing: diary.activities.map((item) => ({
           id: item.client_uuid,
           dayIndex: item.day_label_index,
           startMinutes: dateStart(item, dayStart),
           endMinutes: dateEnd(item, dayStart),
           activityCode: item.activity_code,
+          // For the boundary hint only: validation ignores it.
+          name: item.activity_name,
         })),
         dayStartMinutes: dayStart,
         maxOverlap: diary.timeline.max_overlap,

@@ -38,6 +38,22 @@
 - Old frontend (`frontend/src/`): no signals. Instrumenting both would double
   the consent surface for a codebase being retired.
 
+## Boundary hint in the activity form
+- On a phone the panel is a modal that covers the timeline, so the one fact a
+  participant cannot look up while choosing times is where the neighbouring
+  entries end ("did I sleep until 6:00 or 6:10?"). `domain/neighbours.js` answers
+  it from the same records `validateActivity` uses (the form builds `existing`
+  once and passes it to both, so hint and rule cannot disagree), and
+  `ui/timeNeighbours.js` renders it under the time row: "Schlafen bis 06:00 ·
+  Mittagessen ab 12:00", plus an "An Schlafen anschließen (06:00)" chip when the
+  start is within `SNAP_MAX_MINUTES` of the previous edge. The chip keeps the
+  chosen length and only moves the start.
+- Overlaps win over the boundaries, including the one `max_overlap` tolerates:
+  a 10-minute overlap would otherwise save without a word, which is the only
+  silent data-quality leak this form has. The line is a `role="status"` live
+  region, so a screen reader hears it change; the hint is hidden when the day
+  around the range is empty, so an empty form gains no clutter.
+
 ## Time handling
 - Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.
 - Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.

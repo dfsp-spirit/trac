@@ -63,6 +63,12 @@
 .t-time-range__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 .t-duration { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-family: var(--font-mono); font-size: 1rem; color: var(--ink); }
 .t-duration::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+/* Boundary hint under the time row: one line plus an optional one-tap chip. It
+   is the only view of the neighbouring entries while the phone form covers the
+   timeline (see domain/neighbours.js). */
+.t-neighbours { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.t-neighbours[hidden] { display: none; }
+.t-neighbours > .t-hint { margin: 0; }
 
 /* ---------- Day chips ---------- */
 .t-days { border: 0; margin: 0; padding: 0; min-width: 0; }
