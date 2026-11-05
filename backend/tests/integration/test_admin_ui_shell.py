@@ -28,6 +28,7 @@ ADMIN_PAGES = [
     "/admin/study/default",
     "/admin/participant-management",
     "/admin/file-validation",
+    "/admin/ux-signals",
     "/admin/tools",
 ]
 
@@ -46,9 +47,51 @@ async def test_admin_page_uses_the_shared_shell(page_path):
     # One stylesheet, no per-page <style> block.
     assert "<style" not in body
 
-    # Shared navigation: the same four entries on every page.
-    for label in ("Overview", "Participant Management", "File Validation", "Tools"):
+    # Shared navigation: the same entries on every page.
+    for label in (
+        "Overview",
+        "Participant Management",
+        "File Validation",
+        "UX Signals",
+        "Tools",
+    ):
         assert f">{label}</a>" in body.replace("\n", ""), label
+
+
+@pytest.mark.asyncio
+async def test_the_open_study_stays_one_click_away():
+    """Every page that knows the open study renders it in the second nav row.
+
+    Switching between Study Details, Participants and UX Signals for the *same*
+    study is the common admin loop, so the row never drops one of them - and the
+    page you are on is the one marked active.
+    """
+    pages = (
+        "/admin/study/default",
+        "/admin/participant-management?study_name_short=default",
+        "/admin/ux-signals?study_name_short=default",
+    )
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        for page_path in pages:
+            response = await client.get(f"{BASE_URL}{page_path}", auth=ADMIN_AUTH)
+            assert response.status_code == 200, page_path
+            row = response.text.split('aria-label="Selected study"', 1)[1].split(
+                "</nav>", 1
+            )[0]
+            for label in ("Study Details", "Participants", "UX Signals"):
+                assert f">{label}</a>" in row.replace("\n", ""), (page_path, label)
+            assert "study_name_short=default" in row, page_path
+
+        response = await client.get(
+            f"{BASE_URL}/admin/ux-signals?study_name_short=default", auth=ADMIN_AUTH
+        )
+        row = response.text.split('aria-label="Selected study"', 1)[1].split(
+            "</nav>", 1
+        )[0]
+        position = row.index("ux-signals?study_name_short=default")
+        assert " active" in row[max(0, position - 160) : position], (
+            "the UX Signals tab of the open study should be the active one"
+        )
 
 
 @pytest.mark.asyncio
