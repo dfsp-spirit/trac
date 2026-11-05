@@ -32,7 +32,8 @@ function el(tag, className, text) {
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   onChoose: (
  *     entry: import('./activitySearch.js').CatalogueEntry,
- *     child?: { code: number, name: string } | null
+ *     child: { code: number, name: string } | null,
+ *     groupKind: 'recent' | 'catalogue'
  *   ) => void,
  * }} view
  */
@@ -48,9 +49,10 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
    * the form with that sub-activity already chosen.
    *
    * @param {import('./activitySearch.js').SearchHit} hit
+   * @param {'recent' | 'catalogue'} groupKind Which list the row came from.
    * @returns {HTMLLIElement}
    */
-  function row({ entry, child }) {
+  function row({ entry, child }, groupKind) {
     const item = el('li');
     const button = el('button', 't-activity');
     button.type = 'button';
@@ -76,7 +78,7 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
       button.append(end);
     }
 
-    button.addEventListener('click', () => onChoose(entry, child));
+    button.addEventListener('click', () => onChoose(entry, child, groupKind));
     item.append(button);
     return item;
   }
@@ -92,7 +94,7 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
     section.dataset.group = groupKind;
     section.append(el('h3', null, heading));
     const list = el('ul', 't-activity-list');
-    for (const hit of rows) list.append(row(hit));
+    for (const hit of rows) list.append(row(hit, groupKind));
     section.append(list);
     fragment.append(section);
   }

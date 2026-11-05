@@ -483,6 +483,18 @@ class CfgFileStudy(BaseModel):
             "choose to collect deliberately; mention it in the consent text."
         ),
     )
+    save_ux_events: bool = Field(
+        default=False,
+        description=(
+            "Opt-in. When true, the participant client reports a small, fixed "
+            "set of usability signals (refused saves with their validation code, "
+            "searches that found nothing, API and client errors) so the study "
+            "team can see where participants get stuck. The rows carry no "
+            "participant id and are only read as aggregates, but this is still "
+            "observation of participants: mention it in the consent text. Off "
+            "by default."
+        ),
+    )
 
     def get_activities_json_files(self) -> Dict[str, str]:
         if isinstance(self.activities_json_files, dict) and self.activities_json_files:

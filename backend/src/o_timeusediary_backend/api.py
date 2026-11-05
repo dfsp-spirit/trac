@@ -24,6 +24,7 @@ import uuid
 from typing import Dict, List, Optional, Set, Tuple, Any, Union
 from datetime import date, datetime, timedelta, timezone
 import csv
+import io
 import json
 import re
 import zipfile
@@ -52,6 +53,13 @@ from .formats import (
 )
 import secrets
 from .logging_config import setup_logging, get_admin_audit_logger
+from . import ux_signals
+from .ux_events import (
+    LoadRateLimiter,
+    MAX_BODY_BYTES as UX_EVENTS_MAX_BODY_BYTES,
+    clean_batch as ux_clean_batch,
+    clean_event as ux_clean_event,
+)
 from .utils import coerce_utc_aware as _coerce_utc_aware, to_utc_naive as _to_utc_naive
 
 
@@ -66,6 +74,7 @@ from .models import (
     StudyActivityConfigBlob,
     StudyExternalTask,
     StudyExternalTaskAssignment,
+    UxEvent,
 )
 from .models import (
     StudyAvailableTimeline,
@@ -2793,6 +2802,7 @@ class ImportStudiesConfigStudy(BaseModel):
     footer_links: Optional[List[Dict[str, Any]]] = None
     hide_server_wide_links: bool = False
     save_browser_identification: bool = False
+    save_ux_events: bool = False
 
     @field_validator("day_start_minutes")
     @classmethod
@@ -3810,6 +3820,7 @@ def _create_study_from_import_payload(
         footer_links=study_payload.footer_links,
         hide_server_wide_links=study_payload.hide_server_wide_links,
         save_browser_identification=study_payload.save_browser_identification,
+        save_ux_events=study_payload.save_ux_events,
         owner_usernames=(list(owner_usernames) if owner_usernames else None),
     )
     session.add(study)
@@ -4833,6 +4844,7 @@ async def export_runtime_studies_config(
                 "is_paused": study.is_paused,
                 "require_diary_before_external_tasks": study.require_diary_before_external_tasks,
                 "save_browser_identification": study.save_browser_identification,
+                "save_ux_events": study.save_ux_events,
                 "external_tasks": [
                     {
                         "task_key": external_task.task_key,
@@ -8469,6 +8481,7 @@ async def admin_extract_studies(
                 ),
                 "hide_server_wide_links": current_study.hide_server_wide_links,
                 "save_browser_identification": current_study.save_browser_identification,
+                "save_ux_events": current_study.save_ux_events,
                 "inactivity_timeout_minutes": current_study.inactivity_timeout_minutes,
                 "inactivity_timeout_stress_time_left": (
                     current_study.inactivity_timeout_stress_time_left
@@ -9968,6 +9981,7 @@ class StudyConfigResponse(BaseModel):
     imprint_url: Optional[str] = None
     privacy_url: Optional[str] = None
     save_browser_identification: bool = False
+    save_ux_events: bool = False
 
 
 @app.get(
@@ -10246,6 +10260,7 @@ def get_study_config(
         imprint_url=settings.imprint_url,
         privacy_url=settings.privacy_url,
         save_browser_identification=study.save_browser_identification,
+        save_ux_events=study.save_ux_events,
     )
 
 
@@ -10938,3 +10953,295 @@ def submit_participant_client_info(
         "capture_count": capture_count,
         "client_info_captured_at": association.client_info_captured_at,
     }
+
+
+# ---------------------------------------------------------------------------
+# Unlinked usability signals (opt-in per study)
+# ---------------------------------------------------------------------------
+
+
+class UxEventBatchRequest(BaseModel):
+    """A batch of usability signals from one page load.
+
+    ``load_id`` is a random id the client keeps in memory for the lifetime of the
+    page. It is not derived from the participant and is never persisted by the
+    client; it exists only so the admin page can count distinct visits.
+
+    The body is not the participant-scoped shape used by the diary: there is no
+    participant id anywhere here, which is what keeps these rows unlinkable to
+    research data.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    load_id: str = Field(min_length=8, max_length=36)
+    language: Optional[str] = Field(default=None, max_length=8)
+    app_version: Optional[str] = Field(default=None, max_length=32)
+    events: List[Dict[str, Any]]
+
+
+# One limiter per worker process; see `ux_events.LoadRateLimiter`.
+_ux_rate_limiter = LoadRateLimiter()
+
+
+@app.post("/api/studies/{study_name_short}/ux-events")
+def submit_ux_events(
+    study_name_short: str,
+    payload: UxEventBatchRequest,
+    request: Request,
+    session: Session = Depends(get_session),
+):
+    """Store usability signals for a study that opted in.
+
+    Everything here answers ``200`` with a reason instead of raising: the client
+    drops the response on the floor, and a diary must never be held up (or
+    broken) by its own instrumentation. Nothing is stored when the study's
+    ``save_ux_events`` flag is off, and the event names and properties are
+    filtered against the fixed catalogue in :mod:`ux_events`.
+
+    Consent is honoured by the client (see the rewrite's D38 rule: no capture
+    from someone who has not consented), because this endpoint has no
+    participant to check - that is the price of keeping the rows unlinked.
+    """
+    declared_length = request.headers.get("content-length")
+    try:
+        too_large = (
+            declared_length is not None
+            and int(declared_length) > UX_EVENTS_MAX_BODY_BYTES
+        )
+    except ValueError:
+        too_large = False
+    if too_large:
+        return {"accepted": 0, "dropped": 0, "reason": "payload_too_large"}
+
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    if not study.save_ux_events:
+        logger.debug(
+            "Ignoring ux-events submission for study '%s' (save_ux_events disabled)",
+            study_name_short,
+        )
+        return {"accepted": 0, "dropped": 0, "reason": "ux_events_disabled"}
+
+    now = datetime.now(timezone.utc)
+    try:
+        load_id, context, raw_events = ux_clean_batch(payload.model_dump(), now=now)
+    except ValueError as exc:
+        return {"accepted": 0, "dropped": len(payload.events), "reason": str(exc)}
+
+    if not _ux_rate_limiter.allow(f"{study.id}:{load_id}", len(raw_events), now=now):
+        return {"accepted": 0, "dropped": len(raw_events), "reason": "rate_limited"}
+
+    rows: List[UxEvent] = []
+    dropped = 0
+    for raw_event in raw_events:
+        try:
+            event = ux_clean_event(raw_event, now=now)
+        except ValueError:
+            dropped += 1
+            continue
+        rows.append(
+            UxEvent(
+                study_id=study.id,
+                load_id=load_id,
+                name=event["name"],
+                occurred_at=event["occurred_at"] or now,
+                received_at=now,
+                language=context["language"],
+                app_version=context["app_version"],
+                props=event["props"],
+            )
+        )
+
+    if rows:
+        session.add_all(rows)
+        session.commit()
+
+    return {"accepted": len(rows), "dropped": dropped, "reason": None}
+
+
+# ---------------------------------------------------------------------------
+# Admin: usability signals (aggregate only, never per participant)
+# ---------------------------------------------------------------------------
+
+
+def _load_ux_event_rows(
+    session: Session,
+    study_id: int,
+    since: datetime,
+    until: Optional[datetime] = None,
+    limit: int = 200_000,
+) -> List[Dict[str, Any]]:
+    """Read the rows of one study and window as plain dicts for aggregation.
+
+    Deliberately returns no `load_id` column in the report layer's terms; it is
+    carried here because the aggregation needs it for distinct loads, but it
+    never reaches the template.
+    """
+    statement = (
+        select(UxEvent)
+        .where(UxEvent.study_id == study_id)
+        .where(UxEvent.received_at >= since)
+        .order_by(UxEvent.received_at)
+        .limit(limit)
+    )
+    if until is not None:
+        statement = statement.where(UxEvent.received_at < until)
+
+    return [
+        {
+            "load_id": row.load_id,
+            "name": row.name,
+            "occurred_at": row.occurred_at,
+            "received_at": row.received_at,
+            "language": row.language,
+            "app_version": row.app_version,
+            "props": row.props,
+        }
+        for row in session.exec(statement).all()
+    ]
+
+
+@app.get(
+    "/admin/ux-signals",
+    name="Admin UX Signals Page",
+    response_class=HTMLResponse,
+)
+async def admin_ux_signals(
+    request: Request,
+    study_name_short: Optional[str] = Query(
+        None, description="Study to show; defaults to the first one in scope."
+    ),
+    days: int = Query(30, ge=1, le=365, description="Window length in days"),
+    identity: AdminIdentity = Depends(require_admin_identity),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Aggregate usability signals per study.
+
+    Shows where participants get stuck - refused saves, searches that found
+    nothing, errors - without exposing anyone: the page only ever renders
+    aggregates, never an event row and never a ``load_id``.
+    """
+    logger.info("Admin '%s' accessed the ux-signals page.", current_admin)
+    audit_admin_action(current_admin, "opened ux signals page")
+
+    all_studies = session.exec(select(Study).order_by(Study.name_short)).all()
+    studies = [study for study in all_studies if identity.can_access_study(study)]
+
+    selected: Optional[Study] = None
+    if study_name_short:
+        selected = next(
+            (study for study in studies if study.name_short == study_name_short), None
+        )
+        if selected is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Study '{study_name_short}' not found or not accessible",
+            )
+    elif studies:
+        # Prefer a study that actually collects signals: that is what the page
+        # is for, and an empty page for a disabled study reads like a bug.
+        selected = next(
+            (study for study in studies if study.save_ux_events), studies[0]
+        )
+
+    now = datetime.now(timezone.utc)
+    report = None
+    previous_kpis: Dict[str, Any] = {}
+    if selected is not None and selected.save_ux_events:
+        since = now - timedelta(days=days)
+        rows = _load_ux_event_rows(session, selected.id, since)
+        previous_rows = _load_ux_event_rows(
+            session, selected.id, since - timedelta(days=days), until=since
+        )
+        report = ux_signals.build_report(
+            rows, start=(now - timedelta(days=days - 1)).date(), days=days
+        )
+        previous_kpis = ux_signals.kpis(previous_rows)
+        deltas = {
+            key: ux_signals.delta_pct(report["kpis"], previous_kpis, key)
+            for key in report["kpis"]
+        }
+        report["deltas"] = deltas
+
+    context_dict = {
+        "request": request,
+        "current_admin": current_admin,
+        "current_time": utc_now(),
+        "studies": studies,
+        "selected": selected,
+        "days": days,
+        "report": report,
+        "previous_kpis": previous_kpis,
+    }
+    template = templates.get_template("admin_ux_signals.html")
+    return HTMLResponse(content=template.render(context_dict))
+
+
+_UX_SIGNAL_EXPORTS = {
+    "events": ("event", lambda report: report["by_name"]),
+    "blocked": ("code", lambda report: report["blocked_codes"]),
+    "queries": ("query", lambda report: report["no_result_queries"]),
+    "api_errors": ("route", lambda report: report["api_errors"]),
+    "client_errors": ("name", lambda report: report["client_errors"]),
+    "form": ("source", lambda report: report["form_by_source"]),
+}
+
+
+@app.get("/admin/ux-signals/export.csv", name="Admin UX Signals CSV")
+async def admin_ux_signals_export(
+    study_name_short: str,
+    dataset: str = Query("queries"),
+    days: int = Query(30, ge=1, le=365),
+    identity: AdminIdentity = Depends(require_admin_identity),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Export one aggregate table as CSV, for a paper or an alias workshop."""
+    if dataset not in _UX_SIGNAL_EXPORTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"dataset must be one of {sorted(_UX_SIGNAL_EXPORTS)}",
+        )
+
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if study is None or not identity.can_access_study(study):
+        raise HTTPException(status_code=404, detail="Study not found")
+
+    audit_admin_action(
+        current_admin, f"exported ux-signals {dataset} for study '{study_name_short}'"
+    )
+
+    now = datetime.now(timezone.utc)
+    rows = (
+        _load_ux_event_rows(session, study.id, now - timedelta(days=days))
+        if study.save_ux_events
+        else []
+    )
+    report = ux_signals.build_report(
+        rows, start=(now - timedelta(days=days - 1)).date(), days=days
+    )
+
+    table = _UX_SIGNAL_EXPORTS[dataset][1](report)
+    fieldnames = list(table[0].keys()) if table else ["count"]
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    for entry in table:
+        writer.writerow(entry)
+
+    filename = f"ux_signals_{study_name_short}_{dataset}_{days}d.csv"
+    return StreamingResponse(
+        iter([buffer.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

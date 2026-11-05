@@ -10,8 +10,9 @@
  */
 import { createFormController } from './activityPanelForm.js';
 import { renderActivityList } from './activityList.js';
-import { flattenCatalogue, recentEntries } from './activitySearch.js';
+import { flattenCatalogue, recentEntries, searchHits } from './activitySearch.js';
 import { dayLabel, daySummaries } from '../domain/diary.js';
+import { createFormVisit } from './formVisit.js';
 import { describeError } from './messages.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
@@ -41,8 +42,12 @@ function el(tag, className, text) {
  *   onCreate: (body: { items: any[], group_id?: string }) => Promise<any>,
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
- *   onFinished?: (intent?: 'close' | 'another') => void,
+ *   onFinished?: (intent?: 'close' | 'another' | 'deleted') => void,
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
+ *   signals?: {
+ *     track: (name: string, props?: Record<string, any>) => void,
+ *     trackSearch: (query: string, hits: number) => void,
+ *   },
  * }} deps
  */
 export function createActivityPanel(deps) {
@@ -58,6 +63,7 @@ export function createActivityPanel(deps) {
     onDelete,
     toast,
     onFinished,
+    signals,
   } = deps;
 
   /**
@@ -85,6 +91,7 @@ export function createActivityPanel(deps) {
   let mode = 'catalogue';
   let query = '';
   let scrollOffset = 0;
+  const visit = createFormVisit({ track: (name, props) => signals?.track(name, props) });
 
   function entries() {
     return flattenCatalogue(getCatalogue(), getTimelineKeys()).entries;
@@ -122,8 +129,11 @@ export function createActivityPanel(deps) {
       recents: query ? [] : recentEntries(all, diary?.activities ?? []),
       query,
       t,
-      onChoose: (entry, child) => showForm(entry, null, child),
+      onChoose: (entry, child, groupKind) => showForm(entry, null, child, groupKind),
     });
+    // A search that found nothing is the most actionable signal this app can
+    // produce: it names vocabulary the catalogue is missing.
+    if (query) signals?.trackSearch(query, searchHits(all, query).length);
   }
 
   function showCatalogue({ preserveScroll = false } = {}) {
@@ -142,10 +152,12 @@ export function createActivityPanel(deps) {
    * @param {import('./activitySearch.js').CatalogueEntry} entry
    * @param {import('../domain/diary.js').ApiActivity | null} [activity]
    * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
+   * @param {'recent' | 'catalogue'} [groupKind] Which list the entry was clicked in.
    */
-  function showForm(entry, activity = null, child = null) {
+  function showForm(entry, activity = null, child = null, groupKind = 'catalogue') {
     mode = 'form';
     scrollOffset = content.scrollTop;
+    visit.begin({ entry, editing: Boolean(activity), groupKind, query });
     if (title) title.textContent = activity ? t('diary.panel.editActivity') : t('diary.panel.addActivity');
     searchRow.hidden = true;
     if (backButton) backButton.hidden = false;
@@ -169,9 +181,11 @@ export function createActivityPanel(deps) {
     onUpdate,
     onDelete,
     toast,
+    onRefused: (refusal) => signals?.track('diary.blocked', refusal),
     onDone: (intent) => {
+      visit.end(intent === 'deleted' ? 'deleted' : 'saved');
       showCatalogue();
-      onFinished?.(intent);
+      onFinished?.(intent === 'deleted' ? 'close' : intent);
     },
   });
 
@@ -195,7 +209,10 @@ export function createActivityPanel(deps) {
   }
 
   if (backButton) {
-    backButton.addEventListener('click', () => showCatalogue({ preserveScroll: true }));
+    backButton.addEventListener('click', () => {
+      visit.end('cancelled');
+      showCatalogue({ preserveScroll: true });
+    });
   }
 
   return {
@@ -238,6 +255,7 @@ export function createActivityPanel(deps) {
      */
     escape() {
       if (mode === 'form') {
+        visit.end('cancelled');
         showCatalogue({ preserveScroll: true });
         backButton.focus();
         return true;

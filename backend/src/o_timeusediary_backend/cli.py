@@ -76,7 +76,87 @@ def _build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    ux_parser = subparsers.add_parser(
+        "ux-events", help="Unlinked usability signal commands"
+    )
+    ux_subparsers = ux_parser.add_subparsers(dest="ux_command")
+
+    purge_parser = ux_subparsers.add_parser(
+        "purge", help="Delete usability signals older than the retention window"
+    )
+    purge_parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help=(
+            "Keep signals newer than this many days "
+            "(default: TUD_UX_EVENT_RETENTION_DAYS, 90)"
+        ),
+    )
+    purge_parser.add_argument(
+        "--study",
+        default=None,
+        help="Only purge this study (name_short). Default: all studies.",
+    )
+    purge_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report how many rows would be deleted, without deleting them.",
+    )
+
     return parser
+
+
+def _run_ux_events_purge(
+    days: int | None, study_name_short: str | None, dry_run: bool
+) -> int:
+    from datetime import datetime, timedelta, timezone
+
+    from sqlmodel import Session, delete, select
+
+    from .database import engine
+    from .models import Study, UxEvent
+    from .settings import settings
+
+    retention_days = settings.ux_event_retention_days if days is None else days
+    if retention_days <= 0:
+        print(
+            "Refusing to purge: the retention window must be a positive number of days."
+        )
+        return 1
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    with Session(engine) as session:
+        statement = delete(UxEvent).where(UxEvent.received_at < cutoff)
+        if study_name_short:
+            study = session.exec(
+                select(Study).where(Study.name_short == study_name_short)
+            ).first()
+            if study is None:
+                print(f"Study '{study_name_short}' not found.")
+                return 1
+            statement = statement.where(UxEvent.study_id == study.id)
+
+        if dry_run:
+            count_statement = select(UxEvent).where(UxEvent.received_at < cutoff)
+            if study_name_short:
+                count_statement = count_statement.where(UxEvent.study_id == study.id)
+            affected = len(session.exec(count_statement).all())
+            print(
+                f"Dry run: {affected} signal row(s) older than {retention_days} day(s) "
+                f"would be deleted{'' if not study_name_short else f' for study {study_name_short}'}."
+            )
+            return 0
+
+        result = session.execute(statement)
+        session.commit()
+        affected = result.rowcount if result.rowcount is not None else 0
+
+    print(
+        f"Deleted {affected} signal row(s) older than {retention_days} day(s)"
+        f"{'' if not study_name_short else f' for study {study_name_short}'}."
+    )
+    return 0
 
 
 def _get_db_counts() -> dict[str, int]:
@@ -301,6 +381,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "studies" and args.studies_command == "export-runtime-config":
         return _run_studies_export_runtime_config(args.output)
+
+    if args.command == "ux-events" and args.ux_command == "purge":
+        return _run_ux_events_purge(args.days, args.study, args.dry_run)
 
     parser.print_help()
     return 1

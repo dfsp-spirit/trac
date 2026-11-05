@@ -65,9 +65,27 @@ function withoutUuids(uuids, diary) {
  *   api: Api,
  *   getLanguage: () => string,
  *   multiTimelinePolicy?: string,
- * }} deps
+ *   onRefused?: (refusal: { stage: 'activity_save' | 'study_submit', codes: string[] }) => void,
+ * }} deps `onRefused` hears the refusals a participant can act on (a rule said
+ *   no), which is the signal that answers "where do people get stuck". Plain
+ *   breakage goes to the API client's `onError` hook instead.
  */
-export function createDiaryActions({ store, api, getLanguage, multiTimelinePolicy = 'ignore' }) {
+export function createDiaryActions({
+  store,
+  api,
+  getLanguage,
+  multiTimelinePolicy = 'ignore',
+  onRefused,
+}) {
+  /**
+   * @param {unknown} error
+   * @returns {string[]}
+   */
+  function refusalCodes(error) {
+    const code = /** @type {{ code?: unknown }} */ (error)?.code;
+    return typeof code === 'string' && code ? [code] : [];
+  }
+
   async function load() {
     store.set({ status: 'loading', error: null });
     try {
@@ -127,6 +145,7 @@ export function createDiaryActions({ store, api, getLanguage, multiTimelinePolic
       return result;
     } catch (error) {
       store.set({ saveState: 'error' });
+      onRefused?.({ stage: 'activity_save', codes: refusalCodes(error) });
       throw error;
     }
   }
@@ -149,6 +168,7 @@ export function createDiaryActions({ store, api, getLanguage, multiTimelinePolic
       return updated;
     } catch (error) {
       store.set({ saveState: 'error' });
+      onRefused?.({ stage: 'activity_save', codes: refusalCodes(error) });
       throw error;
     }
   }
@@ -233,6 +253,7 @@ export function createDiaryActions({ store, api, getLanguage, multiTimelinePolic
       return result;
     } catch (error) {
       store.set({ saveState: 'idle' });
+      onRefused?.({ stage: 'study_submit', codes: refusalCodes(error) });
       throw error;
     }
   }

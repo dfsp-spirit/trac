@@ -9,13 +9,14 @@
  */
 import { config } from './config.js';
 import { createApi } from './data/api.js';
+import { createSignalSender, createSignals } from './data/signals.js';
 import { reportClientInfo } from './data/clientInfo.js';
 import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
 import { pickInitialLanguage } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
-import { STEP_MINUTES } from './domain/time.js';
 import { createDiaryActions } from './state/diary.js';
 import { createInitialState, createStore } from './state/store.js';
+import { createDiaryScreen } from './ui/diaryScreen.js';
 import { createDiaryView } from './ui/diaryView.js';
 import { adoptParticipantId } from './ui/identity.js';
 import { createPanelController } from './ui/panelController.js';
@@ -29,7 +30,6 @@ import { readShell } from './ui/shell.js';
 import { createShortcuts } from './ui/shortcuts.js';
 import { createShellChrome } from './ui/shellChrome.js';
 import { applyTranslations } from './ui/i18n-dom.js';
-import { scrollToDay } from './ui/timeline.js';
 import { watchTopbarHeight } from './ui/topbarHeight.js';
 
 /** @param {{ root: HTMLElement, params: URLSearchParams }} inputs */
@@ -46,6 +46,12 @@ export function mount({ root, params }) {
   const participantId = adoptParticipantId({ studyName, participantId: identity.participant || config.participantId });
 
   const store = createStore(createInitialState({ language }));
+  // Opt-in, unlinked usability signals; silent until the session says the study
+  // collects them (domain/uxEvents.js).
+  const signals = createSignals({
+    send: studyName ? createSignalSender(config.apiBaseUrl, studyName) : null,
+    getLanguage: () => store.get().language,
+  });
   let translator = createTranslator({});
 
   /** @type {(key: string, values?: Record<string, string | number>) => string} */
@@ -85,10 +91,19 @@ export function mount({ root, params }) {
   });
 
   const api =
-    studyName && participantId ? createApi(config.apiBaseUrl, studyName, participantId) : null;
+    studyName && participantId
+      ? createApi(config.apiBaseUrl, studyName, participantId, {
+          onError: (info) => signals.track('api.error', info),
+        })
+      : null;
   const diaryDeps = { store, getLanguage: () => store.get().language };
   const actions = api
-    ? createDiaryActions({ ...diaryDeps, api, multiTimelinePolicy: config.multiTimelinePolicy })
+    ? createDiaryActions({
+        ...diaryDeps,
+        api,
+        multiTimelinePolicy: config.multiTimelinePolicy,
+        onRefused: (refusal) => signals.track('diary.blocked', refusal),
+      })
     : null;
 
   const { hostPanel } = createPanelHost({
@@ -115,6 +130,7 @@ export function mount({ root, params }) {
     actions: actions ?? undefined,
     toastRegion,
     t,
+    signals,
   });
 
   const router = createRouter({ onChange: () => {} });
@@ -128,7 +144,7 @@ export function mount({ root, params }) {
     api,
     getLanguage: () => store.get().language,
     onEnterDiary: () => void actions?.load(),
-    onSession: chrome.apply,
+    onSession: (session) => (chrome.apply(session), signals.onSession(session)),
   });
 
   const languageSwitch = createLanguageSwitch({
@@ -164,13 +180,6 @@ export function mount({ root, params }) {
     onTimelineRendered: () => panels.refresh(),
   });
 
-  /** @param {number} dayIndex */
-  function goToDay(dayIndex) {
-    const day = store.get().diary?.days[dayIndex];
-    store.set({ currentDay: dayIndex });
-    if (day) scrollToDay(view.sections(), day.name);
-  }
-
   const review = createReviewFlow({
     root,
     t,
@@ -178,42 +187,21 @@ export function mount({ root, params }) {
     stageMachine,
     getState: () => store.get(),
     isLocked,
-    onEdit: goToDay,
+    onEdit: (dayIndex) => screen.goToDay(dayIndex),
   });
 
-  /** @param {import('./state/store.js').DiaryState} state */
-  function render(state) {
-    const failure = /** @type {{ code?: string } | null} */ (state.error);
-    if (failure?.code === 'multi_timeline') return stageMachine.incompatible();
-    if (!state.diary) return;
-    const locked = isLocked();
-    stageMachine.setLocked(locked);
-    view.render({
-      diary: state.diary,
-      language: state.language,
-      revision: state.revision,
-      currentDay: state.currentDay,
-      locked,
-    });
-    panels.sync(locked);
-  }
-
-  const onFab = () => {
-    if (isLocked()) return;
-    const dayIndex = store.get().currentDay;
-    const start = view.minutesAtTop(dayIndex);
-    panels.openAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
-  };
-
-  const onEscape = () => {
-    if (panels.escape()) return;
-    if (dialogHost?.open) dialogHost.close();
-  };
-
-  /** @param {Event} event */
-  const onTimelineClick = (event) => panels.openFromEvent(event);
-
-  const onSubmitClick = () => review.open();
+  const screen = createDiaryScreen({
+    store,
+    view,
+    panels,
+    stageMachine,
+    review,
+    daysHost,
+    fab,
+    submitBtn,
+    dialogHost,
+    isLocked,
+  });
 
   const finePointer = window.matchMedia('(pointer: fine)');
   const shortcuts = createShortcuts({
@@ -232,19 +220,15 @@ export function mount({ root, params }) {
       store.get().status !== 'ready' || root.querySelector('dialog[open]') !== null,
     onToggle: (enabled) => store.set({ shortcuts: enabled }),
     actions: {
-      nextDay: () =>
-        goToDay(Math.min(store.get().currentDay + 1, (store.get().diary?.days.length ?? 1) - 1)),
-      prevDay: () => goToDay(Math.max(store.get().currentDay - 1, 0)),
-      newActivity: onFab,
+      nextDay: () => screen.stepDay(1),
+      prevDay: () => screen.stepDay(-1),
+      newActivity: screen.addActivity,
       search: () => panels.focusSearch(),
-      escape: onEscape,
+      escape: screen.onEscape,
       nudge: (mode, delta) => panels.nudge(mode, delta),
     },
   });
 
-  fab.addEventListener('click', onFab);
-  submitBtn.addEventListener('click', onSubmitClick);
-  daysHost.addEventListener('click', onTimelineClick);
   const onBreakpoint = () => panels.create();
   wide.addEventListener('change', onBreakpoint);
 
@@ -252,7 +236,7 @@ export function mount({ root, params }) {
 
   const stopHashListener = router.onHashChange(() => void stageMachine.refresh());
 
-  const unsubscribe = store.subscribe(render);
+  const unsubscribe = store.subscribe(screen.render);
   panels.create();
 
   void (async () => {
@@ -283,12 +267,11 @@ export function mount({ root, params }) {
       stopTopbarWatch();
       stopHashListener();
       wide.removeEventListener('change', onBreakpoint);
-      fab.removeEventListener('click', onFab);
-      submitBtn.removeEventListener('click', onSubmitClick);
-      daysHost.removeEventListener('click', onTimelineClick);
+      screen.destroy();
       shortcuts.destroy();
       review.destroy();
       chrome.destroy();
+      signals.destroy();
     },
   };
 }

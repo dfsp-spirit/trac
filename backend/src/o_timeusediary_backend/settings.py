@@ -411,6 +411,16 @@ class TUDBackendSettings:
             )
 
     @property
+    def ux_event_retention_days(self) -> int:
+        """How long unlinked usability signals are kept.
+
+        Defaults to 90 days: long enough to look at a pilot run, short enough
+        that the table is not an indefinite behaviour archive. Purged by
+        ``tud ux-events purge``; 0 disables the automatic default.
+        """
+        return int(os.getenv("TUD_UX_EVENT_RETENTION_DAYS", "90"))
+
+    @property
     def admin_audit_log_file(self) -> str:
         """Path to persistent admin action audit log file."""
         return os.getenv("TUD_ADMIN_AUDIT_LOG_FILE", "admin_actions.log")

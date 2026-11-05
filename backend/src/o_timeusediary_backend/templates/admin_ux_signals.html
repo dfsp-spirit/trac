@@ -1,0 +1,317 @@
+{% extends "admin_base.html" %}
+{% from "partials/admin_nav.html" import admin_nav with context %}
+
+{% block title %}UX Signals · TRAC Admin{% endblock %}
+{% block nav %}{{ admin_nav('ux-signals') }}{% endblock %}
+
+{% block content %}
+    <div class="header">
+        <h1>UX Signals</h1>
+        <p>Where participants get stuck: refused saves, searches that found nothing, errors.</p>
+        <div class="header-info">
+            <div><strong>Admin:</strong> {{ current_admin }}</div>
+            <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <p class="muted">
+            These numbers are <strong>aggregates only</strong>. The signal rows carry no participant
+            id, no IP address and no user agent, so nothing here can be traced back to a person or
+            joined to the research data. Events are reported only if a study opts in with
+            <code>save_ux_events</code>.
+        </p>
+        <form class="filter-form" method="get" action="{{ request.scope.root_path }}/admin/ux-signals">
+            <label for="uxStudySelect">Study</label>
+            <select id="uxStudySelect" name="study_name_short">
+                {% for option in studies %}
+                    <option value="{{ option.name_short }}"
+                            {% if selected and option.name_short == selected.name_short %}selected{% endif %}>
+                        {{ option.name }}{% if not option.save_ux_events %} (collection off){% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <label for="uxDaysInput">Window</label>
+            <select id="uxDaysInput" name="days">
+                {% for option in [7, 30, 90, 180] %}
+                    <option value="{{ option }}" {% if days == option %}selected{% endif %}>{{ option }} days</option>
+                {% endfor %}
+            </select>
+            <button class="btn-secondary" type="submit">Show</button>
+        </form>
+    </div>
+
+    {% if not selected %}
+        <div class="empty-state">No study in your scope yet.</div>
+    {% elif not report %}
+        <div class="card">
+            <h2>Collection is off for {{ selected.name }}</h2>
+            <p>
+                This study does not collect usability signals, so there is nothing to show. Enable
+                it deliberately, per study, in the studies config file:
+            </p>
+            <pre>{
+  "name_short": "{{ selected.name_short }}",
+  "save_ux_events": true
+}</pre>
+            <p class="muted">
+                Re-import the studies config to apply it. Participants of a study that requires
+                consent are only instrumented after they consented; mention the collection in the
+                consent text.
+            </p>
+        </div>
+    {% else %}
+        {% set kpis = report.kpis %}
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ kpis.loads }}</div>
+                <div class="stat-label">Page loads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">
+                    {% if kpis.form_completion_rate is not none %}{{ kpis.form_completion_rate }}%{% else %}–{% endif %}
+                </div>
+                <div class="stat-label">Form completion</div>
+                {% if report.deltas.form_completion_rate is not none %}
+                    <div class="muted">{{ '%+.1f'|format(report.deltas.form_completion_rate) }}% vs previous</div>
+                {% endif %}
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{% if kpis.blocked_per_100_loads is not none %}{{ kpis.blocked_per_100_loads }}{% else %}–{% endif %}</div>
+                <div class="stat-label">Blocked saves / 100 loads</div>
+                {% if report.deltas.blocked_per_100_loads is not none %}
+                    <div class="muted">{{ '%+.1f'|format(report.deltas.blocked_per_100_loads) }}% vs previous</div>
+                {% endif %}
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{% if kpis.no_result_per_100_loads is not none %}{{ kpis.no_result_per_100_loads }}{% else %}–{% endif %}</div>
+                <div class="stat-label">Dead-end searches / 100 loads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{% if kpis.client_errors_per_100_loads is not none %}{{ kpis.client_errors_per_100_loads }}{% else %}–{% endif %}</div>
+                <div class="stat-label">Client errors / 100 loads</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ kpis.form_unclosed }}</div>
+                <div class="stat-label">Forms left mid-way</div>
+            </div>
+        </div>
+
+        {% if kpis.events == 0 %}
+            <div class="empty-state">
+                Collection is on, but no signals arrived in the last {{ days }} days.
+            </div>
+        {% endif %}
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Where people get stuck</h2>
+                <p class="muted">Validation refusals, by machine code. The top row is the rule
+                    participants trip over most.</p>
+                {% if report.blocked_codes %}
+                    <a class="btn-secondary"
+                       href="{{ request.scope.root_path }}/admin/ux-signals/export.csv?study_name_short={{ selected.name_short|urlencode }}&dataset=blocked&days={{ days }}">CSV</a>
+                {% endif %}
+            </div>
+            {% if report.blocked_codes %}
+                <table>
+                    <thead>
+                    <tr><th>Validation code</th><th>Refusals</th><th>Loads affected</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.blocked_codes %}
+                        <tr>
+                            <td><code>{{ entry.code }}</code></td>
+                            <td>{{ entry.count }}</td>
+                            <td>{{ entry.loads }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">No refused saves in this window.</div>
+            {% endif %}
+        </div>
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Searches that found nothing</h2>
+                <p class="muted">Folded and capped at 48 characters by the server. This is the
+                    shortlist for activity aliases.</p>
+                {% if report.no_result_queries %}
+                    <a class="btn-secondary"
+                       href="{{ request.scope.root_path }}/admin/ux-signals/export.csv?study_name_short={{ selected.name_short|urlencode }}&dataset=queries&days={{ days }}">CSV</a>
+                {% endif %}
+            </div>
+            {% if report.no_result_queries %}
+                <table>
+                    <thead>
+                    <tr><th>Term</th><th>Searches</th><th>Loads</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.no_result_queries %}
+                        <tr>
+                            <td>{{ entry.query }}</td>
+                            <td>{{ entry.count }}</td>
+                            <td>{{ entry.loads }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">Every search in this window matched something.</div>
+            {% endif %}
+        </div>
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Activity entry paths</h2>
+                <p class="muted">Where an entry started, and how it ended. "Unclosed" means the
+                    participant left the form without saving or cancelling.</p>
+                {% if report.form_by_source %}
+                    <a class="btn-secondary"
+                       href="{{ request.scope.root_path }}/admin/ux-signals/export.csv?study_name_short={{ selected.name_short|urlencode }}&dataset=form&days={{ days }}">CSV</a>
+                {% endif %}
+            </div>
+            {% if report.form_by_source %}
+                <table>
+                    <thead>
+                    <tr><th>Started from</th><th>Opened</th><th>Saved</th><th>Cancelled</th><th>Unclosed</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.form_by_source %}
+                        <tr>
+                            <td>{{ entry.source }}</td>
+                            <td>{{ entry.opened }}</td>
+                            <td>{{ entry.saved }}</td>
+                            <td>{{ entry.cancelled }}</td>
+                            <td>{{ entry.unclosed }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">No activity form was opened in this window.</div>
+            {% endif %}
+        </div>
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Errors</h2>
+                <p class="muted">Server responses the diary did not accept, and client-side
+                    exceptions. Routes are templated, so no participant id appears here.</p>
+            </div>
+            <h3>API errors</h3>
+            {% if report.api_errors %}
+                <table>
+                    <thead>
+                    <tr><th>Method</th><th>Route</th><th>Status</th><th>Code</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.api_errors %}
+                        <tr>
+                            <td>{{ entry.method }}</td>
+                            <td><code>{{ entry.route }}</code></td>
+                            <td>{% if entry.status is not none %}{{ entry.status }}{% else %}–{% endif %}</td>
+                            <td>{{ entry.code or '–' }}</td>
+                            <td>{{ entry.count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">No API errors in this window.</div>
+            {% endif %}
+
+            <h3>Client errors</h3>
+            {% if report.client_errors %}
+                <table>
+                    <thead>
+                    <tr><th>Kind</th><th>Error</th><th>Source</th><th>Line</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.client_errors %}
+                        <tr>
+                            <td>{{ entry.kind }}</td>
+                            <td><code>{{ entry.name }}</code></td>
+                            <td><code>{{ entry.source }}</code></td>
+                            <td>{% if entry.line is not none %}{{ entry.line }}{% else %}–{% endif %}</td>
+                            <td>{{ entry.count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-state">No client errors in this window.</div>
+            {% endif %}
+        </div>
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Signals per day</h2>
+                <p class="muted">{{ report.start }} &ndash; {{ report.days }} day window.</p>
+            </div>
+            <div style="padding: 1.5rem;">
+                {% for day in report.daily_totals %}
+                    <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:2px;">
+                        <span class="muted" style="width:6.5rem; font-variant-numeric: tabular-nums;">{{ day.day }}</span>
+                        <span style="flex:1; background: var(--border); height:10px; border-radius:9999px; overflow:hidden;">
+                            <span style="display:block; height:100%; width: {{ day.pct }}%; background: var(--text);"></span>
+                        </span>
+                        <span class="muted" style="width:3rem; text-align:right; font-variant-numeric: tabular-nums;">{{ day.count }}</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Event mix and context</h2>
+            </div>
+            <table>
+                <thead>
+                <tr><th>Event</th><th>Count</th><th>Share</th></tr>
+                </thead>
+                <tbody>
+                {% for entry in report.by_name %}
+                    <tr>
+                        <td><code>{{ entry.name }}</code></td>
+                        <td>{{ entry.count }}</td>
+                        <td>{{ entry.share }}%</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <table>
+                <thead>
+                <tr><th>Language</th><th>Count</th></tr>
+                </thead>
+                <tbody>
+                {% for entry in report.context.language %}
+                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <table>
+                <thead>
+                <tr><th>Viewport</th><th>Count</th><th>Share</th></tr>
+                </thead>
+                <tbody>
+                {% for entry in report.context.viewport %}
+                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td><td>{{ entry.share }}%</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <table>
+                <thead>
+                <tr><th>App version</th><th>Count</th></tr>
+                </thead>
+                <tbody>
+                {% for entry in report.context.app_version %}
+                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}

@@ -2,7 +2,16 @@ import uuid
 from sqlmodel import SQLModel, Field, Relationship, JSON
 from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
-from sqlalchemy import CheckConstraint, DateTime, UniqueConstraint, Column, String
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    UniqueConstraint,
+    Column,
+    String,
+)
 
 from .utils import utc_now
 
@@ -109,6 +118,12 @@ class Study(SQLModel, table=True):
     # the app works across different devices. Off by default so that studies
     # have to make a deliberate choice about collecting this personal data.
     save_browser_identification: bool = Field(default=False)
+    # When true (opt-in, default false), the frontend reports a small, fixed set
+    # of usability signals (refused saves, searches that found nothing, client
+    # errors) to `ux_events`. Those rows carry no participant id and are only
+    # read as aggregates, so this is not linked to a person - but it is still
+    # observation of participants and belongs in the consent text.
+    save_ux_events: bool = Field(default=False)
     # Usernames of the scientists who own (i.e. administer) this study.
     # `None` means the study is not owned by any scientist and can only be
     # managed by super admins. Stored as JSON so a study can have several owners.
@@ -558,3 +573,48 @@ class Activity(SQLModel, table=True):
     participant: Participant = Relationship(back_populates="activities")
     day_label: DayLabel = Relationship(back_populates="activities")
     timeline: Timeline = Relationship(back_populates="activities")
+
+
+class UxEvent(SQLModel, table=True):
+    """One usability signal from the participant client.
+
+    Deliberately unlinked: there is no participant id, no IP, no user agent and
+    no cookie here, so a row cannot be tied to a person or joined to research
+    data. `load_id` is a random id for one page load (kept in memory by the
+    client, never persisted) and exists only so the admin page can count
+    distinct visits - no view may ever list it.
+
+    Properties hold machine codes, counts and coarse buckets only: no activity
+    codes, no custom text, nothing that also exists in the diary.
+    """
+
+    __tablename__ = "ux_events"
+    __table_args__ = (
+        Index("ix_ux_events_study_received", "study_id", "received_at"),
+        Index("ix_ux_events_study_name_received", "study_id", "name", "received_at"),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # Deleting a study must delete its signals at the database level: nothing
+    # else in the code path knows about them (they are unlinked, so no
+    # per-participant cleanup applies), and an orphan would be a retention leak.
+    study_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("studies.id", ondelete="CASCADE"), nullable=False
+        )
+    )
+    load_id: str = Field(sa_type=String(36), index=True)
+    name: str = Field(sa_type=String(48), index=True)
+    # Client clock; the server falls back to `received_at` when it is implausible.
+    occurred_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
+    received_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    language: Optional[str] = Field(default=None, sa_type=String(8))
+    app_version: Optional[str] = Field(default=None, sa_type=String(32))
+    props: Optional[Dict[str, Any]] = Field(
+        default=None, sa_column=Column(JSON(none_as_null=True), nullable=True)
+    )

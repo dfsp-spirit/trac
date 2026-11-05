@@ -16,6 +16,28 @@
 - Nothing in that module may throw: `safeGetItem`/`safeSetItem`/`safeRemoveItem` swallow unavailable/quota-exceeded storage (Safari private mode, blocked cookies). Drafts are validated on read (`normalizeTimelineState`) and unusable payloads are deleted instead of restored.
 - A draft is only restored when `matchesTimelineContext()` agrees on `pid`, `study_name` and `day_label_index` - participants share browsers (family tablet, lab PC). Covered by `frontend/tests/unit/draft_storage.test.js` and E2E `draft_restore.spec.js`; the context rule itself is unit-tested because the browser flow for switching participant goes through consent/instructions, which drop the pending state first.
 
+## Usability signals (participant rewrite)
+- `frontend_new/src/js/domain/uxEvents.js` holds the rules (which events exist,
+  which properties they may carry, query folding, load-id shape);
+  `frontend_new/src/js/data/signals.js` is the transport (buffer, 15 s flush,
+  `sendBeacon` on `pagehide`); `frontend_new/src/js/ui/formVisit.js` reports how
+  one activity-form visit started and ended.
+- **Nothing is collected unless the study opts in** (`save_ux_events` in the
+  study config) **and**, for a consent-requiring study, the participant
+  consented - the same gate as browser identification (D38). The tracker starts
+  silent, and a session that loses consent clears its buffer.
+- The `load_id` is a random UUID per page load, kept in memory only (no device
+  storage, D33), and is only used to count distinct visits on the admin page.
+  Never persist it, never derive it from `pid`.
+- Sends are fire-and-forget: no await, no retry, no user-visible error. A
+  signal is never worth a lost diary. Properties are filtered against the
+  allow-list client-side too, so a stray one never leaves the browser.
+- `activity.form.opened` without a matching `activity.form.closed` is the
+  "left mid-entry" signal - that case only exists on the client, which is why
+  the panel reports the pair rather than only the completed saves.
+- Old frontend (`frontend/src/`): no signals. Instrumenting both would double
+  the consent surface for a codebase being retired.
+
 ## Time handling
 - Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.
 - Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.

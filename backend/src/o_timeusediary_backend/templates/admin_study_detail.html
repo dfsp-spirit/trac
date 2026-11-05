@@ -27,6 +27,13 @@
         <div class="study-meta">
             <div><strong>Requires consent:</strong> {{ "Yes" if require_consent else "No" }}</div>
             <div><strong>Unlisted Participants:</strong> {{ "Allowed" if study.allow_unlisted_participants else "Restricted" }}</div>
+            <div><strong>UX signals:</strong>
+                {% if study.save_ux_events %}
+                    <a href="{{ request.scope.root_path }}/admin/ux-signals?study_name_short={{ study.name_short|urlencode }}">Collecting (view)</a>
+                {% else %}
+                    Off
+                {% endif %}
+            </div>
             <div><strong>Data Collection:</strong> {{ study.data_collection_start.strftime('%Y-%m-%d') }} to {{ study.data_collection_end.strftime('%Y-%m-%d') }}</div>
             <div><strong>Created:</strong> {{ study.created_at.strftime('%Y-%m-%d') }}</div>
             <div><strong>Last Activity:</strong> {{ last_activity_time.strftime('%Y-%m-%d %H:%M:%S') if last_activity_time else 'N/A' }}</div>

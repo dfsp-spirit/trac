@@ -40,11 +40,26 @@ function el(tag, className, text) {
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
- *   onDone: (intent?: 'close' | 'another') => void,
- * }} deps
+ *   onDone: (intent?: 'close' | 'another' | 'deleted') => void,
+ *   onRefused?: (refusal: { stage: 'activity_save' | 'multi_day', codes: string[] }) => void,
+ * }} deps `onRefused` hears the rules that stopped this save, so the team can
+ *   see which one participants trip over.
  */
 export function createFormController(deps) {
-  const { content, foot, t, language, getDiary, getCatalogue, onCreate, onUpdate, onDelete, toast, onDone } = deps;
+  const {
+    content,
+    foot,
+    t,
+    language,
+    getDiary,
+    getCatalogue,
+    onCreate,
+    onUpdate,
+    onDelete,
+    toast,
+    onDone,
+    onRefused,
+  } = deps;
 
   /** @type {ReturnType<typeof renderActivityForm> | null} */
   let form = null;
@@ -84,7 +99,7 @@ export function createFormController(deps) {
       remove.type = 'button';
       remove.addEventListener('click', async () => {
         await onDelete(activity);
-        onDone();
+        onDone('deleted');
       });
       foot.append(remove);
     }
@@ -95,6 +110,7 @@ export function createFormController(deps) {
     if (!form) return;
     const result = form.read();
     if (!result.ok) {
+      onRefused?.({ stage: 'activity_save', codes: [result.code] });
       const message = describeError(t, result.code, result.meta);
       form.showError(message.title, message.text);
       return;
@@ -141,6 +157,7 @@ export function createFormController(deps) {
       let message = t('diary.toast.added', { name: values.activity_name, range });
       if (added > 1) message += ` ${t('diary.toast.addedDays', { count: added })}`;
       if (skipped.length) {
+        onRefused?.({ stage: 'multi_day', codes: [String(skipped[0].code)] });
         message += ` ${t('diary.toast.skipped', {
           reason: describeError(t, skipped[0].code, skipped[0]).text,
         })}`;
@@ -169,6 +186,7 @@ export function createFormController(deps) {
       onDone(then);
     } catch (error) {
       const failure = /** @type {{ code?: string, detail?: Record<string, unknown> }} */ (error);
+      onRefused?.({ stage: 'activity_save', codes: failure.code ? [failure.code] : [] });
       const message = describeError(t, failure.code, failure.detail || {});
       form.showError(message.title, message.text);
     }

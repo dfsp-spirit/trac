@@ -38,7 +38,7 @@ BASELINE_TABLES = (
 REVISIONS = all_revisions()  # head first
 HEAD = REVISIONS[0]
 
-# Columns that migrations 0005-0015 add, i.e. the difference between a database
+# Columns that migrations 0005-0016 add, i.e. the difference between a database
 # created by create_all() before Alembic existed (which is what `stamp
 # 0003_add_study_footer_links` assumes) and the current models.
 COLUMNS_ADDED_AFTER_0003 = (
@@ -46,6 +46,7 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "study_text_instructions_title"),
     ("studies", "owner_usernames"),
     ("studies", "save_browser_identification"),
+    ("studies", "save_ux_events"),
     ("studies", "day_start_minutes"),
     ("day_labels", "display_names"),
     ("study_participants", "study_submitted_at"),
@@ -61,6 +62,11 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("activities", "catalogue_version"),
     ("activities", "updated_at"),
 )
+
+# Whole tables that later migrations add. A pre-Alembic database cannot have
+# them, so the simulation drops them before stamping - otherwise `create_table`
+# in the migration would fail on an object that is already there.
+TABLES_ADDED_AFTER_0003 = ("ux_events",)
 
 # Constraints and indexes that 0013 adds. They exist in the create_all() schema
 # too, so an adopted database has to have them dropped before the upgrade - a
@@ -189,6 +195,10 @@ def test_pre_alembic_database_can_be_adopted(scratch_database):
     for table, column in COLUMNS_ADDED_AFTER_0003:
         if column in scratch_database.columns(table):
             scratch_database.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+    existing_tables = scratch_database.tables()
+    for table in TABLES_ADDED_AFTER_0003:
+        if table in existing_tables:
+            scratch_database.execute(f"DROP TABLE {table}")
     if scratch_database.dialect == "postgresql":
         scratch_database.execute(
             "ALTER TABLE studies ALTER COLUMN description TYPE text USING description::text"

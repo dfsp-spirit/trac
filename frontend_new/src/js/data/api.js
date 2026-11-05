@@ -35,10 +35,33 @@ function codeFromDetail(detail) {
  * @param {string} baseUrl e.g. "/tud_backend/api"
  * @param {string} studyName
  * @param {string} participantId
+ * @param {{
+ *   onError?: (info: { method: string, route: string, status: number, code?: string | null }) => void,
+ * }} [hooks] `onError` sees the failures a participant cannot do anything about
+ *   (5xx, network, an unmapped 4xx). A 4xx with a machine code is a rule the UI
+ *   explains inline, so it is reported as a refusal instead - see
+ *   `createDiaryActions`.
  */
-export function createApi(baseUrl, studyName, participantId) {
+export function createApi(baseUrl, studyName, participantId, { onError } = {}) {
   const studyRoot = `${baseUrl}/studies/${encodeURIComponent(studyName)}`;
   const diaryRoot = `${studyRoot}/participants/${encodeURIComponent(participantId)}`;
+
+  /**
+   * The route without the participant id, so nothing that identifies a person
+   * can reach an error table.
+   *
+   * @param {string} url
+   * @returns {string}
+   */
+  function routeOf(url) {
+    const withoutQuery = String(url).split('?')[0];
+    const route = withoutQuery.startsWith(baseUrl)
+      ? withoutQuery.slice(baseUrl.length)
+      : withoutQuery;
+    return route
+      .split(`/participants/${encodeURIComponent(participantId)}`)
+      .join('/participants/:pid');
+  }
 
   /**
    * @param {string} url
@@ -46,10 +69,17 @@ export function createApi(baseUrl, studyName, participantId) {
    * @returns {Promise<any>}
    */
   async function request(url, options = {}) {
-    const response = await fetch(url, {
-      ...options,
-      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-    });
+    const method = String(options.method || 'GET').toUpperCase();
+    let response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      });
+    } catch (error) {
+      onError?.({ method, route: routeOf(url), status: 0 });
+      throw error;
+    }
 
     if (response.status === 204) return null;
 
@@ -63,6 +93,11 @@ export function createApi(baseUrl, studyName, participantId) {
     if (!response.ok) {
       const detail = payload && typeof payload === 'object' ? payload.detail : null;
       const code = codeFromDetail(detail);
+      // A coded 4xx is a rule the participant was told about; only the rest is
+      // an error in the sense of "something is broken".
+      if (response.status >= 500 || !code) {
+        onError?.({ method, route: routeOf(url), status: response.status, code });
+      }
       const message =
         (detail && typeof detail === 'object' && 'message' in detail
           ? String(/** @type {{ message?: unknown }} */ (detail).message)
