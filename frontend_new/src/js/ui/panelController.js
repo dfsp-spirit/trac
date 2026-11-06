@@ -31,6 +31,8 @@ const NO_PARTICIPANT = {
  *   getCatalogue: () => any,
  *   multiTimelinePolicy?: string,
  *   getLanguage: () => string,
+ *   getCurrentDay: () => number,
+ *   getAnchorMinutes: (dayIndex: number) => number,
  *   actions?: {
  *     create: (body: { items: any[], group_id?: string }) => Promise<any>,
  *     update: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
@@ -54,6 +56,8 @@ export function createPanelController({
   getCatalogue,
   multiTimelinePolicy = 'ignore',
   getLanguage,
+  getCurrentDay,
+  getAnchorMinutes,
   actions = NO_PARTICIPANT,
   toastRegion,
   t,
@@ -85,9 +89,8 @@ export function createPanelController({
    * The form is done: back to the diary on a phone, unless the participant asked
    * for another entry. Same top-layer reason as `deleteWithUndo`.
    *
-   * @param {'close' | 'another'} [intent]
+   * @param {'close' | 'another' | 'deleted'} [intent]
    */
-  /** @param {'close' | 'another' | 'deleted'} [intent] */
   function finishForm(intent = 'close') {
     if (intent !== 'another' && !isWide() && dialogHost?.open) dialogHost.close();
   }
@@ -126,6 +129,8 @@ export function createPanelController({
       onDelete: deleteWithUndo,
       toast,
       onFinished: finishForm,
+      getCurrentDay,
+      getAnchorMinutes,
       signals,
     });
     panel.showCatalogue();
@@ -140,6 +145,19 @@ export function createPanelController({
     if (!panel || isLocked()) return;
     if (!isWide() && dialogHost && !dialogHost.open) dialogHost.showModal();
     panel.open({ dayIndex, startMinutes: startRelative, endMinutes: endRelative });
+  }
+
+  /**
+   * "Add an entry here": the anchor is a hint, not a range, so the free-time
+   * rule can shorten it to the next entry instead of overlapping it.
+   *
+   * @param {number} dayIndex
+   * @param {number} anchorMinutes
+   */
+  function openHere(dayIndex, anchorMinutes) {
+    if (!panel || isLocked()) return;
+    if (!isWide() && dialogHost && !dialogHost.open) dialogHost.showModal();
+    panel.openHere({ dayIndex, anchorMinutes });
   }
 
   /** @param {Event} event A click on the timeline: a gap or an activity. */
@@ -185,6 +203,7 @@ export function createPanelController({
 
     refresh: () => panel?.refresh(),
     openAt,
+    openHere,
     openFromEvent,
     nudge,
 

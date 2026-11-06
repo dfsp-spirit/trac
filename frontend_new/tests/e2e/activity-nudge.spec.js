@@ -82,12 +82,12 @@ test.describe('activity nudging', () => {
     // Different activities, so they are not duplicates: two of them reach this
     // fixture's overlap limit of 2 (D2).
     for (const code of [1101, 1102]) {
-      await addActivity(page, code, { start: 480, end: 540 });
+      await addActivity(page, code, { start: 480, end: 540, day: 0 });
     }
     await expect(dayEvents(page, 0)).toHaveCount(2);
 
     // 09:00-10:00 is still free; nudging it up would be a third block at 08:00.
-    await addActivity(page, 1200, { start: 540, end: 600 });
+    await addActivity(page, 1200, { start: 540, end: 600, day: 0 });
     await expect(dayEvents(page, 0)).toHaveCount(3);
 
     await page.locator('.t-event__btn').last().focus();

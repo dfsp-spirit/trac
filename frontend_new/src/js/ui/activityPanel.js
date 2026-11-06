@@ -44,6 +44,8 @@ function el(tag, className, text) {
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
  *   onFinished?: (intent?: 'close' | 'another' | 'deleted') => void,
+ *   getCurrentDay: () => number,
+ *   getAnchorMinutes: (dayIndex: number) => number,
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
  *   signals?: {
  *     track: (name: string, props?: Record<string, any>) => void,
@@ -64,6 +66,8 @@ export function createActivityPanel(deps) {
     onDelete,
     toast,
     onFinished,
+    getCurrentDay,
+    getAnchorMinutes,
     signals,
   } = deps;
 
@@ -196,6 +200,8 @@ export function createActivityPanel(deps) {
       showCatalogue();
       onFinished?.(intent === 'deleted' ? 'close' : intent);
     },
+    getCurrentDay,
+    getAnchorMinutes,
   });
 
   searchInput.addEventListener('input', () => {
@@ -225,9 +231,18 @@ export function createActivityPanel(deps) {
   }
 
   return {
+    // A gap the participant clicked: that exact range, on that day.
     /** @param {{ dayIndex: number, startMinutes: number, endMinutes: number }} next */
     open(next) {
-      formController.setPrefill(next);
+      formController.setSlot(next);
+      showCatalogue();
+      searchInput.focus();
+    },
+
+    // "Add an entry here": only the minute they are looking at (see entrySlot).
+    /** @param {{ dayIndex: number, anchorMinutes: number }} next */
+    openHere(next) {
+      formController.setAnchor(next);
       showCatalogue();
       searchInput.focus();
     },

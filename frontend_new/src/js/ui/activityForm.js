@@ -6,7 +6,7 @@
  * uses the same domain functions the rest of the app uses, so an overlap the form
  * accepts is not refused by the server for a different reason.
  */
-import { MINUTES_PER_DAY, STEP_MINUTES, toDayRelative } from '../domain/time.js';
+import { DEFAULT_DURATION_MINUTES, MINUTES_PER_DAY, STEP_MINUTES, toDayRelative } from '../domain/time.js';
 import { validateActivity } from '../domain/validation.js';
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayChips, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
@@ -188,7 +188,7 @@ export function renderActivityForm(host, view) {
     endSelect.value = String(
       Number.isFinite(wanted) && wanted > start && wanted <= max
         ? wanted
-        : Math.min(start + 4 * STEP_MINUTES, max)
+        : Math.min(start + DEFAULT_DURATION_MINUTES, max)
     );
     syncChips();
     showDuration();

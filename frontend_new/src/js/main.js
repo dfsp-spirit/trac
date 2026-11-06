@@ -117,6 +117,10 @@ export function mount({ root, params }) {
   /** @returns {boolean} */
   const isLocked = () => Boolean(store.get().diary?.study.submitted_at);
 
+  /** The view the panel's suggestions are read from; created further down. */
+  /** @type {ReturnType<typeof createDiaryView> | null} */
+  let viewRef = null;
+
   const panels = createPanelController({
     hostPanel,
     sectionHost,
@@ -127,6 +131,11 @@ export function mount({ root, params }) {
     getCatalogue: () => store.get().catalogue,
     multiTimelinePolicy: config.multiTimelinePolicy,
     getLanguage: () => store.get().language,
+    // "Where the participant is looking" - the day in view and the minute under
+    // the top bar - is what the form's defaults are derived from. Both are only
+    // known once the view exists, hence the holder.
+    getCurrentDay: () => store.get().currentDay,
+    getAnchorMinutes: (dayIndex) => viewRef?.minutesAtTop(dayIndex) ?? 0,
     actions: actions ?? undefined,
     toastRegion,
     t,
@@ -179,6 +188,7 @@ export function mount({ root, params }) {
     },
     onTimelineRendered: () => panels.refresh(),
   });
+  viewRef = view;
 
   const review = createReviewFlow({
     root,

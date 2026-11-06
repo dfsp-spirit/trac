@@ -138,12 +138,18 @@ export async function openDiary(page, pid, study = STUDY) {
 /**
  * Add one activity through the catalogue and the form.
  *
+ * The form's day follows the timeline in view, so a spec that means a specific
+ * day names it: Playwright scrolls an element into view before clicking it, and
+ * that scroll moves the view (and with it the suggested day) between steps.
+ *
  * @param {import('@playwright/test').Page} page
  * @param {number} code Activity code from the fixture's catalogue.
- * @param {{ start: number, end: number }} range Day-relative minutes.
+ * @param {{ start: number, end: number, day?: number }} range Day-relative
+ *   minutes, and the day when the spec cares which one.
  */
-export async function addActivity(page, code, { start, end }) {
+export async function addActivity(page, code, { start, end, day }) {
   await chooseActivity(page, code);
+  if (day != null) await page.locator('#form-day').selectOption(String(day));
   await page.locator('#form-start').selectOption(String(start));
   await page.locator('#form-end').selectOption(String(end));
   await page.locator('[data-slot="actions"] .t-btn--primary').click();

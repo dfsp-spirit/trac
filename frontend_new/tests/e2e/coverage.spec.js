@@ -36,15 +36,15 @@ test.describe('coverage display', () => {
     await expect(railRow(page, 0)).toContainText('leer');
 
     // One hour on Monday: covered, but nowhere near the full day the study wants.
-    await addActivity(page, 1101, { start: 480, end: 540 });
+    await addActivity(page, 1101, { start: 480, end: 540, day: 0 });
     await expect(page.locator('#days .t-event')).toHaveCount(1);
     await expect(progressNote(page)).toHaveText('0 von 7 Tagen vollständig');
     // The rail says how much is missing, from the same `min_coverage`.
     await expect(railRow(page, 0)).toContainText('1380 Min. fehlen');
 
     // Fill the same day end to end: now it counts, and only it.
-    await addActivity(page, 1101, { start: 0, end: 480 });
-    await addActivity(page, 1101, { start: 540, end: 1440 });
+    await addActivity(page, 1101, { start: 0, end: 480, day: 0 });
+    await addActivity(page, 1101, { start: 540, end: 1440, day: 0 });
     await expect(progressNote(page)).toHaveText('1 von 7 Tagen vollständig');
 
     await expect(railRow(page, 0)).toContainText('vollständig');
@@ -55,7 +55,7 @@ test.describe('coverage display', () => {
     // Two sources of the same rule: the progress note and the review modal's
     // `--open` marker. If they ever disagree, one of them is lying.
     await openDiary(page, PID);
-    await addActivity(page, 1101, { start: 0, end: 1440 });
+    await addActivity(page, 1101, { start: 0, end: 1440, day: 0 });
     await expect(progressNote(page)).toHaveText('1 von 7 Tagen vollständig');
 
     await page.locator('#submit-btn').click();

@@ -38,6 +38,24 @@
 - Old frontend (`frontend/src/`): no signals. Instrumenting both would double
   the consent surface for a codebase being retired.
 
+## Defaults for a new entry
+- Every way into the form resolves its start through `ui/entrySlot.js` +
+  `domain/suggestSlot.js`, never through a stored constant: the day the
+  participant is looking at, the minute under the top bar (or the end of the
+  entry just saved, for "save and add another" where the form covers the
+  timeline), moved into the next free minute, lasting
+  `DEFAULT_DURATION_MINUTES` (60) or until the next entry, whichever comes first.
+  A clicked gap is the one exact range - it is a one-shot claim, so a click that
+  was not used cannot pre-fill a later, unrelated entry (that snapshot was why
+  the desktop column used to open on Monday 08:00).
+- A default must never silently overlap: an hour that does not fit is shortened
+  to the free block, a block shorter than one step is skipped, and only a day
+  with nothing free falls back to a short slot at the anchor (the neighbour hint
+  then explains the overlap). Cross-midnight entries block the morning after
+  them, because the computation runs on the absolute minute axis.
+- `suggest-slot.test.js` pins the ladder and `entry-defaults.spec.js` pins the
+  wiring (day in view, no overlap, "add another" continues).
+
 ## Boundary hint in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
   participant cannot look up while choosing times is where the neighbouring

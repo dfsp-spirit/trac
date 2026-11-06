@@ -15,6 +15,8 @@
 export const MINUTES_PER_DAY = 1440;
 export const STEP_MINUTES = 10;
 export const MAX_DURATION_MINUTES = MINUTES_PER_DAY;
+/** How long a new entry is by default, before the day's free time shortens it. */
+export const DEFAULT_DURATION_MINUTES = 60;
 
 /** @param {number} minutes @param {number} min @param {number} max @returns {number} */
 export function clampMinutes(minutes, min, max) {

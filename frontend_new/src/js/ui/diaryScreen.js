@@ -7,7 +7,6 @@
  * Extracted from the composition root so that file stays a list of parts rather
  * than a list of parts plus their behaviour.
  */
-import { STEP_MINUTES } from '../domain/time.js';
 import { scrollToDay } from './timeline.js';
 
 /**
@@ -15,6 +14,7 @@ import { scrollToDay } from './timeline.js';
  *   store: { get: () => import('../state/store.js').DiaryState, set: (patch: any) => void },
  *   view: ReturnType<typeof import('./diaryView.js').createDiaryView>,
  *   panels: { sync: (locked: boolean) => void, openAt: (day: number, start: number, end: number) => void,
+ *     openHere: (day: number, anchorMinutes: number) => void,
  *     openFromEvent: (event: Event) => void, escape: () => boolean, refresh: () => void },
  *   stageMachine: { incompatible: () => void, setLocked: (locked: boolean) => void },
  *   review: { open: () => void },
@@ -69,9 +69,10 @@ export function createDiaryScreen({
 
   function addActivity() {
     if (isLocked()) return;
+    // An anchor, not a range: "here" is where the participant is looking, and
+    // the free-time rule turns it into a range that actually fits the day.
     const dayIndex = store.get().currentDay;
-    const start = view.minutesAtTop(dayIndex);
-    panels.openAt(dayIndex, start, Math.min(start + 60, 1440 - STEP_MINUTES));
+    panels.openHere(dayIndex, view.minutesAtTop(dayIndex));
   }
 
   function onEscape() {

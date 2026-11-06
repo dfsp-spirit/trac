@@ -6,10 +6,11 @@
  * Split from the panel frame so each file stays small enough to read, and so the
  * write path - which is where a mistake costs data - sits in one place.
  */
-import { MINUTES_PER_DAY } from '../domain/time.js';
+import { toTimedActivity } from '../domain/diary.js';
 import { formatClock } from '../domain/time.js';
 import { newUuid } from '../domain/uuid.js';
 import { renderActivityForm } from './activityForm.js';
+import { createEntrySlot } from './entrySlot.js';
 import { describeError } from './messages.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
@@ -42,8 +43,12 @@ function el(tag, className, text) {
  *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
  *   onDone: (intent?: 'close' | 'another' | 'deleted') => void,
  *   onRefused?: (refusal: { stage: 'activity_save' | 'multi_day', codes: string[] }) => void,
+ *   getCurrentDay: () => number,
+ *   getAnchorMinutes: (dayIndex: number) => number,
  * }} deps `onRefused` hears the rules that stopped this save, so the team can
- *   see which one participants trip over.
+ *   see which one participants trip over. `getCurrentDay`/`getAnchorMinutes`
+ *   answer "what is the participant looking at" when the form opens without a
+ *   slot the participant picked (`domain/suggestSlot.js`).
  */
 export function createFormController(deps) {
   const {
@@ -59,6 +64,8 @@ export function createFormController(deps) {
     toast,
     onDone,
     onRefused,
+    getCurrentDay,
+    getAnchorMinutes,
   } = deps;
 
   /** @type {ReturnType<typeof renderActivityForm> | null} */
@@ -68,8 +75,7 @@ export function createFormController(deps) {
   /** The timeline this write belongs to; sent with every create (D1). */
   /** @type {string | null} */
   let timelineKey = null;
-  /** @type {{ dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null }} */
-  let prefill = { dayIndex: 0, startMinutes: 8 * 60, endMinutes: 9 * 60 };
+  const entrySlot = createEntrySlot({ getCurrentDay, getAnchorMinutes });
 
   /** @param {import('../domain/diary.js').ApiActivity | null} activity */
   function renderFoot(activity) {
@@ -176,12 +182,16 @@ export function createFormController(deps) {
           : undefined
       );
 
+      // "Save and add another" keeps the participant where the entry ended: the
+      // form covers the timeline on a phone, so that end is the only place they
+      // can be looking. The free-time rule still decides how far the next one
+      // may run.
       if (then === 'another') {
-        prefill = {
-          dayIndex: values.day_label_index + Math.floor(values.end_minutes / MINUTES_PER_DAY),
-          startMinutes: values.end_minutes % MINUTES_PER_DAY,
-          endMinutes: Math.min((values.end_minutes % MINUTES_PER_DAY) + 60, MINUTES_PER_DAY - 10),
-        };
+        entrySlot.continueAfter({
+          dayIndex: values.day_label_index,
+          startMinutes: values.start_minutes,
+          endMinutes: values.end_minutes,
+        });
       }
       onDone(then);
     } catch (error) {
@@ -205,28 +215,27 @@ export function createFormController(deps) {
       foot.hidden = false;
       const diary = getDiary();
       const dayStart = diary.study.day_start_minutes || 0;
+      const existing = diary.activities.map((item) => ({
+        ...toTimedActivity(item, dayStart),
+        activityCode: item.activity_code,
+        // For the boundary hint only: validation ignores it.
+        name: item.activity_name,
+      }));
+      const slot = activity
+        ? {
+            dayIndex: activity.day_label_index,
+            startMinutes: activity.start_minutes,
+            endMinutes: activity.end_minutes,
+          }
+        : entrySlot.resolve(existing);
 
       form = renderActivityForm(content, {
         entry,
         days: diary.days,
         language,
         t,
-        prefill: activity
-          ? {
-              dayIndex: activity.day_label_index,
-              startMinutes: activity.start_minutes,
-              endMinutes: activity.end_minutes,
-            }
-          : { ...prefill, childCode: child ? child.code : null, text },
-        existing: diary.activities.map((item) => ({
-          id: item.client_uuid,
-          dayIndex: item.day_label_index,
-          startMinutes: dateStart(item, dayStart),
-          endMinutes: dateEnd(item, dayStart),
-          activityCode: item.activity_code,
-          // For the boundary hint only: validation ignores it.
-          name: item.activity_name,
-        })),
+        prefill: { ...slot, childCode: child ? child.code : null, text },
+        existing,
         dayStartMinutes: dayStart,
         maxOverlap: diary.timeline.max_overlap,
         mode: activity ? 'edit' : 'create',
@@ -246,41 +255,32 @@ export function createFormController(deps) {
       renderFoot(activity);
     },
 
-    /** @param {{ dayIndex: number, startMinutes: number, endMinutes: number }} next */
-    setPrefill(next) {
-      prefill = next;
+    /**
+     * A range the participant picked: the gap they clicked.
+     *
+     * @param {{ dayIndex: number, startMinutes: number, endMinutes: number }} next
+     */
+    setSlot(next) {
+      entrySlot.claim(next);
+    },
+
+    /**
+     * A minute the participant is looking at; the free-time rule may move it.
+     *
+     * @param {{ dayIndex: number, anchorMinutes: number }} next
+     */
+    setAnchor(next) {
+      entrySlot.anchor(next);
     },
 
     /** The day the form is currently editing, for the panel's context line. */
     get dayIndex() {
       const select = /** @type {HTMLSelectElement | null} */ (content.querySelector('#form-day'));
-      return select ? Number(select.value) : prefill.dayIndex;
+      return select ? Number(select.value) : entrySlot.dayIndex;
     },
 
     get active() {
       return form !== null;
     },
   };
-}
-
-/**
- * @param {import('../domain/diary.js').ApiActivity} activity
- * @param {number} dayStart
- * @returns {number}
- */
-function dateStart(activity, dayStart) {
-  const shifted = activity.start_minutes - dayStart;
-  return shifted < 0 ? shifted + MINUTES_PER_DAY : shifted;
-}
-
-/**
- * @param {import('../domain/diary.js').ApiActivity} activity
- * @param {number} dayStart
- * @returns {number}
- */
-function dateEnd(activity, dayStart) {
-  const start = dateStart(activity, dayStart);
-  let end = activity.end_minutes - dayStart;
-  if (end < 0) end += MINUTES_PER_DAY;
-  return end <= start ? end + MINUTES_PER_DAY : end;
 }
