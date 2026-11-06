@@ -12,6 +12,7 @@
  * when the day around the range is empty.
  */
 import { MINUTES_PER_DAY, formatClock, toDayRelative } from '../domain/time.js';
+import { dayLabel } from '../domain/diary.js';
 import { neighbourText, surrounding } from '../domain/neighbours.js';
 
 /** Longer names are cut in the hint; the form still shows the full name. */
@@ -105,14 +106,7 @@ export function createTimeNeighbours({
     const onDay = Math.floor(absoluteMinute / MINUTES_PER_DAY);
     if (onDay === dayIndex) return { time, day: null };
     const day = days.find((item) => item.index === onDay);
-    if (!day) return { time, day: null };
-    return {
-      time,
-      day:
-        (day.display_names && day.display_names[language]) ||
-        day.display_name ||
-        day.name,
-    };
+    return { time, day: day ? dayLabel(day, language) : null };
   }
 
   return {

@@ -7,7 +7,7 @@
  * The data decisions - which segment belongs to which day, lanes, gaps - are all
  * in domain/geometry.js; this file only turns them into elements.
  */
-import { layoutForDay } from '../domain/diary.js';
+import { dayLabel, layoutForDay } from '../domain/diary.js';
 import { formatClock } from '../domain/time.js';
 import { isColour, readableInk } from '../domain/color.js';
 
@@ -146,10 +146,9 @@ function renderDay(diary, day, t, language) {
   section.id = dayAnchor(day.name);
   section.dataset.dayIndex = String(day.index);
 
+  const label = dayLabel(day, language);
   const heading = el('h2', 't-timeline-day__head');
   heading.id = `h-${day.name}`;
-  const label =
-    (day.display_names && day.display_names[language]) || day.display_name || day.name;
   heading.textContent = label;
   section.setAttribute('aria-labelledby', heading.id);
 

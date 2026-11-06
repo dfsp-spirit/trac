@@ -80,6 +80,14 @@
   on another day is reported but never offered as a "continue" chip, because the
   start select only spans the day being edited.
 
+## Day names
+- Study day labels arrive per language (`days[].display_names`) and every screen
+  renders them through `dayLabel()` in `domain/diary.js` - the rail, the day nav,
+  the timeline headings, the day select, the "also on other days" chips and the
+  boundary hint. Never slice the internal `name`: it is English, so
+  `name.slice(0, 2)` gave every participant "mo", "tu", "we" whatever language
+  the study ships.
+
 ## Time handling
 - Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.
 - Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.

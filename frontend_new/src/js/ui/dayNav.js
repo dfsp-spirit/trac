@@ -7,6 +7,7 @@
  * what makes the continuous timeline feel like one document with markers rather
  * than seven pages.
  */
+import { dayLabel } from '../domain/diary.js';
 
 /**
  * @param {{
@@ -28,10 +29,7 @@ export function renderDayNav(nodes, { diary, language, currentDay, t }) {
   const index = Math.min(Math.max(currentDay, 0), days.length - 1);
   const day = days[index];
 
-  if (nodes.label) {
-    nodes.label.textContent =
-      (day.display_names && day.display_names[language]) || day.display_name || day.name;
-  }
+  if (nodes.label) nodes.label.textContent = dayLabel(day, language);
   if (nodes.meta) {
     nodes.meta.textContent = t('diary.nav.position', {
       current: index + 1,

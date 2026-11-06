@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  dayLabel,
   daySummaries,
   layoutForDay,
   meetsRequirement,
@@ -94,4 +95,26 @@ test('progress counts the days that meet their requirement', () => {
     { minCoverage: 600 }
   );
   assert.deepEqual(progress(model), { done: 1, total: 2 });
+});
+
+test('a day is named in the interface language, whichever shape it arrives in', () => {
+  // The API row (snake_case) and a `daySummaries()` entry (camelCase) must read
+  // the same, or one screen is left in the study's default language.
+  const apiRow = {
+    name: 'monday',
+    display_name: 'Montag',
+    display_names: { de: 'Montag', en: 'Monday' },
+  };
+  const summary = { name: 'monday', displayName: 'Montag', displayNames: { en: 'Monday' } };
+
+  assert.equal(dayLabel(apiRow, 'de'), 'Montag');
+  assert.equal(dayLabel(apiRow, 'en'), 'Monday');
+  assert.equal(dayLabel(summary, 'en'), 'Monday');
+  assert.equal(dayLabel(summary, 'de'), 'Montag');
+});
+
+test('a missing translation falls back to the study default, then the internal name', () => {
+  assert.equal(dayLabel({ name: 'monday', display_name: 'Montag' }, 'sv'), 'Montag');
+  assert.equal(dayLabel({ name: 'monday' }, 'en'), 'monday');
+  assert.equal(dayLabel({ name: 'monday', displayNames: {} }, 'de'), 'monday');
 });

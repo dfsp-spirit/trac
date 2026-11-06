@@ -3,6 +3,7 @@
  * Small builders shared by the activity form: a labelled field, the time option
  * list and the multi-day chips. Kept apart so the form stays about behaviour.
  */
+import { dayLabel } from '../domain/diary.js';
 import { MINUTES_PER_DAY, STEP_MINUTES, formatClock } from '../domain/time.js';
 
 /**
@@ -62,10 +63,15 @@ export function timeOptions(from, to, dayStart, markNextDay, t) {
  * Day chips for "also on other days". The selected day is checked and marked, so
  * the copy set always contains the day the form shows.
  *
- * @param {Array<{ index: number, name: string, display_name: string }>} days
+ * The marker is the first two letters of the day's name *in the interface
+ * language* ("Mo", "Di", "Mi" in German, "Må", "Ti" in Swedish) - the internal
+ * name is English, so slicing it gave "mo", "tu", "we" to everyone.
+ *
+ * @param {Array<{ index: number, name: string, display_name?: string | null, display_names?: Record<string, string> }>} days
+ * @param {string} language
  * @returns {{ element: HTMLElement, inputs: HTMLInputElement[] }}
  */
-export function dayChips(days) {
+export function dayChips(days, language = '') {
   const element = el('div', 't-days__grid');
   /** @type {HTMLInputElement[]} */
   const inputs = [];
@@ -76,8 +82,9 @@ export function dayChips(days) {
     input.type = 'checkbox';
     input.name = 'days';
     input.value = String(day.index);
-    input.setAttribute('aria-label', day.display_name || day.name);
-    const weekday = el('span', 't-day-chip__wd', (day.name || '').slice(0, 2));
+    const label = dayLabel(day, language);
+    input.setAttribute('aria-label', label);
+    const weekday = el('span', 't-day-chip__wd', label.slice(0, 2));
     weekday.setAttribute('aria-hidden', 'true');
     // The chip's selected look is a class, not `:has(input:checked)`, because the
     // input is invisible and this is the only signal that the day is picked

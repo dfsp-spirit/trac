@@ -21,6 +21,17 @@ test.describe('multi-day create and gap prefill', () => {
     await openDiary(page, pid);
 
     await chooseActivity(page, 1101);
+
+    // The markers are the day names in the interface language. Slicing the
+    // internal name ("monday") showed English two-letter fragments to everyone.
+    await expect(page.locator('.t-day-chip__wd')).toHaveText([
+      'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So',
+    ]);
+    await expect(page.locator('.t-day-chip input').first()).toHaveAttribute(
+      'aria-label',
+      'Montag'
+    );
+
     await page.locator('#form-start').selectOption('600');
     await page.locator('#form-end').selectOption('660');
     // Checked after the time fields: changing the start re-syncs the chips to the

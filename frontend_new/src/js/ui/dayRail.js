@@ -6,7 +6,7 @@
  * The numbers come from the same domain functions the timeline uses, so the rail
  * cannot disagree with what is drawn.
  */
-import { daySummaries } from '../domain/diary.js';
+import { dayLabel, daySummaries } from '../domain/diary.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -43,7 +43,7 @@ export function renderDayRail(host, { diary, language, t, currentDay }) {
     row.dataset.dayIndex = String(summary.index);
     if (summary.index === currentDay) row.setAttribute('aria-current', 'true');
 
-    const label = summary.displayName || summary.name;
+    const label = dayLabel(summary, language);
     row.append(el('span', 't-rail__day', label));
 
     const minutes = summary.coverage;

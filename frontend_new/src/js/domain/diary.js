@@ -146,15 +146,21 @@ export function toCreateItem(activity, clientUuid) {
 
 /**
  * The day's name in the interface language, with the study's default as the
- * fallback. One function, so the rail, the review and the timeline cannot
- * disagree about what a day is called.
+ * fallback. One function, so the rail, the review, the form and the timeline
+ * cannot disagree about what a day is called.
  *
- * @param {{ name: string, displayName?: string | null, displayNames?: Record<string, string> }} day
+ * Accepts both shapes the app holds: an API row (`display_name` /
+ * `display_names`) and a `daySummaries()` entry (`displayName` /
+ * `displayNames`). Reading only one of them is how the day chips ended up
+ * showing the internal English name ("mo", "tu") to German participants.
+ *
+ * @param {{ name: string, displayName?: string | null, displayNames?: Record<string, string>, display_name?: string | null, display_names?: Record<string, string> }} day
  * @param {string} language
  * @returns {string}
  */
 export function dayLabel(day, language) {
-  return (day.displayNames && day.displayNames[language]) || day.displayName || day.name;
+  const names = day.displayNames || day.display_names || {};
+  return names[language] || day.displayName || day.display_name || day.name;
 }
 
 /**

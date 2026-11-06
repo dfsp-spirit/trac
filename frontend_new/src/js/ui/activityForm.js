@@ -9,6 +9,7 @@
 import { DEFAULT_DURATION_MINUTES, MINUTES_PER_DAY, STEP_MINUTES, toDayRelative } from '../domain/time.js';
 import { validateActivity } from '../domain/validation.js';
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
+import { dayLabel } from '../domain/diary.js';
 import { dayChips, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
 
@@ -106,8 +107,7 @@ export function renderActivityForm(host, view) {
 
   const daySelect = el('select', 't-select t-select--text');
   for (const day of days) {
-    const label = (day.display_names && day.display_names[language]) || day.display_name || day.name;
-    daySelect.append(new Option(label, String(day.index)));
+    daySelect.append(new Option(dayLabel(day, language), String(day.index)));
   }
   if (current) daySelect.value = String(current.day_label_index);
   else daySelect.value = String(prefill.dayIndex);
@@ -154,7 +154,7 @@ export function renderActivityForm(host, view) {
 
   const daysFieldset = el('fieldset', 't-days');
   daysFieldset.append(el('legend', null, t('diary.form.alsoOn')));
-  const chips = dayChips(days);
+  const chips = dayChips(days, language);
   const chipInputs = chips.inputs;
   daysFieldset.append(chips.element);
   if (mode === 'edit') daysFieldset.hidden = true;

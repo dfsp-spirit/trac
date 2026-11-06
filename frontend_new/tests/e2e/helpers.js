@@ -153,6 +153,12 @@ export async function addActivity(page, code, { start, end, day }) {
   await page.locator('#form-start').selectOption(String(start));
   await page.locator('#form-end').selectOption(String(end));
   await page.locator('[data-slot="actions"] .t-btn--primary').click();
+  // The write is in flight now, and the panel swaps back to the catalogue when
+  // it lands (on a phone that also closes the dialog). Waiting for the form to
+  // disappear keeps the next step from racing that swap: `openPanel` would see
+  // the dialog still open, skip opening it, and then wait for a list that has
+  // just been hidden.
+  await expect(page.locator('#form-start')).toHaveCount(0);
 }
 
 /**
