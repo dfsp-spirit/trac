@@ -5,9 +5,9 @@ import {
   flattenCatalogue,
   fold,
   groupByCategory,
-  recentEntries,
   searchHits,
 } from '../../src/js/ui/activitySearch.js';
+import { recentEntries } from '../../src/js/ui/recentActivities.js';
 
 const config = {
   general: { version: '1' },
@@ -141,12 +141,52 @@ test('an activity used on several days counts once, at its latest use', () => {
   assert.deepEqual(codes, [100, 101]);
 });
 
-test('a sub-activity counts as the row the participant picked', () => {
-  const codes = recentEntries(RECENT_ENTRIES, [
+test('a sub-activity stays the row the participant picked', () => {
+  // The shortcut and the form it opens must both be "Travelling: cycle", not the
+  // parent row that merely contains it.
+  const [recent] = recentEntries(RECENT_ENTRIES, [
     { ...used(1021, '2026-10-02T10:00:00+00:00'), parent_activity_code: 102 },
-  ]).map((item) => item.entry.code);
+  ]);
 
-  assert.deepEqual(codes, [102]);
+  assert.equal(recent.entry.code, 102);
+  assert.deepEqual(recent.child, { code: 1021, name: 'Travelling: cycle' });
+  assert.equal(recent.label, null);
+});
+
+test('two sub-activities of one parent are two shortcuts', () => {
+  const { entries } = flattenCatalogue(sport);
+  const recents = recentEntries(entries, [
+    { ...used(1171, '2026-10-01T10:00:00+00:00'), parent_activity_code: 1166 },
+    { ...used(1172, '2026-10-02T10:00:00+00:00'), parent_activity_code: 1166 },
+  ]);
+
+  assert.deepEqual(
+    recents.map((item) => [item.entry.code, item.child && item.child.code]),
+    [
+      [1166, 1172],
+      [1166, 1171],
+    ]
+  );
+});
+
+test('a parent and one of its sub-activities are two shortcuts', () => {
+  const codes = recentEntries(RECENT_ENTRIES, [
+    used(102, '2026-10-01T10:00:00+00:00'),
+    { ...used(1021, '2026-10-02T10:00:00+00:00'), parent_activity_code: 102 },
+  ]).map((item) => item.child && item.child.code);
+
+  assert.deepEqual(codes, [1021, null]);
+});
+
+test('a sub-activity dropped from the config falls back to its parent', () => {
+  // The parent still exists, so the shortcut keeps working - one level up,
+  // instead of offering a row that opens nothing.
+  const [recent] = recentEntries(RECENT_ENTRIES, [
+    { ...used(9999, '2026-10-02T10:00:00+00:00'), parent_activity_code: 102 },
+  ]);
+
+  assert.equal(recent.entry.code, 102);
+  assert.equal(recent.child, null);
 });
 
 test('the list is capped', () => {
@@ -210,7 +250,12 @@ test('a custom shortcut without readable text falls back to the entry name', () 
   ]);
 
   assert.deepEqual(recents, [
-    { entry: RECENT_ENTRIES.find((item) => item.code === 200), label: null, prefillText: null },
+    {
+      entry: RECENT_ENTRIES.find((item) => item.code === 200),
+      child: null,
+      label: null,
+      prefillText: null,
+    },
   ]);
 });
 

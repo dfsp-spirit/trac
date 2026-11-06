@@ -27,7 +27,7 @@ function el(tag, className, text) {
  * @param {HTMLElement} host
  * @param {{
  *   entries: import('./activitySearch.js').CatalogueEntry[],
- *   recents?: import('./activitySearch.js').RecentEntry[],
+ *   recents?: import('./recentActivities.js').RecentEntry[],
  *   query: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   onChoose: (
@@ -115,7 +115,7 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
       t('diary.panel.recent'),
       recents.map((recent) => ({
         entry: recent.entry,
-        child: null,
+        child: recent.child,
         rank: 0,
         position: 0,
         label: recent.label ?? undefined,

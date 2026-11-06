@@ -12,7 +12,14 @@
  * Writes (adds an activity for the recents test) and cleans up after itself.
  */
 import { test, expect } from '@playwright/test';
-import { addActivity, clearActivities, openDiary, openPanel, participantsUrl } from './helpers.js';
+import {
+  addActivity,
+  chooseActivity,
+  clearActivities,
+  openDiary,
+  openPanel,
+  participantsUrl,
+} from './helpers.js';
 
 const STUDY = 'newui_06_diary';
 const PID = 'diary_02';
@@ -257,5 +264,31 @@ test.describe('activity search', () => {
     await expect(page.locator('.t-event__title')).toHaveText(
       'Bezahlte Arbeit: Programmieren'
     );
+  });
+
+  test('a sub-activity picked in the form is the shortcut that comes back', async ({
+    page,
+  }) => {
+    // "Unterwegs (Transit)" carries the sub-activities; "Radfahren" is the row
+    // the participant actually reports, so it is the row the shortcut must show
+    // - not the parent it belongs to.
+    await openDiary(page, PID);
+    await chooseActivity(page, 1110);
+    await page.locator('#form-child').selectOption('1112');
+    await page.locator('#form-start').selectOption('480');
+    await page.locator('#form-end').selectOption('540');
+    await page.locator('[data-slot="actions"] .t-btn--primary').click();
+    await expect(page.locator('#days .t-event')).toHaveCount(1);
+
+    await openPanel(page);
+    const chip = recentGroup(page).locator('.t-activity');
+    await expect(chip).toHaveCount(1);
+    await expect(chip.locator('.t-activity__title')).toHaveText('Radfahren');
+    await expect(chip.locator('.t-activity__hint')).toHaveText('Unterwegs (Transit)');
+    await expect(chip).toHaveAttribute('data-activity-code', '1112');
+
+    // One tap reopens the form with the same sub-activity preselected.
+    await chip.click();
+    await expect(page.locator('#form-child')).toHaveValue('1112');
   });
 });

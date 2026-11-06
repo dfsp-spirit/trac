@@ -10,7 +10,8 @@
  */
 import { createFormController } from './activityPanelForm.js';
 import { renderActivityList } from './activityList.js';
-import { flattenCatalogue, recentEntries, searchHits } from './activitySearch.js';
+import { flattenCatalogue, searchHits } from './activitySearch.js';
+import { recentEntries } from './recentActivities.js';
 import { dayLabel, daySummaries } from '../domain/diary.js';
 import { createFormVisit } from './formVisit.js';
 import { describeError } from './messages.js';

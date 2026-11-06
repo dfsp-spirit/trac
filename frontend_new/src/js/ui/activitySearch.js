@@ -8,7 +8,6 @@
  * strings the study shipped, which is why folding has to cope with German and
  * Swedish diacritics.
  */
-import { customActivityText } from '../domain/activityName.js';
 import { generalTimelineSettings } from '../domain/timelines.js';
 
 /**
@@ -33,14 +32,6 @@ import { generalTimelineSettings } from '../domain/timelines.js';
  * @property {number} position Where the match starts in the folded text.
  * @property {string} [label] Title override: a custom shortcut shows the typed text.
  * @property {string | null} [prefillText] Text to prefill in a custom-input form.
- */
-
-/**
- * @typedef {Object} RecentEntry
- * @property {CatalogueEntry} entry The catalogue row the shortcut opens.
- * @property {string | null} label Title override, or null to use the entry name.
- *   Only a custom entry has one: the typed text is its activity.
- * @property {string | null} prefillText What the form should prefill, if anything.
  */
 
 /**
@@ -211,66 +202,4 @@ export function groupByCategory(entries) {
     groups.set(entry.category, list);
   }
   return [...groups.entries()];
-}
-
-/**
- * The activities this participant used most recently, as a shortcut row above
- * the catalogue (D28).
- *
- * Derived from the diary the client already holds - no endpoint, no device
- * storage (D33): it survives a reload and follows the participant to another
- * device because the entries come from the server. A sub-activity counts as its
- * parent (that is the row the participant picked), an activity used on several
- * days counts once, and codes that are no longer in the catalogue are dropped -
- * a shortcut that opens nothing is worse than none.
- *
- * A custom-input entry ("Bezahlte Arbeit" / "Bitte Tätigkeit angeben.") is keyed
- * by the *typed text*, not by its code: "Programmieren" and "E-Mails" are two
- * different activities to a participant, so they are two shortcuts, each of
- * which prefills the text field. Keying by code would collapse them into one
- * generic chip that reopens an empty form.
- *
- * @param {CatalogueEntry[]} entries
- * @param {Array<{ activity_code: number, parent_activity_code?: number | null, activity_name?: string | null, created_at?: string | null, updated_at?: string | null }>} activities
- * @param {{ limit?: number }} [options]
- * @returns {RecentEntry[]}
- */
-export function recentEntries(entries, activities, { limit = 5 } = {}) {
-  if (!Array.isArray(entries) || !Array.isArray(activities) || limit <= 0) return [];
-
-  /** @type {Map<number, CatalogueEntry>} */
-  const byCode = new Map(entries.map((entry) => [entry.code, entry]));
-  /** @type {Map<string, RecentEntry & { used: number }>} */
-  const latestUse = new Map();
-
-  for (const activity of activities) {
-    if (!activity) continue;
-    const code = Number(activity.parent_activity_code || activity.activity_code);
-    const entry = byCode.get(code);
-    if (!entry) continue;
-
-    const typedText = entry.isCustomInput
-      ? customActivityText(entry.name, activity.activity_name)
-      : null;
-    const text = typedText ? typedText : null;
-    const key = text === null ? String(code) : `${code}:${text}`;
-
-    // Parsed, not compared as strings: ISO stamps from the API may carry
-    // different offsets, where lexicographic order would be wrong.
-    const used = Date.parse(activity.updated_at || activity.created_at || '') || 0;
-    const seen = latestUse.get(key);
-    if (seen === undefined) {
-      // `null` label means "the entry's own name": only a custom entry is
-      // titled by the participant's words, and only then is the parent entry
-      // repeated as the hint.
-      latestUse.set(key, { entry, label: text, prefillText: text, used });
-    } else if (used > seen.used) {
-      seen.used = used;
-    }
-  }
-
-  return [...latestUse.values()]
-    .sort((a, b) => b.used - a.used)
-    .slice(0, limit)
-    .map(({ entry, label, prefillText }) => ({ entry, label, prefillText }));
 }
