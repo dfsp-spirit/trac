@@ -359,7 +359,14 @@
       "lastDayHint": "Dies ist der letzte Tag, Aktivitäten enden um Mitternacht. Ergänzen Sie den Rest im nächsten Tagebuch.",
       "alsoOn": "Auch an anderen Tagen?",
       "hours": "{{count}} Std.",
-      "minutes": "{{count}} Min."
+      "minutes": "{{count}} Min.",
+      "neighbour": {
+        "before": "{{name}} bis {{time}}",
+        "after": "{{name}} ab {{time}}",
+        "overlap": "Überlappt {{name}} ({{range}}), {{minutes}} Min.",
+        "overlapMore": "und {{count}} weitere",
+        "snap": "An {{name}} anschließen ({{time}})"
+      }
     },
     "toast": {
       "added": "Hinzugefügt: {{name}}, {{range}}",

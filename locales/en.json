@@ -359,7 +359,14 @@
       "lastDayHint": "This is the last day, so activities end by midnight. Add the rest in your next diary.",
       "alsoOn": "Also on other days?",
       "hours": "{{count}} h",
-      "minutes": "{{count}} min"
+      "minutes": "{{count}} min",
+      "neighbour": {
+        "before": "{{name}} until {{time}}",
+        "after": "{{name}} from {{time}}",
+        "overlap": "Overlaps {{name}} ({{range}}), {{minutes}} min",
+        "overlapMore": "and {{count}} more",
+        "snap": "Continue {{name}} ({{time}})"
+      }
     },
     "toast": {
       "added": "Added: {{name}}, {{range}}",

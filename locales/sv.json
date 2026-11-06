@@ -359,7 +359,14 @@
       "lastDayHint": "Detta är sista dagen, så aktiviteter slutar vid midnatt. Lägg till resten i nästa dagbok.",
       "alsoOn": "Även andra dagar?",
       "hours": "{{count}} tim",
-      "minutes": "{{count}} min"
+      "minutes": "{{count}} min",
+      "neighbour": {
+        "before": "{{name}} till {{time}}",
+        "after": "{{name}} från {{time}}",
+        "overlap": "Överlappar {{name}} ({{range}}), {{minutes}} min",
+        "overlapMore": "och {{count}} till",
+        "snap": "Fortsätt {{name}} ({{time}})"
+      }
     },
     "toast": {
       "added": "Tillagt: {{name}}, {{range}}",
