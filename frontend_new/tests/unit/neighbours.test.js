@@ -33,8 +33,17 @@ const clock = (minute) => {
 
 const short = (name) => name;
 
+/** No weekday marker: every minute is treated as the day being edited. */
+const describe = (minute) => ({ time: clock(minute), day: null });
+
+/** A marker for minutes that leave the candidate's day (absolute day 1, 2, ...). */
+const describeWithDay = (minute) => ({
+  time: clock(minute),
+  day: minute >= 1440 ? `day-${Math.floor(minute / 1440)}` : null,
+});
+
 function text(found) {
-  return neighbourText(found, translator, clock, short);
+  return neighbourText(found, translator, describe, short);
 }
 
 test('an empty day says nothing', () => {
@@ -202,4 +211,69 @@ test('the overlap range is printed in clock time, not raw minutes', () => {
   assert.equal(found.overlaps.length, 1);
   assert.equal(found.overlaps[0].minutes, 30);
   assert.match(text(found) || '', /range=00:30–01:00/);
+});
+
+test('a neighbour on another day names its weekday', () => {
+  // A routine filled on all seven days: the entry after a Monday morning is
+  // Tuesday's, and "ab 00:00" alone would read as today's midnight.
+  const found = surrounding({
+    candidate: record('new', 0, 540, 600),
+    existing: [record('sleep', 0, 0, 540, 'Sleeping'), record('sleep-1', 1, 0, 540, 'Sleeping')],
+  });
+  assert.deepEqual(found.after, { name: 'Sleeping', start: 1440 });
+  assert.equal(
+    neighbourText(found, translator, describeWithDay, short),
+    'diary.form.neighbour.before(name=Sleeping,time=09:00) · ' +
+      'diary.form.neighbour.afterDay(name=Sleeping,time=00:00,day=day-1)'
+  );
+});
+
+test('the same phrase on both sides stays two entries, not one range', () => {
+  // Monday and Tuesday both hold "Sleeping 00:00-09:00". The hint must not read
+  // as a single 33-hour block: it names each side, and the second one carries
+  // the weekday.
+  const found = surrounding({
+    candidate: record('new', 0, 540, 600),
+    existing: [record('mon', 0, 0, 540, 'Sleeping'), record('tue', 1, 0, 540, 'Sleeping')],
+  });
+  const line = neighbourText(found, translator, describeWithDay, short);
+  assert.match(line || '', /before\(name=Sleeping,time=09:00\)/);
+  assert.match(line || '', /afterDay\(name=Sleeping,time=00:00,day=day-1\)/);
+});
+
+test('the previous entry can be on the previous day too', () => {
+  const found = surrounding({
+    candidate: record('new', 2, 600, 660),
+    existing: [record('mon', 1, 0, 540, 'Sleeping')],
+  });
+  assert.equal(
+    neighbourText(found, translator, describeWithDay, short),
+    'diary.form.neighbour.beforeDay(name=Sleeping,time=09:00,day=day-1)'
+  );
+});
+
+test('an overlap that leaves the day marks the range once', () => {
+  // The candidate runs past midnight (23:00 -> 01:00) into Tuesday's entry.
+  const found = surrounding({
+    candidate: record('new', 0, 1380, 1500),
+    existing: [record('tue', 1, 0, 120, 'Sleeping')],
+  });
+  assert.equal(found.overlaps.length, 1);
+  assert.equal(found.overlaps[0].minutes, 60);
+  assert.match(text(found) || '', /range=00:00–01:00/);
+  assert.match(
+    neighbourText(found, translator, describeWithDay, short) || '',
+    /range=00:00–01:00 \(day-1\)/
+  );
+});
+
+test('a boundary on another day is reported but never offered as a snap', () => {
+  // The chip moves the start inside the form's own day, so a boundary before
+  // midnight of the previous day cannot be reached by it.
+  const found = surrounding({
+    candidate: record('new', 1, 20, 80),
+    existing: [record('night', 0, 1380, 1430, 'Sleeping')], // ends 23:50, 30 min earlier
+  });
+  assert.equal(found.before.name, 'Sleeping');
+  assert.equal(found.snap, null);
 });

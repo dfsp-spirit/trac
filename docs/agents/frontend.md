@@ -71,6 +71,14 @@
   silent data-quality leak this form has. The line is a `role="status"` live
   region, so a screen reader hears it change; the hint is hidden when the day
   around the range is empty, so an empty form gains no clutter.
+- **A neighbour on another day names its weekday** ("Schlafen bis 09:00 ·
+  Schlafen ab 00:00 (Dienstag)"). A routine filled on all seven days puts the
+  same activity on both sides of every entry, and the bare time read as today's
+  midnight. The suffix comes from `describe()` in `ui/timeNeighbours.js`, which
+  labels the neighbour with the same localized day name the day select uses; the
+  same marker is applied to an overlap range that runs past midnight. A boundary
+  on another day is reported but never offered as a "continue" chip, because the
+  start select only spans the day being edited.
 
 ## Time handling
 - Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.

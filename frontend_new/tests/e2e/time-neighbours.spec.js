@@ -26,21 +26,22 @@ const PID = 'diary_02';
 
 /**
  * @param {import('@playwright/test').APIRequestContext} request
- * @param {{ start: number, end: number }} range Day-relative minutes.
+ * @param {{ start: number, end: number, days?: number[] }} range Day-relative
+ *   minutes, and the days when the routine repeats.
  */
-async function seedSchlafen(request, { start, end }) {
+async function seedSchlafen(request, { start, end, days = [0] }) {
   const diary = await (await request.get(`${participantsUrl()}/${PID}/diary`)).json();
   const response = await request.post(`${participantsUrl()}/${PID}/activities`, {
     data: {
       items: [
         {
-          client_uuid: 'e2e-neighbour-sleep',
+          client_uuid: `e2e-neighbour-sleep-${days.length}`,
           timeline_key: diary.timeline.key,
           activity_code: 1101,
           activity_name: 'Schlafen',
           start_minutes: start,
           end_minutes: end,
-          day_label_indexes: [0],
+          day_label_indexes: days,
         },
       ],
     },
@@ -94,6 +95,28 @@ test.describe('time neighbours', () => {
     await expect(page.locator('.t-neighbours .t-hint')).toHaveText(
       /Überlappt Schlafen \(06:00–06:10\), 10 Min\./
     );
+  });
+
+  test('a neighbour on another day names its weekday', async ({ page, request }) => {
+    // A routine filled on all seven days: the entry after Monday's morning one
+    // is Tuesday's, and a bare "ab 00:00" would read as today's midnight.
+    await seedSchlafen(request, { start: 0, end: 540, days: [0, 1, 2, 3, 4, 5, 6] });
+    await openDiary(page, PID);
+    await chooseActivity(page, 1101);
+
+    await expect(page.locator('.t-neighbours .t-hint')).toHaveText(
+      'Schlafen bis 09:00 · Schlafen ab 00:00 (Dienstag)'
+    );
+  });
+
+  test('a single entry on the day stays one phrase per side', async ({ page, request }) => {
+    // The same activity on one day only: nothing is on the other side, so the
+    // line must not invent a second "Schlafen".
+    await seedSchlafen(request, { start: 0, end: 540 });
+    await openDiary(page, PID);
+    await chooseActivity(page, 1101);
+
+    await expect(page.locator('.t-neighbours .t-hint')).toHaveText('Schlafen bis 09:00');
   });
 
   test('says nothing while the day around the range is empty', async ({ page }) => {

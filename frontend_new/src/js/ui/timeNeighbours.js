@@ -47,6 +47,8 @@ function shortName(name) {
  *   t: (key: string, values?: Record<string, string | number>) => string,
  *   dayStartMinutes: number,
  *   existing: import('../domain/neighbours.js').NeighbourRecord[],
+ *   days: Array<{ index: number, name: string, display_name?: string, display_names?: Record<string, string> }>,
+ *   language: string,
  *   getSelection: () => { dayIndex: number, start: number, end: number },
  *   getCurrentId: () => string | null,
  *   onSnap: (startValue: number) => void,
@@ -56,6 +58,8 @@ export function createTimeNeighbours({
   t,
   dayStartMinutes,
   existing,
+  days = [],
+  language = '',
   getSelection,
   getCurrentId,
   onSnap,
@@ -87,6 +91,30 @@ export function createTimeNeighbours({
   const clock = (absoluteMinute) =>
     formatClock(absoluteMinute % MINUTES_PER_DAY, dayStartMinutes);
 
+  /**
+   * A neighbour's time, plus its weekday when it is not on the day being
+   * edited: on a week filled with the same routine, the entry after a morning
+   * one is tomorrow's, and a bare "ab 00:00" reads as today.
+   *
+   * @param {number} absoluteMinute
+   * @param {number} dayIndex The day the form is editing.
+   * @returns {import('../domain/neighbours.js').ClockText}
+   */
+  function describe(absoluteMinute, dayIndex) {
+    const time = clock(absoluteMinute);
+    const onDay = Math.floor(absoluteMinute / MINUTES_PER_DAY);
+    if (onDay === dayIndex) return { time, day: null };
+    const day = days.find((item) => item.index === onDay);
+    if (!day) return { time, day: null };
+    return {
+      time,
+      day:
+        (day.display_names && day.display_names[language]) ||
+        day.display_name ||
+        day.name,
+    };
+  }
+
   return {
     element,
 
@@ -111,7 +139,12 @@ export function createTimeNeighbours({
         ignoreId: currentId,
       });
 
-      const text = neighbourText(found, t, clock, shortName);
+      const text = neighbourText(
+        found,
+        t,
+        (minute) => describe(minute, selection.dayIndex),
+        shortName
+      );
       line.textContent = text || '';
 
       pending = found.snap;

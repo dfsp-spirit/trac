@@ -132,10 +132,9 @@ export function renderActivityForm(host, view) {
   const endHint = el('p', 't-hint');
   endHint.hidden = true;
 
+  // `days`/`language` label a neighbour that sits on another day.
   const neighbours = createTimeNeighbours({
-    t,
-    dayStartMinutes,
-    existing,
+    t, dayStartMinutes, existing, days, language,
     getSelection: () => ({
       dayIndex: Number(daySelect.value),
       start: Number(startSelect.value),
