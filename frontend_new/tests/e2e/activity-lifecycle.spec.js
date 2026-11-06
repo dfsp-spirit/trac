@@ -57,6 +57,25 @@ test.describe('activity lifecycle', () => {
     await expect(page.locator('.t-event__time')).toHaveText(/08:00\s*–\s*10:00/);
   });
 
+  test('the save toast does not swallow the next save', async ({ page }) => {
+    await openDiary(page, pid);
+    await addSchlafen(page, { start: 480, end: 540 });
+    await expect(page.locator('.t-toast')).toBeVisible();
+
+    // Saving again while the toast is still up. Above 1200px the toast floats
+    // over the panel's footer, so this click used to land on the toast text
+    // instead - or on its Undo button, deleting the entry just saved. The short
+    // timeout is the assertion: the click has to be accepted now, not when the
+    // toast times out six seconds later.
+    await chooseActivity(page, 1102);
+    await page.locator('#form-start').selectOption('600');
+    await page.locator('#form-end').selectOption('660');
+    await page.locator('[data-slot="actions"] .t-btn--primary').click({ timeout: 3000 });
+
+    await expect(page.locator('.t-event')).toHaveCount(2);
+    await expect(page.locator('.t-toast')).toContainText('Ausruhen');
+  });
+
   // Below 1200px the panel is a modal dialog in the top layer: leaving it open
   // after a save hides the diary and makes the Undo toast untappable. Returning
   // to the timeline is also what the participant expects - except when they ask

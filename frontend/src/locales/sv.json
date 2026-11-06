@@ -358,6 +358,8 @@
       "midnight": "(midnatt)",
       "lastDayHint": "Detta är sista dagen, så aktiviteter slutar vid midnatt. Lägg till resten i nästa dagbok.",
       "alsoOn": "Även andra dagar?",
+      "alsoOnAll": "Läggs till på {{count}} dagar",
+      "alsoOnPartial": "Läggs till på {{added}} av {{total}} dagar · {{days}} hoppas över",
       "hours": "{{count}} tim",
       "minutes": "{{count}} min",
       "neighbour": {
@@ -373,7 +375,8 @@
     "toast": {
       "added": "Tillagt: {{name}}, {{range}}",
       "addedDays": "Även på {{count}} dagar.",
-      "skipped": "Inte tillagt: {{reason}}",
+      "skipped": "Inte tillagt: {{details}}",
+      "skippedItem": "{{days}} ({{reason}})",
       "changed": "Ändrat: {{name}}, {{range}}",
       "deleted": "Borttaget: {{name}}",
       "undo": "Ångra",

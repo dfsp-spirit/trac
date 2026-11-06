@@ -164,6 +164,26 @@ export function dayLabel(day, language) {
 }
 
 /**
+ * Several days as one phrase ("Di, Sa"), in ascending order, for the messages
+ * that name days instead of pointing at the timeline.
+ *
+ * @param {number[]} indexes
+ * @param {Array<{ index: number, name: string, displayName?: string | null, displayNames?: Record<string, string>, display_name?: string | null, display_names?: Record<string, string> }>} days
+ * @param {string} language
+ * @returns {string}
+ */
+export function dayLabelList(indexes, days, language) {
+  const byIndex = new Map(days.map((day) => [day.index, day]));
+  return [...new Set(indexes)]
+    .sort((a, b) => a - b)
+    .map((index) => {
+      const day = byIndex.get(index);
+      return day ? dayLabel(day, language) : String(index);
+    })
+    .join(', ');
+}
+
+/**
  * How many days meet their requirement, for the top bar.
  *
  * @param {ApiDiary} diary

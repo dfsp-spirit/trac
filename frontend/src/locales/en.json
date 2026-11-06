@@ -358,6 +358,8 @@
       "midnight": "(midnight)",
       "lastDayHint": "This is the last day, so activities end by midnight. Add the rest in your next diary.",
       "alsoOn": "Also on other days?",
+      "alsoOnAll": "Adds it to {{count}} days",
+      "alsoOnPartial": "Adds it to {{added}} of {{total}} days · {{days}} skipped",
       "hours": "{{count}} h",
       "minutes": "{{count}} min",
       "neighbour": {
@@ -373,7 +375,8 @@
     "toast": {
       "added": "Added: {{name}}, {{range}}",
       "addedDays": "Also on {{count}} days.",
-      "skipped": "Not added: {{reason}}",
+      "skipped": "Not added: {{details}}",
+      "skippedItem": "{{days}} ({{reason}})",
       "changed": "Changed: {{name}}, {{range}}",
       "deleted": "Deleted: {{name}}",
       "undo": "Undo",

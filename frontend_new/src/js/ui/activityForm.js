@@ -10,22 +10,10 @@ import { DEFAULT_DURATION_MINUTES, MINUTES_PER_DAY, STEP_MINUTES, toDayRelative 
 import { validateActivity } from '../domain/validation.js';
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayLabel } from '../domain/diary.js';
-import { dayChips, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
+import { el } from './dom.js';
+import { dayChips, durationText, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
+import { createMultiDayHint } from './multiDayHint.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
-
-/**
- * @template {keyof HTMLElementTagNameMap} K
- * @param {K} tag
- * @param {string | null} [className]
- * @param {string | null} [text]
- * @returns {HTMLElementTagNameMap[K]}
- */
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text != null) node.textContent = text;
-  return node;
-}
 
 /**
  * @param {HTMLElement} host
@@ -158,6 +146,19 @@ export function renderActivityForm(host, view) {
   const chipInputs = chips.inputs;
   daysFieldset.append(chips.element);
   if (mode === 'edit') daysFieldset.hidden = true;
+
+  const multiDay = createMultiDayHint({
+    t, days, language, existing, dayStartMinutes, maxOverlap,
+    getSelection: () => ({
+      dayIndex: Number(daySelect.value),
+      start: Number(startSelect.value),
+      end: Number(endSelect.value),
+      activityCode: childSelect && childSelect.value ? Number(childSelect.value) : entry.code,
+      checkedDays: chipInputs.filter((input) => input.checked).map((input) => Number(input.value)),
+    }),
+  });
+  daysFieldset.append(multiDay.element);
+  for (const input of chipInputs) input.addEventListener('change', multiDay.refresh);
   form.append(daysFieldset);
 
   const error = el('div', 't-notice t-notice--attention');
@@ -192,16 +193,11 @@ export function renderActivityForm(host, view) {
     syncChips();
     showDuration();
     neighbours.refresh();
+    multiDay.refresh();
   }
 
   function showDuration() {
-    const minutes = Number(endSelect.value) - Number(startSelect.value);
-    const hours = Math.floor(minutes / 60);
-    const rest = minutes % 60;
-    const parts = [];
-    if (hours) parts.push(t('diary.form.hours', { count: hours }));
-    if (rest) parts.push(t('diary.form.minutes', { count: rest }));
-    durationOut.textContent = parts.join(' ');
+    durationOut.textContent = durationText(t, Number(endSelect.value) - Number(startSelect.value));
   }
 
   function syncChips() {
@@ -212,6 +208,7 @@ export function renderActivityForm(host, view) {
   endSelect.addEventListener('change', () => {
     showDuration();
     neighbours.refresh();
+    multiDay.refresh();
   });
   daySelect.addEventListener('change', () => fillEnd(Number(endSelect.value)));
 

@@ -11,7 +11,7 @@ import { formatClock } from '../domain/time.js';
 import { newUuid } from '../domain/uuid.js';
 import { renderActivityForm } from './activityForm.js';
 import { createEntrySlot } from './entrySlot.js';
-import { describeError } from './messages.js';
+import { describeError, describeSkipped } from './messages.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
 
@@ -164,9 +164,7 @@ export function createFormController(deps) {
       if (added > 1) message += ` ${t('diary.toast.addedDays', { count: added })}`;
       if (skipped.length) {
         onRefused?.({ stage: 'multi_day', codes: [String(skipped[0].code)] });
-        message += ` ${t('diary.toast.skipped', {
-          reason: describeError(t, skipped[0].code, skipped[0]).text,
-        })}`;
+        message += ` ${describeSkipped(t, skipped, getDiary().days, language)}`;
       }
 
       const created = response?.activities || [];

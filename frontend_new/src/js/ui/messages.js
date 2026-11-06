@@ -4,6 +4,9 @@
  * codes, never prose, so there is exactly one place that knows which message a
  * participant sees.
  */
+import { dayLabelList } from '../domain/diary.js';
+
+/** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
 
 /** @type {Record<string, string>} */
 export const codes = {
@@ -43,4 +46,32 @@ export function describeError(t, code, meta = {}) {
     title: t(`${key}.title`),
     text: t(`${key}.text`, /** @type {Record<string, string | number>} */ (meta)),
   };
+}
+
+/**
+ * "Not added: Di, Sa (this time is full)" for the days a multi-day save dropped.
+ *
+ * Grouped by reason so one line can carry both "already there" and "full" and
+ * still name every day; the toast used to print a single anonymous reason, which
+ * left the participant diffing the timeline to find out which days to redo.
+ *
+ * @param {Translator} t
+ * @param {Array<{ day_label_index?: number, code?: string }>} skipped
+ * @param {Array<{ index: number, name: string, displayName?: string | null, displayNames?: Record<string, string>, display_name?: string | null, display_names?: Record<string, string> }>} days
+ * @param {string} language
+ * @returns {string}
+ */
+export function describeSkipped(t, skipped, days, language) {
+  /** @type {Map<string, number[]>} */
+  const byReason = new Map();
+  for (const item of skipped) {
+    const { title } = describeError(t, item.code, item);
+    byReason.set(title, [...(byReason.get(title) || []), Number(item.day_label_index)]);
+  }
+  const details = [...byReason]
+    .map(([reason, indexes]) =>
+      t('diary.toast.skippedItem', { days: dayLabelList(indexes, days, language), reason })
+    )
+    .join(', ');
+  return t('diary.toast.skipped', { details });
 }

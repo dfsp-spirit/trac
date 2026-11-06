@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   dayLabel,
+  dayLabelList,
   daySummaries,
   layoutForDay,
   meetsRequirement,
@@ -117,4 +118,19 @@ test('a missing translation falls back to the study default, then the internal n
   assert.equal(dayLabel({ name: 'monday', display_name: 'Montag' }, 'sv'), 'Montag');
   assert.equal(dayLabel({ name: 'monday' }, 'en'), 'monday');
   assert.equal(dayLabel({ name: 'monday', displayNames: {} }, 'de'), 'monday');
+});
+
+test('dayLabelList names several days in order, without repeats', () => {
+  const days = [
+    { index: 0, name: 'monday', displayNames: { de: 'Montag', en: 'Monday' } },
+    { index: 1, name: 'tuesday', displayNames: { de: 'Dienstag', en: 'Tuesday' } },
+    { index: 2, name: 'wednesday', displayNames: { de: 'Mittwoch', en: 'Wednesday' } },
+  ];
+  assert.equal(dayLabelList([2, 0, 2], days, 'de'), 'Montag, Mittwoch');
+  assert.equal(dayLabelList([1], days, 'en'), 'Tuesday');
+  assert.equal(dayLabelList([], days, 'de'), '');
+});
+
+test('dayLabelList falls back to the index for a day the study does not have', () => {
+  assert.equal(dayLabelList([0, 9], [{ index: 0, name: 'monday', display_name: 'Montag' }], 'de'), 'Montag, 9');
 });

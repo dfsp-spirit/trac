@@ -163,7 +163,7 @@ export async function addActivity(page, code, { start, end, day }) {
 
 /**
  * @param {import('@playwright/test').Page} page
- * @param {{ start: number, end: number }} range
+ * @param {{ start: number, end: number, day?: number }} range
  */
 export async function addSchlafen(page, range) {
   await addActivity(page, 1101, range);

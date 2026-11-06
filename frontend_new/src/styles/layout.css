@@ -81,6 +81,8 @@
     width: min(var(--panel-width), calc(100vw - 2 * var(--space-4)));
     bottom: var(--space-4);
   }
+  /* Covers the footer here: clicks reach the buttons under it, only Undo stays clickable (docs/agents/frontend.md). */
+  .t-toast-region > * { pointer-events: none; } .t-toast-region .t-toast__action { pointer-events: auto; }
 }
 
 /* Day rail: real coverage per day, plus the day currently under the bar. */

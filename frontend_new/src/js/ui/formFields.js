@@ -115,3 +115,19 @@ export function syncChips(inputs, selectedDay) {
     chip?.classList.toggle('t-day-chip--checked', isCurrent);
   }
 }
+
+/**
+ * "1 Std. 30 Min." for a duration in minutes, skipping the empty halves.
+ *
+ * @param {(key: string, params?: Record<string, string | number>) => string} t
+ * @param {number} minutes
+ * @returns {string}
+ */
+export function durationText(t, minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const parts = [];
+  if (hours) parts.push(t('diary.form.hours', { count: hours }));
+  if (rest) parts.push(t('diary.form.minutes', { count: rest }));
+  return parts.join(' ');
+}

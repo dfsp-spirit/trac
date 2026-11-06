@@ -358,6 +358,8 @@
       "midnight": "(Mitternacht)",
       "lastDayHint": "Dies ist der letzte Tag, Aktivitäten enden um Mitternacht. Ergänzen Sie den Rest im nächsten Tagebuch.",
       "alsoOn": "Auch an anderen Tagen?",
+      "alsoOnAll": "Wird an {{count}} Tagen eingetragen",
+      "alsoOnPartial": "Wird an {{added}} von {{total}} Tagen eingetragen · {{days}} übersprungen",
       "hours": "{{count}} Std.",
       "minutes": "{{count}} Min.",
       "neighbour": {
@@ -373,7 +375,8 @@
     "toast": {
       "added": "Hinzugefügt: {{name}}, {{range}}",
       "addedDays": "Auch an {{count}} Tagen.",
-      "skipped": "Nicht hinzugefügt: {{reason}}",
+      "skipped": "Nicht hinzugefügt: {{details}}",
+      "skippedItem": "{{days}} ({{reason}})",
       "changed": "Geändert: {{name}}, {{range}}",
       "deleted": "Gelöscht: {{name}}",
       "undo": "Rückgängig",
