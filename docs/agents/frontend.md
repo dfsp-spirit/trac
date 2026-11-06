@@ -80,6 +80,41 @@
   on another day is reported but never offered as a "continue" chip, because the
   start select only spans the day being edited.
 
+## "Also on other days?" is planned before it is saved
+- A multi-day save is decided per day on the server (`day_label_indexes` in,
+  `status` + `code` per day out), so the client cannot promise anything until
+  the response. `ui/multiDayHint.js` runs the same plan
+  (`domain/validation.js` `planMultiDayCreate`, the function the domain tests
+  already pinned) while the form is open and states the outcome under the chips:
+  "Wird an 3 Tagen eingetragen" or "Wird an 1 von 3 Tagen eingetragen ·
+  Mittwoch, Freitag übersprungen". It stays quiet for one day (the everyday save)
+  and when *nothing* lands - then the anchor day is invalid too and the form's
+  error notice is the message that matters.
+- The chips are deliberately **not** disabled for days that would be skipped.
+  Whether a day can take the entry depends on the range being picked right now
+  and on the other chips (a night spilling into the next morning can fill it), so
+  a disabled chip would flip while the end time is still moving and could not say
+  why. A day can be "full" for one range and free a minute later; naming the days
+  and their reason reads better than a dead control, and it survives on a phone,
+  where nothing has a tooltip.
+- The toast after the save names the days, grouped by reason: "Nicht
+  hinzugefügt: Dienstag, Mittwoch (Diese Zeit ist belegt), Donnerstag (Bereits
+  eingetragen)". It used to print only the first skipped reason, which left the
+  participant diffing the timeline to find out which days to redo
+  (`describeSkipped()` in `ui/messages.js`).
+
+## Toast placement
+- The toast lives in the panel's column above 1200px (D28), which is exactly
+  where the panel's footer buttons are. It therefore lets clicks through
+  (`pointer-events: none` on the box in `layout.css`, `auto` on the Undo
+  button): without it, clicking "Zum Zeitplan hinzufügen" during the toast's 6 s
+  lifetime hit the toast text - and the Undo button sat under the pointer,
+  deleting the entry just saved. Below 1200px the panel is a dialog in the top
+  layer, so nothing is covered; the toast keeps its usual behaviour there.
+  `activity-lifecycle.spec.js` ("the save toast does not swallow the next save")
+  clicks the next save with a 3 s timeout, so a regression cannot hide behind
+  the toast timing out.
+
 ## Day names
 - Study day labels arrive per language (`days[].display_names`) and every screen
   renders them through `dayLabel()` in `domain/diary.js` - the rail, the day nav,
