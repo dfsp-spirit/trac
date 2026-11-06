@@ -363,6 +363,8 @@
       "neighbour": {
         "before": "{{name}} till {{time}}",
         "after": "{{name}} från {{time}}",
+        "beforeDay": "{{name}} till {{time}} ({{day}})",
+        "afterDay": "{{name}} från {{time}} ({{day}})",
         "overlap": "Överlappar {{name}} ({{range}}), {{minutes}} min",
         "overlapMore": "och {{count}} till",
         "snap": "Fortsätt {{name}} ({{time}})"
