@@ -137,6 +137,11 @@ async def test_open_study_offers_new_participant_links_in_both_frontends(
 async def test_closed_study_links_each_participant_into_both_frontends(
     created_studies_for_cleanup,
 ):
+    """Per-participant join links live in participant management.
+
+    The study detail page only summarized participant counts and points at the
+    paginated table, so the links moved there with the rest of the roster.
+    """
     study_short = f"it_join_closed_{uuid.uuid4().hex[:8]}"
 
     async with httpx.AsyncClient(timeout=60.0) as client:
@@ -148,22 +153,35 @@ async def test_closed_study_links_each_participant_into_both_frontends(
         )
         created_studies_for_cleanup.append(study_short)
 
-        response = await client.get(
+        detail_response = await client.get(
             f"{BASE_URL}/admin/study/{study_short}", auth=ADMIN_AUTH
         )
+        table_response = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={"study_name_short": study_short},
+            auth=ADMIN_AUTH,
+        )
 
-    _require_authenticated(response)
-    assert response.status_code == 200, response.text
-    body = html.unescape(response.text)
-    assert "Join as new user" not in body
+    _require_authenticated(detail_response)
+    _require_authenticated(table_response)
+    assert detail_response.status_code == 200, detail_response.text
+    assert table_response.status_code == 200, table_response.text
+
+    detail_body = html.unescape(detail_response.text)
+    assert "Join as new user" not in detail_body
+    assert (
+        f"/admin/participant-management?study_name_short={study_short}"
+    ) in detail_body
+
+    table_body = html.unescape(table_response.text)
     assert (
         f"{settings.frontend_url}/index.html?pid={PARTICIPANT_ID}"
         f"&study_name={study_short}"
-    ) in body
+    ) in table_body
     assert (
         f"{settings.frontend_new_url}/index.html?study={study_short}"
         f"&pid={PARTICIPANT_ID}"
-    ) in body
+    ) in table_body
 
 
 @pytest.mark.asyncio

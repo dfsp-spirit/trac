@@ -56,7 +56,7 @@
                 <h2 style="margin: 0;">Participants in study {{ selected_study.name_short }} ({{ total_participants }})</h2>
                 <span class="hint">
                     {% if total_participants %}
-                        showing {{ first_row }}&ndash;{{ last_row }}
+                        showing {{ first_row }}&ndash;{{ last_row }}, most recent activity first
                     {% elif participant_query %}
                         no matches for &ldquo;{{ participant_query }}&rdquo;
                     {% else %}
@@ -92,6 +92,7 @@
                 </div>
             </div>
             {% if current_participants %}
+            <div class="table-container">
             <table>
                 <thead>
                     <tr>
@@ -101,7 +102,11 @@
                         <th>Consent</th>
                         <th>Consent Decided At</th>
                         {% endif %}
+                        <th>Last Activity</th>
                         <th>Activity Count</th>
+                        <th>Days Complete</th>
+                        <th>Diary</th>
+                        <th>Join</th>
                         {% for key in selected_study_external_task_keys %}
                         <th>Token {{ key }}</th>
                         {% endfor %}
@@ -125,7 +130,29 @@
                         </td>
                         <td>{{ participant.consent_decided_at.strftime('%Y-%m-%d %H:%M') if participant.consent_decided_at else '-' }}</td>
                         {% endif %}
+                        <td>{{ participant.last_activity_at.strftime('%Y-%m-%d %H:%M') if participant.last_activity_at else '-' }}</td>
                         <td>{{ participant.activity_count }}</td>
+                        <td>
+                            {% if participant.all_days_meet_min_coverage %}
+                            <span style="color: #16a34a; font-weight: 600;">{{ participant.total_days }} of {{ participant.total_days }}</span>
+                            {% else %}
+                            {{ participant.days_meeting_min_coverage }} of {{ participant.total_days }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if participant.skipped_at %}
+                            <span style="color: #b45309; font-weight: 600;">Skipped</span>{% if participant.skip_reason_code %} <span class="badge badge-participant">{{ participant.skip_reason_code }}</span>{% endif %}
+                            {% elif participant.study_submitted_at %}
+                            <span style="color: #16a34a; font-weight: 600;">Submitted</span> <small>{{ participant.study_submitted_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            {% else %}
+                            In progress
+                            {% endif %}
+                        </td>
+                        <td style="white-space: nowrap;">
+                            <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer" title="Open this study in the old frontend as this participant">Join</a>
+                            &middot;
+                            <a href="{{ participant.study_join_url_new }}" target="_blank" rel="noopener noreferrer" title="Open this study in the new frontend as this participant">new UI</a>
+                        </td>
                         {% for key in selected_study_external_task_keys %}
                         <td>{{ participant.tokens.get(key, '-') }}</td>
                         {% endfor %}
@@ -136,6 +163,7 @@
                     {% endfor %}
                 </tbody>
             </table>
+            </div>
             {% if total_pages > 1 %}
             <nav class="pager" aria-label="Participant table pages">
                 {% if page > 1 %}

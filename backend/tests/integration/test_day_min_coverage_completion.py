@@ -9,6 +9,7 @@ from o_timeusediary_backend.settings import settings
 
 BASE_SCHEME = os.getenv("TUD_BASE_SCHEME", "http://localhost:3000")
 BASE_URL = f"{BASE_SCHEME}/" + settings.rootpath.strip("/")
+ADMIN_AUTH = (settings.admin_username, settings.admin_password)
 
 
 async def _get_first_activity_selection(
@@ -128,3 +129,17 @@ async def test_activities_response_reports_days_meeting_min_coverage():
         other_day_payload = other_day_response.json()
         assert other_day_payload["day_indices_meet_min_coverage"] == [0]
         assert other_day_payload["day_indices_with_data"] == [0]
+
+        # 6) The admin participant table computes the same coverage in one
+        #    batched query for the whole page, so it must report the same count.
+        total_days = len(study_cfg["day_labels"])
+        admin_page = await client.get(
+            f"{BASE_URL}/admin/participant-management",
+            params={
+                "study_name_short": study_name_short,
+                "q": participant_id,
+            },
+            auth=ADMIN_AUTH,
+        )
+        assert admin_page.status_code == 200, admin_page.text
+        assert f"1 of {total_days}" in admin_page.text

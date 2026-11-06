@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 import logging
 import string
 import uuid
-from typing import Dict, List, Optional, Set, Tuple, Any, Union
+from typing import Dict, List, Optional, Sequence, Set, Tuple, Any, Union
 from datetime import date, datetime, timedelta, timezone
 import csv
 import io
@@ -685,56 +685,113 @@ def _get_days_meeting_min_coverage(
     if not participant_id:
         return set()
 
-    timelines = session.exec(
-        select(Timeline).where(Timeline.study_id == study.id)
-    ).all()
-    required_by_timeline_id = required_coverage_by_timeline(timelines)
+    return _get_days_meeting_min_coverage_bulk(
+        session=session,
+        study=study,
+        participant_ids=[participant_id],
+    ).get(participant_id, set())
 
-    if not required_by_timeline_id:
-        # No timeline imposes a min-coverage requirement: every day with any
-        # data is trivially complete, consistent with the historical behavior.
-        return _get_completed_day_indices(session, study, participant_id)
 
-    day_labels = session.exec(
-        select(DayLabel).where(DayLabel.study_id == study.id)
-    ).all()
-    day_labels_in_order = [
-        day_label.id
-        for day_label in sorted(day_labels, key=lambda item: item.display_order)
-    ]
+def _get_days_meeting_min_coverage_bulk(
+    session: Session,
+    study: Study,
+    participant_ids: Sequence[str],
+    timelines: Optional[Sequence[Timeline]] = None,
+    day_labels: Optional[Sequence[DayLabel]] = None,
+) -> Dict[str, set[int]]:
+    """Batched :func:`_get_days_meeting_min_coverage` for a list of participants.
+
+    Admin tables want this number for a whole page of participants. Doing it per
+    row costs a query per input *and* per participant, so the work is batched
+    here: one query for the activities of all requested participants (plus the
+    timelines and day labels, which the caller usually already has).
+
+    @param session Database session.
+    @param study Study owning the participants.
+    @param participant_ids Participants to evaluate.
+    @param timelines Optional pre-loaded timelines of the study.
+    @param day_labels Optional pre-loaded day labels of the study.
+    @returns ``{participant_id: {display_order, ...}}``, one entry per input.
+    """
+    requested = [pid for pid in participant_ids if pid]
+    result: Dict[str, set[int]] = {pid: set() for pid in requested}
+    if not requested:
+        return result
+
+    if timelines is None:
+        timelines = session.exec(
+            select(Timeline).where(Timeline.study_id == study.id)
+        ).all()
+    if day_labels is None:
+        day_labels = session.exec(
+            select(DayLabel).where(DayLabel.study_id == study.id)
+        ).all()
+
     display_order_by_id = {
         day_label.id: day_label.display_order for day_label in day_labels
     }
 
-    activities = session.exec(
-        select(Activity).where(
+    activities_by_participant: Dict[str, List[TimedActivity]] = {
+        participant_id: [] for participant_id in requested
+    }
+    activity_rows = session.exec(
+        select(
+            Activity.participant_id,
+            Activity.day_label_id,
+            Activity.timeline_id,
+            Activity.start_minutes,
+            Activity.end_minutes,
+        ).where(
             Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
+            Activity.participant_id.in_(requested),
         )
     ).all()
-
-    covered = coverage_by_day_and_timeline(
-        (
+    for (
+        participant_id,
+        day_label_id,
+        timeline_id,
+        start_minutes,
+        end_minutes,
+    ) in activity_rows:
+        activities_by_participant.setdefault(participant_id, []).append(
             TimedActivity(
-                day_label_id=activity.day_label_id,
-                timeline_id=activity.timeline_id,
-                start_minutes=activity.start_minutes,
-                end_minutes=activity.end_minutes,
+                day_label_id=day_label_id,
+                timeline_id=timeline_id,
+                start_minutes=start_minutes,
+                end_minutes=end_minutes,
             )
-            for activity in activities
-        ),
-        day_labels_in_order=day_labels_in_order,
-        day_start_minutes=study.day_start_minutes,
-    )
+        )
 
-    meeting_days: set[int] = set()
-    for day_label_id, per_timeline in covered.items():
-        if day_meets_requirements(per_timeline, required_by_timeline_id):
-            display_order = display_order_by_id.get(day_label_id)
-            if display_order is not None:
-                meeting_days.add(display_order)
+    required_by_timeline_id = required_coverage_by_timeline(timelines)
+    if not required_by_timeline_id:
+        # No timeline imposes a min-coverage requirement: every day with any
+        # data is trivially complete, consistent with the historical behavior.
+        for participant_id, activities in activities_by_participant.items():
+            result[participant_id] = {
+                display_order_by_id[activity.day_label_id]
+                for activity in activities
+                if activity.day_label_id in display_order_by_id
+            }
+        return result
 
-    return meeting_days
+    day_labels_in_order = [
+        day_label.id
+        for day_label in sorted(day_labels, key=lambda item: item.display_order)
+    ]
+    for participant_id, activities in activities_by_participant.items():
+        covered = coverage_by_day_and_timeline(
+            activities,
+            day_labels_in_order=day_labels_in_order,
+            day_start_minutes=study.day_start_minutes,
+        )
+        result[participant_id] = {
+            display_order_by_id[day_label_id]
+            for day_label_id, per_timeline in covered.items()
+            if day_label_id in display_order_by_id
+            and day_meets_requirements(per_timeline, required_by_timeline_id)
+        }
+
+    return result
 
 
 def _is_participant_study_complete(
@@ -2252,8 +2309,6 @@ async def admin_study_detail(
         select(Timeline).where(Timeline.study_id == study.id)
     ).all()
 
-    study_days_count = len(day_labels)
-
     external_task_rows = session.exec(
         select(StudyExternalTask)
         .where(StudyExternalTask.study_id == study.id)
@@ -2261,99 +2316,47 @@ async def admin_study_detail(
     ).all()
     study_has_external_tasks = bool(external_task_rows)
 
-    # --- Participants (limited to most recent 50) ---
-    study_participants = session.exec(
-        select(StudyParticipant)
-        .where(StudyParticipant.study_id == study.id)
-        .order_by(StudyParticipant.created_at.desc())
-        .limit(50)
-    ).all()
-
-    participants = []
-    for sp in study_participants:
-        participant = session.get(Participant, sp.participant_id)
-        if participant:
-            participant_activity_count = (
-                session.exec(
-                    select(func.count(Activity.id)).where(
-                        Activity.study_id == study.id,
-                        Activity.participant_id == participant.id,
-                    )
-                ).first()
-                or 0
-            )
-            participant_has_completed_study = _is_participant_study_complete(
-                session=session,
-                study=study,
-                participant_id=participant.id,
-                study_days_count=study_days_count,
-            )
-            # Copy Days: separate "all days meet min_coverage" from "submitted"
-            participant_days_meeting = _get_days_meeting_min_coverage(
-                session, study, participant.id
-            )
-            participant_all_days_meet_min_coverage = (
-                len(participant_days_meeting) >= study_days_count
-            )
-            participant_study_submitted_at = sp.study_submitted_at
-            participant_external_tasks = (
-                _get_participant_external_tasks(
-                    session=session,
-                    study=study,
-                    participant_id=participant.id,
-                    selected_language=study.default_language,
-                    study_days_count=study_days_count,
-                )
-                if study_has_external_tasks
-                else []
-            )
-            participant_all_external_tasks_completed = bool(
-                participant_external_tasks
-            ) and all(et.is_confirmed for et in participant_external_tasks)
-            participants.append(
-                {
-                    "id": participant.id,
-                    "created_at": participant.created_at,
-                    "joined_study_at": sp.created_at,
-                    "consent_given": sp.consent_given,
-                    "consent_decided_at": sp.consent_decided_at,
-                    "activity_count": participant_activity_count,
-                    "has_completed_study": participant_has_completed_study,
-                    "all_days_meet_min_coverage": participant_all_days_meet_min_coverage,
-                    "days_meeting_min_coverage": len(participant_days_meeting),
-                    "total_days": study_days_count,
-                    "study_submitted_at": (
-                        participant_study_submitted_at.isoformat()
-                        if participant_study_submitted_at
-                        else None
-                    ),
-                    "skipped_at": sp.skipped_at,
-                    "skip_reason_code": sp.skip_reason_code,
-                    "all_external_tasks_completed": participant_all_external_tasks_completed,
-                    "study_join_url": _build_frontend_study_join_url(
-                        study.name_short,
-                        participant.id,
-                    ),
-                    "study_join_url_new": _build_frontend_new_study_join_url(
-                        study.name_short,
-                        participant.id,
-                    ),
-                }
-            )
-
-    participant_count = (
-        session.exec(
-            select(func.count(StudyParticipant.id)).where(
-                StudyParticipant.study_id == study.id
-            )
-        ).first()
-        or 0
+    # --- Participants: counters only ---
+    # The roster with per-participant progress and join links lives in
+    # participant management, which paginates in the database. Rendering a
+    # preview here duplicated that page and cost several queries per row.
+    participant_progress_row = session.exec(
+        select(
+            func.count(StudyParticipant.id),
+            func.count(StudyParticipant.study_submitted_at),
+            func.count(StudyParticipant.skipped_at),
+        ).where(StudyParticipant.study_id == study.id)
+    ).first()
+    (
+        participant_count,
+        participant_submitted_count,
+        participant_skipped_count,
+    ) = participant_progress_row or (0, 0, 0)
+    participant_in_progress_count = max(
+        0,
+        participant_count - participant_submitted_count - participant_skipped_count,
     )
+    participant_consent_denied_count = 0
+    if study.require_consent:
+        participant_consent_denied_count = (
+            session.exec(
+                select(func.count(StudyParticipant.id)).where(
+                    StudyParticipant.study_id == study.id,
+                    StudyParticipant.consent_given.is_(False),
+                )
+            ).first()
+            or 0
+        )
 
     # --- Activities (last 10) ---
+    # One join instead of a lookup per row: the preview is only a glance at the
+    # newest rows, but it must not cost three queries per activity.
     try:
-        activities = session.exec(
-            select(Activity)
+        activity_rows = session.exec(
+            select(Activity, Participant, DayLabel, Timeline)
+            .join(Participant, Participant.id == Activity.participant_id, isouter=True)
+            .join(DayLabel, DayLabel.id == Activity.day_label_id, isouter=True)
+            .join(Timeline, Timeline.id == Activity.timeline_id, isouter=True)
             .where(Activity.study_id == study.id)
             .order_by(Activity.created_at.desc())
             .limit(10)
@@ -2364,45 +2367,34 @@ async def admin_study_detail(
             study.name_short,
             exc,
         )
-        activities = []
+        activity_rows = []
 
     enriched_activities = []
-    for activity in activities:
-        try:
-            participant = session.get(Participant, activity.participant_id)
-            day_label = session.get(DayLabel, activity.day_label_id)
-            timeline = session.get(Timeline, activity.timeline_id)
-            enriched_activities.append(
-                {
-                    "id": activity.id,
-                    "participant_id": activity.participant_id,
-                    "participant_name": participant.id if participant else "Unknown",
-                    "day_label": day_label.name if day_label else "Unknown",
-                    "day_display_order": day_label.display_order if day_label else 0,
-                    "day_display_name": day_label.display_name
-                    if day_label
-                    else "Unknown",
-                    "timeline": timeline.name if timeline else "Unknown",
-                    "timeline_display_name": timeline.display_name
-                    if timeline
-                    else "Unknown",
-                    "activity_code": activity.activity_code,
-                    "activity_name": activity.activity_name,
-                    "activity_path_frontend": activity.activity_path_frontend,
-                    "category": activity.category,
-                    "start_minutes": activity.start_minutes,
-                    "end_minutes": activity.end_minutes,
-                    "time_range": f"{(activity.start_minutes % (24 * 60)) // 60:02d}:{activity.start_minutes % 60:02d} - {(activity.end_minutes % (24 * 60)) // 60:02d}:{activity.end_minutes % 60:02d}",
-                    "duration": activity.end_minutes - activity.start_minutes,
-                    "parent_activity_code": activity.parent_activity_code,
-                    "created_at": activity.created_at,
-                }
-            )
-        except TypeError as exc:
-            logger.warning(
-                "Skipping activity row for study '%s': %s", study.name_short, exc
-            )
-            continue
+    for activity, participant, day_label, timeline in activity_rows:
+        enriched_activities.append(
+            {
+                "id": activity.id,
+                "participant_id": activity.participant_id,
+                "participant_name": participant.id if participant else "Unknown",
+                "day_label": day_label.name if day_label else "Unknown",
+                "day_display_order": day_label.display_order if day_label else 0,
+                "day_display_name": day_label.display_name if day_label else "Unknown",
+                "timeline": timeline.name if timeline else "Unknown",
+                "timeline_display_name": timeline.display_name
+                if timeline
+                else "Unknown",
+                "activity_code": activity.activity_code,
+                "activity_name": activity.activity_name,
+                "activity_path_frontend": activity.activity_path_frontend,
+                "category": activity.category,
+                "start_minutes": activity.start_minutes,
+                "end_minutes": activity.end_minutes,
+                "time_range": f"{(activity.start_minutes % (24 * 60)) // 60:02d}:{activity.start_minutes % 60:02d} - {(activity.end_minutes % (24 * 60)) // 60:02d}:{activity.end_minutes % 60:02d}",
+                "duration": activity.end_minutes - activity.start_minutes,
+                "parent_activity_code": activity.parent_activity_code,
+                "created_at": activity.created_at,
+            }
+        )
 
     try:
         last_study_activity = session.exec(
@@ -2626,24 +2618,23 @@ async def admin_study_detail(
                     if confirmed_at is not None:
                         confirmed_dates[pid] = _to_utc_naive(confirmed_at).date()
 
-                # For each participant who has all tasks confirmed, use their latest confirmation date
-                for sp in study_participants:
-                    pid = sp.participant_id
-                    if pid in confirmed_dates:
-                        # Verify all tasks are confirmed for this participant
-                        all_confirmed = session.exec(
-                            select(func.count(StudyExternalTaskAssignment.id)).where(
-                                StudyExternalTaskAssignment.external_task_id.in_(
-                                    et_task_ids
-                                ),
-                                StudyExternalTaskAssignment.participant_id == pid,
-                                ~StudyExternalTaskAssignment.is_confirmed,
-                            )
-                        ).first()
-                        if all_confirmed is not None and all_confirmed == 0:
-                            last_all_completed_per_participant[pid] = confirmed_dates[
-                                pid
-                            ]
+                # Participants without a single unconfirmed task are done.
+                # One query instead of a count per participant.
+                participants_with_open_tasks = set(
+                    session.exec(
+                        select(StudyExternalTaskAssignment.participant_id)
+                        .where(
+                            StudyExternalTaskAssignment.external_task_id.in_(
+                                et_task_ids
+                            ),
+                            ~StudyExternalTaskAssignment.is_confirmed,
+                        )
+                        .distinct()
+                    ).all()
+                )
+                for pid, confirmed_date in confirmed_dates.items():
+                    if pid not in participants_with_open_tasks:
+                        last_all_completed_per_participant[pid] = confirmed_date
         except TypeError as exc:
             logger.warning(
                 "Skipping ET completion chart data for study '%s': %s",
@@ -2683,8 +2674,15 @@ async def admin_study_detail(
         "current_admin": current_admin,
         "study": study,
         "description_text": description_text,
-        "participants": participants,
         "participant_count": participant_count,
+        "participant_submitted_count": participant_submitted_count,
+        "participant_in_progress_count": participant_in_progress_count,
+        "participant_skipped_count": participant_skipped_count,
+        "participant_consent_denied_count": participant_consent_denied_count,
+        "participant_management_url": (
+            f"{request.scope.get('root_path', '')}/admin/participant-management"
+            f"?study_name_short={quote(study.name_short, safe='')}"
+        ),
         "day_labels": day_labels,
         "timeline_stats": timeline_stats,
         "external_tasks": external_tasks,
@@ -5178,12 +5176,33 @@ async def admin_participant_management(
                 or 0
             )
 
-        study_participants = session.exec(
-            select(StudyParticipant)
+        # Most recently active first: that is the row an admin debugging a
+        # study wants, and it still falls back to the join date for participants
+        # who have not logged anything yet.
+        last_activity_subquery = (
+            select(
+                Activity.participant_id.label("participant_id"),
+                func.max(Activity.created_at).label("last_activity_at"),
+            )
+            .where(Activity.study_id == selected_study.id)
+            .group_by(Activity.participant_id)
+            .subquery()
+        )
+        participant_page_rows = session.exec(
+            select(StudyParticipant, last_activity_subquery.c.last_activity_at)
+            .outerjoin(
+                last_activity_subquery,
+                last_activity_subquery.c.participant_id
+                == StudyParticipant.participant_id,
+            )
             .where(*participant_filters)
-            # participant_id breaks created_at ties so pages never overlap or skip rows.
+            # participant_id breaks ties so pages never overlap or skip rows.
             .order_by(
-                StudyParticipant.created_at.desc(), StudyParticipant.participant_id
+                func.coalesce(
+                    last_activity_subquery.c.last_activity_at,
+                    StudyParticipant.created_at,
+                ).desc(),
+                StudyParticipant.participant_id,
             )
             .offset((page_number - 1) * per_page)
             .limit(per_page)
@@ -5202,7 +5221,7 @@ async def admin_participant_management(
         external_task_ids = [t.id for t in external_tasks]
 
         assignments = []
-        page_participant_ids = [sp.participant_id for sp in study_participants]
+        page_participant_ids = [sp.participant_id for sp, _ in participant_page_rows]
         if external_task_ids and page_participant_ids:
             # Only the tokens for the visible page are needed to render it.
             assignments = session.exec(
@@ -5226,21 +5245,47 @@ async def admin_participant_management(
                     assignments_by_participant[pid] = {}
                 assignments_by_participant[pid][tk] = a.assigned_token
 
-        for association in study_participants:
-            participant = session.get(Participant, association.participant_id)
+        # Everything the table shows for this page is fetched in a handful of
+        # queries, never per row: participant records, activity counts, day
+        # coverage and join links.
+        participant_records = {}
+        activity_counts_by_participant = {}
+        if page_participant_ids:
+            for participant in session.exec(
+                select(Participant).where(Participant.id.in_(page_participant_ids))
+            ).all():
+                participant_records[participant.id] = participant
+            for participant_id, activity_count in session.exec(
+                select(Activity.participant_id, func.count(Activity.id))
+                .where(
+                    Activity.study_id == selected_study.id,
+                    Activity.participant_id.in_(page_participant_ids),
+                )
+                .group_by(Activity.participant_id)
+            ).all():
+                activity_counts_by_participant[participant_id] = activity_count
+
+        study_day_labels = session.exec(
+            select(DayLabel).where(DayLabel.study_id == selected_study.id)
+        ).all()
+        study_timelines = session.exec(
+            select(Timeline).where(Timeline.study_id == selected_study.id)
+        ).all()
+        study_days_count = len(study_day_labels)
+        days_meeting_by_participant = _get_days_meeting_min_coverage_bulk(
+            session=session,
+            study=selected_study,
+            participant_ids=page_participant_ids,
+            timelines=study_timelines,
+            day_labels=study_day_labels,
+        )
+
+        for association, last_activity_at in participant_page_rows:
+            participant = participant_records.get(association.participant_id)
             if not participant:
                 continue
 
-            participant_activity_count = (
-                session.exec(
-                    select(func.count(Activity.id)).where(
-                        Activity.study_id == selected_study.id,
-                        Activity.participant_id == participant.id,
-                    )
-                ).first()
-                or 0
-            )
-
+            days_meeting = days_meeting_by_participant.get(participant.id, set())
             current_participants.append(
                 {
                     "id": participant.id,
@@ -5248,7 +5293,24 @@ async def admin_participant_management(
                     "assigned_at": association.created_at,
                     "consent_given": association.consent_given,
                     "consent_decided_at": association.consent_decided_at,
-                    "activity_count": participant_activity_count,
+                    "activity_count": activity_counts_by_participant.get(
+                        participant.id, 0
+                    ),
+                    "last_activity_at": last_activity_at,
+                    "study_submitted_at": association.study_submitted_at,
+                    "skipped_at": association.skipped_at,
+                    "skip_reason_code": association.skip_reason_code,
+                    "days_meeting_min_coverage": len(days_meeting),
+                    "total_days": study_days_count,
+                    "all_days_meet_min_coverage": (
+                        study_days_count > 0 and len(days_meeting) >= study_days_count
+                    ),
+                    "study_join_url": _build_frontend_study_join_url(
+                        selected_study.name_short, participant.id
+                    ),
+                    "study_join_url_new": _build_frontend_new_study_join_url(
+                        selected_study.name_short, participant.id
+                    ),
                     "tokens": assignments_by_participant.get(participant.id, {})
                     if assignments_by_participant
                     else {},

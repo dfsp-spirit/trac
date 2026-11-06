@@ -42,268 +42,280 @@
             <div><strong>Owners:</strong> <span id="studyOwnersDisplay">{{ study_owner_usernames|join(', ') if study_owner_usernames else '— (super admins only)' }}</span></div>
         </div>
 
-        <!-- Export buttons -->
-        <div style="margin: 1rem 0; padding: 1rem; border: 1px solid var(--border); border-radius: 8px;">
-            <strong style="display: block; margin-bottom: 0.5rem;">Export Study Data:</strong>
-            <p style="margin-bottom: 0.75rem; color: var(--muted); font-size: 0.85rem;">
-                Download research data (CSV/JSON) or the server runtime config for this study.
-                The participant export has one row per participant and is the only place the
-                browser/device identification is delivered.
-            </p>
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                {% if total_activities_logged > 0 %}
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">📥 Download CSV</a>
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">📥 Download JSON</a>
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">📥 CSV Without Metadata</a>
-                {% else %}
-                <span class="export-btn disabled">📥 Download CSV not available (No activities yet)</span>
-                <span class="export-btn disabled">📥 Download JSON not available (No activities yet)</span>
-                <span class="export-btn disabled">📥 CSV Without Metadata not available (No activities yet)</span>
-                {% endif %}
+        <!-- Static study setup -->
+        <section class="study-section" data-tab-group data-tab-persist>
+            <div class="study-header">
+                <h2>View study configuration</h2>
+                <p class="study-section-hint">Static setup of this study: timelines, participants, external tasks, day labels and the activity catalog of the config file.</p>
             </div>
-            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                {% if participant_count > 0 %}
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">📥 Participants CSV</a>
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">📥 Participants JSON</a>
-                {% if study.save_browser_identification %}
-                <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">📥 Participants CSV (with client info only)</a>
-                {% endif %}
-                {% else %}
-                <span class="export-btn disabled">📥 Participants CSV not available (No participants yet)</span>
-                <span class="export-btn disabled">📥 Participants JSON not available (No participants yet)</span>
-                {% endif %}
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('timelines-{{ study.name_short }}', this)">Timelines ({{ timeline_stats|length }})</button>
+                <button class="tab" onclick="switchTab('participants-{{ study.name_short }}', this)">Participants ({{ participant_count }})</button>
+                <button class="tab" onclick="switchTab('externaltasks-{{ study.name_short }}', this)">External Tasks ({{ external_task_count }})</button>
+                <button class="tab" onclick="switchTab('daylabels-{{ study.name_short }}', this)">Day Labels ({{ day_labels|length }})</button>
+                <button class="tab" onclick="switchTab('cfgactivities-{{ study.name_short }}', this)">Cfg File Activities ({{ total_activities_cfg }})</button>
             </div>
-            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
-                <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
-            </div>
-        </div>
+            <div class="tab-content">
+                <!-- Timelines -->
+                <div id="timelines-{{ study.name_short }}" class="tab-panel active">
+                    <div class="timeline-grid">
+                        {% for timeline_stat in timeline_stats %}
+                        <div class="timeline-card">
+                            <h3>{{ timeline_stat.display_name }} <span class="badge badge-timeline">{{ timeline_stat.name }}</span></h3>
+                            <p><strong>Mode:</strong> {{ timeline_stat.mode }}</p>
+                            <p><strong>Activities logged:</strong> {{ timeline_stat.activity_count }}</p>
+                            <p><strong>Different Activities in config:</strong> {{ timeline_stat.activity_count_cfg_file }}</p>
+                            <p><strong>Different Categories in config:</strong> {{ timeline_stat.category_count_cfg_file }}</p>
+                            {% if timeline_stat.min_coverage %}
+                            <p><strong>Min Coverage:</strong> {{ timeline_stat.min_coverage }} minutes</p>
+                            {% else %}
+                            <p><strong>Min Coverage:</strong> None (Users can submit day with this timeline empty)</p>
+                            {% endif %}
+                            {% if timeline_stat.description %}
+                            <p><strong>Description:</strong> {{ timeline_stat.description }}</p>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab active" onclick="switchTab('timelines-{{ study.name_short }}', this)">Timelines ({{ timeline_stats|length }})</button>
-            <button class="tab" onclick="switchTab('progress-{{ study.name_short }}', this)">📈 Progress</button>
-            <button class="tab" onclick="switchTab('participants-{{ study.name_short }}', this)">Participants ({{ participant_count }})</button>
-            <button class="tab" onclick="switchTab('externaltasks-{{ study.name_short }}', this)">External Tasks ({{ external_task_count }})</button>
-            <button class="tab" onclick="switchTab('activities-{{ study.name_short }}', this)">DB Logged Activities ({{ total_activities_logged }})</button>
-            <button class="tab" onclick="switchTab('daylabels-{{ study.name_short }}', this)">Day Labels ({{ day_labels|length }})</button>
-            <button class="tab" onclick="switchTab('cfgactivities-{{ study.name_short }}', this)">Cfg File Activities ({{ total_activities_cfg }})</button>
-        </div>
-
-        <div class="tab-content">
-            <!-- Timelines Tab -->
-            <div id="timelines-{{ study.name_short }}" class="tab-panel active">
-                <div class="timeline-grid">
-                    {% for timeline_stat in timeline_stats %}
-                    <div class="timeline-card">
-                        <h3>{{ timeline_stat.display_name }} <span class="badge badge-timeline">{{ timeline_stat.name }}</span></h3>
-                        <p><strong>Mode:</strong> {{ timeline_stat.mode }}</p>
-                        <p><strong>Activities logged:</strong> {{ timeline_stat.activity_count }}</p>
-                        <p><strong>Different Activities in config:</strong> {{ timeline_stat.activity_count_cfg_file }}</p>
-                        <p><strong>Different Categories in config:</strong> {{ timeline_stat.category_count_cfg_file }}</p>
-                        {% if timeline_stat.min_coverage %}
-                        <p><strong>Min Coverage:</strong> {{ timeline_stat.min_coverage }} minutes</p>
-                        {% else %}
-                        <p><strong>Min Coverage:</strong> None (Users can submit day with this timeline empty)</p>
-                        {% endif %}
-                        {% if timeline_stat.description %}
-                        <p><strong>Description:</strong> {{ timeline_stat.description }}</p>
+                <!-- Participants -->
+                <div id="participants-{{ study.name_short }}" class="tab-panel">
+                    <div class="study-meta" style="margin-top: 0;">
+                        <div><strong>Total:</strong> {{ participant_count }}</div>
+                        <div><strong>In progress:</strong> {{ participant_in_progress_count }}</div>
+                        <div><strong>Submitted:</strong> {{ participant_submitted_count }}</div>
+                        <div><strong>Skipped:</strong> {{ participant_skipped_count }}</div>
+                        {% if require_consent %}
+                        <div><strong>Consent denied:</strong> {{ participant_consent_denied_count }}</div>
                         {% endif %}
                     </div>
-                    {% endfor %}
-                </div>
-            </div>
 
-            <!-- Progress Tab -->
-            <div id="progress-{{ study.name_short }}" class="tab-panel">
-                <div style="max-width: 800px; margin: 0 auto;">
-                    <h3 style="margin-bottom: 0.5rem;">📈 Cumulative Participant Completion</h3>
-                    <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">
-                        Shows how many participants have completed the study up to each day.
-                        Helps estimate how many will participate over the remaining collection period.
+                    <p class="tab-panel-hint">
+                        Per-participant details (join links, days complete, consent, task tokens and
+                        removal) live in Participant Management, where the table is paginated and
+                        filterable.
                     </p>
-                    <div style="position: relative;">
-                        <canvas id="completionChart-{{ study.name_short }}" width="750" height="400" style="width: 100%; height: auto; max-width: 750px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;"></canvas>
-                        <script id="chart-data-{{ study.name_short }}" type="application/json">{{ {"dates": completion_progress.dates, "tuSeries": completion_progress.timeuse_cumulative, "allSeries": completion_progress.all_completed_cumulative, "hasTasks": completion_progress.has_external_tasks} | tojson }}</script>
-                    </div>
-                    <div style="margin-top: 0.75rem; display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem;">
-                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #4f46e5; border-radius: 2px; margin-right: 0.3rem;"></span> Completed time-use diary</span>
-                        {% if completion_progress.has_external_tasks %}
-                        <span><span style="display: inline-block; width: 12px; height: 12px; background: #059669; border-radius: 2px; margin-right: 0.3rem;"></span> Completed everything (incl. external tasks)</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Participants Tab -->
-            <div id="participants-{{ study.name_short }}" class="tab-panel">
-                {% if frontend_open_join_url %}
-                <div style="margin-bottom: 1rem;">
-                    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                        <a href="{{ participant_management_url }}" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
+                            👥 Open participant management ({{ participant_count }})
+                        </a>
+                        {% if frontend_open_join_url %}
                         <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
                             ➕ Join as new user
                         </a>
                         <a href="{{ frontend_new_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
                             ➕ Join as new user (new UI)
                         </a>
+                        {% endif %}
                     </div>
-                    <p style="margin-top: 0.4rem; color: var(--muted); font-size: 0.85rem;">
+                    {% if frontend_open_join_url %}
+                    <p class="tab-panel-hint">
                         Open study — anyone can join without pre-registration.
                     </p>
+                    {% endif %}
+                    {% if participant_count == 0 %}
+                    <div class="empty-state"><p>No participants yet</p></div>
+                    {% endif %}
                 </div>
-                {% endif %}
-                {% if participants %}
-                <div class="participant-list">
-                    {% for participant in participants %}
-                    <div class="participant-card">
-                        <h3>{{ participant.id }} <span class="badge badge-participant">{{ participant.activity_count }} activities</span>{% if participant.has_completed_study and (external_task_count == 0 or participant.all_external_tasks_completed) %} <span style="color: #16a34a; font-size: 1.2rem;" title="Fully completed">✅</span>{% endif %}</h3>
-                        <p><strong>Joined Study:</strong> {{ participant.joined_study_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                        <p><strong>Created:</strong> {{ participant.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-                        <p><strong>Days complete (min coverage):</strong>
-                            {% if participant.all_days_meet_min_coverage %}<span style="color: #16a34a; font-weight: 600;">Yes</span>
-                            {% else %}{{ participant.days_meeting_min_coverage }} of {{ participant.total_days }}{% endif %}</p>
-                        <p><strong>Diary closed:</strong>
-                            {% if participant.skipped_at %}<span style="color: #b45309; font-weight: 600;">Skipped</span> <span>{{ participant.skipped_at.strftime('%Y-%m-%d %H:%M') }}</span>{% if participant.skip_reason_code %} <span class="badge badge-participant">{{ participant.skip_reason_code }}</span>{% endif %}
-                            {% elif participant.study_submitted_at %}<span style="color: #16a34a; font-weight: 600;">Submitted {{ participant.study_submitted_at }}</span>
-                            {% elif participant.all_days_meet_min_coverage %}<span style="color: #d97706;">All days complete — not yet submitted</span>
-                            {% else %}<span style="color: #9ca3af;">Not yet</span>{% endif %}</p>
-                        {% if external_task_count > 0 %}
-                        <p><strong>All external tasks completed:</strong> {% if participant.all_external_tasks_completed %}<span style="color: #16a34a; font-weight: 600;">Yes</span>{% else %}No{% endif %}</p>
-                        {% endif %}
-                        <p><strong>Join Link:</strong> <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer">Join study</a> · <a href="{{ participant.study_join_url_new }}" target="_blank" rel="noopener noreferrer">Join study (new UI)</a></p>
-                    </div>
-                    {% endfor %}
-                </div>
-                {% if participant_count > participants|length %}
-                <div class="pagination">
-                    <span>Showing the most recent {{ participants|length }} of {{ participant_count }} participants</span>
-                </div>
-                {% endif %}
-                {% else %}
-                <div class="empty-state"><p>No participants yet</p></div>
-                {% endif %}
-            </div>
 
-            <!-- External Tasks Tab -->
-            <div id="externaltasks-{{ study.name_short }}" class="tab-panel">
-                {% if external_tasks %}
-                <div class="timeline-grid">
-                    {% for external_task in external_tasks %}
-                    <div class="timeline-card" id="et-card-{{ study.name_short }}-{{ external_task.task_key }}">
-                        <h3>
-                            {{ external_task.name }}
-                            <span class="badge badge-timeline">{{ external_task.task_key }}</span>
+                <!-- External Tasks -->
+                <div id="externaltasks-{{ study.name_short }}" class="tab-panel">
+                    {% if external_tasks %}
+                    <div class="timeline-grid">
+                        {% for external_task in external_tasks %}
+                        <div class="timeline-card" id="et-card-{{ study.name_short }}-{{ external_task.task_key }}">
+                            <h3>
+                                {{ external_task.name }}
+                                <span class="badge badge-timeline">{{ external_task.task_key }}</span>
+                                {% if external_task.has_open_pool %}
+                                <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Open Pool</span>
+                                {% else %}
+                                <span class="badge" style="background:#fef3c7;color:#92400e;">By Participant</span>
+                                {% endif %}
+                            </h3>
+                            <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
+                            <p><strong>Task level:</strong> {{ external_task.task_level }}</p>
                             {% if external_task.has_open_pool %}
-                            <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Open Pool</span>
+                            <p><strong>Pool tokens:</strong> {{ external_task.pool_total }}</p>
                             {% else %}
-                            <span class="badge" style="background:#fef3c7;color:#92400e;">By Participant</span>
+                            <p><strong>Assigned tokens:</strong> {{ external_task.assignment_count }}</p>
                             {% endif %}
-                        </h3>
-                        <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
-                        <p><strong>Task level:</strong> {{ external_task.task_level }}</p>
-                        {% if external_task.has_open_pool %}
-                        <p><strong>Pool tokens:</strong> {{ external_task.pool_total }}</p>
-                        {% else %}
-                        <p><strong>Assigned tokens:</strong> {{ external_task.assignment_count }}</p>
-                        {% endif %}
-                        <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
-                        <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
-                        {% if external_task.description %}
-                        <p><strong>Description:</strong> {{ external_task.description }}</p>
-                        {% endif %}
+                            <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
+                            <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
+                            {% if external_task.description %}
+                            <p><strong>Description:</strong> {{ external_task.description }}</p>
+                            {% endif %}
 
-                        <p style="margin-top:0.75rem;">
-                            <a href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short }}"
-                               class="btn-primary" style="display:inline-block;padding:0.35rem 0.75rem;text-decoration:none;font-size:0.85rem;">🔑 Manage Tokens</a>
-                        </p>
+                            <p style="margin-top:0.75rem;">
+                                <a href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short }}"
+                                   class="btn-primary" style="display:inline-block;padding:0.35rem 0.75rem;text-decoration:none;font-size:0.85rem;">🔑 Manage Tokens</a>
+                            </p>
 
-                        {% if external_task.assignments %}
-                        <div class="table-container" style="margin-top: 0.75rem;">
-                            <table>
-                                <thead><tr><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
-                                <tbody>
-                                    {% for assignment in external_task.assignments %}
-                                    <tr>
-                                        <td>{{ assignment.participant_id }}</td>
-                                        <td>{{ assignment.assigned_token }}</td>
-                                        <td>{% if assignment.is_confirmed %}yes{% if assignment.confirmed_at %} ({{ assignment.confirmed_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% else %}no{% endif %}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                            {% if external_task.assignments %}
+                            <div class="table-container" style="margin-top: 0.75rem;">
+                                <table>
+                                    <thead><tr><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
+                                    <tbody>
+                                        {% for assignment in external_task.assignments %}
+                                        <tr>
+                                            <td>{{ assignment.participant_id }}</td>
+                                            <td>{{ assignment.assigned_token }}</td>
+                                            <td>{% if assignment.is_confirmed %}yes{% if assignment.confirmed_at %} ({{ assignment.confirmed_at.strftime('%Y-%m-%d %H:%M') }}){% endif %}{% else %}no{% endif %}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
-                {% else %}
-                <div class="empty-state"><p>No external tasks configured for this study.</p></div>
-                {% endif %}
-            </div>
-
-            <!-- Activities Tab -->
-            <div id="activities-{{ study.name_short }}" class="tab-panel">
-                {% if activities_preview %}
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>ID</th><th>Participant</th><th>Day</th><th>Timeline</th><th>Activity</th><th>Time</th><th>Duration</th><th>Created</th></tr></thead>
-                        <tbody>
-                            {% for activity in activities_preview %}
-                            <tr>
-                                <td>{{ activity.id }}</td>
-                                <td>{{ activity.participant_name }}</td>
-                                <td>{{ activity.day_label }}</td>
-                                <td>{{ activity.timeline }}</td>
-                                <td>{{ activity.activity_name }} <small>( Code: {{ activity.activity_code }} )</small><br><div class="activity-path">{{ activity.activity_path_frontend }}</div></td>
-                                <td class="time-cell">{{ activity.time_range }}</td>
-                                <td>{{ activity.duration }} min</td>
-                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                <div class="pagination">
-                    <span>Showing the most recent {{ activities_preview|length }} of {{ total_activities_logged }} activities</span>
-                </div>
-                {% else %}
-                <div class="empty-state"><p>No activities recorded yet by users in the database for this study.</p></div>
-                {% endif %}
-            </div>
-
-            <!-- Day Labels Tab -->
-            <div id="daylabels-{{ study.name_short }}" class="tab-panel">
-                <div class="table-container">
-                    <table>
-                        <thead><tr><th>Name</th><th>Display Order</th><th>Display Name</th></tr></thead>
-                        <tbody>
-                            {% for day_label in day_labels %}
-                            <tr><td>{{ day_label.name }}</td><td>{{ day_label.display_order }}</td><td>{{ day_label.display_name }}</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Cfg Activities Tab -->
-            <div id="cfgactivities-{{ study.name_short }}" class="tab-panel">
-                <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem;">
-                    <label for="cfg-lang-{{ study.name_short }}" style="font-weight: 600;">Language:</label>
-                    <select id="cfg-lang-{{ study.name_short }}"
-                        onchange="onCfgLanguageChange(this, '{{ study.name_short }}')"
-                        style="padding: 0.35rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff;">
-                        {% for lang in supported_cfg_languages %}
-                        <option value="{{ lang }}" {% if lang == selected_cfg_language %}selected{% endif %}>{{ lang|upper }}</option>
                         {% endfor %}
-                    </select>
-                    <span style="color: #6c757d; font-size: 0.85rem;">Showing config preview for <strong>{{ selected_cfg_language|upper }}</strong></span>
+                    </div>
+                    {% else %}
+                    <div class="empty-state"><p>No external tasks configured for this study.</p></div>
+                    {% endif %}
                 </div>
-                <p style="margin-bottom: 0.75rem; color: #6c757d; font-size: 0.9rem;">
-                    Activities defined in the config file for this study. Each activity line shows its numeric code followed by its <code>frontend_path</code>. Child items are indented one level further than their parent.
-                </p>
-                <pre style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; background: #f8f9fa; padding: 1rem 1.25rem; border-radius: 6px; overflow-x: auto; white-space: pre; border: 1px solid #e9ecef;">{{ activities_cfg_text }}</pre>
+
+                <!-- Day Labels -->
+                <div id="daylabels-{{ study.name_short }}" class="tab-panel">
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>Name</th><th>Display Order</th><th>Display Name</th></tr></thead>
+                            <tbody>
+                                {% for day_label in day_labels %}
+                                <tr><td>{{ day_label.name }}</td><td>{{ day_label.display_order }}</td><td>{{ day_label.display_name }}</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Cfg Activities -->
+                <div id="cfgactivities-{{ study.name_short }}" class="tab-panel">
+                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem;">
+                        <label for="cfg-lang-{{ study.name_short }}" style="font-weight: 600;">Language:</label>
+                        <select id="cfg-lang-{{ study.name_short }}"
+                            onchange="onCfgLanguageChange(this, '{{ study.name_short }}')"
+                            style="padding: 0.35rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff;">
+                            {% for lang in supported_cfg_languages %}
+                            <option value="{{ lang }}" {% if lang == selected_cfg_language %}selected{% endif %}>{{ lang|upper }}</option>
+                            {% endfor %}
+                        </select>
+                        <span style="color: #6c757d; font-size: 0.85rem;">Showing config preview for <strong>{{ selected_cfg_language|upper }}</strong></span>
+                    </div>
+                    <p style="margin-bottom: 0.75rem; color: #6c757d; font-size: 0.9rem;">
+                        Activities defined in the config file for this study. Each activity line shows its numeric code followed by its <code>frontend_path</code>. Child items are indented one level further than their parent.
+                    </p>
+                    <pre style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; background: #f8f9fa; padding: 1rem 1.25rem; border-radius: 6px; overflow-x: auto; white-space: pre; border: 1px solid #e9ecef;">{{ activities_cfg_text }}</pre>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <!-- Collected data / live state -->
+        <section class="study-section" data-tab-group data-tab-persist>
+            <div class="study-header">
+                <h2>Status</h2>
+                <p class="study-section-hint">What this study has collected so far: completion progress over time and the most recent activities stored in the database.</p>
+            </div>
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab('progress-{{ study.name_short }}', this)">📈 Progress</button>
+                <button class="tab" onclick="switchTab('activities-{{ study.name_short }}', this)">DB Logged Activities ({{ total_activities_logged }})</button>
+            </div>
+            <div class="tab-content">
+                <!-- Progress -->
+                <div id="progress-{{ study.name_short }}" class="tab-panel active">
+                    <div style="max-width: 800px; margin: 0 auto;">
+                        <h3 style="margin-bottom: 0.5rem;">📈 Cumulative Participant Completion</h3>
+                        <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                            Shows how many participants have completed the study up to each day.
+                            Helps estimate how many will participate over the remaining collection period.
+                        </p>
+                        <div style="position: relative;">
+                            <canvas id="completionChart-{{ study.name_short }}" width="750" height="400" style="width: 100%; height: auto; max-width: 750px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;"></canvas>
+                            <script id="chart-data-{{ study.name_short }}" type="application/json">{{ {"dates": completion_progress.dates, "tuSeries": completion_progress.timeuse_cumulative, "allSeries": completion_progress.all_completed_cumulative, "hasTasks": completion_progress.has_external_tasks} | tojson }}</script>
+                        </div>
+                        <div style="margin-top: 0.75rem; display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem;">
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #4f46e5; border-radius: 2px; margin-right: 0.3rem;"></span> Completed time-use diary</span>
+                            {% if completion_progress.has_external_tasks %}
+                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #059669; border-radius: 2px; margin-right: 0.3rem;"></span> Completed everything (incl. external tasks)</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activities -->
+                <div id="activities-{{ study.name_short }}" class="tab-panel">
+                    {% if activities_preview %}
+                    <div class="table-container">
+                        <table>
+                            <thead><tr><th>ID</th><th>Participant</th><th>Day</th><th>Timeline</th><th>Activity</th><th>Time</th><th>Duration</th><th>Created</th></tr></thead>
+                            <tbody>
+                                {% for activity in activities_preview %}
+                                <tr>
+                                    <td>{{ activity.id }}</td>
+                                    <td><a href="{{ participant_management_url }}&amp;q={{ activity.participant_name|urlencode }}" title="Show this participant in participant management">{{ activity.participant_name }}</a></td>
+                                    <td>{{ activity.day_label }}</td>
+                                    <td>{{ activity.timeline }}</td>
+                                    <td>{{ activity.activity_name }} <small>( Code: {{ activity.activity_code }} )</small><br><div class="activity-path">{{ activity.activity_path_frontend }}</div></td>
+                                    <td class="time-cell">{{ activity.time_range }}</td>
+                                    <td>{{ activity.duration }} min</td>
+                                    <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                        <span>Showing the most recent {{ activities_preview|length }} of {{ total_activities_logged }} activities</span>
+                        <span>Full data: use <strong>Export Study Data</strong> below.</span>
+                    </div>
+                    {% else %}
+                    <div class="empty-state"><p>No activities recorded yet by users in the database for this study.</p></div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- Export buttons -->
+        <section class="study-section">
+            <div class="study-header">
+                <h2>Export Study Data</h2>
+                <p class="study-section-hint">
+                    Download research data (CSV/JSON) or the server runtime config for this study.
+                    The participant export has one row per participant and is the only place the
+                    browser/device identification is delivered.
+                </p>
+            </div>
+            <div class="tab-content">
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    {% if total_activities_logged > 0 %}
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">📥 Download CSV</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">📥 Download JSON</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">📥 CSV Without Metadata</a>
+                    {% else %}
+                    <span class="export-btn disabled">📥 Download CSV not available (No activities yet)</span>
+                    <span class="export-btn disabled">📥 Download JSON not available (No activities yet)</span>
+                    <span class="export-btn disabled">📥 CSV Without Metadata not available (No activities yet)</span>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    {% if participant_count > 0 %}
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">📥 Participants CSV</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">📥 Participants JSON</a>
+                    {% if study.save_browser_identification %}
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">📥 Participants CSV (with client info only)</a>
+                    {% endif %}
+                    {% else %}
+                    <span class="export-btn disabled">📥 Participants CSV not available (No participants yet)</span>
+                    <span class="export-btn disabled">📥 Participants JSON not available (No participants yet)</span>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
+                </div>
+            </div>
+        </section>
 
         <!-- Edit Study -->
         <div class="edit-section">

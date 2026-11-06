@@ -89,9 +89,9 @@ async def test_the_open_study_stays_one_click_away():
             "</nav>", 1
         )[0]
         position = row.index("ux-signals?study_name_short=default")
-        assert " active" in row[max(0, position - 160) : position], (
-            "the UX Signals tab of the open study should be the active one"
-        )
+        assert (
+            " active" in row[max(0, position - 160) : position]
+        ), "the UX Signals tab of the open study should be the active one"
 
 
 @pytest.mark.asyncio
@@ -156,3 +156,62 @@ async def test_participant_page_is_grouped_into_tabs():
     # Destructive actions live in the danger panel, not next to "Add participants".
     danger_start = body.index('id="pm-danger"')
     assert "Delete users (and their tokens)" in body[danger_start:]
+
+
+@pytest.mark.asyncio
+async def test_study_detail_page_separates_configuration_from_status():
+    """Configuration and collected data are read for different reasons.
+
+    The page therefore groups them into two tab groups - "View study
+    configuration" (setup: timelines, participants, external tasks, day labels,
+    cfg activities) and "Status" (collected data: progress, logged activities) -
+    and keeps the destructive sections at the bottom, below the exports.
+    """
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.get(f"{BASE_URL}/admin/study/default", auth=ADMIN_AUTH)
+
+    assert response.status_code == 200, response.text
+    body = response.text
+
+    assert body.count("data-tab-group") == 2
+
+    config_start = body.index("<h2>View study configuration</h2>")
+    status_start = body.index("<h2>Status</h2>")
+    export_start = body.index("<h2>Export Study Data</h2>")
+    edit_start = body.index('class="edit-section"')
+    assert config_start < status_start < export_start < edit_start
+
+    config_section = body[config_start:status_start]
+    status_section = body[status_start:export_start]
+
+    for tab_id in (
+        "timelines-default",
+        "participants-default",
+        "externaltasks-default",
+        "daylabels-default",
+        "cfgactivities-default",
+    ):
+        assert f"'{tab_id}'" in config_section, tab_id
+    for tab_id in ("progress-default", "activities-default"):
+        assert f"'{tab_id}'" in status_section, tab_id
+
+    # The panels moved with their tabs.
+    for panel_id in (
+        "timelines-default",
+        "participants-default",
+        "externaltasks-default",
+        "daylabels-default",
+        "cfgactivities-default",
+    ):
+        assert f'id="{panel_id}"' in config_section, panel_id
+    for panel_id in ("progress-default", "activities-default"):
+        assert f'id="{panel_id}"' in status_section, panel_id
+
+    # Exactly one panel per group is visible on load.
+    assert config_section.count('class="tab-panel active"') == 1
+    assert status_section.count('class="tab-panel active"') == 1
+
+    # Participants are summarized here and managed in one paginated table, so
+    # the page must not grow a second roster again.
+    assert "participant-card" not in body
+    assert "/admin/participant-management?study_name_short=default" in body

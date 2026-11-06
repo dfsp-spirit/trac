@@ -521,6 +521,18 @@ textarea {
     margin-bottom: 0.5rem;
 }
 
+.study-section-hint {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
+.tab-panel-hint {
+    margin: 0.75rem 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+}
+
 .study-meta {
     display: flex;
     gap: 2rem;
@@ -543,20 +555,6 @@ textarea {
     padding: 1rem;
     border-radius: 12px;
     border-left: 4px solid var(--border-strong);
-}
-
-.participant-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.participant-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    padding: 1rem;
-    border-radius: 12px;
-    border-left: 4px solid var(--ok);
 }
 
 .pagination {

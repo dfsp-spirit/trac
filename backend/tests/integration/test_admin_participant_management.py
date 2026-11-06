@@ -788,3 +788,55 @@ async def test_participant_table_is_filtered_and_paginated_in_the_database():
                     f"/participants/{participant_id}",
                     auth=ADMIN_AUTH,
                 )
+
+
+@pytest.mark.asyncio
+async def test_participant_table_shows_progress_state_and_join_links():
+    """The table is the one place a participant's state is read.
+
+    The study detail page only summarizes counts, so the debugging columns that
+    used to live in its participant cards (progress, diary state and the join
+    links that impersonate a participant) have to be here.
+    """
+    import html
+
+    study_name_short = "default"
+    participant_id = f"it_state_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient() as client:
+        assign_response = await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": [participant_id]},
+            auth=ADMIN_AUTH,
+        )
+        assert assign_response.status_code == 200, assign_response.text
+
+        try:
+            page = await client.get(
+                f"{BASE_URL}/admin/participant-management",
+                params={
+                    "study_name_short": study_name_short,
+                    "q": participant_id,
+                },
+                auth=ADMIN_AUTH,
+            )
+            assert page.status_code == 200, page.text
+            body = html.unescape(page.text)
+
+            for header in ("Last Activity", "Days Complete", "Diary", "Join"):
+                assert f"<th>{header}</th>" in body, header
+
+            assert participant_id in body
+            assert "In progress" in body
+            # Fresh participant: no day of the study is complete yet.
+            assert "0 of " in body
+            # Both frontends are reachable as this participant.
+            assert f"pid={participant_id}" in body
+            assert settings.frontend_url in body
+            assert settings.frontend_new_url in body
+        finally:
+            await client.delete(
+                f"{BASE_URL}/api/admin/studies/{study_name_short}"
+                f"/participants/{participant_id}",
+                auth=ADMIN_AUTH,
+            )
