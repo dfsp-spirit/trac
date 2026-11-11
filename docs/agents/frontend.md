@@ -78,29 +78,65 @@
   "2 Std. 30 Min.". `endInput`'s `aria-describedby` points at that line. The last
   day keeps its hint that activities end by midnight.
 
-## Boundary hint in the activity form
+## Surroundings block in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
   participant cannot look up while choosing times is where the neighbouring
   entries end ("did I sleep until 6:00 or 6:10?"). `domain/neighbours.js` answers
   it from the same records `validateActivity` uses (the form builds `existing`
-  once and passes it to both, so hint and rule cannot disagree), and
-  `ui/timeNeighbours.js` renders it under the time row: "Schlafen bis 06:00 ·
-  Mittagessen ab 12:00", plus an "An Schlafen anschließen (06:00)" chip when the
-  start is within `SNAP_MAX_MINUTES` of the previous edge. The chip keeps the
-  chosen length and only moves the start.
-- Overlaps win over the boundaries, including the one `max_overlap` tolerates:
-  a 10-minute overlap would otherwise save without a word, which is the only
-  silent data-quality leak this form has. The line is a `role="status"` live
-  region, so a screen reader hears it change; the hint is hidden when the day
-  around the range is empty, so an empty form gains no clutter.
-- **A neighbour on another day names its weekday** ("Schlafen bis 09:00 ·
-  Schlafen ab 00:00 (Dienstag)"). A routine filled on all seven days puts the
-  same activity on both sides of every entry, and the bare time read as today's
-  midnight. The suffix comes from `describe()` in `ui/timeNeighbours.js`, which
-  labels the neighbour with the same localized day name the day select uses; the
-  same marker is applied to an overlap range that runs past midnight. A boundary
-  on another day is reported but never offered as a "continue" chip, because the
-  start select only spans the day being edited.
+  once and passes it to both, so block and rule cannot disagree), and
+  `ui/timeNeighbours.js` renders `neighbourRows()` under the time row as a
+  description list: a muted label, then the value.
+- **Why labelled rows instead of one sentence.** An unlabelled "Schlafen ab
+  00:00 · Mittagessen ab 12:00" directly under the range being edited reads as
+  another fragment of *that* entry - and the cross-day case ("… (Dienstag)") is
+  the one where the reader most needs to know whose entry it is. Each row is
+  therefore labelled `Davor` / `Gleichzeitig` / `Danach`, which gives the
+  fragment an owner that cannot be the entry itself; the label comes from the
+  row's `kind`, so a new kind needs a `…Label` locale key. Values stay
+  sans-serif so the mono duration line above remains the only "this is my entry"
+  element. Rows are chronological and independent: every applicable fact is
+  shown.
+- **Label or value, stated by weight and colour, not by punctuation.** A label is
+  `600` at `--ink-muted` - the same weight cue the form's field labels use - while
+  the value is `400` at `--ink`, so the fact stays the thing the eye lands on. No
+  colon: that is the convention for an inline "key: value" run, whereas the
+  aligned value column already states the relationship (and would widen the `auto`
+  label column on a 360px phone).
+- **Separated by proximity, not by a frame.** Three levels, and every gap states
+  which level it belongs to: 8–12px inside the entry (inputs → duration line),
+  24px before the surroundings block, 32px between the form's sections
+  (`.t-form { gap }`, which also separates the error notice). A bordered box was
+  rejected on purpose - `--line-strong` plus a radius is this design system's word
+  for "notice that wants an answer" (`.t-notice`), and the block appears and
+  disappears with the times, so an edge would flicker where a couple of text rows
+  stay quiet. If more separation is ever needed, the next step is a 1px `--line`
+  hairline above the block, not a container.
+- **The block is the last child of the "when" fieldset**, after `endHint` (the
+  last-day midnight note, which belongs to the entry). Otherwise the section would
+  end with an entry-related hint glued under the context rows, and the context
+  block would split the entry's own fields in two.
+- **An overlap is a row, not a warning.** Music while cooking is data the study
+  wants, so an overlap is stated in the same muted voice as the boundaries
+  ("Gleichzeitig: Musik 21:10–22:00, 50 Min.") - no attention styling, and the
+  boundaries beside it are not hidden. `max_overlap` is *not* a form validation:
+  it only decides in `ui/nudgeController.js` whether an auto-suggested multi-day
+  fill is worth proposing.
+- An "An Schlafen anschließen (06:00)" chip sits under the rows when the start is
+  within `SNAP_MAX_MINUTES` of the previous edge. The chip keeps the chosen
+  length and only moves the start.
+- **A neighbour on another day names its weekday before the time** ("Schlafen ab
+  Dienstag 00:00"). A routine filled on all seven days puts the same activity on
+  both sides of every entry, and a bare time read as today's midnight. The
+  weekday comes from `describe()` in `ui/timeNeighbours.js`, which labels the
+  neighbour with the same localized day name the day select uses; it precedes the
+  time because that is how the phrase reads in all three languages. The same
+  marker is applied to an overlap range that runs past midnight. A boundary on
+  another day is reported but never offered as a "continue" chip, because the
+  start field only spans the day being edited.
+- The list is an `aria-live="polite"` region - not `role="status"`, which would
+  replace the list semantics - so a screen reader hears it change. The block is
+  hidden when the day around the range is empty, so an empty form gains no
+  clutter.
 
 ## "Also on other days?" is planned before it is saved
 - A multi-day save is decided per day on the server (`day_label_indexes` in,
