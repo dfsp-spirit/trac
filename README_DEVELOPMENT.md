@@ -42,6 +42,11 @@ cp dev_tools/local_nginx/backend_settings/.env.dev-nginx backend/.env
 ./database/create_tud_db.sh backend/.env
 ```
 
+`create_tud_db.sh` is idempotent: it creates the role and database when they are
+missing, otherwise resets the role to the credentials from `.env` and re-applies
+the grants. Re-run it whenever the app role seems to lack permissions - for
+example after a `drop_tud_db.sh` run that stopped early.
+
 The test suites run against a *second*, disposable database next to it, which has
 to be created once as well (your app role may not create databases). Skip this
 if you only want to run unit tests:
@@ -217,6 +222,20 @@ The tool refuses to operate on the database in `TUD_DATABASE_URL`, and on any
 name that does not contain `test` (override with `--force`). Set
 `TUD_TEST_DATABASE_URL` to use a different, existing throwaway database; it is
 then never created or dropped by the tooling.
+
+The app role is therefore the owner of this test database - which is why
+`./database/drop_tud_db.sh` drops only the development database and keeps the
+role by default. Dropping the role as well would fail (it owns the test
+database) and, worse, would leave the next `create_tud_db.sh` run with a role it
+cannot recreate. If you really want the role gone as well:
+
+```bash
+./database/drop_tud_db.sh backend/.env --drop-role
+```
+
+That refuses while another database still depends on the role and tells you what
+is in the way; normally you just re-run `create_tud_db.sh` against the existing
+role instead.
 
 `./test_backend_integration.sh` uses that database; it only drops a database it
 created itself in the same run, so the one you created by hand stays for the next

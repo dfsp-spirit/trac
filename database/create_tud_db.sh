@@ -1,11 +1,21 @@
 #!/bin/bash
 #
-# Script to set up PostgreSQL database and user based on .env file.
+# Create - or repair - the PostgreSQL database and role used by the TUD backend.
 #
-# This script will create the database and database user, but the postgresql server must be
-# running and accessible.
-# Note that it does NOT create any tables or relations in the database. The backend application
-# will create the required tables automatically when it is started for the first time.
+# The script is idempotent and safe to re-run: it creates the role when it is
+# missing, resets an existing role to the credentials and attributes from the
+# .env file, creates the database only when it does not exist, and (re-)applies
+# the grants every time. Re-running it is therefore the supported way to recover
+# from a half-finished setup - for example after a drop run that stopped at
+# "role ... cannot be dropped because some objects depend on it" and left a new
+# database without grants.
+#
+# The role is a cluster-level object shared with the disposable test database
+# (<TUD_DATABASE_NAME>_test, see README_DEVELOPMENT.md), which is why
+# database/drop_tud_db.sh keeps the role by default.
+#
+# This script does NOT create any tables or relations: run `tud db upgrade`
+# afterwards. The PostgreSQL server must be running and accessible.
 #
 # This is a development setup script and is not intended for production use. It assumes that:
 #  1) you are developing on your local machine, and not using Docker
@@ -15,12 +25,13 @@
 #
 # Usage: in the repo root, as a user with sudo access to the postgres system user, run:
 #
-#    ./database/create_tud_db.sh .env
+#    ./database/create_tud_db.sh backend/.env
 #
 
 echo "=== Database setup for TUD backend ==="
-echo " This script creates the database and database user with password as specified in the .env file."
+echo " This script creates or repairs the database and database user with the password specified in the .env file."
 echo " It requires sudo access to the 'postgres' user on a local PostgreSQL server."
+echo " Re-running it is safe: an existing role is reset to the .env credentials and the grants are re-applied."
 echo "Note that the TUD_DATABASE_USER and TUD_DATABASE_PASSWORD read from the .env file are the ones that will be created by this script,"
 echo "not the superuser credentials that will be used by this script to connect to the postgres server."
 echo ""
@@ -35,7 +46,7 @@ ENV_PATH="${1:-$DEFAULT_ENV_PATH}"
 if [ ! -f "$ENV_PATH" ]; then
     echo "ERROR: .env file not found at path: '$ENV_PATH'"
     echo "Please create it first or specify a custom path:"
-    echo "  ./create_tud_db.sh /path/to/your/.env"
+    echo "  ./database/create_tud_db.sh /path/to/your/.env"
     exit 1
 fi
 
@@ -55,6 +66,21 @@ if [ -z "$TUD_DATABASE_NAME" ] || [ -z "$TUD_DATABASE_USER" ] || [ -z "$TUD_DATA
     exit 1
 fi
 
+# Guards: a typo in .env must never turn into a change to a system object.
+case "$TUD_DATABASE_NAME" in
+    postgres|template0|template1)
+        echo "ERROR: refusing to set up the system database '$TUD_DATABASE_NAME'."
+        echo "       Set TUD_DATABASE_NAME in '$ENV_PATH' to the database this app should use."
+        exit 1
+        ;;
+esac
+
+if [ "$TUD_DATABASE_USER" = "postgres" ]; then
+    echo "ERROR: refusing to use the 'postgres' superuser as the application role."
+    echo "       Set TUD_DATABASE_USER in '$ENV_PATH' to a dedicated role."
+    exit 1
+fi
+
 echo "Loaded env vars from '.env' file and defaults:"
 echo " TUD_DATABASE_HOST='$TUD_DATABASE_HOST'"
 echo " TUD_DATABASE_PORT='$TUD_DATABASE_PORT'"
@@ -62,44 +88,65 @@ echo " TUD_DATABASE_NAME='$TUD_DATABASE_NAME'"
 echo " TUD_DATABASE_USER='$TUD_DATABASE_USER'"
 ## End of env file handling
 
-# Define SQL commands once
-SQL_COMMANDS=$(cat << SQL_EOF
-CREATE DATABASE ${TUD_DATABASE_NAME};
--- Revoke all default privileges from PUBLIC in this database
-REVOKE ALL ON DATABASE ${TUD_DATABASE_NAME} FROM PUBLIC;
+# Quote the password once, for use inside the SQL script below: doubling every
+# single quote keeps an apostrophe in the password harmless. The value travels on
+# stdin, never on the command line, so it does not show up in the process list.
+sql_password="'${TUD_DATABASE_PASSWORD//\'/\'\'}'"
 
-CREATE USER ${TUD_DATABASE_USER} WITH
-    PASSWORD '${TUD_DATABASE_PASSWORD}'
+echo "Setting up PostgreSQL database '${TUD_DATABASE_NAME}' and user '${TUD_DATABASE_USER}' as specified in the .env file..."
+
+if [ "$TUD_DATABASE_HOST" = "localhost" ] || [ "$TUD_DATABASE_HOST" = "127.0.0.1" ]; then
+    echo "Using peer auth as system user postgres for local database server at host '$TUD_DATABASE_HOST'..."
+    # ON_ERROR_STOP makes psql stop and exit non-zero on the first failing
+    # statement, so a half-applied setup cannot report success.
+    #
+    # Names go through psql variables (:'db' as a literal, :"db" as an
+    # identifier) and CREATEd objects are guarded by a WHERE NOT EXISTS check, so
+    # every step below is a no-op when it already ran. CREATE DATABASE and
+    # CREATE ROLE have no IF NOT EXISTS, hence the \gexec form.
+    sudo -u postgres psql -v ON_ERROR_STOP=1 \
+        -v db="$TUD_DATABASE_NAME" \
+        -v dbuser="$TUD_DATABASE_USER" << SQL_EOF
+-- Create the role when it is missing. The password is set by the ALTER ROLE
+-- below, which keeps it out of this format() string: a literal inside a string
+-- literal would need different escaping than a plain SQL literal.
+SELECT format(
+    'CREATE ROLE %I WITH LOGIN NOCREATEDB NOCREATEROLE NOSUPERUSER NOREPLICATION',
+    :'dbuser'
+)
+WHERE NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'dbuser')\gexec
+
+-- Always reset password and attributes, so a role left over from an earlier run
+-- is repaired instead of making the CREATE ROLE above fail.
+ALTER ROLE :"dbuser" WITH LOGIN PASSWORD ${sql_password}
     NOCREATEDB
     NOCREATEROLE
     NOSUPERUSER
     NOREPLICATION;
 
-GRANT CONNECT ON DATABASE ${TUD_DATABASE_NAME} TO ${TUD_DATABASE_USER};
-\c ${TUD_DATABASE_NAME}
+-- Create the database only when it is missing.
+SELECT format('CREATE DATABASE %I', :'db')
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = :'db')\gexec
+
+-- Revoke all default privileges from PUBLIC in this database
+REVOKE ALL ON DATABASE :"db" FROM PUBLIC;
+
+GRANT CONNECT ON DATABASE :"db" TO :"dbuser";
+\connect :"db"
 
 -- Lock down the public schema completely
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-GRANT USAGE, CREATE ON SCHEMA public TO ${TUD_DATABASE_USER};
+GRANT USAGE, CREATE ON SCHEMA public TO :"dbuser";
 
--- Your app privileges (these are perfect)
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ${TUD_DATABASE_USER};
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ${TUD_DATABASE_USER};
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ${TUD_DATABASE_USER};
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${TUD_DATABASE_USER};
+-- Grant app privileges. These are no-ops on a fresh database and repair the
+-- grants when tables from an earlier setup already exist.
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO :"dbuser";
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO :"dbuser";
+-- Defaults for objects the bootstrap superuser creates later, for example when
+-- migrations are applied as postgres instead of the application role.
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO :"dbuser";
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO :"dbuser";
 SQL_EOF
-)
-
-echo "Setting up PostgreSQL database '${TUD_DATABASE_NAME}' and new user '${TUD_DATABASE_USER}' as specified in the .env file..."
-
-if [ "$TUD_DATABASE_HOST" = "localhost" ] || [ "$TUD_DATABASE_HOST" = "127.0.0.1" ]; then
-    echo "Using peer auth as system user postgres for local database server at host '$TUD_DATABASE_HOST'..."
-    # ON_ERROR_STOP makes psql stop and exit non-zero on the first failing
-    # statement.  Without it psql keeps going after errors and this script
-    # used to report "setup complete" even when creation had failed.
-    sudo -u postgres psql -v ON_ERROR_STOP=1 << EOF
-    $SQL_COMMANDS
-EOF
     CREATE_EXIT_CODE=$?
 else
     echo "ERROR: Remote database hosts are not supported by this setup script."
