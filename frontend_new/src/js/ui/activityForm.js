@@ -128,12 +128,14 @@ export function renderActivityForm(host, view) {
     },
   });
 
+  // The context block goes last: everything above it belongs to the entry being
+  // edited, so the block can close the section instead of splitting it in two.
   timeFieldset.append(
     dayField,
     timeRange.row,
     timeRange.summary,
-    neighbours.element,
-    timeRange.endHint
+    timeRange.endHint,
+    neighbours.element
   );
   form.append(timeFieldset);
 

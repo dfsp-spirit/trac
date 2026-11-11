@@ -53,6 +53,13 @@ export const SNAP_MAX_MINUTES = 60;
  */
 
 /**
+ * One labelled row of the surroundings: which label it belongs under, and what
+ * it says. The label itself is the caller's business (`…Label` in the locale).
+ *
+ * @typedef {{ kind: 'before' | 'overlap' | 'after', text: string }} NeighbourRow
+ */
+
+/**
  * @param {{
  *   candidate: NeighbourRecord,
  *   existing: NeighbourRecord[],
@@ -120,25 +127,46 @@ export function surrounding({ candidate, existing, ignoreId = null }) {
 }
 
 /**
- * The boundary hint as one line, or `null` when the day is empty around the
- * range (nothing to say, and an empty line would only cost space).
+ * The surroundings as rows, each with the label it belongs under, or an empty
+ * list when the day is empty around the range (nothing to say, and empty rows
+ * would only cost space).
  *
- * Overlap wins over the boundaries: it is the fact that costs data quality, and
- * a tolerated overlap (`max_overlap`) would otherwise pass without a word.
+ * Rows rather than one line: a bare "Schlafen ab 00:00" under the range being
+ * edited reads as another fragment of *that* entry. A label in front of every
+ * fragment ("Davor", "Gleichzeitig", "Danach") gives it an owner that cannot be
+ * the entry itself, and the caller renders the labels as a key/value list.
+ *
+ * Chronological order, and every applicable row is reported: an overlap is a
+ * legitimate record (music while cooking), not an error, so it neither needs
+ * alarm nor justifies hiding the boundaries beside it.
  *
  * A neighbour may sit on another day - a routine filled on all seven days puts
  * the same activity on both sides of every entry. Its time alone would then read
- * as "today", so `describe` names the weekday and the sentence uses the `…Day`
- * variant: "Schlafen bis 09:00 · Schlafen ab 00:00 (Dienstag)".
+ * as "today", so `describe` names the weekday and the phrase uses the `…Day`
+ * variant, the weekday before the time: "Schlafen ab Mittwoch 00:00".
  *
  * @param {Surroundings} found
  * @param {(key: string, values?: Record<string, string | number>) => string} t
  * @param {(absoluteMinute: number) => ClockText} describe Absolute minute to
  *   its clock time, plus the weekday when it is not the day being edited.
  * @param {(name: string) => string} shortName Name as it may be shown.
- * @returns {string | null}
+ * @returns {NeighbourRow[]}
  */
-export function neighbourText(found, t, describe, shortName) {
+export function neighbourRows(found, t, describe, shortName) {
+  /** @type {NeighbourRow[]} */
+  const rows = [];
+
+  if (found.before && found.before.name) {
+    const at = describe(found.before.end);
+    const key = at.day
+      ? 'diary.form.neighbour.beforeDay'
+      : 'diary.form.neighbour.before';
+    rows.push({
+      kind: 'before',
+      text: t(key, boundaryValues(found.before.name, at, shortName)),
+    });
+  }
+
   if (found.overlaps.length) {
     const first = found.overlaps[0];
     const start = describe(first.start);
@@ -160,30 +188,27 @@ export function neighbourText(found, t, describe, shortName) {
         })
       );
     }
-    return parts.join(' · ');
+    rows.push({ kind: 'overlap', text: parts.join(' · ') });
   }
 
-  const parts = [];
-  if (found.before && found.before.name) {
-    const at = describe(found.before.end);
-    const key = at.day
-      ? 'diary.form.neighbour.beforeDay'
-      : 'diary.form.neighbour.before';
-    parts.push(t(key, boundaryValues(found.before.name, at, shortName)));
-  }
   if (found.after && found.after.name) {
     const at = describe(found.after.start);
     const key = at.day
       ? 'diary.form.neighbour.afterDay'
       : 'diary.form.neighbour.after';
-    parts.push(t(key, boundaryValues(found.after.name, at, shortName)));
+    rows.push({
+      kind: 'after',
+      text: t(key, boundaryValues(found.after.name, at, shortName)),
+    });
   }
-  return parts.length ? parts.join(' · ') : null;
+
+  return rows;
 }
 
 /**
  * Translator values for one side of the range. The weekday is only passed when
- * there is one, so the same-day phrases keep their original values.
+ * there is one, so the same-day phrases keep their original values, and it is
+ * inserted before `time` because the phrases read "ab Mittwoch 00:00".
  *
  * @param {string} name
  * @param {ClockText} at
@@ -192,7 +217,8 @@ export function neighbourText(found, t, describe, shortName) {
  */
 function boundaryValues(name, at, shortName) {
   /** @type {Record<string, string | number>} */
-  const values = { name: shortName(name), time: at.time };
+  const values = { name: shortName(name) };
   if (at.day) values.day = at.day;
+  values.time = at.time;
   return values;
 }

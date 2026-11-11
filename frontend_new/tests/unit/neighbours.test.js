@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 
 import {
   SNAP_MAX_MINUTES,
-  neighbourText,
+  neighbourRows,
   surrounding,
 } from '../../src/js/domain/neighbours.js';
 
-// The boundary hint under the activity form. It exists because the phone form
-// covers the timeline, and it must report *boundaries* (what ends where), never
-// history (what was added last). The tolerated-overlap case is the reason it is
-// not just a nicety: `max_overlap` lets one overlap through silently.
+// The surroundings block under the activity form. It exists because the phone
+// form covers the timeline, and it must report *boundaries* (what ends where),
+// never history (what was added last). Rows are asserted with their `kind`, since
+// the label the participant sees is chosen from it.
 
 /** Record as the form builds it: day-relative minutes, plus a display name. */
 function record(id, dayIndex, startMinutes, endMinutes, name = id) {
@@ -42,8 +42,26 @@ const describeWithDay = (minute) => ({
   day: minute >= 1440 ? `day-${Math.floor(minute / 1440)}` : null,
 });
 
+function rows(found) {
+  return neighbourRows(found, translator, describe, short);
+}
+
+/** Rows with the weekday marker for minutes that leave the candidate's day. */
+function rowsWithDay(found) {
+  return neighbourRows(found, translator, describeWithDay, short);
+}
+
+/** The rows' texts joined, for the tests that only care about the wording. */
 function text(found) {
-  return neighbourText(found, translator, describe, short);
+  return rows(found)
+    .map((row) => row.text)
+    .join(' · ');
+}
+
+function textWithDay(found) {
+  return rowsWithDay(found)
+    .map((row) => row.text)
+    .join(' · ');
 }
 
 test('an empty day says nothing', () => {
@@ -55,7 +73,7 @@ test('an empty day says nothing', () => {
   assert.equal(found.before, null);
   assert.equal(found.after, null);
   assert.equal(found.snap, null);
-  assert.equal(text(found), null);
+  assert.deepEqual(rows(found), []);
 });
 
 test('the previous entry names the boundary the participant forgot', () => {
@@ -65,10 +83,12 @@ test('the previous entry names the boundary the participant forgot', () => {
   });
   assert.deepEqual(found.before, { name: 'Sleeping', end: 360 });
   assert.equal(found.after, null);
-  assert.equal(
-    text(found),
-    'diary.form.neighbour.before(name=Sleeping,time=06:00)'
-  );
+  assert.deepEqual(rows(found), [
+    {
+      kind: 'before',
+      text: 'diary.form.neighbour.before(name=Sleeping,time=06:00)',
+    },
+  ]);
 });
 
 test('a missed boundary is offered as a one-tap correction', () => {
@@ -161,16 +181,25 @@ test('several overlaps are counted without listing them all', () => {
   );
 });
 
-test('the overlap message wins over the boundary message', () => {
+test('an overlap is reported beside the boundaries, in time order', () => {
+  // Overlapping is legitimate data (music while cooking), not a problem to
+  // report instead of the boundaries: all three facts are true and each gets
+  // its own labelled row.
   const found = surrounding({
-    candidate: record('new', 0, 360, 400),
+    candidate: record('new', 0, 360, 400), // 06:00-06:40
     existing: [
-      record('sleep', 0, 0, 370, 'Sleeping'),
-      record('lunch', 0, 720, 780, 'Lunch'),
+      record('sleep', 0, 300, 350, 'Sleeping'), // ends 05:50, before
+      record('radio', 0, 370, 380, 'Radio'), // inside: music while dressing
+      record('lunch', 0, 720, 780, 'Lunch'), // after
     ],
   });
-  assert.match(text(found) || '', /^diary\.form\.neighbour\.overlap/);
-  assert.ok(!(text(found) || '').includes('neighbour.after'));
+  assert.deepEqual(
+    rows(found).map((row) => row.kind),
+    ['before', 'overlap', 'after']
+  );
+  assert.match(text(found), /^diary\.form\.neighbour\.before/);
+  assert.match(text(found), /neighbour\.overlap\(name=Radio/);
+  assert.match(text(found), /neighbour\.after\(name=Lunch/);
 });
 
 test('editing a row does not count the row against itself', () => {
@@ -210,7 +239,7 @@ test('the overlap range is printed in clock time, not raw minutes', () => {
   });
   assert.equal(found.overlaps.length, 1);
   assert.equal(found.overlaps[0].minutes, 30);
-  assert.match(text(found) || '', /range=00:30–01:00/);
+  assert.match(text(found), /range=00:30–01:00/);
 });
 
 test('a neighbour on another day names its weekday', () => {
@@ -222,9 +251,9 @@ test('a neighbour on another day names its weekday', () => {
   });
   assert.deepEqual(found.after, { name: 'Sleeping', start: 1440 });
   assert.equal(
-    neighbourText(found, translator, describeWithDay, short),
+    textWithDay(found),
     'diary.form.neighbour.before(name=Sleeping,time=09:00) · ' +
-      'diary.form.neighbour.afterDay(name=Sleeping,time=00:00,day=day-1)'
+      'diary.form.neighbour.afterDay(name=Sleeping,day=day-1,time=00:00)'
   );
 });
 
@@ -236,9 +265,10 @@ test('the same phrase on both sides stays two entries, not one range', () => {
     candidate: record('new', 0, 540, 600),
     existing: [record('mon', 0, 0, 540, 'Sleeping'), record('tue', 1, 0, 540, 'Sleeping')],
   });
-  const line = neighbourText(found, translator, describeWithDay, short);
-  assert.match(line || '', /before\(name=Sleeping,time=09:00\)/);
-  assert.match(line || '', /afterDay\(name=Sleeping,time=00:00,day=day-1\)/);
+  const line = textWithDay(found);
+  assert.match(line, /before\(name=Sleeping,time=09:00\)/);
+  assert.match(line, /afterDay\(name=Sleeping,day=day-1,time=00:00\)/);
+  assert.equal(rowsWithDay(found).length, 2, 'two rows, not one range');
 });
 
 test('the previous entry can be on the previous day too', () => {
@@ -247,8 +277,8 @@ test('the previous entry can be on the previous day too', () => {
     existing: [record('mon', 1, 0, 540, 'Sleeping')],
   });
   assert.equal(
-    neighbourText(found, translator, describeWithDay, short),
-    'diary.form.neighbour.beforeDay(name=Sleeping,time=09:00,day=day-1)'
+    textWithDay(found),
+    'diary.form.neighbour.beforeDay(name=Sleeping,day=day-1,time=09:00)'
   );
 });
 
@@ -260,11 +290,8 @@ test('an overlap that leaves the day marks the range once', () => {
   });
   assert.equal(found.overlaps.length, 1);
   assert.equal(found.overlaps[0].minutes, 60);
-  assert.match(text(found) || '', /range=00:00–01:00/);
-  assert.match(
-    neighbourText(found, translator, describeWithDay, short) || '',
-    /range=00:00–01:00 \(day-1\)/
-  );
+  assert.match(text(found), /range=00:00–01:00/);
+  assert.match(textWithDay(found), /range=00:00–01:00 \(day-1\)/);
 });
 
 test('a boundary on another day is reported but never offered as a snap', () => {

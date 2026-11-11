@@ -362,11 +362,14 @@
       "hours": "{{count}} h",
       "minutes": "{{count}} min",
       "neighbour": {
+        "beforeLabel": "Before",
+        "overlapLabel": "At the same time",
+        "afterLabel": "After",
         "before": "{{name}} until {{time}}",
+        "beforeDay": "{{name}} until {{day}} {{time}}",
         "after": "{{name}} from {{time}}",
-        "beforeDay": "{{name}} until {{time}} ({{day}})",
-        "afterDay": "{{name}} from {{time}} ({{day}})",
-        "overlap": "Overlaps {{name}} ({{range}}), {{minutes}} min",
+        "afterDay": "{{name}} from {{day}} {{time}}",
+        "overlap": "{{name}} {{range}}, {{minutes}} min",
         "overlapMore": "and {{count}} more",
         "snap": "Continue {{name}} ({{time}})"
       }

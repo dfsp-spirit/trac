@@ -1,21 +1,24 @@
 // @ts-check
 /**
- * The boundary hint under the activity form's time row.
+ * The surroundings block under the activity form's time row.
  *
  * It exists because the phone form covers the timeline: without it, the only way
  * to learn where the previous entry ended is to leave the form and look. Desktop
- * gets the same line - it costs one short line and removes the same guesswork
+ * gets the same block - it costs two short rows and removes the same guesswork
  * there.
  *
- * The widget reads the form's own controls through `getSelection`, so the hint
+ * Every row carries a label ("Davor", "Gleichzeitig", "Danach"), so nothing in
+ * it can be mistaken for part of the entry being edited.
+ *
+ * The widget reads the form's own controls through `getSelection`, so the block
  * follows the day/start/end the participant actually chose, and it says nothing
  * when the day around the range is empty.
  */
 import { MINUTES_PER_DAY, formatClock, toDayRelative } from '../domain/time.js';
 import { dayLabel } from '../domain/diary.js';
-import { neighbourText, surrounding } from '../domain/neighbours.js';
+import { neighbourRows, surrounding } from '../domain/neighbours.js';
 
-/** Longer names are cut in the hint; the form still shows the full name. */
+/** Longer names are cut in the rows; the form still shows the full name. */
 const MAX_NAME_CHARS = 28;
 
 /**
@@ -68,15 +71,18 @@ export function createTimeNeighbours({
   const element = el('div', 't-neighbours');
   element.hidden = true;
 
-  const line = el('p', 't-hint');
+  // A description list, not a sentence: the label column is what stops a row
+  // from being read as part of the entry being edited.
+  const list = el('dl', 't-neighbours__list');
   // Polite, not assertive: the participant is editing, not being interrupted.
-  line.setAttribute('role', 'status');
+  // `aria-live` rather than `role="status"` keeps the list structure intact.
+  list.setAttribute('aria-live', 'polite');
 
   const snap = el('button', 't-btn t-btn--secondary t-btn--sm');
   snap.type = 'button';
   snap.hidden = true;
 
-  element.append(line, snap);
+  element.append(list, snap);
 
   /** @type {{ name: string, at: number } | null} */
   let pending = null;
@@ -133,13 +139,22 @@ export function createTimeNeighbours({
         ignoreId: currentId,
       });
 
-      const text = neighbourText(
+      const rows = neighbourRows(
         found,
         t,
         (minute) => describe(minute, selection.dayIndex),
         shortName
       );
-      line.textContent = text || '';
+      list.replaceChildren(
+        ...rows.flatMap((row) => [
+          el(
+            'dt',
+            't-neighbours__label',
+            t(`diary.form.neighbour.${row.kind}Label`)
+          ),
+          el('dd', 't-neighbours__value', row.text),
+        ])
+      );
 
       pending = found.snap;
       snap.hidden = !found.snap;
@@ -150,7 +165,7 @@ export function createTimeNeighbours({
         });
       }
 
-      element.hidden = !text && !found.snap;
+      element.hidden = !rows.length && !found.snap;
     },
   };
 }

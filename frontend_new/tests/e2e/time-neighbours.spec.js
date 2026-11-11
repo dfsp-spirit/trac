@@ -1,14 +1,17 @@
 /**
- * The boundary hint under the activity form's time row.
+ * The surroundings block under the activity form's time row.
  *
  * It exists for the phone: the form is a modal that covers the timeline, so
- * "did I sleep until 06:00 or 06:10?" has no answer inside the form without this
- * line. It also covers the case that would otherwise pass silently - one
- * tolerated overlap (`max_overlap`) is accepted by the rules, so nothing else
- * would ever mention it.
+ * "did I sleep until 06:00 or 06:10?" has no answer inside the form without it.
+ * It also names an entry that runs at the same time as the one being entered -
+ * legitimate data (music while cooking), so a row, not a warning.
+ *
+ * Every row is labelled ("Davor", "Gleichzeitig", "Danach"), which is the whole
+ * point of the layout: an unlabelled "Schlafen ab 00:00" reads as part of the
+ * entry being edited.
  *
  * The first entry is seeded through the API, so each test opens the panel once:
- * the subject is the hint, not the save path (covered by activity-lifecycle).
+ * the subject is the block, not the save path (covered by activity-lifecycle).
  *
  * Uses the `newui_06_diary` fixture (1101 = Schlafen, German UI).
  */
@@ -63,12 +66,14 @@ test.describe('time neighbours', () => {
     await openDiary(page, PID);
     await chooseActivity(page, 1101);
 
-    const hint = page.locator('.t-neighbours .t-hint');
+    const labels = page.locator('.t-neighbours__label');
+    const values = page.locator('.t-neighbours__value');
     const snap = page.locator('.t-neighbours button');
 
     await setTime(page, '#form-start', 370); // guessed 06:10
     await setTime(page, '#form-end', 400);
-    await expect(hint).toHaveText(/Schlafen bis 06:00/);
+    await expect(labels).toHaveText(['Davor']);
+    await expect(values).toHaveText(['Schlafen bis 06:00']);
     await expect(snap).toHaveText(/An Schlafen anschließen \(06:00\)/);
 
     // The whole point of the chip: no memory required, one tap.
@@ -77,11 +82,11 @@ test.describe('time neighbours', () => {
     // The length the participant chose is kept...
     await expect(page.locator('#form-end')).toHaveValue(clockValue(390));
     // ...and the entry now touches its neighbour: nothing left to snap.
-    await expect(hint).toHaveText(/Schlafen bis 06:00/);
+    await expect(values).toHaveText(['Schlafen bis 06:00']);
     await expect(snap).toBeHidden();
   });
 
-  test('mentions a tolerated overlap that the rules let through', async ({
+  test('names an entry that runs at the same time as this one', async ({
     page,
     request,
   }) => {
@@ -93,10 +98,14 @@ test.describe('time neighbours', () => {
     await setTime(page, '#form-end', 390); // 06:30
 
     // 10 minutes on top of an existing entry is allowed by max_overlap, so the
-    // save would succeed without a word - the hint is the only warning.
-    await expect(page.locator('.t-neighbours .t-hint')).toHaveText(
-      /Überlappt Schlafen \(06:00–06:10\), 10 Min\./
-    );
+    // save would succeed without a word - this row is the only trace of it. It is
+    // stated, not warned about: overlapping records are legitimate.
+    await expect(page.locator('.t-neighbours__label')).toHaveText([
+      'Gleichzeitig',
+    ]);
+    await expect(page.locator('.t-neighbours__value')).toHaveText([
+      'Schlafen 06:00–06:10, 10 Min.',
+    ]);
   });
 
   test('a neighbour on another day names its weekday', async ({ page, request }) => {
@@ -106,19 +115,27 @@ test.describe('time neighbours', () => {
     await openDiary(page, PID);
     await chooseActivity(page, 1101);
 
-    await expect(page.locator('.t-neighbours .t-hint')).toHaveText(
-      'Schlafen bis 09:00 · Schlafen ab 00:00 (Dienstag)'
-    );
+    await expect(page.locator('.t-neighbours__label')).toHaveText([
+      'Davor',
+      'Danach',
+    ]);
+    await expect(page.locator('.t-neighbours__value')).toHaveText([
+      'Schlafen bis 09:00',
+      'Schlafen ab Dienstag 00:00',
+    ]);
   });
 
   test('a single entry on the day stays one phrase per side', async ({ page, request }) => {
     // The same activity on one day only: nothing is on the other side, so the
-    // line must not invent a second "Schlafen".
+    // block must not invent a second "Schlafen".
     await seedSchlafen(request, { start: 0, end: 540 });
     await openDiary(page, PID);
     await chooseActivity(page, 1101);
 
-    await expect(page.locator('.t-neighbours .t-hint')).toHaveText('Schlafen bis 09:00');
+    await expect(page.locator('.t-neighbours__label')).toHaveText(['Davor']);
+    await expect(page.locator('.t-neighbours__value')).toHaveText([
+      'Schlafen bis 09:00',
+    ]);
   });
 
   test('says nothing while the day around the range is empty', async ({ page }) => {

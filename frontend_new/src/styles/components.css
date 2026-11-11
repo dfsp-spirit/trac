@@ -63,19 +63,35 @@
    start/end pair from shifting while it is edited. */
 .t-time { font-family: var(--font-mono); font-weight: 500; }
 .t-time::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.75; }
-.t-time-range { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-4); min-width: 0; }
+/* Sections of the panel form (when, also-on-other-days, error) are separated by
+   one step more than the context block inside the "when" section, so the block
+   reads as the end of that section rather than as a sibling of the next one. */
+.t-form { display: grid; gap: var(--space-6); }
+/* Rhythm: the time inputs and the duration line describe one thing and sit close;
+   the surroundings block below them is a separate topic and gets a full step of
+   the scale. Proximity does the separating - a frame here would borrow the
+   notice vocabulary and would appear and vanish with every time change. */
+.t-time-range { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-2); min-width: 0; }
 .t-time-range > legend { padding: 0; margin-bottom: var(--space-3); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
-.t-time-range__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.t-time-range__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-top: var(--space-1); }
 .t-duration { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font-family: var(--font-mono); font-size: 0.875rem; color: var(--ink); }
 /* The dot marks the first line, also when a cross-midnight entry wraps. */
 .t-duration::before { content: ""; width: 8px; height: 8px; margin-top: 0.4em; border-radius: 50%; background: var(--ink); flex: none; }
 .t-duration__part { white-space: nowrap; }
-/* Boundary hint under the time row: one line plus an optional one-tap chip. It
-   is the only view of the neighbouring entries while the phone form covers the
-   timeline (see domain/neighbours.js). */
-.t-neighbours { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+/* Surroundings block under the time row: labelled key/value rows plus an
+   optional one-tap chip. The labels ("Davor", "Gleichzeitig", "Danach") are what
+   keep a row from reading as part of the entry above it. It is the only view of
+   the neighbouring entries while the phone form covers the timeline (see
+   domain/neighbours.js). */
+.t-neighbours { display: grid; gap: var(--space-2); justify-items: start; margin-top: var(--space-4); }
 .t-neighbours[hidden] { display: none; }
-.t-neighbours > .t-hint { margin: 0; }
+.t-neighbours__list { display: grid; grid-template-columns: auto 1fr; column-gap: var(--space-3); row-gap: var(--space-1); margin: 0; max-width: 100%; }
+/* Weight 600 and the muted grey: the same cue the form's own field labels use for
+   "this is a label", while the colour keeps the row secondary to the value. No
+   colon - the aligned value column already states the relationship. */
+.t-neighbours__label { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; color: var(--ink-muted); white-space: nowrap; }
+/* Sans-serif, unlike the mono duration line above: "mine" is data, this is meta. */
+.t-neighbours__value { margin: 0; min-width: 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink); }
 
 /* ---------- Day chips ---------- */
 .t-days { border: 0; margin: 0; padding: 0; min-width: 0; }
