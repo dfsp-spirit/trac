@@ -1,10 +1,10 @@
 // @ts-check
 /**
- * Small builders shared by the activity form: a labelled field, the time option
- * list and the multi-day chips. Kept apart so the form stays about behaviour.
+ * Small builders shared by the activity form: a labelled field, the time field
+ * and the multi-day chips. Kept apart so the form stays about behaviour.
  */
 import { dayLabel } from '../domain/diary.js';
-import { MINUTES_PER_DAY, STEP_MINUTES, formatClock } from '../domain/time.js';
+import { STEP_MINUTES } from '../domain/time.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -38,25 +38,18 @@ export function field(text, id, control) {
 }
 
 /**
- * Every step between two clock minutes, labelled in the study's day frame. The
- * second day of the range is what makes "sleep 22:00 to 08:00" one entry.
+ * A 24-hour time field. The browser supplies the picker: a segmented, typeable
+ * field on desktop and the OS dial/wheel on phones, so the form no longer owns a
+ * 144-entry list. `step` matches the diary grid; the form snaps a value that
+ * lands between steps before it is used.
  *
- * @param {number} from
- * @param {number} to
- * @param {number} dayStart
- * @param {boolean} markNextDay
- * @param {(key: string, params?: Record<string, string | number>) => string} t
- * @returns {HTMLOptionElement[]}
+ * @returns {HTMLInputElement}
  */
-export function timeOptions(from, to, dayStart, markNextDay, t) {
-  const list = [];
-  for (let minutes = from; minutes <= to; minutes += STEP_MINUTES) {
-    let suffix = '';
-    if (minutes >= MINUTES_PER_DAY) suffix = ` ${t('diary.form.nextDay')}`;
-    else if (markNextDay && minutes === MINUTES_PER_DAY) suffix = ` ${t('diary.form.midnight')}`;
-    list.push(new Option(`${formatClock(minutes, dayStart)}${suffix}`, String(minutes)));
-  }
-  return list;
+export function timeInput() {
+  const input = el('input', 't-input t-time');
+  input.type = 'time';
+  input.step = String(STEP_MINUTES * 60);
+  return input;
 }
 
 /**

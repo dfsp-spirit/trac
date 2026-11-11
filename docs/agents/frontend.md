@@ -56,6 +56,28 @@
 - `suggest-slot.test.js` pins the ladder and `entry-defaults.spec.js` pins the
   wiring (day in view, no overlap, "add another" continues).
 
+## Start and end time in the activity form
+- Both bounds are native `<input type="time">` fields (`ui/timeRange.js`): a
+  segmented, typeable field on desktop and the OS picker (Android dial, iOS
+  wheel) on phones. Do not replace them with a `<select>` of times again - a
+  144-entry list was the old shape and is the one pattern no calendar app uses.
+- The control shows a time of day, so `domain/time.js#resolveRangeEnd` decides
+  which day the end belongs to: a clock that is not after the start is the next
+  day. Equality is a deliberate 24-hour entry (a whole day), which the duration
+  line shows as such.
+- `step` is the 10-minute grid; a typed value that lands between steps is snapped
+  on commit (`snapMinutes`), and `validateActivity` would refuse it otherwise.
+- 24-hour display is our own text (timeline, duration, review). The picker itself
+  follows the **browser UI language**, so a device whose browser runs in English
+  renders AM/PM; there is no attribute that forces 24h on a native time field.
+- One line under the fields carries what the two values mean:
+  `22:00 – 00:30 · 2 Std. 30 Min.`. The range is formatted by us in 24-hour form
+  (the picker may show AM/PM on a 12-hour device), the `(next day)` marker
+  appears when the end crosses midnight, and the duration follows. Both parts are
+  `nowrap`, so a cross-midnight entry wraps *between* them and never inside
+  "2 Std. 30 Min.". `endInput`'s `aria-describedby` points at that line. The last
+  day keeps its hint that activities end by midnight.
+
 ## Boundary hint in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
   participant cannot look up while choosing times is where the neighbouring

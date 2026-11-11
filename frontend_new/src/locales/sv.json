@@ -353,7 +353,6 @@
       "day": "Dag",
       "start": "Start",
       "end": "Slut",
-      "lasts": "Varar",
       "nextDay": "(nästa dag)",
       "midnight": "(midnatt)",
       "lastDayHint": "Detta är sista dagen, så aktiviteter slutar vid midnatt. Lägg till resten i nästa dagbok.",

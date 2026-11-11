@@ -58,11 +58,18 @@
 .t-select, .t-input { width: 100%; min-height: var(--tap-min); padding: 0 var(--space-4); border: 2px solid var(--line-strong); border-radius: var(--radius-md); background-color: var(--bg); color: var(--ink); font-size: 1rem; }
 .t-select { appearance: none; -webkit-appearance: none; padding-inline-end: 44px; font-family: var(--font-mono); font-weight: 500; background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%); background-position: calc(100% - 22px) 52%, calc(100% - 16px) 52%; background-size: 6px 6px; background-repeat: no-repeat; }
 .t-select--text { font-family: var(--font-sans); }
+/* Native time field: the browser owns the picker (segmented typing on desktop,
+   the OS dial/wheel on phones), so only the box is styled. Mono digits keep the
+   start/end pair from shifting while it is edited. */
+.t-time { font-family: var(--font-mono); font-weight: 500; }
+.t-time::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.75; }
 .t-time-range { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-4); min-width: 0; }
 .t-time-range > legend { padding: 0; margin-bottom: var(--space-3); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
 .t-time-range__row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
-.t-duration { display: flex; align-items: center; gap: var(--space-2); margin: 0; font-family: var(--font-mono); font-size: 1rem; color: var(--ink); }
-.t-duration::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ink); }
+.t-duration { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font-family: var(--font-mono); font-size: 0.875rem; color: var(--ink); }
+/* The dot marks the first line, also when a cross-midnight entry wraps. */
+.t-duration::before { content: ""; width: 8px; height: 8px; margin-top: 0.4em; border-radius: 50%; background: var(--ink); flex: none; }
+.t-duration__part { white-space: nowrap; }
 /* Boundary hint under the time row: one line plus an optional one-tap chip. It
    is the only view of the neighbouring entries while the phone form covers the
    timeline (see domain/neighbours.js). */

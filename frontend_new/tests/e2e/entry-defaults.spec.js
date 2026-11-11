@@ -14,9 +14,12 @@ import {
   CATALOGUE,
   chooseActivity,
   clearActivities,
+  clockToMinutes,
+  clockValue,
   isPhone,
   openDiary,
   participantsUrl,
+  setTime,
 } from './helpers.js';
 
 const PID = 'diary_02';
@@ -102,8 +105,8 @@ test.describe('entry defaults', () => {
     await chooseActivity(page, 1101);
 
     await expect(page.locator('#form-day')).toHaveValue('0');
-    const start = Number(await formStart(page).inputValue());
-    const end = Number(await formEnd(page).inputValue());
+    const start = clockToMinutes(await formStart(page).inputValue());
+    const end = clockToMinutes(await formEnd(page).inputValue());
     // After the morning entry, and an hour long: still plenty of day left.
     expect(start).toBeGreaterThanOrEqual(420);
     expect(end - start).toBe(60);
@@ -116,15 +119,15 @@ test.describe('entry defaults', () => {
 
     await openDiary(page, PID);
     await chooseActivity(page, 1101);
-    await page.locator('#form-start').selectOption('480');
-    await page.locator('#form-end').selectOption('540');
+    await setTime(page, '#form-start', 480);
+    await setTime(page, '#form-end', 540);
     await page.locator('[data-slot="save-another"]').click();
 
     // The form covers the timeline on a phone, so the only place the participant
     // can be looking is the end of the entry they just saved.
     await expect(page.locator(`${CATALOGUE} .t-activity`).first()).toBeVisible();
     await chooseActivity(page, 1101);
-    await expect(formStart(page)).toHaveValue('540');
-    await expect(formEnd(page)).toHaveValue('600');
+    await expect(formStart(page)).toHaveValue(clockValue(540));
+    await expect(formEnd(page)).toHaveValue(clockValue(600));
   });
 });

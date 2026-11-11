@@ -9,6 +9,8 @@ import {
   clearActivities,
   dayEvents,
   openDiary,
+  setTime,
+  clockValue,
 } from './helpers.js';
 
 test.describe('multi-day create and gap prefill', () => {
@@ -32,8 +34,8 @@ test.describe('multi-day create and gap prefill', () => {
       'Montag'
     );
 
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('660');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 660);
     // Checked after the time fields: changing the start re-syncs the chips to the
     // day the form currently shows.
     await page.locator('.t-day-chip input[name="days"][value="1"]').check();
@@ -73,8 +75,8 @@ test.describe('multi-day create and gap prefill', () => {
     await chooseActivity(page, 1101);
 
     await expect(page.locator('#form-day')).toHaveValue('0');
-    await expect(page.locator('#form-start')).toHaveValue('540');
-    await expect(page.locator('#form-end')).toHaveValue('600');
+    await expect(page.locator('#form-start')).toHaveValue(clockValue(540));
+    await expect(page.locator('#form-end')).toHaveValue(clockValue(600));
 
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(dayEvents(page, 0)).toHaveCount(3);

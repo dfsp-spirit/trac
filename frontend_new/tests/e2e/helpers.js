@@ -136,6 +136,42 @@ export async function openDiary(page, pid, study = STUDY) {
 }
 
 /**
+ * Day-relative minutes -> the "HH:MM" value of a time field.
+ *
+ * Every rewrite fixture starts its day at midnight (`day_start_minutes: 0`), so
+ * day-relative minutes and the clock coincide here.
+ *
+ * @param {number} minutes
+ * @returns {string}
+ */
+export function clockValue(minutes) {
+  const total = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/**
+ * The inverse of {@link clockValue}, for assertions on a field's value.
+ *
+ * @param {string} value "HH:MM"
+ * @returns {number}
+ */
+export function clockToMinutes(value) {
+  const [hours, minutes] = String(value).split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Fill one of the form's native time fields.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'#form-start' | '#form-end'} selector
+ * @param {number} minutes Day-relative, as the old `<select>` values were.
+ */
+export async function setTime(page, selector, minutes) {
+  await page.locator(selector).fill(clockValue(minutes));
+}
+
+/**
  * Add one activity through the catalogue and the form.
  *
  * The form's day follows the timeline in view, so a spec that means a specific
@@ -150,8 +186,8 @@ export async function openDiary(page, pid, study = STUDY) {
 export async function addActivity(page, code, { start, end, day }) {
   await chooseActivity(page, code);
   if (day != null) await page.locator('#form-day').selectOption(String(day));
-  await page.locator('#form-start').selectOption(String(start));
-  await page.locator('#form-end').selectOption(String(end));
+  await setTime(page, '#form-start', start);
+  await setTime(page, '#form-end', end);
   await page.locator('[data-slot="actions"] .t-btn--primary').click();
   // The write is in flight now, and the panel swaps back to the catalogue when
   // it lands (on a phone that also closes the dialog). Waiting for the form to

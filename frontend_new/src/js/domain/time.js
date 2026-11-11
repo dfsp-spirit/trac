@@ -81,6 +81,44 @@ export function formatClock(minutesSinceDayStart, dayStartMinutes = 0) {
 }
 
 /**
+ * Parse the value of an `<input type="time">` ("HH:MM", 24-hour) into clock
+ * minutes. Returns null while the field is incomplete: a segmented input
+ * reports "" between edits, and a half-typed time must not be treated as 00:00.
+ *
+ * @param {string} value
+ * @returns {number | null}
+ */
+export function parseClock(value) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(value ?? '').trim());
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+/**
+ * The end that belongs to a wall-clock choice: the same day when it is later
+ * than the start, the next one otherwise, clamped into what the day allows.
+ *
+ * A native time field only carries a time of day, so this is the one place that
+ * decides which day the end belongs to. `isLastDay` mirrors the form: the last
+ * day cannot run past midnight.
+ *
+ * @param {number} start Day-relative start minute.
+ * @param {number} endClock Clock minutes (0..1439) from the end field.
+ * @param {{ dayStartMinutes?: number, isLastDay?: boolean }} [options]
+ * @returns {number} Day-relative end minute.
+ */
+export function resolveRangeEnd(start, endClock, options = {}) {
+  const { dayStartMinutes = 0, isLastDay = false } = options;
+  const max = isLastDay ? MINUTES_PER_DAY : start + MINUTES_PER_DAY;
+  let candidate = toDayRelative(endClock, dayStartMinutes);
+  // A clock that is not after the start belongs to the next day. Equality is the
+  // one deliberate 24-hour entry (a whole day), which the duration line shows as
+  // "24 h" - the alternative, silently shrinking it to the minimum, would ignore
+  // what the participant typed.
+  if (candidate <= start) candidate += MINUTES_PER_DAY;
+  return clampMinutes(candidate, start + STEP_MINUTES, max);
+}
+
+/**
  * How many day boundaries a day-relative minute has crossed (0 for a record
  * that ends on its own day, 1 for one that runs past midnight).
  *

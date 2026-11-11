@@ -6,14 +6,15 @@
  * uses the same domain functions the rest of the app uses, so an overlap the form
  * accepts is not refused by the server for a different reason.
  */
-import { DEFAULT_DURATION_MINUTES, MINUTES_PER_DAY, STEP_MINUTES, toDayRelative } from '../domain/time.js';
+import { STEP_MINUTES } from '../domain/time.js';
 import { validateActivity } from '../domain/validation.js';
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayLabel } from '../domain/diary.js';
 import { el } from './dom.js';
-import { dayChips, durationText, field, syncChips as syncChipsForSelection, timeOptions } from './formFields.js';
+import { dayChips, field, syncChips as syncChipsForSelection } from './formFields.js';
 import { createMultiDayHint } from './multiDayHint.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
+import { createTimeRange } from './timeRange.js';
 
 /**
  * @param {HTMLElement} host
@@ -101,43 +102,39 @@ export function renderActivityForm(host, view) {
   else daySelect.value = String(prefill.dayIndex);
   const dayField = field(t('diary.form.day'), 'form-day', daySelect);
 
-  const startSelect = el('select', 't-select');
-  startSelect.append(...timeOptions(0, MINUTES_PER_DAY - STEP_MINUTES, dayStartMinutes, false, t));
-  startSelect.value = String(current ? current.start_minutes : prefill.startMinutes);
+  // Chips and hints refresh after every committed time change; the callback is
+  // late-bound because they are built below the control.
+  let refreshDerived = () => {};
 
-  const endSelect = el('select', 't-select');
-  const row = el('div', 't-time-range__row');
-  row.append(
-    field(t('diary.form.start'), 'form-start', startSelect),
-    field(t('diary.form.end'), 'form-end', endSelect)
-  );
-
-  const duration = el('p', 't-duration');
-  const durationOut = el('output');
-  durationOut.setAttribute('for', 'form-start form-end');
-  duration.append(t('diary.form.lasts'), ' ', durationOut);
-
-  const endHint = el('p', 't-hint');
-  endHint.hidden = true;
+  const timeRange = createTimeRange({
+    t,
+    dayStartMinutes,
+    lastIndex,
+    dayIndex: Number(daySelect.value),
+    startMinutes: current ? current.start_minutes : prefill.startMinutes,
+    endMinutes: current ? current.end_minutes : prefill.endMinutes,
+    onCommit: () => refreshDerived(),
+  });
 
   // `days`/`language` label a neighbour that sits on another day.
   const neighbours = createTimeNeighbours({
     t, dayStartMinutes, existing, days, language,
-    getSelection: () => ({
-      dayIndex: Number(daySelect.value),
-      start: Number(startSelect.value),
-      end: Number(endSelect.value),
-    }),
+    getSelection: () => timeRange.selection(),
     getCurrentId: () => (current ? current.client_uuid : null),
     // Snapping keeps the length the participant already chose.
     onSnap: (start) => {
-      const duration = Number(endSelect.value) - Number(startSelect.value);
-      startSelect.value = String(start);
-      fillEnd(start + duration);
+      const selection = timeRange.selection();
+      timeRange.setStart(start, selection.end - selection.start);
     },
   });
 
-  timeFieldset.append(dayField, row, duration, neighbours.element, endHint);
+  timeFieldset.append(
+    dayField,
+    timeRange.row,
+    timeRange.summary,
+    neighbours.element,
+    timeRange.endHint
+  );
   form.append(timeFieldset);
 
   const daysFieldset = el('fieldset', 't-days');
@@ -150,9 +147,7 @@ export function renderActivityForm(host, view) {
   const multiDay = createMultiDayHint({
     t, days, language, existing, dayStartMinutes, maxOverlap,
     getSelection: () => ({
-      dayIndex: Number(daySelect.value),
-      start: Number(startSelect.value),
-      end: Number(endSelect.value),
+      ...timeRange.selection(),
       activityCode: childSelect && childSelect.value ? Number(childSelect.value) : entry.code,
       checkedDays: chipInputs.filter((input) => input.checked).map((input) => Number(input.value)),
     }),
@@ -173,46 +168,14 @@ export function renderActivityForm(host, view) {
 
   host.replaceChildren(form);
 
-  /** @param {number} keep */
-  function fillEnd(keep) {
-    const start = Number(startSelect.value);
-    const dayIndex = Number(daySelect.value);
-    const isLast = dayIndex === lastIndex;
-    const max = isLast ? MINUTES_PER_DAY : start + MINUTES_PER_DAY;
-    endSelect.replaceChildren(...timeOptions(start + STEP_MINUTES, max, dayStartMinutes, !isLast, t));
-
-    endHint.hidden = !isLast;
-    if (isLast) endHint.textContent = t('diary.form.lastDayHint');
-
-    const wanted = Number(keep);
-    endSelect.value = String(
-      Number.isFinite(wanted) && wanted > start && wanted <= max
-        ? wanted
-        : Math.min(start + DEFAULT_DURATION_MINUTES, max)
-    );
-    syncChips();
-    showDuration();
-    neighbours.refresh();
-    multiDay.refresh();
-  }
-
-  function showDuration() {
-    durationOut.textContent = durationText(t, Number(endSelect.value) - Number(startSelect.value));
-  }
-
-  function syncChips() {
+  refreshDerived = () => {
     syncChipsForSelection(chipInputs, Number(daySelect.value));
-  }
-
-  startSelect.addEventListener('change', () => fillEnd(Number(endSelect.value)));
-  endSelect.addEventListener('change', () => {
-    showDuration();
     neighbours.refresh();
     multiDay.refresh();
-  });
-  daySelect.addEventListener('change', () => fillEnd(Number(endSelect.value)));
+  };
+  refreshDerived();
 
-  fillEnd(current ? current.end_minutes : prefill.endMinutes);
+  daySelect.addEventListener('change', () => timeRange.setDay(Number(daySelect.value)));
 
   /** @param {string} title @param {string} message */
   function showError(title, message) {
@@ -247,19 +210,16 @@ export function renderActivityForm(host, view) {
     }
 
     const dayIndex = Number(daySelect.value);
-    const start = Number(startSelect.value);
-    const end = Number(endSelect.value);
-
-    const relativeStart = toDayRelative(start, dayStartMinutes);
-    let relativeEnd = toDayRelative(end, dayStartMinutes);
-    if (relativeEnd <= relativeStart) relativeEnd += MINUTES_PER_DAY;
+    const range = timeRange.read();
+    if (range === null) return { ok: false, code: 'time.end_not_after_start' };
+    const { start, end } = range;
 
     const result = validateActivity({
       candidate: {
         id: current ? current.client_uuid : 'new',
         dayIndex,
-        startMinutes: relativeStart,
-        endMinutes: relativeEnd,
+        startMinutes: start,
+        endMinutes: end,
         activityCode,
       },
       existing,
@@ -291,5 +251,5 @@ export function renderActivityForm(host, view) {
     };
   }
 
-  return { read, showError, form, startSelect };
+  return { read, showError, form };
 }

@@ -7,7 +7,12 @@
  * submitted and is therefore one-way, like the ready_01 submit fixture.
  */
 import { test, expect } from '@playwright/test';
-import { BASE_URL, chooseActivity, participantsUrl } from './helpers.js';
+import {
+  BASE_URL,
+  chooseActivity,
+  participantsUrl,
+  setTime,
+} from './helpers.js';
 
 const STUDY = 'newui_10_walkthrough';
 const REVIEW = '#review-dialog';
@@ -49,8 +54,8 @@ test.describe('stage walk', () => {
 
     // One full-day entry on every weekday, through the multi-day chips.
     await chooseActivity(page, 1101);
-    await page.locator('#form-start').selectOption('0');
-    await page.locator('#form-end').selectOption('1440');
+    await setTime(page, '#form-start', 0);
+    await setTime(page, '#form-end', 1440);
     for (let dayIndex = 1; dayIndex < 7; dayIndex += 1) {
       await page.locator(`.t-day-chip input[name="days"][value="${dayIndex}"]`).check();
     }

@@ -18,6 +18,7 @@ import {
   isPhone,
   openDiary,
   openPanel,
+  setTime,
 } from './helpers.js';
 
 const STUDY = 'newui_14_two_timelines';
@@ -79,8 +80,8 @@ test.describe('a study with two timelines', () => {
     await openDiary(page, PID, STUDY);
     await openPanel(page);
     await page.locator(`${CATALOGUE} .t-activity[data-activity-code="1101"]`).click();
-    await page.locator('#form-start').selectOption('480');
-    await page.locator('#form-end').selectOption('540');
+    await setTime(page, '#form-start', 480);
+    await setTime(page, '#form-end', 540);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(page.locator('.t-event__title')).toHaveText('Schlafen');
 

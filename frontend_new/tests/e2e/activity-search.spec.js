@@ -19,6 +19,7 @@ import {
   openDiary,
   openPanel,
   participantsUrl,
+  setTime,
 } from './helpers.js';
 
 const STUDY = 'newui_06_diary';
@@ -112,8 +113,8 @@ test.describe('activity search', () => {
     await expect(page.locator('#form-child')).toHaveValue('1171');
     await expect(searchBox(page)).toBeHidden();
 
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('660');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 660);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
 
     // The row reports the sub-activity, not the parent.
@@ -258,7 +259,7 @@ test.describe('activity search', () => {
     await page.locator('.t-event__btn').first().click();
     // The text field holds the typed text; the entry name belongs to the form.
     await expect(page.locator('#form-text')).toHaveValue('Programmieren');
-    await page.locator('#form-end').selectOption('690');
+    await setTime(page, '#form-end', 690);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
 
     await expect(page.locator('.t-event__title')).toHaveText(
@@ -275,8 +276,8 @@ test.describe('activity search', () => {
     await openDiary(page, PID);
     await chooseActivity(page, 1110);
     await page.locator('#form-child').selectOption('1112');
-    await page.locator('#form-start').selectOption('480');
-    await page.locator('#form-end').selectOption('540');
+    await setTime(page, '#form-start', 480);
+    await setTime(page, '#form-end', 540);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(page.locator('#days .t-event')).toHaveCount(1);
 

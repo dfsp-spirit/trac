@@ -14,6 +14,7 @@ import {
   clearActivities,
   isPhone,
   openDiary,
+  setTime,
 } from './helpers.js';
 
 test.describe('activity lifecycle', () => {
@@ -36,7 +37,7 @@ test.describe('activity lifecycle', () => {
     await expect(page.locator('.t-event__time')).toHaveText(/08:00\s*–\s*09:00/);
 
     await page.locator('.t-event__btn').first().click();
-    await page.locator('#form-end').selectOption('600');
+    await setTime(page, '#form-end', 600);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(page.locator('.t-event__time')).toHaveText(/08:00\s*–\s*10:00/);
 
@@ -68,8 +69,8 @@ test.describe('activity lifecycle', () => {
     // timeout is the assertion: the click has to be accepted now, not when the
     // toast times out six seconds later.
     await chooseActivity(page, 1102);
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('660');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 660);
     await page.locator('[data-slot="actions"] .t-btn--primary').click({ timeout: 3000 });
 
     await expect(page.locator('.t-event')).toHaveCount(2);
@@ -89,8 +90,8 @@ test.describe('activity lifecycle', () => {
   }, testInfo) => {
     await openDiary(page, pid);
     await chooseActivity(page, 1101);
-    await page.locator('#form-start').selectOption('480');
-    await page.locator('#form-end').selectOption('540');
+    await setTime(page, '#form-start', 480);
+    await setTime(page, '#form-end', 540);
 
     const actions = page.locator('[data-slot="actions"]');
     const another = actions.locator('[data-slot="save-another"]');
@@ -115,8 +116,8 @@ test.describe('activity lifecycle', () => {
     // Picking again starts from that prefill; saving this one returns to the
     // diary, and on a phone it closes the panel.
     await chooseActivity(page, 1101);
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('650');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 650);
     await page.locator('[data-slot="actions"] .t-btn--primary').click();
     await expect(page.locator('#dialog-host')).toBeHidden();
     await expect(page.locator('.t-event')).toHaveCount(2);

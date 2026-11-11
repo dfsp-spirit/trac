@@ -353,7 +353,6 @@
       "day": "Tag",
       "start": "Beginn",
       "end": "Ende",
-      "lasts": "Dauer",
       "nextDay": "(nächster Tag)",
       "midnight": "(Mitternacht)",
       "lastDayHint": "Dies ist der letzte Tag, Aktivitäten enden um Mitternacht. Ergänzen Sie den Rest im nächsten Tagebuch.",

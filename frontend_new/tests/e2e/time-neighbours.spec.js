@@ -18,6 +18,8 @@ import {
   clearActivities,
   openDiary,
   participantsUrl,
+  setTime,
+  clockValue,
 } from './helpers.js';
 
 // `diary_02` is the fixture's second participant, used by one other spec; the
@@ -64,16 +66,16 @@ test.describe('time neighbours', () => {
     const hint = page.locator('.t-neighbours .t-hint');
     const snap = page.locator('.t-neighbours button');
 
-    await page.locator('#form-start').selectOption('370'); // guessed 06:10
-    await page.locator('#form-end').selectOption('400');
+    await setTime(page, '#form-start', 370); // guessed 06:10
+    await setTime(page, '#form-end', 400);
     await expect(hint).toHaveText(/Schlafen bis 06:00/);
     await expect(snap).toHaveText(/An Schlafen anschließen \(06:00\)/);
 
     // The whole point of the chip: no memory required, one tap.
     await snap.click();
-    await expect(page.locator('#form-start')).toHaveValue('360');
+    await expect(page.locator('#form-start')).toHaveValue(clockValue(360));
     // The length the participant chose is kept...
-    await expect(page.locator('#form-end')).toHaveValue('390');
+    await expect(page.locator('#form-end')).toHaveValue(clockValue(390));
     // ...and the entry now touches its neighbour: nothing left to snap.
     await expect(hint).toHaveText(/Schlafen bis 06:00/);
     await expect(snap).toBeHidden();
@@ -87,8 +89,8 @@ test.describe('time neighbours', () => {
     await openDiary(page, PID);
     await chooseActivity(page, 1101);
 
-    await page.locator('#form-start').selectOption('360'); // 06:00
-    await page.locator('#form-end').selectOption('390'); // 06:30
+    await setTime(page, '#form-start', 360); // 06:00
+    await setTime(page, '#form-end', 390); // 06:30
 
     // 10 minutes on top of an existing entry is allowed by max_overlap, so the
     // save would succeed without a word - the hint is the only warning.

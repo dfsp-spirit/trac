@@ -12,6 +12,7 @@ import {
   dayEvents,
   openDiary,
   participantsUrl,
+  setTime,
 } from './helpers.js';
 
 /**
@@ -60,8 +61,8 @@ test.describe('multi-day preview', () => {
     // One day is the everyday save; the form keeps quiet.
     await expect(page.locator(hint)).toBeHidden();
 
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('660');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 660);
     // Checked after the time fields: changing the start re-syncs the chips to the
     // day the form currently shows.
     await page.locator('.t-day-chip input[name="days"][value="1"]').check();
@@ -79,8 +80,8 @@ test.describe('multi-day preview', () => {
 
     await chooseActivity(page, 1104);
     await page.locator('#form-day').selectOption('0');
-    await page.locator('#form-start').selectOption('600');
-    await page.locator('#form-end').selectOption('660');
+    await setTime(page, '#form-start', 600);
+    await setTime(page, '#form-end', 660);
     await page.locator('.t-day-chip input[name="days"][value="2"]').check();
 
     await expect(page.locator(hint)).toHaveText(
