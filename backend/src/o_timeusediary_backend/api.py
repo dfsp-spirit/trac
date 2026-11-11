@@ -144,6 +144,18 @@ from .utils import (
 )
 from . import stages
 from .api_deps.diary_access import study_availability
+from .api_deps.participant_identity import require_valid_participant_id
+from .participant_ids import (
+    PARTICIPANT_ID_PATTERN,
+    PARTICIPANT_ID_RULE_TEXT,
+    InvalidParticipantIdError,
+    normalize_participant_ids,
+)
+from .tabular_files import (
+    DelimitedUploadError,
+    find_header,
+    parse_delimited_upload,
+)
 from .admin_directory import build_admin_directory
 
 
@@ -1619,6 +1631,7 @@ def submit_activities(
     @param session Database session dependency.
     @returns A JSON response indicating success and submission metadata.
     """
+    require_valid_participant_id(participant_id)
     # Validate study exists
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -3098,6 +3111,12 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
             "data_collection_start must be earlier than data_collection_end"
         )
 
+    normalize_participant_ids(
+        study_payload.study_participant_ids,
+        source=f"participant ids of study '{study_payload.name_short}'",
+        reject_blank=True,
+    )
+
     supported_languages = _normalize_languages(study_payload.supported_languages)
     if not supported_languages:
         raise ValueError(
@@ -3904,35 +3923,37 @@ def _create_study_from_import_payload(
             )
         )
 
-    for participant_id in study_payload.study_participant_ids:
-        normalized_participant_id = (participant_id or "").strip()
-        if not normalized_participant_id:
-            continue
+    participant_ids = normalize_participant_ids(
+        study_payload.study_participant_ids,
+        source=f"participant ids of study '{study_payload.name_short}'",
+        reject_blank=True,
+    )
 
-        participant = session.get(Participant, normalized_participant_id)
+    for participant_id in participant_ids:
+        participant = session.get(Participant, participant_id)
         if not participant:
-            participant = Participant(id=normalized_participant_id)
+            participant = Participant(id=participant_id)
             session.add(participant)
             session.flush()
 
         existing_association = session.exec(
             select(StudyParticipant).where(
                 StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == normalized_participant_id,
+                StudyParticipant.participant_id == participant_id,
             )
         ).first()
         if not existing_association:
             session.add(
                 StudyParticipant(
                     study_id=study.id,
-                    participant_id=normalized_participant_id,
+                    participant_id=participant_id,
                 )
             )
 
     ensure_external_task_assignments(
         session,
         study,
-        study_payload.study_participant_ids,
+        participant_ids,
     )
 
     for language in validated_data["supported_languages"]:
@@ -5394,6 +5415,9 @@ async def admin_participant_management(
             selected_study.allow_unlisted_participants
         )
     template = templates.get_template("admin_participant_management.html")
+    # The client-side hint and validation use the same text as the server rule.
+    context_dict["participant_id_rule_text"] = PARTICIPANT_ID_RULE_TEXT
+    context_dict["participant_id_pattern"] = PARTICIPANT_ID_PATTERN
     html_content = template.render(context_dict)
     return HTMLResponse(content=html_content)
 
@@ -5469,6 +5493,11 @@ async def import_external_task_tokens(
         pid = (row.get("pid") or "").strip()
         if not pid:
             errors.append(f"Line {lineno}: empty pid")
+            continue
+        try:
+            require_valid_participant_id(pid, source="participant id")
+        except HTTPException as error:
+            errors.append(f"Line {lineno}: {error.detail}")
             continue
 
         participant = session.get(Participant, pid)
@@ -6840,6 +6869,61 @@ async def create_study_from_validated_uploads(
         }
 
 
+def apply_participant_assignment(
+    session: Session,
+    study: Study,
+    participant_ids: Sequence[str],
+    *,
+    dry_run: bool = False,
+) -> Dict[str, int]:
+    """Create missing participants and study links for already-validated ids.
+
+    Shared by the paste box and the file upload so both report the same counts;
+    ids are expected to be validated and de-duplicated by
+    ``participant_ids.normalize_participant_ids``.
+
+    @param session Database session.
+    @param study Study to assign the participants to.
+    @param participant_ids Valid participant ids, already de-duplicated.
+    @param dry_run When true, only count what would happen and write nothing.
+    @returns Counts keyed by ``created_and_assigned``,
+        ``already_existed_and_assigned`` and ``already_assigned``.
+    """
+    summary = {
+        "created_and_assigned": 0,
+        "already_existed_and_assigned": 0,
+        "already_assigned": 0,
+    }
+
+    for participant_id in participant_ids:
+        participant_created = session.get(Participant, participant_id) is None
+        if participant_created and not dry_run:
+            session.add(Participant(id=participant_id))
+
+        existing_association = session.exec(
+            select(StudyParticipant).where(
+                StudyParticipant.study_id == study.id,
+                StudyParticipant.participant_id == participant_id,
+            )
+        ).first()
+
+        if existing_association:
+            summary["already_assigned"] += 1
+            continue
+
+        if not dry_run:
+            session.add(
+                StudyParticipant(study_id=study.id, participant_id=participant_id)
+            )
+
+        if participant_created:
+            summary["created_and_assigned"] += 1
+        else:
+            summary["already_existed_and_assigned"] += 1
+
+    return summary
+
+
 @app.post("/api/admin/studies/{study_name_short}/assign-participants")
 async def assign_participants_to_study(
     study_name_short: str,
@@ -6863,14 +6947,10 @@ async def assign_participants_to_study(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    normalized_ids = []
-    seen = set()
-    for raw_id in payload.participant_ids:
-        participant_id = (raw_id or "").strip()
-        if not participant_id or participant_id in seen:
-            continue
-        seen.add(participant_id)
-        normalized_ids.append(participant_id)
+    try:
+        normalized_ids = normalize_participant_ids(payload.participant_ids)
+    except InvalidParticipantIdError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
     if not normalized_ids:
         raise HTTPException(status_code=400, detail="No valid participant IDs provided")
@@ -6891,37 +6971,9 @@ async def assign_participants_to_study(
                 },
             )
 
-    summary = {
-        "created_and_assigned": 0,
-        "already_existed_and_assigned": 0,
-        "already_assigned": 0,
-    }
-
-    for participant_id in normalized_ids:
-        participant = session.get(Participant, participant_id)
-        participant_created = False
-        if not participant:
-            participant = Participant(id=participant_id)
-            session.add(participant)
-            participant_created = True
-
-        existing_association = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-
-        if existing_association:
-            summary["already_assigned"] += 1
-            continue
-
-        session.add(StudyParticipant(study_id=study.id, participant_id=participant_id))
-
-        if participant_created:
-            summary["created_and_assigned"] += 1
-        else:
-            summary["already_existed_and_assigned"] += 1
+    summary = apply_participant_assignment(
+        session, study, normalized_ids, dry_run=False
+    )
 
     session.commit()
 
@@ -6956,6 +7008,116 @@ async def assign_participants_to_study(
             **summary,
             "total_after_assignment": total_after_assignment,
         },
+    }
+
+
+@app.post(
+    "/api/admin/studies/{study_name_short}/import-participants",
+    name="Import participants from a CSV/TSV file",
+)
+async def import_participants_from_file(
+    study_name_short: str,
+    file: UploadFile = File(...),
+    dry_run: bool = Query(False, description="Validate only, no database writes"),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Add the participants listed in an uploaded CSV or TSV file to a study.
+
+    The first line must be a header; the only column that is read is ``pid``
+    (matched case-insensitively). Every other column is ignored and reported, so
+    a roster can carry extra context without being rejected. Delimiter and
+    encoding are detected from the content: tab, semicolon and comma are
+    accepted, and a UTF-8 BOM is tolerated.
+
+    Invalid ids are an error for the whole file: a roster is a mailing list, and
+    silently dropping an invitee is worse than refusing the upload.
+
+    @param study_name_short Study short name.
+    @param file Uploaded CSV or TSV file.
+    @param dry_run Validate and count without writing.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
+    @returns Counts of what was (or would be) created, plus the ignored columns.
+    """
+    study = session.exec(
+        select(Study).where(Study.name_short == study_name_short)
+    ).first()
+    if not study:
+        raise HTTPException(
+            status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    try:
+        parsed = parse_delimited_upload(await file.read())
+        pid_header = find_header(parsed.headers, "pid")
+    except DelimitedUploadError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    participant_ids: List[str] = []
+    seen: set[str] = set()
+    duplicates_in_file = 0
+    errors: List[str] = []
+
+    for line_number, row in parsed.rows:
+        raw_pid = row.get(pid_header, "")
+        try:
+            participant_id = require_valid_participant_id(
+                raw_pid, source="participant id"
+            )
+        except HTTPException as error:
+            errors.append(f"Line {line_number}: {error.detail}")
+            continue
+        if participant_id in seen:
+            duplicates_in_file += 1
+            continue
+        seen.add(participant_id)
+        participant_ids.append(participant_id)
+
+    if errors:
+        shown = "; ".join(errors[:5])
+        hidden = len(errors) - 5
+        if hidden > 0:
+            shown += f"; and {hidden} more"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nothing was imported. {shown}",
+        )
+
+    ignored_columns = [header for header in parsed.headers if header != pid_header]
+
+    summary = apply_participant_assignment(
+        session, study, participant_ids, dry_run=dry_run
+    )
+    if not dry_run:
+        session.commit()
+
+    if not dry_run:
+        audit_admin_action(
+            current_admin,
+            (
+                f"imported {len(participant_ids)} participants for study "
+                f"'{study_name_short}' from file '{file.filename}' "
+                f"(format={parsed.format}, "
+                f"ignored_columns={len(ignored_columns)})"
+            ),
+        )
+
+    return {
+        "study_name_short": study_name_short,
+        "dry_run": dry_run,
+        "format": parsed.format,
+        "summary": {
+            **summary,
+            "rows_in_file": len(parsed.rows),
+            "duplicates_in_file": duplicates_in_file,
+        },
+        "columns": {
+            "used": [pid_header],
+            "ignored": ignored_columns,
+            "ignored_count": len(ignored_columns),
+        },
+        "errors": [],
     }
 
 
@@ -9270,6 +9432,7 @@ def copy_day_activities(
     guard a copy would silently overwrite data a researcher may already have
     exported.
     """
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -9410,6 +9573,7 @@ def submit_study(
     Once submitted the frontend redirects the participant to the thank-you
     page and prevents further diary access.
     """
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -9524,6 +9688,7 @@ def get_participant_day_activities(
     - If template_from_day_index is provided, uses that specific day as template source
     - Returns empty template if specified source day doesn't exist or has no activities
     """
+    require_valid_participant_id(participant_id)
     # Validate that at least one identifier is provided
     if day_label_name is None and day_label_index is None:
         raise HTTPException(
@@ -9800,6 +9965,8 @@ def copy_cross_user_template_activities(
     @param session Database session dependency.
     @returns Summary of copied and skipped days/activities.
     """
+    require_valid_participant_id(source_user, source="source participant id")
+    require_valid_participant_id(target_user, source="target participant id")
     from collections import defaultdict
 
     # Validate study exists
@@ -10401,6 +10568,7 @@ def confirm_external_task_callback(
     payload: ConfirmExternalTaskCallbackPayload,
     session: Session = Depends(get_session),
 ):
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -10512,6 +10680,7 @@ def launch_external_task(
     assigned_token: str = Query(""),
     session: Session = Depends(get_session),
 ):
+    require_valid_participant_id(participant_id)
     event_at = utc_now().isoformat()
     request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
     x_forwarded_for = request.headers.get("x-forwarded-for", "")
@@ -10735,6 +10904,7 @@ def complete_participant_instructions(
     payload: CompleteInstructionsPayload,
     session: Session = Depends(get_session),
 ):
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -10788,6 +10958,7 @@ async def set_participant_consent(
     payload: UpdateConsentRequest,
     session: Session = Depends(get_session),
 ):
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -10918,6 +11089,7 @@ def submit_participant_client_info(
     @returns Whether anything was stored, whether it changed, and when it was
         captured.
     """
+    require_valid_participant_id(participant_id)
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()

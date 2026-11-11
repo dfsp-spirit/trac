@@ -26,6 +26,7 @@ from ..formats import (
     UnsupportedSchemaVersionError,
     coerce_schema_version,
 )
+from ..participant_ids import InvalidParticipantIdError, normalize_participant_ids
 
 # Oldest studies_config schema this reader still parses. Currently only the
 # current shape is understood, so the floor equals the version above.
@@ -911,6 +912,23 @@ class CfgFileStudy(BaseModel):
             external_tasks=self.external_tasks,
         )
         return self
+
+    @field_validator("study_participant_ids")
+    @classmethod
+    def validate_study_participant_ids(cls, value: List[str]) -> List[str]:
+        """Apply the shared participant-id rule at config-read time.
+
+        A blank entry is an error here: a config is authored input, so a stray
+        comma should fail the import instead of silently dropping a participant.
+        """
+        try:
+            return normalize_participant_ids(
+                value,
+                source="participant ids in study_participant_ids",
+                reject_blank=True,
+            )
+        except InvalidParticipantIdError as error:
+            raise ValueError(str(error)) from error
 
     @model_validator(mode="after")
     def validate_footer_links(self) -> "CfgFileStudy":

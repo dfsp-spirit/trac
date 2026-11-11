@@ -252,6 +252,23 @@ defines a single study.
 | `study_participant_ids` | `[string]` | No | List of pre-assigned participant IDs (for invite-only studies). Default: `[]`. |
 | `allow_unlisted_participants` | boolean | No | If `true`, open study — any visitor can participate. If `false`, only IDs in `study_participant_ids` are allowed. Required to be `false` when using `external_tasks`. Default: `true`. |
 
+##### Participant ID format
+
+Every participant ID follows one rule, enforced by the server and shown in the
+admin UI:
+
+- ASCII letters, digits, `_` and `-` only (`asfj3432hasfADsaf`, `pending_01`,
+  `diary-01` are all valid)
+- at most 100 characters
+
+The rule applies everywhere a participant ID enters the system: the
+`study_participant_ids` list in a config, `tud studies import`, the admin paste
+box, the participant roster upload, the external-task token CSV, and the `pid` in
+a participant-facing URL. An invalid ID is rejected with a message naming the
+offending value; nothing is imported. This also means an invitation link for an
+open study cannot introduce an arbitrary string — both frontends generate
+16-digit numeric IDs, which fit the rule.
+
 #### Day Configuration
 
 | Field | Type | Required | Description |
@@ -595,7 +612,7 @@ All invitation URL parameters:
 | Parameter | Required | Description |
 |---|---|---|
 | `study_name` | Yes | The study short name (`name_short` in `studies_config.json`). |
-| `pid` | Yes¹ | The participant identifier. For invite-only studies this must match a pre-assigned participant; for open studies any value is accepted and a new participant record is created if needed. |
+| `pid` | Yes¹ | The participant identifier. For invite-only studies this must match a pre-assigned participant; for an open study an ID that does not exist yet creates a participant record. It must follow the participant ID format (ASCII letters, digits, `_`, `-`; at most 100 characters). |
 | `lang` | No | Language override as an ISO 639-1 two-letter code (e.g., `en`, `de`, `sv`). |
 | `template_user` | No | Participant ID of another user whose timeline entries should be copied as a starting point. |
 | `return_url` | No | A fully URL-encoded absolute URL to which the participant is redirected after completing the study (shown as a link on the thank-you page). |
@@ -644,6 +661,25 @@ to get links for the classic client instead.
 Because a `pid` link is what grants a participant access to a closed study, the
 file is generated on demand, marked non-cacheable, and the download is written to
 the admin audit log. Share it only through a private channel.
+
+#### Adding participants to a study
+
+**Participant Management** offers two ways to get participants into a study:
+
+- **Paste IDs**: type or paste them into the box, separated by new lines, commas,
+  semicolons or spaces.
+- **Upload a file**: upload a CSV or TSV with a header line. Only the `pid`
+  column is read; any other column is ignored (and counted in the result), so a
+  roster exported from another tool can be uploaded as-is. Tab, semicolon and
+  comma are detected from the content, so German Excel exports work without
+  conversion. Use **Validate file** to see the counts without writing anything.
+
+Both report how many participants were added, how many already existed, and how
+many rows were duplicates. A single invalid ID rejects the whole file - an
+invitation list silently missing an invitee would be worse than an error.
+
+The endpoint is `POST /api/admin/studies/<name_short>/import-participants`
+(multipart `file`, optional `?dry_run=true`).
 
 ---
 

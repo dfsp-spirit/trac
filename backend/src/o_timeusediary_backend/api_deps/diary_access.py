@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from ..database import get_session
 from ..models import Participant, Study, StudyParticipant
 from ..utils import coerce_utc_aware, utc_now
+from .participant_identity import require_valid_participant_id
 
 
 class DiaryContext(NamedTuple):
@@ -135,6 +136,8 @@ def get_readable_diary_context(
     A participant who has not started yet is not an error: an empty diary is
     returned, which is what the new frontend renders on first load.
     """
+    # One shared rule: an id that cannot be stored must not reach the diary.
+    require_valid_participant_id(participant_id)
     ensure_participant_allowed(session, study, participant_id)
     link = _participant_link(session, study, participant_id)
     if link is None:

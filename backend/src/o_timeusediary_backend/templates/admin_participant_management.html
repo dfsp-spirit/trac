@@ -201,11 +201,26 @@
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Add participants to study {{ selected_study.name_short }}</h2>
             <textarea id="participantIds" rows="6" placeholder="participant_001,participant_002,participant_003"></textarea>
-            <div class="hint">Use new lines, comma, semicolon, or spaces as separators.</div>
+            <div class="hint">Use new lines, comma, semicolon, or spaces as separators. {{ participant_id_rule_text }}</div>
             <div style="margin-top: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                 <button type="button" class="btn-primary" onclick="addParticipants()">Add participants</button>
                 <button type="button" class="btn-secondary" onclick="clearForm()">Clear</button>
                 <div id="addStatus" class="status"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 0.75rem;">Upload participants for study {{ selected_study.name_short }}</h2>
+            <div class="hint" style="margin-bottom: 0.5rem;">
+                Upload a CSV or TSV file. The first line must be a header; only the <code>pid</code> column is used,
+                every other column is ignored. {{ participant_id_rule_text }}
+            </div>
+            <input type="file" id="participantsFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" />
+            <div class="hint" id="participantsFileHint">No file selected.</div>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                <button id="validateParticipantsFileBtn" class="btn-secondary" type="button" disabled>Validate file</button>
+                <button id="uploadParticipantsBtn" class="btn-primary" type="button" disabled>Add participants from file</button>
+                <div id="uploadParticipantsStatus" class="status"></div>
             </div>
         </div>
 
@@ -432,6 +447,16 @@
                 .filter(id => id.length > 0);
         }
 
+        // Same rule as participant_ids.py on the server; the server stays
+        // authoritative, this only saves a round trip.
+        const PARTICIPANT_ID_RE = new RegExp(`^(?:{{ participant_id_pattern }})$`);
+        const PARTICIPANT_ID_RULE = {{ participant_id_rule_text|tojson }};
+
+        function firstInvalidParticipantId(ids) {
+            const invalid = ids.find(id => !PARTICIPANT_ID_RE.test(id));
+            return invalid === undefined ? null : invalid;
+        }
+
         document.getElementById('loadParticipantsBtn')?.addEventListener('click', () => {
             const select = document.getElementById('studySelect');
             const studyName = select?.value;
@@ -457,6 +482,12 @@
             }
 
             const status = document.getElementById('addStatus');
+            const invalidId = firstInvalidParticipantId(participantIds);
+            if (invalidId !== null) {
+                setStatus(status, `Invalid participant ID '${invalidId}'. ${PARTICIPANT_ID_RULE}`, 'error');
+                return;
+            }
+
             status.textContent = 'Adding participants...';
             status.style.color = '#4f46e5';
 
@@ -836,6 +867,82 @@
                     }, 800);
                 }catch(err){ statusEl.textContent = err.message; statusEl.style.color = '#dc2626'; commitBtn.disabled = false; }
             });
+        })();
+
+        // --- Upload participants from a CSV/TSV file ---
+        (function() {
+            const fileInput = document.getElementById('participantsFile');
+            const hint = document.getElementById('participantsFileHint');
+            const validateBtn = document.getElementById('validateParticipantsFileBtn');
+            const uploadBtn = document.getElementById('uploadParticipantsBtn');
+            const statusEl = document.getElementById('uploadParticipantsStatus');
+            if (!fileInput || !validateBtn || !uploadBtn) return;
+
+            function describeResult(body, dryRun) {
+                const s = body.summary || {};
+                const c = body.columns || {};
+                const imported = (s.created_and_assigned || 0) + (s.already_existed_and_assigned || 0);
+                const ignored = c.ignored_count
+                    ? `${c.ignored_count} (${(c.ignored || []).join(', ')})`
+                    : 'none';
+                return `${dryRun ? 'File is valid' : 'Imported'}: ${imported} participants `
+                    + `(${s.created_and_assigned || 0} new, ${s.already_existed_and_assigned || 0} already in TRAC, `
+                    + `${s.already_assigned || 0} already in study). `
+                    + `Rows in file: ${s.rows_in_file || 0}; duplicates in file: ${s.duplicates_in_file || 0}. `
+                    + `Columns used: ${(c.used || []).join(', ') || '-'}; ignored: ${ignored}.`;
+            }
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files && fileInput.files[0];
+                hint.textContent = file ? `Selected file: ${file.name}` : 'No file selected.';
+                validateBtn.disabled = !file;
+                uploadBtn.disabled = !file;
+                setStatus(statusEl, '', 'info');
+            });
+
+            async function send(dryRun) {
+                const select = document.getElementById('studySelect');
+                const studyName = select?.value;
+                if (!studyName) { alert('Please select a study first.'); return; }
+                const file = fileInput.files && fileInput.files[0];
+                if (!file) { alert('Select a file first.'); return; }
+
+                validateBtn.disabled = true;
+                uploadBtn.disabled = true;
+                setStatus(statusEl, dryRun ? 'Checking file...' : 'Uploading...', 'info');
+
+                try {
+                    const form = new FormData();
+                    form.append('file', file);
+                    const url = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}`
+                        + `/import-participants?dry_run=${dryRun ? 'true' : 'false'}`;
+                    const resp = await fetch(url, { method: 'POST', credentials: 'same-origin', body: form });
+                    const body = await resp.json().catch(() => ({}));
+                    if (!resp.ok) {
+                        setStatus(statusEl, body.detail || 'Import failed', 'error');
+                        validateBtn.disabled = false;
+                        uploadBtn.disabled = false;
+                        return;
+                    }
+
+                    setStatus(statusEl, describeResult(body, dryRun), 'ok');
+                    if (dryRun) {
+                        validateBtn.disabled = false;
+                        uploadBtn.disabled = false;
+                        return;
+                    }
+                    setTimeout(() => {
+                        window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
+                    }, 2500);
+                } catch (err) {
+                    setStatus(statusEl, `Upload failed: ${err.message}`, 'error');
+                    validateBtn.disabled = false;
+                    uploadBtn.disabled = false;
+                }
+            }
+
+            validateBtn.addEventListener('click', () => send(true));
+            uploadBtn.addEventListener('click', () => send(false));
         })();
 
         // --- Generate missing assigned tokens (closed studies) ---

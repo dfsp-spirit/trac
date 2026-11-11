@@ -111,6 +111,18 @@ def test_validate_import_payload_rejects_both_activities_sources():
         _validate_import_study_payload(study_payload)
 
 
+def test_validate_import_payload_rejects_invalid_participant_ids():
+    payload = _base_payload()
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["ok_id", "bad id"]
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="Invalid participant ids"):
+        _validate_import_study_payload(study_payload)
+
+
 def test_validate_import_payload_accepts_activities_json_files_only(tmp_path):
     activities_file = tmp_path / "activities_test.en.json"
     activities_file.write_text(

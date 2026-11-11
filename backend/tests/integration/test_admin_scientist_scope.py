@@ -743,6 +743,7 @@ STUDY_SCOPED_ADMIN_ENDPOINTS = [
     ("POST", "/api/admin/studies/{study}/owners/{username}", None),
     ("DELETE", "/api/admin/studies/{study}/owners/{username}", None),
     ("POST", "/api/admin/studies/{study}/import-external-tokens", "upload"),
+    ("POST", "/api/admin/studies/{study}/import-participants", "upload"),
     ("POST", "/api/admin/studies/{study}/import-pool-tokens", "upload"),
     ("POST", "/api/admin/studies/{study}/generate-tokens", None),
     (

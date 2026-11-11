@@ -30,6 +30,7 @@ from .parsers.activities_config import (
     get_activity_codes_set,
     get_all_activity_codes,
 )
+from .participant_ids import normalize_participant_ids
 import logging
 from pathlib import Path
 import json
@@ -221,16 +222,7 @@ def ensure_external_task_assignments(
     if study.allow_unlisted_participants:
         return
 
-    normalized_participant_ids: list[str] = []
-    seen_participant_ids: set[str] = set()
-    for participant_id in participant_ids_in_order:
-        normalized_participant_id = (participant_id or "").strip()
-        if not normalized_participant_id:
-            continue
-        if normalized_participant_id in seen_participant_ids:
-            continue
-        seen_participant_ids.add(normalized_participant_id)
-        normalized_participant_ids.append(normalized_participant_id)
+    normalized_participant_ids = normalize_participant_ids(participant_ids_in_order)
 
     if not normalized_participant_ids:
         return

@@ -101,6 +101,28 @@ def test_load_studies_config_from_json(tmp_path):
     assert sorted(config.studies[0].get_supported_languages()) == ["en", "sv"]
 
 
+def test_load_studies_config_rejects_an_invalid_participant_id(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["study_participant_ids"] = ["p1", "not a pid"]
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid participant ids"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_a_blank_participant_id(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["study_participant_ids"] = ["p1", " "]
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="empty"):
+        load_studies_config(str(config_file))
+
+
 def test_load_studies_config_accepts_external_tasks(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()
