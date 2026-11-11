@@ -227,12 +227,16 @@ defines a single study.
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | **Yes** | Human-readable full study name, e.g., `"Default Weekly Study for Adults"`. |
-| `name_short` | string | **Yes** | Technical short name used in URLs and API calls. Must contain only lowercase letters, digits, and underscores (`[a-z0-9_]+`), 2–50 characters. Example: `"default"`. |
+| `name_short` | string | **Yes** | Technical short name used in URLs and API calls. Must contain only lowercase letters, digits, and underscores (`[a-z0-9_]+`), 2–50 characters. Surrounding whitespace is trimmed. Example: `"default"`. |
 | `description` | string or `{lang: text}` | No | Study description. Can be a plain string (legacy, treated as the default language) or a localized map. |
 
 > **Note on study identity**: `name_short` is the study identifier and has to be
 > unique — API paths, participant links, admin selectors and `tud studies import`
-> all use it. The long `name` is only a display label and **may** be duplicated:
+> all use it. The rule above (lowercase letters, digits, `_`; 2–50 characters) is
+> enforced by the CLI import, the admin import and the admin *rename* action;
+> because the identifier is embedded in invitation links and external-task return
+> URLs, renaming it changes those URLs (the admin rename form warns about this).
+> The long `name` is only a display label and **may** be duplicated:
 > the admin interface still tells you when another study uses the same name (so
 > copied studies stay tellable apart) but it does not block creation. Creating a
 > study through the admin interface (*File Validation* → *Full study package*)

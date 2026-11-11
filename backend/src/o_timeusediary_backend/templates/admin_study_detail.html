@@ -343,10 +343,11 @@
                         </div>
                         <div class="window-control-field">
                             <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
-                            <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;" disabled>
+                            <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;" title="{{ study_name_short_rule_text }}" disabled>
                         </div>
                         <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Names</button>
                     </div>
+                    <p class="hint">{{ study_name_short_rule_text }}</p>
                     <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
                 </div>
 
@@ -465,6 +466,10 @@
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
         const STUDY_NAME_SHORT = "{{ study.name_short }}";
+        // Same rule as study_names.py on the server; the server stays
+        // authoritative, this only saves a round trip.
+        const STUDY_NAME_SHORT_RE = new RegExp(`^(?:{{ study_name_short_pattern }})$`);
+        const STUDY_NAME_SHORT_RULE = {{ study_name_short_rule_text|tojson }};
         const CURRENT_ADMIN = {{ current_admin | tojson }};
         const IS_SUPER_ADMIN = {{ is_super_admin | tojson }};
         const SCIENTIST_NAMES = {{ scientist_names | tojson }};
@@ -864,6 +869,11 @@
 
             if (!newName && !newNameShort) {
                 showRenameStatus(studyId, 'At least one field must be provided.', true);
+                return;
+            }
+
+            if (newNameShort && !STUDY_NAME_SHORT_RE.test(newNameShort)) {
+                showRenameStatus(studyId, `Invalid short name '${newNameShort}'. ${STUDY_NAME_SHORT_RULE}`, true);
                 return;
             }
 

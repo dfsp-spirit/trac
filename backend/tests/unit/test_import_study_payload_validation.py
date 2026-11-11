@@ -123,6 +123,31 @@ def test_validate_import_payload_rejects_invalid_participant_ids():
         _validate_import_study_payload(study_payload)
 
 
+@pytest.mark.parametrize(
+    "name_short", ["", "a", "Demo", "demo-name", "demo name", "a" * 51]
+)
+def test_validate_import_payload_rejects_an_invalid_name_short(name_short):
+    payload = _base_payload()
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["name_short"] = name_short
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="Invalid name_short of study"):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_normalizes_name_short_whitespace():
+    payload = _base_payload()
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["name_short"] = "  demo_study  "
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+    _validate_import_study_payload(study_payload)
+
+    assert study_payload.name_short == "demo_study"
+
+
 def test_validate_import_payload_accepts_activities_json_files_only(tmp_path):
     activities_file = tmp_path / "activities_test.en.json"
     activities_file.write_text(

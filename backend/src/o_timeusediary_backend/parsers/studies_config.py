@@ -27,6 +27,7 @@ from ..formats import (
     coerce_schema_version,
 )
 from ..participant_ids import InvalidParticipantIdError, normalize_participant_ids
+from ..study_names import validate_study_name_short
 
 # Oldest studies_config schema this reader still parses. Currently only the
 # current shape is understood, so the floor equals the version above.
@@ -608,29 +609,9 @@ class CfgFileStudy(BaseModel):
 
     @model_validator(mode="after")
     def validate_name_short(self) -> "CfgFileStudy":
-        if not self.name_short:
-            raise ValueError(f"Study '{self.name}': name_short cannot be empty")
-
-        # Check for URL-friendly characters only: lowercase a-z, numbers 0-9, underscore
-        if not re.match(r"^[a-z0-9_]+$", self.name_short):
-            raise ValueError(
-                f"Study '{self.name_short}': "
-                f'name_short "{self.name_short}" can only contain lowercase letters (a-z), numbers (0-9), and underscores (_). '
-                f"No uppercase letters, spaces, hyphens, or special characters allowed."
-            )
-
-        # Check length
-        if len(self.name_short) < 2:
-            raise ValueError(
-                f"Study '{self.name_short}': "
-                f'name_short "{self.name_short}" must be at least 2 characters long'
-            )
-        if len(self.name_short) > 50:
-            raise ValueError(
-                f"Study '{self.name_short}': "
-                f'name_short "{self.name_short}" cannot exceed 50 characters'
-            )
-
+        self.name_short = validate_study_name_short(
+            self.name_short, source=f"name_short of study '{self.name}'"
+        )
         return self
 
     @model_validator(mode="after")

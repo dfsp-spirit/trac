@@ -123,6 +123,32 @@ def test_load_studies_config_rejects_a_blank_participant_id(tmp_path):
         load_studies_config(str(config_file))
 
 
+@pytest.mark.parametrize(
+    "bad_name_short", ["", "a", "Demo", "demo-study", "demo study", "a" * 51]
+)
+def test_load_studies_config_rejects_an_invalid_name_short(tmp_path, bad_name_short):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["name_short"] = bad_name_short
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid name_short of study"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_strips_name_short_whitespace(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["name_short"] = "  demo_study  "
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].name_short == "demo_study"
+
+
 def test_load_studies_config_accepts_external_tasks(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()

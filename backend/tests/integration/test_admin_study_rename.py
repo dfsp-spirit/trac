@@ -361,3 +361,53 @@ async def test_copy_day_empty_source(created_studies_for_cleanup):
         )
         assert response.status_code == 404
         assert "no activities" in response.json()["detail"].lower()
+
+
+@pytest.mark.parametrize(
+    "bad_name_short",
+    ["", " ", "a", "Demo", "demo-name", "demo name", "demo/study", "a" * 51],
+)
+@pytest.mark.asyncio
+async def test_admin_rename_rejects_an_invalid_name_short(
+    created_studies_for_cleanup, bad_name_short
+):
+    """The short name is the URL key, so it has to satisfy the shared rule."""
+    study_short = f"it_rnv_{uuid.uuid4().hex[:8]}"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(client, study_short, f"Invalid Rename Study {study_short}")
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_short}/rename",
+            json={"name_short": bad_name_short},
+            auth=ADMIN_AUTH,
+        )
+        assert response.status_code == 400, response.text
+        assert "Invalid study name_short" in response.json()["detail"]
+
+        # Nothing changed: the original identifier still resolves.
+        unchanged = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_short}/available-activities-summary",
+            auth=ADMIN_AUTH,
+        )
+        assert unchanged.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_admin_rename_strips_surrounding_whitespace(created_studies_for_cleanup):
+    study_short = f"it_rnw_{uuid.uuid4().hex[:8]}"
+    trimmed_short = f"{study_short}_trimmed"
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(
+            client, study_short, f"Whitespace Rename Study {study_short}"
+        )
+        created_studies_for_cleanup.extend([study_short, trimmed_short])
+
+        response = await client.patch(
+            f"{BASE_URL}/api/admin/studies/{study_short}/rename",
+            json={"name_short": f"  {trimmed_short}  "},
+            auth=ADMIN_AUTH,
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["name_short"] == trimmed_short

@@ -145,11 +145,17 @@ from .utils import (
 from . import stages
 from .api_deps.diary_access import study_availability
 from .api_deps.participant_identity import require_valid_participant_id
+from .api_deps.study_identity import require_valid_study_name_short
 from .participant_ids import (
     PARTICIPANT_ID_PATTERN,
     PARTICIPANT_ID_RULE_TEXT,
     InvalidParticipantIdError,
     normalize_participant_ids,
+)
+from .study_names import (
+    STUDY_NAME_SHORT_PATTERN,
+    STUDY_NAME_SHORT_RULE_TEXT,
+    validate_study_name_short,
 )
 from .tabular_files import (
     DelimitedUploadError,
@@ -2743,6 +2749,9 @@ async def admin_study_detail(
         "is_super_admin": identity.is_super_admin,
         "current_admin_role": identity.role,
         "current_time": utc_now(),
+        # Rename form hint, taken from the same rule the server enforces.
+        "study_name_short_rule_text": STUDY_NAME_SHORT_RULE_TEXT,
+        "study_name_short_pattern": STUDY_NAME_SHORT_PATTERN,
     }
     template = templates.get_template("admin_study_detail.html")
     html_content = template.render(context_dict)
@@ -3106,6 +3115,13 @@ def _create_available_catalog_from_validated_activities(
 
 
 def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> Dict:
+    # Normalized in place: the creation path reads name_short from this payload,
+    # so a value like " demo " must not survive as-is.
+    study_payload.name_short = validate_study_name_short(
+        study_payload.name_short,
+        source=f"name_short of study '{study_payload.name}'",
+    )
+
     if study_payload.data_collection_start >= study_payload.data_collection_end:
         raise ValueError(
             "data_collection_start must be earlier than data_collection_end"
@@ -4402,6 +4418,9 @@ async def rename_study(
 
     new_name = payload.name
     new_name_short = payload.name_short
+
+    if new_name_short is not None:
+        new_name_short = require_valid_study_name_short(new_name_short)
 
     if new_name is None and new_name_short is None:
         raise HTTPException(
