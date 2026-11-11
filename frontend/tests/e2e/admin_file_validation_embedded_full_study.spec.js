@@ -123,7 +123,7 @@ test('admin study setup validates and creates a selected embedded study', async 
   await expect(success).toContainText(`Study '${selectedStudyNameShort}' was created successfully.`);
   await expect(page.locator('#successInvitesLink')).toHaveAttribute(
     'href',
-    new RegExp(`/api/admin/studies/${selectedStudyNameShort}/export-invitation-links-csv$`)
+    new RegExp(`/api/admin/studies/${selectedStudyNameShort}/export-invitation-links\\?format=csv$`)
   );
 
   // Remove the study again so repeated runs do not pile up test studies.

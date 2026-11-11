@@ -627,8 +627,9 @@ https://your.domain.example.com/report/index.html?study_name=default&pid=c303282
 #### Downloading invitation links for a whole study
 
 You do not have to assemble the list by hand. Open **Participant Management** in
-the admin panel, select the study and press **Invitation links CSV**. The
-download has one row per participant and exactly two columns:
+the admin panel, select the study and press **Invitation links: CSV** (or
+**TSV** for a tab-separated download). The download has one row per participant
+and exactly two columns:
 
 | Column | Content |
 |---|---|
@@ -637,8 +638,8 @@ download has one row per participant and exactly two columns:
 
 Links point into the rewritten frontend (`TUD_FRONTEND_NEW_URL`, for example
 `.../index.html?study=<name_short>&pid=<pid>`). Add `frontend=legacy` as a query
-parameter on `/api/admin/studies/<name_short>/export-invitation-links-csv` to get
-links for the classic client instead.
+parameter on `/api/admin/studies/<name_short>/export-invitation-links?format=csv`
+to get links for the classic client instead.
 
 Because a `pid` link is what grants a participant access to a closed study, the
 file is generated on demand, marked non-cacheable, and the download is written to

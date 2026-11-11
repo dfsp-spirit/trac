@@ -12,7 +12,7 @@ Three format families are versioned, each with a single integer:
 ``EXPORT_SCHEMA_VERSION``
     Everything the admin exports for analysis or archiving: the JSON envelope of
     ``/api/admin/export/...`` and ``/api/admin/{studies,participants,activities}``,
-    and the CSV variants of those (as a response header, never in-band).
+    and the CSV and TSV variants of those (as a response header, never in-band).
 
 Versions are integers, not semantic versions: what matters is whether a reader
 can parse the file, and a format has no meaningful "patch" level. A format that
@@ -43,8 +43,8 @@ STUDIES_CONFIG_SCHEMA_VERSION = 1
 ACTIVITIES_SCHEMA_VERSION = 1
 EXPORT_SCHEMA_VERSION = 1
 
-# Response header that carries the export schema version for CSV downloads,
-# which cannot hold it in-band without breaking naive readers.
+# Response header that carries the export schema version for delimited-text
+# downloads, which cannot hold it in-band without breaking naive readers.
 EXPORT_SCHEMA_VERSION_HEADER = "X-Export-Schema-Version"
 
 FORMAT_LABELS = {

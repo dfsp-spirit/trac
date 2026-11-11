@@ -1,5 +1,7 @@
+import csv
 import os
 import uuid
+from io import StringIO
 
 import httpx
 import pytest
@@ -207,7 +209,7 @@ async def test_admin_generate_tokens_no_external_tasks():
 
 
 @pytest.mark.asyncio
-async def test_admin_export_tokens_csv_includes_participants():
+async def test_admin_export_tokens_includes_participants():
     """Export tokens CSV for a study with external tasks and verify content."""
     study_name_short = "adult_pilot_de2"
     pid = f"it_exp_{uuid.uuid4().hex[:8]}"
@@ -226,7 +228,7 @@ async def test_admin_export_tokens_csv_includes_participants():
 
         # Export CSV
         csv_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens",
             auth=ADMIN_AUTH,
         )
         assert csv_resp.status_code == 200
@@ -242,13 +244,54 @@ async def test_admin_export_tokens_csv_includes_participants():
 
 
 @pytest.mark.asyncio
-async def test_admin_export_tokens_csv_no_external_tasks():
+async def test_admin_export_tokens_can_be_downloaded_as_tsv():
+    """The same token table is available tab-separated, for spreadsheet import."""
+    study_name_short = "adult_pilot_de2"
+    pid = f"it_exp_tsv_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/assign-participants",
+            json={"participant_ids": [pid]},
+            auth=ADMIN_AUTH,
+        )
+        await client.post(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/generate-tokens",
+            auth=ADMIN_AUTH,
+        )
+
+        response = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens",
+            params={"format": "tsv"},
+            auth=ADMIN_AUTH,
+        )
+
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/tab-separated-values")
+    assert (
+        f"{study_name_short}_participants_tokens.tsv"
+        in response.headers["content-disposition"]
+    )
+
+    rows = list(csv.reader(StringIO(response.text), delimiter="\t"))
+    header = rows[0]
+    assert header[0] == "pid"
+    assert "depression_survey" in header
+    assert "payment_info" in header
+
+    exported = {row[0]: row for row in rows[1:]}
+    assert pid in exported
+    assert len(exported[pid]) == len(header)
+
+
+@pytest.mark.asyncio
+async def test_admin_export_tokens_no_external_tasks():
     """Export CSV for a study without external tasks — only pid column."""
     study_name_short = "default"
 
     async with httpx.AsyncClient() as client:
         csv_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens",
             auth=ADMIN_AUTH,
         )
         assert csv_resp.status_code == 200
@@ -261,11 +304,11 @@ async def test_admin_export_tokens_csv_no_external_tasks():
 
 
 @pytest.mark.asyncio
-async def test_admin_export_tokens_csv_unauthorized():
+async def test_admin_export_tokens_unauthorized():
     """CSV export should require authentication."""
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/default/export-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/default/export-tokens",
         )
         assert resp.status_code == 401
 
@@ -301,7 +344,7 @@ async def test_pool_tokens_import_csv_adds_tokens():
 
         # Verify tokens are now in the pool by exporting and checking content
         export_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens",
             auth=ADMIN_AUTH,
         )
         assert export_resp.status_code == 200
@@ -324,7 +367,7 @@ async def test_pool_tokens_import_csv_adds_tokens():
 
         # Verify tokens are gone
         export_resp2 = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens",
             auth=ADMIN_AUTH,
         )
         assert export_resp2.status_code == 200
@@ -406,7 +449,7 @@ async def test_pool_tokens_generate_and_export():
     async with httpx.AsyncClient() as client:
         # Capture pool tokens BEFORE generating, so we only clean up new ones
         pre_export = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens",
             auth=ADMIN_AUTH,
         )
         assert pre_export.status_code == 200
@@ -432,7 +475,7 @@ async def test_pool_tokens_generate_and_export():
 
         # Export pool tokens CSV
         export_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens",
             auth=ADMIN_AUTH,
         )
         assert export_resp.status_code == 200
@@ -468,13 +511,13 @@ async def test_pool_tokens_generate_and_export():
 
 
 @pytest.mark.asyncio
-async def test_pool_tokens_export_csv_no_pid():
+async def test_pool_tokens_export_has_no_pid_column():
     """Pool token CSV export must not contain a pid column."""
     study_name_short = "adult_pilot_de3"
 
     async with httpx.AsyncClient() as client:
         export_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-pool-tokens",
             auth=ADMIN_AUTH,
         )
         assert export_resp.status_code == 200
@@ -678,7 +721,7 @@ async def test_delete_multiple_participants_cascades_token_assignments():
         assert gen_resp.status_code == 200
 
         csv_resp = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens",
             auth=ADMIN_AUTH,
         )
         assert pid in csv_resp.text
@@ -694,7 +737,7 @@ async def test_delete_multiple_participants_cascades_token_assignments():
         assert data["deleted_assignments"] >= 1
 
         csv_resp2 = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens-csv",
+            f"{BASE_URL}/api/admin/studies/{study_name_short}/export-tokens",
             auth=ADMIN_AUTH,
         )
         assert pid not in csv_resp2.text
@@ -776,11 +819,13 @@ async def test_participant_table_is_filtered_and_paginated_in_the_database():
             assert empty_page.status_code == 200
             assert "No participant ID contains" in empty_page.text
             # The invitation export covers the whole study, so it survives a
-            # filter that matches nothing.
-            assert (
-                f"/api/admin/studies/{study_name_short}/export-invitation-links-csv"
-                in empty_page.text
-            )
+            # filter that matches nothing. Both download formats are offered.
+            for download_format in ("csv", "tsv"):
+                assert (
+                    f"/api/admin/studies/{study_name_short}"
+                    f"/export-invitation-links?format={download_format}"
+                    in empty_page.text
+                )
         finally:
             for participant_id in participant_ids:
                 await client.delete(

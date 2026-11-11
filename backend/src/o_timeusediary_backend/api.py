@@ -21,7 +21,18 @@ from fastapi.staticfiles import StaticFiles
 import logging
 import string
 import uuid
-from typing import Dict, List, Optional, Sequence, Set, Tuple, Any, Union
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Union,
+)
 from datetime import date, datetime, timedelta, timezone
 import csv
 import io
@@ -139,6 +150,17 @@ from .admin_directory import build_admin_directory
 setup_logging()
 logger = logging.getLogger(__name__)
 admin_audit_logger = get_admin_audit_logger()
+
+# Delimited-text flavours an admin download may be requested in. Both are
+# tabular, so both carry the export schema version in a header rather than
+# in-band.
+ExportFormat = Literal["csv", "tsv"]
+
+# format -> (delimiter, media type, filename extension)
+EXPORT_DIALECTS: Dict[str, Tuple[str, str, str]] = {
+    "csv": (",", "text/csv", "csv"),
+    "tsv": ("\t", "text/tab-separated-values", "tsv"),
+}
 
 
 def audit_admin_action(admin_username: str, action_text: str) -> None:
@@ -6012,19 +6034,27 @@ async def get_pool_status(
 
 
 @app.get(
-    "/api/admin/studies/{study_name_short}/export-tokens-csv",
-    name="Export participants and tokens as CSV",
+    "/api/admin/studies/{study_name_short}/export-tokens",
+    name="Export participants and tokens",
 )
-async def export_tokens_csv(
+async def export_tokens(
     study_name_short: str,
+    format: ExportFormat = Query(
+        "csv", description="Delimited-text format: 'csv' or 'tsv'"
+    ),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Export participants and their external-task tokens as a CSV file.
+    """Export participants and their external-task tokens as a table.
 
-    For studies with external tasks: returns CSV with header `pid` and one column
-    per external task (labeled by task_key). For studies without external tasks:
-    returns a single-column CSV with just `pid`.
+    For studies with external tasks: returns a table with header `pid` and one
+    column per external task (labeled by task_key). For studies without external
+    tasks: returns a single-column table with just `pid`.
+
+    @param study_name_short Short name of the study to export.
+    @param format Delimited-text format, `csv` (default) or `tsv`.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -6063,40 +6093,31 @@ async def export_tokens_csv(
             if key:
                 token_lookup[(key, a.participant_id)] = a.assigned_token
 
-    # Build CSV in-memory
-    output = StringIO()
-    writer = csv.writer(output)
-
-    header = ["pid"] + task_keys
-    writer.writerow(header)
-
-    for p in participants:
-        row = [p.id]
-        for key in task_keys:
-            row.append(token_lookup.get((key, p.id), ""))
-        writer.writerow(row)
-
-    csv_content = output.getvalue()
-    filename = f"{study_name_short}_participants_tokens.csv"
+    rows = [
+        [p.id] + [token_lookup.get((key, p.id), "") for key in task_keys]
+        for p in participants
+    ]
 
     audit_admin_action(
         current_admin,
-        f"exported participant tokens CSV for study '{study_name_short}' "
-        f"({len(participants)} participants, {len(task_keys)} task columns)",
+        f"exported participant tokens {format.upper()} for study "
+        f"'{study_name_short}' ({len(participants)} participants, "
+        f"{len(task_keys)} task columns)",
     )
 
-    return StreamingResponse(
-        iter([csv_content]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    return tabular_export(
+        ["pid"] + task_keys,
+        rows,
+        filename_base=f"{study_name_short}_participants_tokens",
+        format=format,
     )
 
 
 @app.get(
-    "/api/admin/studies/{study_name_short}/export-invitation-links-csv",
-    name="Export participant invitation links as CSV",
+    "/api/admin/studies/{study_name_short}/export-invitation-links",
+    name="Export participant invitation links",
 )
-async def export_participant_invitation_links_csv(
+async def export_participant_invitation_links(
     study_name_short: str,
     frontend: str = Query(
         "new",
@@ -6105,10 +6126,13 @@ async def export_participant_invitation_links_csv(
             "(default) or 'legacy' for the classic client."
         ),
     ),
+    format: ExportFormat = Query(
+        "csv", description="Delimited-text format: 'csv' or 'tsv'"
+    ),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Export one CSV row per study participant with pid and invitation link.
+    """Export one table row per study participant with pid and invitation link.
 
     The whole list is returned in one file, unpaginated: the recipients are a
     mailing list, so a partial download would silently drop invitees.
@@ -6120,9 +6144,10 @@ async def export_participant_invitation_links_csv(
 
     @param study_name_short Short name of the study to export.
     @param frontend Which participant frontend the links point to.
+    @param format Delimited-text format, `csv` (default) or `tsv`.
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
-    @returns A CSV download with columns `pid` and `invitation_link`.
+    @returns A download with columns `pid` and `invitation_link`.
     """
     normalized_frontend = (frontend or "new").strip().lower()
     if normalized_frontend not in {"new", "legacy"}:
@@ -6154,34 +6179,25 @@ async def export_participant_invitation_links_csv(
 
     # Written explicitly instead of via export_csv(), which sorts column names
     # and would put the link before the pid.
-    output = StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["pid", "invitation_link"])
-    for participant in participants:
-        writer.writerow(
-            [
-                participant.id,
-                build_invitation_link(study.name_short, participant.id),
-            ]
-        )
-
-    csv_content = output.getvalue()
-    filename = f"{study_name_short}_invitation_links.csv"
+    rows = [
+        [participant.id, build_invitation_link(study.name_short, participant.id)]
+        for participant in participants
+    ]
 
     audit_admin_action(
         current_admin,
-        f"exported participant invitation links CSV for study '{study_name_short}' "
-        f"(frontend={normalized_frontend}, {len(participants)} participants)",
+        f"exported participant invitation links {format.upper()} for study "
+        f"'{study_name_short}' (frontend={normalized_frontend}, "
+        f"{len(participants)} participants)",
     )
 
-    return StreamingResponse(
-        iter([csv_content]),
-        media_type="text/csv",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            # The pid links are participant credentials; never let them be cached.
-            "Cache-Control": "no-store",
-        },
+    return tabular_export(
+        ["pid", "invitation_link"],
+        rows,
+        filename_base=f"{study_name_short}_invitation_links",
+        format=format,
+        # The pid links are participant credentials; never let them be cached.
+        no_store=True,
     )
 
 
@@ -6262,19 +6278,27 @@ async def generate_pool_tokens_for_study(
 
 
 @app.get(
-    "/api/admin/studies/{study_name_short}/export-pool-tokens-csv",
-    name="Export pool tokens as CSV",
+    "/api/admin/studies/{study_name_short}/export-pool-tokens",
+    name="Export pool tokens",
 )
-async def export_pool_tokens_csv(
+async def export_pool_tokens(
     study_name_short: str,
+    format: ExportFormat = Query(
+        "csv", description="Delimited-text format: 'csv' or 'tsv'"
+    ),
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Export pool tokens as CSV (no pid column — pool tokens are unassigned).
+    """Export pool tokens as a table (no pid column — pool tokens are unassigned).
 
-    Returns CSV with one column per external task (labeled by task_key). Each row
-    contains one token per task column, aligned by index. Shorter pools are padded
-    with empty cells.
+    Returns one column per external task (labeled by task_key). Each row contains
+    one token per task column, aligned by index. Shorter pools are padded with
+    empty cells.
+
+    @param study_name_short Short name of the study to export.
+    @param format Delimited-text format, `csv` (default) or `tsv`.
+    @param current_admin Authenticated admin username from Basic Auth dependency.
+    @param session Database session dependency.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -6293,34 +6317,27 @@ async def export_pool_tokens_csv(
     task_keys = [t.task_key for t in external_tasks]
     task_pools = [t.tokens or [] for t in external_tasks]
 
-    output = StringIO()
-    writer = csv.writer(output)
-
-    # Header row: task_key columns only (no pid)
-    writer.writerow(task_keys)
-
     # Determine the longest pool
     max_rows = max((len(pool) for pool in task_pools), default=0)
-    for i in range(max_rows):
-        row = [
+    rows = [
+        [
             task_pools[j][i] if i < len(task_pools[j]) else ""
             for j in range(len(task_pools))
         ]
-        writer.writerow(row)
-
-    csv_content = output.getvalue()
-    filename = f"{study_name_short}_pool_tokens.csv"
+        for i in range(max_rows)
+    ]
 
     audit_admin_action(
         current_admin,
-        f"exported pool tokens CSV for study '{study_name_short}' "
+        f"exported pool tokens {format.upper()} for study '{study_name_short}' "
         f"({len(task_keys)} task columns, up to {max_rows} rows)",
     )
 
-    return StreamingResponse(
-        iter([csv_content]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    return tabular_export(
+        task_keys,
+        rows,
+        filename_base=f"{study_name_short}_pool_tokens",
+        format=format,
     )
 
 
@@ -9089,6 +9106,56 @@ def _client_info_export_columns(
     return columns
 
 
+def tabular_export(
+    header: Sequence[Any],
+    rows: Iterable[Sequence[Any]],
+    *,
+    filename_base: str,
+    format: ExportFormat = "csv",
+    write_header: bool = True,
+    no_store: bool = False,
+) -> Response:
+    """Render a table as a CSV or TSV download.
+
+    Quoting is left to `csv.writer` for both formats, so a value containing the
+    delimiter, a quote or a newline is quoted instead of corrupting the row.
+
+    Written by hand rather than as a `StreamingResponse` because these exports
+    are small (a study's participant list) and the content length is then known.
+
+    @param header Column labels, written as the first row unless `write_header`
+        is false.
+    @param rows One sequence of cell values per row.
+    @param filename_base Filename without extension; the dialect picks it.
+    @param format Delimited-text format to write, `csv` or `tsv`.
+    @param write_header When false, nothing but data rows is written.
+    @param no_store Mark the response as never cacheable, for credentials such
+        as participant invitation links.
+    @returns A download response in the requested format.
+    """
+    delimiter, media_type, extension = EXPORT_DIALECTS[format]
+
+    output = StringIO()
+    writer = csv.writer(output, delimiter=delimiter)
+    if write_header:
+        writer.writerow(header)
+    writer.writerows(rows)
+
+    response = Response(content=output.getvalue(), media_type=media_type)
+    response.headers["Content-Disposition"] = (
+        f'attachment; filename="{filename_base}.{extension}"'
+    )
+    response.headers["Content-Type"] = f"{media_type}; charset=utf-8"
+    # Delimited text cannot carry the version in-band without breaking
+    # csv.reader and Excel, so it travels in a header. Within one schema version
+    # columns may be added, never removed or renamed.
+    response.headers[EXPORT_SCHEMA_VERSION_HEADER] = str(EXPORT_SCHEMA_VERSION)
+    if no_store:
+        response.headers["Cache-Control"] = "no-store"
+
+    return response
+
+
 def export_csv(data: list, filename: str, allow_empty: bool = False) -> Response:
     """
     Export data as CSV with proper headers. Used in admin interface.
@@ -9102,33 +9169,22 @@ def export_csv(data: list, filename: str, allow_empty: bool = False) -> Response
     if not data and not allow_empty:
         raise HTTPException(status_code=404, detail="No data to export")
 
-    # Collect all possible fieldnames from all records
+    # Collect all possible fieldnames from all records. Sorted so the column
+    # order is stable across exports.
     all_fieldnames = set()
     for row in data:
         all_fieldnames.update(row.keys())
+    fieldnames = sorted(all_fieldnames)
 
-    # Create CSV in memory
-    output = StringIO()
-    writer = csv.DictWriter(output, fieldnames=sorted(all_fieldnames))
-
-    # Write header and data. An empty result writes nothing at all (no stray
-    # blank line from a header with zero columns).
-    if data:
-        writer.writeheader()
-        for row in data:
-            writer.writerow(row)
-
-    # Prepare response
-    content = output.getvalue()
-    response = Response(content=content, media_type="text/csv")
-    response.headers["Content-Disposition"] = f"attachment; filename={filename}.csv"
-    response.headers["Content-Type"] = "text/csv; charset=utf-8"
-    # CSV cannot carry the version in-band without breaking csv.reader and Excel,
-    # so it travels in a header. Within one schema version columns may be added,
-    # never removed or renamed.
-    response.headers[EXPORT_SCHEMA_VERSION_HEADER] = str(EXPORT_SCHEMA_VERSION)
-
-    return response
+    # An empty result writes nothing at all (no stray blank line from a header
+    # with zero columns).
+    return tabular_export(
+        fieldnames,
+        ([row.get(name) for name in fieldnames] for row in data),
+        filename_base=filename,
+        format="csv",
+        write_header=bool(data),
+    )
 
 
 def export_json(

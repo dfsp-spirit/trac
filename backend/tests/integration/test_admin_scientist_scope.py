@@ -760,9 +760,9 @@ STUDY_SCOPED_ADMIN_ENDPOINTS = [
         "/api/admin/studies/{study}/external-tasks/{task_key}/pool/status",
         None,
     ),
-    ("GET", "/api/admin/studies/{study}/export-tokens-csv", None),
+    ("GET", "/api/admin/studies/{study}/export-tokens", None),
     ("POST", "/api/admin/studies/{study}/generate-pool-tokens", None),
-    ("GET", "/api/admin/studies/{study}/export-pool-tokens-csv", None),
+    ("GET", "/api/admin/studies/{study}/export-pool-tokens", None),
     ("POST", "/api/admin/studies/{study}/assign-participants", {"participant_ids": []}),
     (
         "DELETE",

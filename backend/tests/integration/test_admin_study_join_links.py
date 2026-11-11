@@ -185,7 +185,7 @@ async def test_closed_study_links_each_participant_into_both_frontends(
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_csv_defaults_to_new_frontend(
+async def test_invitation_links_defaults_to_new_frontend(
     created_studies_for_cleanup,
 ):
     """One row per participant, pid first, links into the rewritten frontend."""
@@ -202,7 +202,7 @@ async def test_invitation_links_csv_defaults_to_new_frontend(
         created_studies_for_cleanup.append(study_short)
 
         response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links-csv",
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
             auth=ADMIN_AUTH,
         )
 
@@ -221,7 +221,72 @@ async def test_invitation_links_csv_defaults_to_new_frontend(
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_csv_can_target_the_legacy_frontend(
+async def test_invitation_links_can_be_downloaded_as_tsv(
+    created_studies_for_cleanup,
+):
+    """The TSV variant has the same rows, tab-separated, and stays non-cacheable."""
+    study_short = f"it_invites_tsv_{uuid.uuid4().hex[:8]}"
+    participant_ids = ["invite_a", "invite_b"]
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(
+            client,
+            study_short,
+            allow_unlisted=False,
+            participant_ids=participant_ids,
+        )
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
+            params={"format": "tsv"},
+            auth=ADMIN_AUTH,
+        )
+
+    _require_authenticated(response)
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/tab-separated-values")
+    assert (
+        f"{study_short}_invitation_links.tsv" in response.headers["content-disposition"]
+    )
+    assert "no-store" in response.headers.get("cache-control", "")
+
+    rows = list(csv.reader(io.StringIO(response.text), delimiter="\t"))
+    assert rows[0] == ["pid", "invitation_link"]
+    assert [row[0] for row in rows[1:]] == sorted(participant_ids)
+    assert rows[1][1] == (
+        f"{settings.frontend_new_url}/index.html?study={study_short}&pid=invite_a"
+    )
+    assert "\t" in response.text.splitlines()[0]
+
+
+@pytest.mark.asyncio
+async def test_invitation_links_rejects_unknown_format(
+    created_studies_for_cleanup,
+):
+    study_short = f"it_invites_bad_format_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        await _create_study(
+            client,
+            study_short,
+            allow_unlisted=True,
+            participant_ids=[],
+        )
+        created_studies_for_cleanup.append(study_short)
+
+        response = await client.get(
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
+            params={"format": "xlsx"},
+            auth=ADMIN_AUTH,
+        )
+
+    _require_authenticated(response)
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_invitation_links_can_target_the_legacy_frontend(
     created_studies_for_cleanup,
 ):
     study_short = f"it_invites_legacy_{uuid.uuid4().hex[:8]}"
@@ -236,7 +301,7 @@ async def test_invitation_links_csv_can_target_the_legacy_frontend(
         created_studies_for_cleanup.append(study_short)
 
         response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links-csv",
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
             params={"frontend": "legacy"},
             auth=ADMIN_AUTH,
         )
@@ -252,7 +317,7 @@ async def test_invitation_links_csv_can_target_the_legacy_frontend(
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_csv_rejects_unknown_frontend(
+async def test_invitation_links_rejects_unknown_frontend(
     created_studies_for_cleanup,
 ):
     study_short = f"it_invites_bad_{uuid.uuid4().hex[:8]}"
@@ -267,7 +332,7 @@ async def test_invitation_links_csv_rejects_unknown_frontend(
         created_studies_for_cleanup.append(study_short)
 
         response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links-csv",
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
             params={"frontend": "flash"},
             auth=ADMIN_AUTH,
         )
@@ -277,7 +342,7 @@ async def test_invitation_links_csv_rejects_unknown_frontend(
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_csv_with_no_participants_is_an_empty_file(
+async def test_invitation_links_with_no_participants_is_an_empty_file(
     created_studies_for_cleanup,
 ):
     """An open study with no participants yet is not an error for this export."""
@@ -293,7 +358,7 @@ async def test_invitation_links_csv_with_no_participants_is_an_empty_file(
         created_studies_for_cleanup.append(study_short)
 
         response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links-csv",
+            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
             auth=ADMIN_AUTH,
         )
 
@@ -303,9 +368,9 @@ async def test_invitation_links_csv_with_no_participants_is_an_empty_file(
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_csv_requires_admin():
+async def test_invitation_links_requires_admin():
     async with httpx.AsyncClient(timeout=60.0) as client:
         response = await client.get(
-            f"{BASE_URL}/api/admin/studies/default/export-invitation-links-csv"
+            f"{BASE_URL}/api/admin/studies/default/export-invitation-links"
         )
     assert response.status_code == 401

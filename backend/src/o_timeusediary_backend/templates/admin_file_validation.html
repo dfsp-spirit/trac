@@ -75,6 +75,7 @@
                     <a class="btn-secondary" id="successStudyLink" href="#">Open study details</a>
                     <a class="btn-secondary" id="successParticipantsLink" href="#">Manage participants</a>
                     <a class="btn-secondary" id="successInvitesLink" href="#">Download invitation links CSV</a>
+                    <a class="btn-secondary" id="successInvitesTsvLink" href="#">Download invitation links TSV</a>
                 </div>
             </div>
         </div>
@@ -155,6 +156,7 @@
         const successStudyLink = document.getElementById('successStudyLink');
         const successParticipantsLink = document.getElementById('successParticipantsLink');
         const successInvitesLink = document.getElementById('successInvitesLink');
+        const successInvitesTsvLink = document.getElementById('successInvitesTsvLink');
 
         // Which backend mode the selected study needs; null until a config is read.
         const state = { studies: [], mode: null, creationAllowed: false };
@@ -437,7 +439,8 @@
             successMessage.textContent = `Study '${nameShort}' was created successfully.`;
             successStudyLink.href = `${rootPath}/admin/study/${encoded}`;
             successParticipantsLink.href = `${rootPath}/admin/participant-management?study_name_short=${encoded}`;
-            successInvitesLink.href = `${rootPath}/api/admin/studies/${encoded}/export-invitation-links-csv`;
+            successInvitesLink.href = `${rootPath}/api/admin/studies/${encoded}/export-invitation-links?format=csv`;
+            successInvitesTsvLink.href = `${rootPath}/api/admin/studies/${encoded}/export-invitation-links?format=tsv`;
             successPanel.hidden = false;
             successPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }

@@ -85,9 +85,13 @@
                 </form>
                 <div>
                     {% if study_participant_total %}
-                    <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links-csv" title="All participants of this study (ignores the ID filter): pid and invitation link">&#11015; Invitation links CSV ({{ study_participant_total }})</a>
+                    <span style="display: inline-flex; gap: 0.4rem; align-items: center;">
+                        <span>&#11015; Invitation links ({{ study_participant_total }}):</span>
+                        <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links?format=csv" title="All participants of this study (ignores the ID filter): pid and invitation link">CSV</a>
+                        <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links?format=tsv" title="All participants of this study (ignores the ID filter): pid and invitation link, tab-separated">TSV</a>
+                    </span>
                     {% else %}
-                    <span class="hint">Invitation links CSV unavailable: no participants yet.</span>
+                    <span class="hint">Invitation links download unavailable: no participants yet.</span>
                     {% endif %}
                 </div>
             </div>
@@ -269,12 +273,13 @@
             </div>
             <div class="hint" style="margin-bottom: 0.75rem;">
                 Generate random tokens for participants that are missing external-task assignments,
-                then download them as a CSV file (with <code>pid</code> column) to share with external service operators.
+                then download them as a table (CSV or TSV, with <code>pid</code> column) to share with external service operators.
                 Generated tokens are 20-character alphanumeric strings.
             </div>
             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                 <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
                 <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
+                <button id="exportTsvBtn" class="btn-secondary" type="button">Export assigned tokens TSV</button>
                 <div id="exportStatus" class="status"></div>
             </div>
             {% else %}
@@ -288,7 +293,7 @@
             {% if selected_study_external_task_keys|length > 0 %}
             <div class="hint" style="margin-bottom: 0.75rem;">
                 Generate tokens into the pool for all external tasks of this open study.
-                Then download them as a CSV file (no <code>pid</code> column — pool tokens are unassigned)
+                Then download them as a table (CSV or TSV, no <code>pid</code> column — pool tokens are unassigned)
                 to share with external service operators.
             </div>
             <div style="margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
@@ -298,6 +303,7 @@
             <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
                 <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
                 <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
+                <button id="exportPoolTsvBtn" class="btn-secondary" type="button">Export pool tokens TSV</button>
                 <div id="poolExportStatus" class="status"></div>
             </div>
             {% else %}
@@ -835,7 +841,6 @@
         // --- Generate missing assigned tokens (closed studies) ---
         (function() {
             const generateBtn = document.getElementById('generateTokensBtn');
-            const exportBtn = document.getElementById('exportCsvBtn');
             const statusEl = document.getElementById('exportStatus');
 
             if (generateBtn) {
@@ -874,15 +879,14 @@
                 });
             }
 
-            if (exportBtn) {
-                exportBtn.addEventListener('click', () => {
+            for (const [btnId, format] of [['exportCsvBtn', 'csv'], ['exportTsvBtn', 'tsv']]) {
+                document.getElementById(btnId)?.addEventListener('click', () => {
                     const select = document.getElementById('studySelect');
                     const studyName = select?.value;
                     if (!studyName) { alert('Please select a study first.'); return; }
 
-                    // Direct download: navigate to the CSV endpoint
-                    const url = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-tokens-csv`;
-                    window.location.href = url;
+                    // Direct download: navigate to the export endpoint
+                    window.location.href = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-tokens?format=${format}`;
                 });
             }
         })();
@@ -890,7 +894,6 @@
         // --- Generate & export pool tokens (open studies) ---
         (function() {
             const generateBtn = document.getElementById('generatePoolTokensBtn');
-            const exportBtn = document.getElementById('exportPoolCsvBtn');
             const countInput = document.getElementById('poolTokenCount');
             const statusEl = document.getElementById('poolExportStatus');
 
@@ -941,14 +944,13 @@
                 });
             }
 
-            if (exportBtn) {
-                exportBtn.addEventListener('click', () => {
+            for (const [btnId, format] of [['exportPoolCsvBtn', 'csv'], ['exportPoolTsvBtn', 'tsv']]) {
+                document.getElementById(btnId)?.addEventListener('click', () => {
                     const select = document.getElementById('studySelect');
                     const studyName = select?.value;
                     if (!studyName) { alert('Please select a study first.'); return; }
 
-                    const url = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-pool-tokens-csv`;
-                    window.location.href = url;
+                    window.location.href = `${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/export-pool-tokens?format=${format}`;
                 });
             }
         })();
