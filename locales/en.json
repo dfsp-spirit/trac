@@ -353,7 +353,6 @@
       "day": "Day",
       "start": "Start",
       "end": "End",
-      "lasts": "Lasts",
       "nextDay": "(next day)",
       "midnight": "(midnight)",
       "lastDayHint": "This is the last day, so activities end by midnight. Add the rest in your next diary.",
