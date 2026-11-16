@@ -1,11 +1,15 @@
 // @ts-check
 /**
- * The one line above the timeline that says what state the diary is in.
+ * The one line above the timeline that says what state the diary is in: closed
+ * and read-only after submission, or - the moment the last day reaches its
+ * requirement - ready to send, with the action right there.
  *
- * Today that is "submitted, and therefore read-only": the timeline stays
- * readable after submission, which is friendlier than sending the participant
- * away, but nothing in it can change any more.
+ * The second state exists because nothing else on the page changes at that
+ * moment. On a phone the progress line is not shown at all, so without it the
+ * only cue would be a button in the top bar changing colour.
  */
+
+import { notice as noticeBox } from './notice.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -25,10 +29,28 @@ function el(tag, className, text) {
  * @param {HTMLElement} host
  * @param {{
  *   submitted: boolean,
+ *   ready: boolean,
  *   t: (key: string, params?: Record<string, string | number>) => string,
+ *   onReview: () => void,
  * }} view
  */
-export function renderDiaryNotice(host, { submitted, t }) {
+export function renderDiaryNotice(host, { submitted, ready, t, onReview }) {
+  if (!submitted && ready) {
+    const action = el('button', 't-btn t-btn--primary t-btn--block', t('diary.review.submit'));
+    action.type = 'button';
+    action.addEventListener('click', onReview);
+    host.replaceChildren(
+      noticeBox({
+        title: t('diary.notice.readyTitle'),
+        text: t('diary.notice.readyText'),
+        tone: 'attention',
+        role: 'status',
+        extra: [action],
+      })
+    );
+    return;
+  }
+
   if (!submitted) {
     host.replaceChildren();
     return;

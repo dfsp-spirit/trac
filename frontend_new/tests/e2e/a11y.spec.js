@@ -79,6 +79,14 @@ test.describe('accessibility', () => {
     await expectNoA11yViolations(page, 'diary');
   });
 
+  test('the diary when every day is complete', async ({ page }) => {
+    // The "ready to send" banner and the black top bar action - the only cue on a
+    // phone, where the progress line does not exist.
+    await openDiary(page, 'tasks_02', 'newui_09_tasks');
+    await expect(page.locator('#timeline-notices .t-notice')).toBeVisible();
+    await expectNoA11yViolations(page, 'diary ready to submit');
+  });
+
   test('the activity panel, on its form step', async ({ page }) => {
     await openDiary(page, DIARY_PID);
     await openPanel(page);

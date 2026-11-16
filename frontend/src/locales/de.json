@@ -257,6 +257,8 @@
       "next": "Nächster Tag"
     },
     "review": {
+      "ctaReady": "Absenden",
+      "hintOpen": "Noch nicht alle Tage sind vollständig.",
       "open": "Tagebuch prüfen",
       "nothingAdded": "Nichts eingetragen",
       "continued": "Fortsetzung",
@@ -268,15 +270,15 @@
       "dayEmpty": "Noch nichts eingetragen",
       "dayToGo": "Noch {{minutes}} Min. offen",
       "nextDay": "Folgetag",
-      "submit": "Tagebuch abschicken",
+      "submit": "Tagebuch absenden",
       "hint": "Vor dem Absenden bestätigst du im nächsten Schritt.",
       "rejectedTitle": "Einige Tage sind noch nicht vollständig",
       "rejected": "Bei diesen Tagen fehlen noch Minuten: {{days}}. Mit „Ändern“ kannst du sie ergänzen.",
       "rejectedServer": "Bei diesen Tagen fehlen noch Minuten. Mit „Ändern“ kannst du sie ergänzen.",
-      "confirmTitle": "Tagebuch abschicken?",
+      "confirmTitle": "Tagebuch absenden?",
       "confirmText": "Damit gehen alle {{total}} Tage an das Forschungsteam.",
       "confirmLocked": "Danach kannst du es ansehen, aber nicht mehr ändern.",
-      "confirmYes": "Ja, abschicken",
+      "confirmYes": "Ja, absenden",
       "confirmNo": "Noch nicht, weiter prüfen",
       "sending": "Wird gesendet …"
     },
@@ -328,6 +330,8 @@
       "summary": "{{done}} von {{total}} Tagen vollständig"
     },
     "notice": {
+      "readyTitle": "Alle Tage sind vollständig",
+      "readyText": "Du kannst dein Tagebuch jetzt absenden.",
       "submittedTitle": "Dein Tagebuch ist abgeschickt",
       "submittedText": "Das Forschungsteam hat es erhalten. Du kannst es noch lesen, aber nicht mehr ändern.",
       "locked": "Abgeschickt. Das Tagebuch ist lesbar, aber nicht mehr änderbar."

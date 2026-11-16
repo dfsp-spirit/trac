@@ -257,6 +257,8 @@
       "next": "Nästa dag"
     },
     "review": {
+      "ctaReady": "Skicka in",
+      "hintOpen": "Inte alla dagar är klara än.",
       "open": "Kontrollera din dagbok",
       "nothingAdded": "Inget tillagt",
       "continued": "fortsättning",
@@ -328,6 +330,8 @@
       "summary": "{{done}} av {{total}} dagar klara"
     },
     "notice": {
+      "readyTitle": "Alla dagar är klara",
+      "readyText": "Du kan skicka in din dagbok nu.",
       "submittedTitle": "Din dagbok är inskickad",
       "submittedText": "Forskargruppen har fått den. Du kan fortfarande läsa den, men inte ändra den.",
       "locked": "Inskickad. Dagboken kan läsas men inte ändras."

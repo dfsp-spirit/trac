@@ -10,6 +10,7 @@
  */
 import { progress } from '../domain/diary.js';
 import { STEP_MINUTES } from '../domain/time.js';
+import { icon } from './dom.js';
 import { renderDiaryNotice } from './diaryNotice.js';
 import { renderDayNav, watchDayInView } from './dayNav.js';
 import { renderDayRail } from './dayRail.js';
@@ -27,9 +28,14 @@ import { minutesAtViewportTop, renderTimeline } from './timeline.js';
  *   progressNote: HTMLElement,
  *   topbar: HTMLElement,
  *   t: Translator,
+ *   review: {
+ *     button: HTMLElement | null,
+ *     open: () => void,
+ *   },
  *   onDayInView: (index: number) => void,
  *   onTimelineRendered: () => void,
- * }} deps
+ * }} deps `review.button` is the top bar's way into the review; it turns black
+ *   and says "send" once every day meets its requirement.
  */
 export function createDiaryView({
   root,
@@ -40,11 +46,14 @@ export function createDiaryView({
   progressNote,
   topbar,
   t,
+  review,
   onDayInView,
   onTimelineRendered,
 }) {
   /** @type {HTMLElement[]} */
   let sections = [];
+  /** @type {boolean | null} */
+  let ctaReady = null;
   /** @type {null | (() => void)} */
   let stopSpy = null;
 
@@ -76,11 +85,50 @@ export function createDiaryView({
       onTimelineRendered();
     }
 
-    renderDiaryNotice(noticesHost, { submitted: locked, t });
+    const done = progress(diary);
+    const ready = !locked && done.total > 0 && done.done === done.total;
+    renderDiaryNotice(noticesHost, { submitted: locked, ready, t, onReview: review.open });
     renderDayRail(railList, { diary, language, t, currentDay });
     renderDayNav(nav, { diary, language, currentDay, t });
     progressNote.hidden = false;
-    progressNote.textContent = t('diary.progress.summary', progress(diary));
+    progressNote.textContent = t('diary.progress.summary', done);
+    renderCta(ready);
+  }
+
+  /**
+   * The top bar button says "check" until the week can be sent, and then becomes
+   * the black action with the word people look for. Only the words and the style
+   * change: it always opens the review, so the last step stays confirmed.
+   *
+   * @param {boolean} ready
+   */
+  function renderCta(ready) {
+    const button = review.button;
+    if (!button) return;
+
+    // The label is set here rather than by the document-wide translation pass,
+    // because it depends on the state - so it is also refreshed on a language
+    // switch, which is the one time the state has not changed.
+    const label = button.querySelector('span');
+    const text = t(ready ? 'diary.review.ctaReady' : 'diary.shell.submit');
+    if (label && label.textContent !== text) label.textContent = text;
+
+    if (ctaReady === ready) return;
+    ctaReady = ready;
+
+    button.classList.toggle('t-btn--primary', ready);
+    button.classList.toggle('t-btn--secondary', !ready);
+    button.dataset.ready = ready ? 'true' : 'false';
+    const svg = button.querySelector('svg');
+    if (svg) {
+      svg.replaceWith(
+        icon(
+          ready
+            ? ['M12 4v11', 'M7 9l5-5 5 5', 'M5 19h14']
+            : ['M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z', 'M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z']
+        )
+      );
+    }
   }
 
   return {

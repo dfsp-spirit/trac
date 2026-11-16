@@ -23,6 +23,15 @@ test.describe('review modal', () => {
     await expect(page.locator(`${REVIEW} .t-review__day`)).toHaveCount(7);
     await expect(page.locator(`${REVIEW} .t-review__day--open`)).toHaveCount(7);
 
+    // White while days are open, and the foot says why - the button still works,
+    // it explains what is missing instead of vanishing.
+    const send = page.locator(`${REVIEW} .t-modal__foot .t-btn`);
+    await expect(send).toHaveClass(/t-btn--secondary/);
+    await expect(send).not.toHaveClass(/t-btn--primary/);
+    await expect(page.locator(`${REVIEW} .t-modal__foot .t-hint`)).toHaveText(
+      'Noch nicht alle Tage sind vollständig.'
+    );
+
     const monday = page.locator(`${REVIEW} .t-review__day`).nth(0);
     await expect(monday.locator('.t-review__time')).toHaveText('00:00 – 10:00');
     await expect(monday.locator('.t-review__what')).toContainText('Ausruhen');
@@ -47,7 +56,9 @@ test.describe('review modal', () => {
     });
 
     await page.locator('#submit-btn').click();
-    await page.locator(`${REVIEW} .t-modal__foot .t-btn--primary`).click();
+    // The foot's action is secondary while days are open, but it is still the
+    // control that answers "can I send it?".
+    await page.locator(`${REVIEW} .t-modal__foot .t-btn`).click();
 
     await expect(page.locator(`${REVIEW} .t-notice__title`)).toBeVisible();
     await expect(page.locator(`${REVIEW} .t-review__day`)).toHaveCount(7);
@@ -83,6 +94,43 @@ test.describe('review modal', () => {
     // Consecutive days pair up (day 1 left, day 2 right), so the nth day is where
     // the eye expects it: the same reading order the DOM has.
     expect(columns).toBe(isPhone(testInfo) ? 1 : 2);
+  });
+
+  test('a complete week is announced on the diary and turns the top bar black', async ({
+    page,
+  }) => {
+    await openDiary(page, 'tasks_02', 'newui_09_tasks');
+
+    // Two cues, because nothing else on the page changes at that moment: the
+    // banner above the timeline, and the top bar button becoming the action.
+    const notice = page.locator('#timeline-notices .t-notice');
+    await expect(notice.locator('.t-notice__title')).toHaveText('Alle Tage sind vollständig');
+    const cta = page.locator('#submit-btn');
+    await expect(cta).toHaveClass(/t-btn--primary/);
+    await expect(cta).toHaveText('Absenden');
+    await expect(cta).toHaveAttribute('data-ready', 'true');
+
+    // Both lead to the same review, where the last step is confirmed.
+    await notice.locator('.t-btn--primary').click();
+    await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
+    await expect(page.locator(`${REVIEW} .t-modal__foot .t-btn`)).toHaveClass(
+      /t-btn--primary/
+    );
+    await expect(page.locator(`${REVIEW} .t-modal__foot .t-hint`)).toHaveText(
+      'Vor dem Absenden bestätigst du im nächsten Schritt.'
+    );
+  });
+
+  test('an incomplete diary has neither the banner nor a black top bar button', async ({
+    page,
+  }) => {
+    await openDiary(page, 'ready_02', STUDY);
+
+    await expect(page.locator('#timeline-notices .t-notice')).toHaveCount(0);
+    const cta = page.locator('#submit-btn');
+    await expect(cta).toHaveClass(/t-btn--secondary/);
+    await expect(cta).toHaveText('Prüfen');
+    await expect(cta).toHaveAttribute('data-ready', 'false');
   });
 
   test('a complete week reaches confirmation and can go back', async ({ page }) => {

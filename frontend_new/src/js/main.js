@@ -187,6 +187,7 @@ export function mount({ root, params }) {
     progressNote,
     topbar,
     t,
+    review: { button: submitBtn, open: () => review.open() },
     onDayInView: (index) => {
       if (index !== store.get().currentDay) store.set({ currentDay: index });
     },
@@ -209,10 +210,9 @@ export function mount({ root, params }) {
     view,
     panels,
     stageMachine,
-    review,
+    review: { entries: [submitBtn, progressNote], open: () => review.open() },
     daysHost,
     fab,
-    reviewEntries: [submitBtn, progressNote],
     dialogHost,
     isLocked,
     copy,

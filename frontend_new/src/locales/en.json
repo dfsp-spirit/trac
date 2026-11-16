@@ -257,6 +257,8 @@
       "next": "Next day"
     },
     "review": {
+      "ctaReady": "Submit",
+      "hintOpen": "Not every day is complete yet.",
       "open": "Check your diary",
       "nothingAdded": "Nothing added",
       "continued": "continued",
@@ -328,6 +330,8 @@
       "summary": "{{done}} of {{total}} days complete"
     },
     "notice": {
+      "readyTitle": "All days are complete",
+      "readyText": "You can send your diary now.",
       "submittedTitle": "Your diary is submitted",
       "submittedText": "The research team has it. You can still read it, but not change it.",
       "locked": "Submitted. The diary can be read, not changed."

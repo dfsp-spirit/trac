@@ -133,7 +133,14 @@ export function createReviewModal({ root, t, onEdit, onSubmit }) {
       t,
     });
 
-    const submit = el('button', 't-btn t-btn--primary t-btn--block');
+    // White while days are still open: pressing it then explains what is missing
+    // (see the notice below), so it is a check, not the call to action. It only
+    // becomes the black button once the week can actually be sent.
+    const ready = model.canSubmit;
+    const submit = el(
+      'button',
+      `t-btn t-btn--block ${ready ? 't-btn--primary' : 't-btn--secondary'}`
+    );
     submit.type = 'button';
     submit.textContent = t('diary.review.submit');
     submit.addEventListener('click', () => {
@@ -149,7 +156,7 @@ export function createReviewModal({ root, t, onEdit, onSubmit }) {
     });
 
     const hint = el('p', 't-hint');
-    hint.textContent = t('diary.review.hint');
+    hint.textContent = ready ? t('diary.review.hint') : t('diary.review.hintOpen');
     foot.replaceChildren(submit, hint);
     clearNotice();
   }
@@ -222,8 +229,10 @@ export function createReviewModal({ root, t, onEdit, onSubmit }) {
       model = review(current, language);
       renderReview();
       if (!dialog.open) dialog.showModal();
-      const primary = foot.querySelector('.t-btn--primary');
-      if (primary instanceof HTMLElement) primary.focus();
+      // Focus the action, whichever style it wears: an incomplete week has no
+      // `--primary` button in the foot at all.
+      const action = foot.querySelector('.t-btn--primary') || foot.querySelector('.t-btn');
+      if (action instanceof HTMLElement) action.focus();
     },
     close,
     destroy() {
