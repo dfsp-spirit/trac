@@ -350,7 +350,6 @@
       "success": "Kopierat till {{days}}",
       "failed": "Det gick inte att kopiera. Försök igen.",
       "nothingToCopy": "Det finns inget att kopiera än.",
-      "needsEntries": "Den här dagen har inga poster än.",
       "chipFilled": "har poster",
       "chipSource": "källdag"
     },

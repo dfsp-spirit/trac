@@ -118,27 +118,44 @@ test.describe('copying a day', () => {
     );
   });
 
-  test('an empty day cannot be a source, but keeps its button', async ({ page }) => {
+  test('an empty day keeps its button and says why', async ({ page }) => {
     await openDiary(page, pid);
+    // One filled day, so this is about the *day*, not about the whole diary.
+    await addSchlafen(page, { start: 600, end: 660 });
 
-    const button = page.locator('#days .t-timeline-day[data-day-index="0"] [data-copy-day]');
-    // `aria-disabled`, not `disabled`: the button stays focusable and is still
-    // announced, so the feature does not disappear for keyboard users. Playwright
-    // treats it as disabled, hence the forced click.
+    const button = page.locator('#days .t-timeline-day[data-day-index="1"] [data-copy-day]');
+    // `aria-disabled`, not `disabled`: the button stays focusable and announced,
+    // so the feature does not disappear for keyboard users. Its reason is a
+    // description, not a `title` (which no phone and no focus ring ever shows).
+    // Playwright treats it as disabled, hence the forced click.
     await expect(button).toHaveAttribute('aria-disabled', 'true');
+    await expect(button).toHaveAccessibleDescription('Es gibt noch nichts zu kopieren.');
+
     await button.click({ force: true });
     await expect(page.locator('#copy-day-dialog')).toBeHidden();
+    await expect(page.locator('.t-toast')).toContainText('Es gibt noch nichts zu kopieren.');
   });
 
-  test('with an empty diary nothing offers a copy', async ({ page }, testInfo) => {
+  test('the empty rail explains itself in place, before the click', async ({ page }, testInfo) => {
+    test.skip(isPhone(testInfo), 'the rail is a desktop column (D12)');
     await openDiary(page, pid);
 
-    if (!isPhone(testInfo)) {
-      await expect(page.locator('#copy-days')).toHaveAttribute('aria-disabled', 'true');
-    }
+    const rail = page.locator('#copy-days');
+    await expect(rail).toHaveAttribute('aria-disabled', 'true');
+    await expect(rail).toHaveAccessibleDescription('Es gibt noch nichts zu kopieren.');
+    await expect(page.locator('#copy-days-hint')).toBeVisible();
 
-    // The menu entry stays reachable on every breakpoint (the rail does not
-    // exist on a phone), so it explains the state instead of opening a dead end.
+    // Inert, but answered instead of swallowed.
+    await rail.click({ force: true });
+    await expect(page.locator('#copy-day-dialog')).toBeHidden();
+    await expect(page.locator('.t-toast')).toContainText('Es gibt noch nichts zu kopieren.');
+  });
+
+  test('the menu entry explains an empty diary instead of a dead end', async ({ page }) => {
+    // The phone has no rail, so this is its way in; on desktop it must behave the
+    // same rather than three entry points with three answers.
+    await openDiary(page, pid);
+
     await page.locator('#menu-open').click();
     await page.locator('#menu-copy').click();
     await expect(page.locator('#copy-day-dialog')).toBeHidden();
@@ -150,6 +167,7 @@ test.describe('copying a day', () => {
     await openDiary(page, pid);
     await addSchlafen(page, { start: 600, end: 660 });
 
+    await expect(page.locator('#copy-days-hint')).toBeHidden();
     await page.locator('#copy-days').click();
 
     const dialog = page.locator('#copy-day-dialog');

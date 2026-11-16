@@ -83,10 +83,12 @@ export function createCopyDay({ root, store, actions, t, tCount, toastRegion, si
     open(options = {}) {
       const diary = store.get().diary;
       if (!diary || diary.study.submitted_at) return;
-      // The rail's button is inert in this state, but the menu entry cannot be:
-      // opened with nothing to copy, it says why instead of showing an empty
-      // source list and a disabled button.
-      if (!copyableDays(diary).length) {
+      // The entry points may be inert, but none of them is silent: a day heading
+      // names the day it could not copy from, the rail and the menu name nothing,
+      // and all three say why instead of opening an empty dialog.
+      const copyable = copyableDays(diary);
+      const requested = options.sourceDay;
+      if (!copyable.length || (requested != null && !copyable.includes(requested))) {
         toast.show(t('diary.copy.nothingToCopy'));
         return;
       }

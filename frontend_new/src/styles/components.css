@@ -15,7 +15,7 @@
 .t-btn:active { transform: translateY(1px); }
 .t-btn--secondary:active, .t-btn--ghost:active { background: var(--surface-300); }
 /* Not available yet: still focusable and clickable; explains itself on press. */
-.t-btn[aria-disabled="true"] { background: transparent; color: var(--ink); border: 2px dashed var(--line-strong); box-shadow: none; }
+.t-btn[aria-disabled="true"] { background: transparent; color: var(--ink); border: 2px dashed var(--line-strong); box-shadow: none; cursor: not-allowed; }
 .t-btn--block { width: 100%; }
 .t-btn--sm { min-height: 40px; padding: 0 var(--space-4); font-size: 0.875rem; }
 .t-icon-btn { display: inline-grid; place-items: center; width: var(--tap-min); height: var(--tap-min); padding: 0; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--ink); cursor: pointer; }

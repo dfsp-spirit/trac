@@ -35,6 +35,7 @@ export function readShell(root) {
     noticesHost: must('#timeline-notices'),
     railList: must('#rail-list'),
     copyDays: maybe('#copy-days'),
+    copyDaysHint: maybe('#copy-days-hint'),
     progressNote: must('#progress-note'),
     fab: must('#fab'),
     submitBtn: must('#submit-btn'),

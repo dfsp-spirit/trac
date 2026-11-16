@@ -163,8 +163,13 @@ function renderDay(diary, day, copyable, t, language) {
     copy.type = 'button';
     copy.dataset.copyDay = String(day.index);
     if (!copyable.has(day.index)) {
+      // Inert, but never silent: the reason is the button's description, and a
+      // tap explains it (a `title` reaches neither phones nor keyboard focus).
       copy.setAttribute('aria-disabled', 'true');
-      copy.title = t('diary.copy.needsEntries');
+      const reason = el('span', 't-vh', t('diary.copy.nothingToCopy'));
+      reason.id = `copy-reason-${day.name}`;
+      copy.setAttribute('aria-describedby', reason.id);
+      head.append(reason);
     }
     head.append(copy);
   }

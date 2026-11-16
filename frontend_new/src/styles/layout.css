@@ -119,7 +119,7 @@
   overflow: hidden;
 }
 .t-rail__fill { display: block; height: 100%; width: var(--fill, 0); background: var(--ink); }
-.t-rail__copy { margin-top: var(--space-3); }
+.t-rail__copy { margin-top: var(--space-3); } .t-rail__copy-hint { margin-top: var(--space-2); }
 
 /* Footer with the deployment's legal pages: desktop only. A phone has the same
    entries in the menu, and a link under a week-long timeline is a misclick

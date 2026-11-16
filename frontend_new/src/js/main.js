@@ -215,7 +215,7 @@ export function mount({ root, params }) {
     dialogHost,
     isLocked,
     copy,
-    copyDaysBtn: handles.copyDays,
+    copyDays: { button: handles.copyDays, hint: handles.copyDaysHint },
   });
 
   const finePointer = window.matchMedia('(pointer: fine)');

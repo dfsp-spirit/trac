@@ -184,6 +184,19 @@
   rendered inert when the day owns no rows), "Tage kopieren…" under the day rail,
   and the same entry in the drawer menu for phones. All three open one dialog;
   only the source preselection differs.
+- **An inert entry point is never silent.** `aria-disabled` (not `disabled`)
+  keeps it focusable and announced, the reason is its `aria-describedby` text -
+  never a `title`, which reaches neither phones nor keyboard focus - and
+  activating it raises the same toast ("Es gibt noch nichts zu kopieren.") via
+  `createCopyDay.open()`, which also refuses a heading that names a day with
+  nothing to copy. The rail additionally shows the sentence in place while the
+  whole diary is empty: that column has room, nothing below it moves, and the
+  phone never sees it. A revealed line under a day heading was rejected - on a
+  phone the heading is not sticky, so it would shift the timeline under the
+  finger; on desktop it would grow a sticky header.
+- Wording note: the sentence says "nothing to copy", not "no entries". A day whose
+  only content is the previous night's tail shows a block but owns no rows, and
+  telling that participant "this day has no entries" contradicts the screen.
 
 ## Toast placement
 - The toast lives in the panel's column above 1200px (D28), which is exactly

@@ -72,6 +72,10 @@
            out of nowhere is harder to find than one that explains itself. -->
       <button class="t-btn t-btn--ghost t-btn--block t-rail__copy" type="button" id="copy-days"
               data-i18n="diary.copy.open">Copy days…</button>
+      <!-- Why the button is inert. Persistent rather than a toast: the rail has
+           room, nothing below it moves, and the clue is there before the click. -->
+      <p class="t-hint t-rail__copy-hint" id="copy-days-hint" data-i18n="diary.copy.nothingToCopy"
+         hidden>There is nothing to copy yet.</p>
     </aside>
 
     <!-- Column 2: the continuous timeline. Day sections are rendered here. -->

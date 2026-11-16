@@ -25,10 +25,10 @@ import { scrollToDay } from './timeline.js';
  *   dialogHost: HTMLDialogElement | null,
  *   isLocked: () => boolean,
  *   copy: { open: (options?: { sourceDay?: number | null }) => void },
- *   copyDaysBtn: HTMLElement | null,
- * }} deps `copy` is the day-copy dialog; the two entry points that live in this
+ *   copyDays: { button: HTMLElement | null, hint: HTMLElement | null },
+ * }} deps `copy` is the day-copy dialog; the entry points that live in this
  *   screen ("this day" in a heading, the button under the rail) only report which
- *   day they belong to.
+ *   day they belong to, and the dialog explains when there is nothing to copy.
  */
 export function createDiaryScreen({
   store,
@@ -42,7 +42,7 @@ export function createDiaryScreen({
   dialogHost,
   isLocked,
   copy,
-  copyDaysBtn,
+  copyDays,
 }) {
   /** @param {number} dayIndex */
   function goToDay(dayIndex) {
@@ -72,10 +72,17 @@ export function createDiaryScreen({
       locked,
     });
     panels.sync(locked);
-    if (copyDaysBtn) {
+    const button = copyDays?.button ?? null;
+    if (button) {
       const canCopy = !locked && copyableDays(state.diary).length > 0;
-      if (canCopy) copyDaysBtn.removeAttribute('aria-disabled');
-      else copyDaysBtn.setAttribute('aria-disabled', 'true');
+      if (canCopy) {
+        button.removeAttribute('aria-disabled');
+        button.removeAttribute('aria-describedby');
+      } else {
+        button.setAttribute('aria-disabled', 'true');
+        if (copyDays.hint) button.setAttribute('aria-describedby', copyDays.hint.id);
+      }
+      if (copyDays.hint) copyDays.hint.hidden = canCopy;
     }
   }
 
@@ -97,22 +104,22 @@ export function createDiaryScreen({
     const trigger =
       event.target instanceof Element ? event.target.closest('[data-copy-day]') : null;
     if (trigger) {
-      const sourceDay = Number(trigger.getAttribute('data-copy-day'));
-      if (trigger.getAttribute('aria-disabled') !== 'true') copy.open({ sourceDay });
+      // Even the inert button opens the dialog's guard, which explains why
+      // instead of swallowing the tap.
+      copy.open({ sourceDay: Number(trigger.getAttribute('data-copy-day')) });
       return;
     }
     panels.openFromEvent(event);
   }
 
   function onCopyDays() {
-    if (copyDaysBtn?.getAttribute('aria-disabled') === 'true') return;
     copy.open();
   }
 
   fab.addEventListener('click', addActivity);
   submitBtn.addEventListener('click', review.open);
   daysHost.addEventListener('click', onTimelineClick);
-  copyDaysBtn?.addEventListener('click', onCopyDays);
+  copyDays?.button?.addEventListener('click', onCopyDays);
 
   return {
     render,
@@ -124,7 +131,7 @@ export function createDiaryScreen({
       fab.removeEventListener('click', addActivity);
       submitBtn.removeEventListener('click', review.open);
       daysHost.removeEventListener('click', onTimelineClick);
-      copyDaysBtn?.removeEventListener('click', onCopyDays);
+      copyDays?.button?.removeEventListener('click', onCopyDays);
     },
   };
 }
