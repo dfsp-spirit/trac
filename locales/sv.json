@@ -222,7 +222,7 @@
       "menuTitle": "Meny",
       "menuActions": "Åtgärder",
       "menuPages": "Sidor",
-      "submit": "Skicka in",
+      "submit": "Kontrollera",
       "dayNav": "Dag",
       "previousDay": "Föregående dag",
       "nextDay": "Nästa dag",
@@ -257,6 +257,9 @@
       "next": "Nästa dag"
     },
     "review": {
+      "open": "Kontrollera din dagbok",
+      "nothingAdded": "Inget tillagt",
+      "continued": "fortsättning",
       "title": "Kontrollera din dagbok",
       "step": "Steg {{current}} av {{total}}",
       "back": "Tillbaka till dagboken",

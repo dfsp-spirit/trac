@@ -222,7 +222,7 @@
       "menuTitle": "Menü",
       "menuActions": "Aktionen",
       "menuPages": "Seiten",
-      "submit": "Absenden",
+      "submit": "Prüfen",
       "dayNav": "Tag",
       "previousDay": "Vorheriger Tag",
       "nextDay": "Nächster Tag",
@@ -257,6 +257,9 @@
       "next": "Nächster Tag"
     },
     "review": {
+      "open": "Tagebuch prüfen",
+      "nothingAdded": "Nichts eingetragen",
+      "continued": "Fortsetzung",
       "title": "Tagebuch prüfen",
       "step": "Schritt {{current}} von {{total}}",
       "back": "Zurück zum Tagebuch",
