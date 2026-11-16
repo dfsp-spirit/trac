@@ -19,16 +19,18 @@ import { scrollToDay } from './timeline.js';
  *     openFromEvent: (event: Event) => void, escape: () => boolean, refresh: () => void },
  *   stageMachine: { incompatible: () => void, setLocked: (locked: boolean) => void },
  *   review: { open: () => void },
+ *   reviewEntries: HTMLElement[],
  *   daysHost: HTMLElement,
  *   fab: HTMLElement,
- *   submitBtn: HTMLElement,
  *   dialogHost: HTMLDialogElement | null,
  *   isLocked: () => boolean,
  *   copy: { open: (options?: { sourceDay?: number | null }) => void },
  *   copyDays: { button: HTMLElement | null, hint: HTMLElement | null },
- * }} deps `copy` is the day-copy dialog; the entry points that live in this
- *   screen ("this day" in a heading, the button under the rail) only report which
- *   day they belong to, and the dialog explains when there is nothing to copy.
+ * }} deps `reviewEntries` is every control that opens the review (the top bar's
+ *   button and, on desktop, its progress line). `copy` is the day-copy dialog;
+ *   the entry points that live in this screen ("this day" in a heading, the
+ *   button under the rail) only report which day they belong to, and the dialog
+ *   explains when there is nothing to copy.
  */
 export function createDiaryScreen({
   store,
@@ -38,7 +40,7 @@ export function createDiaryScreen({
   review,
   daysHost,
   fab,
-  submitBtn,
+  reviewEntries,
   dialogHost,
   isLocked,
   copy,
@@ -117,7 +119,7 @@ export function createDiaryScreen({
   }
 
   fab.addEventListener('click', addActivity);
-  submitBtn.addEventListener('click', review.open);
+  for (const entry of reviewEntries) entry.addEventListener('click', review.open);
   daysHost.addEventListener('click', onTimelineClick);
   copyDays?.button?.addEventListener('click', onCopyDays);
 
@@ -129,7 +131,7 @@ export function createDiaryScreen({
     onEscape,
     destroy() {
       fab.removeEventListener('click', addActivity);
-      submitBtn.removeEventListener('click', review.open);
+      for (const entry of reviewEntries) entry.removeEventListener('click', review.open);
       daysHost.removeEventListener('click', onTimelineClick);
       copyDays?.button?.removeEventListener('click', onCopyDays);
     },

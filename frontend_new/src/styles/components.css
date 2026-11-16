@@ -228,12 +228,24 @@ html:has(dialog[open]) { overflow: hidden; }
 .t-review__head h2 { margin: 0; font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
 .t-review__edit { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 var(--space-2); margin-inline-end: calc(var(--space-2) * -1); color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
 .t-review ol { list-style: none; margin: 0; padding: 0; }
-.t-review li { display: grid; grid-template-columns: 16px 8.75rem 1fr; align-items: start; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.t-review li { display: grid; grid-template-columns: 16px 8.75rem 1fr; align-items: start; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
 .t-review li .t-pat { margin-top: 4px; }
-.t-review__time { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.5rem; font-weight: 500; white-space: nowrap; }
+.t-review__time { font-family: var(--font-mono); font-size: 0.875rem; line-height: 1.5rem; font-weight: 500; }
+.t-review__range { white-space: nowrap; }
 .t-review__time small { font-size: 0.75rem; color: var(--ink-muted); }
+/* At 320px the name column all but disappears behind a 140px time track; a
+   slightly smaller clock buys it the room, and the range still fits unbroken. */
+@media (max-width: 400px) {
+  .t-review li { grid-template-columns: 16px 7.75rem 1fr; gap: var(--space-2); }
+  .t-review__time { font-size: 0.8125rem; }
+}
 .t-review__what { min-width: 0; font-size: 1rem; line-height: 1.5rem; }
-.t-review__what small { display: block; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
+/* What the day does not contain, and where the night before reaches in: quiet,
+   but on the same line, because the row is about one stretch of time. */
+.t-review__row--gap .t-review__time,
+.t-review__row--gap .t-review__what,
+.t-review__note { color: var(--ink-muted); }
+.t-review__note { font-size: 0.875rem; }
 
 /* ---------- Facts list (keyboard shortcuts) ---------- */
 .t-facts { display: grid; gap: var(--space-1); margin: 0; }

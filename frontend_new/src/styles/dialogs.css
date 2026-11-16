@@ -18,6 +18,18 @@
   .t-modal--centred .t-modal__foot {
     flex: none;
   }
+
+  /* The review reads as a spread once there is room: two days side by side, so a
+     diary whose days come in parallel pairs (one per child, per device) can be
+     compared without scrolling. Row-major flow keeps DOM order = reading order,
+     and the width only grows for this one dialog. */
+  .t-modal--centred.t-modal--wide {
+    max-width: 72rem;
+  }
+  .t-modal--wide .t-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
 }
 
 /* The bundle's review list brings its own page padding; inside a modal body

@@ -222,7 +222,7 @@
       "menuTitle": "Menu",
       "menuActions": "Actions",
       "menuPages": "Pages",
-      "submit": "Submit",
+      "submit": "Review",
       "dayNav": "Day",
       "previousDay": "Previous day",
       "nextDay": "Next day",
@@ -257,6 +257,9 @@
       "next": "Next day"
     },
     "review": {
+      "open": "Check your diary",
+      "nothingAdded": "Nothing added",
+      "continued": "continued",
       "title": "Check your diary",
       "step": "Step {{current}} of {{total}}",
       "back": "Back to the diary",

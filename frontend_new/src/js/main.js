@@ -91,6 +91,7 @@ export function mount({ root, params }) {
     onSkip: (body) =>
       actions ? actions.skip(body).then(() => stageMachine.refresh()) : undefined,
     onCopy: () => copy?.open(),
+    onReview: () => review.open(),
   });
 
   const api =
@@ -211,7 +212,7 @@ export function mount({ root, params }) {
     review,
     daysHost,
     fab,
-    submitBtn,
+    reviewEntries: [submitBtn, progressNote],
     dialogHost,
     isLocked,
     copy,

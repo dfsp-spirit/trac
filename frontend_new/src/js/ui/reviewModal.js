@@ -56,7 +56,8 @@ function icon(path) {
  * }} deps
  */
 export function createReviewModal({ root, t, onEdit, onSubmit }) {
-  const dialog = el('dialog', 't-modal t-modal--centred');
+  // `--wide` only widens it from 1200px up; below that the modal is the screen.
+  const dialog = el('dialog', 't-modal t-modal--centred t-modal--wide');
   dialog.id = 'review-dialog';
 
   const head = el('div', 't-modal__head');

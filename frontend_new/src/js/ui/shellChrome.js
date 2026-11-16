@@ -27,6 +27,8 @@ import { createSkipDialog } from './skipDialog.js';
  *     menuSkipItem: HTMLElement | null,
  *     menuCopy: HTMLElement | null,
  *     menuCopyItem: HTMLElement | null,
+ *     menuReview: HTMLElement | null,
+ *     menuReviewItem: HTMLElement | null,
  *     menuPagesBlock: HTMLElement | null,
  *     menuPages: HTMLElement | null,
  *     footer: HTMLElement | null,
@@ -39,6 +41,7 @@ import { createSkipDialog } from './skipDialog.js';
  *   onLanguageChange: (language: string) => void,
  *   onSkip: (body: { reason_code?: string, reason_note?: string }) => Promise<void> | void,
  *   onCopy: () => void,
+ *   onReview: () => void,
  * }} deps
  */
 export function createShellChrome({
@@ -48,6 +51,7 @@ export function createShellChrome({
   onLanguageChange,
   onSkip,
   onCopy,
+  onReview,
 }) {
   // The drawer is a modal dialog, not a popover (ui/drawer.js): the popover
   // attribute is unknown below iOS 17 / Firefox 125, and where it is unknown the
@@ -97,6 +101,12 @@ export function createShellChrome({
   };
   shell.menuCopy?.addEventListener('click', onCopyClick);
 
+  const onReviewClick = () => {
+    closeMenu();
+    onReview();
+  };
+  shell.menuReview?.addEventListener('click', onReviewClick);
+
   const select = shell.languageSelect;
   // The select lives in this menu, and picking a language is what makes the
   // labels below it (and the footer) change - so it is wired here, not in the
@@ -129,7 +139,9 @@ export function createShellChrome({
       }
       legal.render(session);
       if (shell.menuSkipItem) shell.menuSkipItem.hidden = !canSkipDiary(session);
-      if (shell.menuCopyItem) shell.menuCopyItem.hidden = session?.stage !== 'diary';
+      const inDiary = session?.stage === 'diary';
+      if (shell.menuCopyItem) shell.menuCopyItem.hidden = !inDiary;
+      if (shell.menuReviewItem) shell.menuReviewItem.hidden = !inDiary;
     },
 
     /**
@@ -148,6 +160,7 @@ export function createShellChrome({
       select?.removeEventListener('change', onSelectChange);
       shell.menuSkip?.removeEventListener('click', onSkipClick);
       shell.menuCopy?.removeEventListener('click', onCopyClick);
+      shell.menuReview?.removeEventListener('click', onReviewClick);
       drawer?.destroy();
       skipDialog.destroy();
       legal.destroy();

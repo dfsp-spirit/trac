@@ -44,3 +44,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* The progress line is also the way into the review (desktop only, like the
+   line itself). It has to look like the text it was, not like a button. */
+button.t-topbar__note {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}

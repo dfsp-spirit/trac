@@ -161,6 +161,34 @@
   participant diffing the timeline to find out which days to redo
   (`describeSkipped()` in `ui/messages.js`).
 
+## Review before submit (D32)
+- The topbar button is **"Prüfen" / "Review"**, not "Absenden": it opens the
+  check screen, and the irreversible step is the primary button inside it. Two
+  more ways in, so finishing never depends on finding one control: the progress
+  line (desktop, `#progress-note`, a button whose visible summary stays its
+  accessible name) and the drawer menu's "Tagebuch prüfen" (the phone's path).
+- A row is **one line**: time range and name. The category used to be a second
+  line and was dropped - the timeline never showed it either, and it cost a third
+  of the height. The night marker stays inline in the time column: the range is
+  one unbreakable piece, `(next day)` may wrap under it (the only way a night
+  entry fits the 320 px column).
+- `domain/review.js` builds **three row kinds**: `activity`, `continued` (the part
+  of the previous day's night entry that lands on this day, clipped, marked `↑`)
+  and `gap` (an empty stretch between activities, the same 30-minute threshold
+  the timeline draws). Without the continuation a day could say "840 minutes
+  still to add" while its list appeared to begin at 09:00; without gaps the review
+  claimed a completeness the timeline contradicted. Leading and trailing
+  emptiness is deliberately not a gap - that is what the day state is for.
+- From 1200 px up the list is a **two-column spread** (`.t-modal--wide`, 72 rem):
+  row-major flow puts day 1 left and day 2 right, which is what a study with
+  parallel days (one per child, per device) needs to compare. DOM order stays the
+  reading order, so tab and screen-reader order are unaffected; below 1200 px it
+  is one column, and the modal is the screen. A pair is as tall as its taller day
+  (masonry is not available); that is accepted, because a pair is normally
+  structurally similar by design.
+- `nextDay` is strict: an entry that ends exactly at midnight ends the day and
+  gets no marker, matching the timeline's `↓`.
+
 ## Copying a day
 - `ui/copyDay.js` is the seam (dialog + toast + undo), `ui/copyDayDialog.js` the
   markup, `ui/copyDayText.js` the two sentences, `domain/dayCopy.js` the rules

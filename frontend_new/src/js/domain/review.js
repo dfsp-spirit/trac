@@ -7,17 +7,23 @@
  * never prose: the modal decides what to say. That keeps the "can I submit?"
  * rule testable without a DOM, and it is the same rule the service applies.
  */
-import { dayLabel, daySummaries, timedActivities } from './diary.js';
-import { dayOffset } from './time.js';
+import { dayLabel, daySummaries, layoutForDay, timedActivities } from './diary.js';
+import { MINUTES_PER_DAY } from './time.js';
 
 /**
+ * One line of a day: an entry the participant placed, the part of an entry from
+ * the day before that reaches into this day, or a stretch with nothing in it.
+ *
+ * The reading order is the timeline's, so the review cannot show a day that looks
+ * different from what the participant built (D32).
+ *
  * @typedef {Object} ReviewRow
+ * @property {'activity' | 'continued' | 'gap'} kind
  * @property {string} id
- * @property {number} start Day-relative minutes.
- * @property {number} end Day-relative minutes; past 1440 when it runs over.
+ * @property {number} start Day-relative minutes, clipped to this day for `continued`.
+ * @property {number} end Day-relative minutes; past 1440 when an activity runs over.
  * @property {boolean} nextDay True when the activity ends after midnight.
- * @property {string} name
- * @property {string | null} detail Second line, when the category adds something.
+ * @property {string} name Empty for a gap.
  * @property {string | null} color
  */
 
@@ -55,10 +61,18 @@ export function review(diary, language) {
   const byId = new Map(diary.activities.map((activity) => [activity.client_uuid, activity]));
 
   const days = daySummaries(diary).map((summary) => {
-    const rows = records
+    const layout = layoutForDay(diary, summary.index);
+    const own = records
       .filter((record) => record.dayIndex === summary.index)
       .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes)
       .map((record) => rowFor(record, byId.get(record.id)));
+    const continued = layout.segments
+      .filter((segment) => segment.continuesBefore)
+      .map((segment) => continuedRow(segment, byId.get(segment.record.id)));
+    const gaps = layout.gaps.map((gap) => gapRow(gap, summary.index));
+    const rows = [...continued, ...own, ...gaps].sort(
+      (a, b) => a.start - b.start || ORDER[a.kind] - ORDER[b.kind]
+    );
 
     return {
       index: summary.index,
@@ -84,21 +98,61 @@ export function review(diary, language) {
   };
 }
 
+/** At the same minute, the continuation comes first: it is the earlier story. */
+const ORDER = /** @type {const} */ ({ continued: 0, activity: 1, gap: 2 });
+
 /**
  * @param {import('./geometry.js').TimedRecord} record
  * @param {import('./diary.js').ApiActivity | undefined} activity
  * @returns {ReviewRow}
  */
 function rowFor(record, activity) {
-  const category = activity?.category ?? null;
-  const name = activity?.activity_name ?? '';
   return {
+    kind: 'activity',
     id: record.id,
     start: record.startMinutes,
     end: record.endMinutes,
-    nextDay: dayOffset(record.endMinutes) > dayOffset(record.startMinutes),
-    name,
-    detail: category && category !== name ? category : null,
+    // Strictly past the end of the day: an entry that stops at 00:00 ends the
+    // day, it does not reach into the next one (the timeline draws no ↓ either).
+    nextDay: record.endMinutes > MINUTES_PER_DAY,
+    name: activity?.activity_name ?? '',
     color: activity?.color ?? null,
+  };
+}
+
+/**
+ * The visible part of an entry that started the day before. Without it a day can
+ * show "840 minutes still to add" while its list appears to begin at 09:00.
+ *
+ * @param {import('./geometry.js').DaySegment} segment
+ * @param {import('./diary.js').ApiActivity | undefined} activity
+ * @returns {ReviewRow}
+ */
+function continuedRow(segment, activity) {
+  return {
+    kind: 'continued',
+    id: segment.record.id,
+    start: segment.start,
+    end: segment.end,
+    nextDay: false,
+    name: activity?.activity_name ?? '',
+    color: activity?.color ?? null,
+  };
+}
+
+/**
+ * @param {import('./geometry.js').Interval} gap
+ * @param {number} dayIndex
+ * @returns {ReviewRow}
+ */
+function gapRow(gap, dayIndex) {
+  return {
+    kind: 'gap',
+    id: `gap:${dayIndex}:${gap.start}`,
+    start: gap.start,
+    end: gap.end,
+    nextDay: false,
+    name: '',
+    color: null,
   };
 }

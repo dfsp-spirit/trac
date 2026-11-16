@@ -7,7 +7,7 @@
  * empty. Nothing is submitted here; the submit-and-lock flow is its own spec.
  */
 import { test, expect } from '@playwright/test';
-import { openDiary } from './helpers.js';
+import { isPhone, openDiary } from './helpers.js';
 
 const STUDY = 'newui_08_prefilled';
 const REVIEW = '#review-dialog';
@@ -54,6 +54,35 @@ test.describe('review modal', () => {
     await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
     await page.waitForTimeout(300);
     expect(submitted).toBe(false);
+  });
+
+  test('the progress line and the menu open the same review', async ({ page }, testInfo) => {
+    await openDiary(page, 'ready_02', STUDY);
+
+    // Desktop: the progress line is the "am I done?" affordance and opens it too.
+    test.skip(isPhone(testInfo), 'the progress line is desktop-only');
+    await page.locator('#progress-note').click();
+    await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
+    await expect(page.locator('#review-title')).toHaveText('Tagebuch prüfen');
+    await page.locator('#review-dialog .t-icon-btn').last().click();
+    await expect(page.locator(`${REVIEW}[open]`)).toHaveCount(0);
+
+    await page.locator('#menu-open').click();
+    await page.locator('#menu-review').click();
+    await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
+  });
+
+  test('two days side by side on desktop, one column on a phone', async ({ page }, testInfo) => {
+    await openDiary(page, 'ready_02', STUDY);
+    await page.locator('#submit-btn').click();
+    await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
+
+    const columns = await page
+      .locator(`${REVIEW} .t-review`)
+      .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length);
+    // Consecutive days pair up (day 1 left, day 2 right), so the nth day is where
+    // the eye expects it: the same reading order the DOM has.
+    expect(columns).toBe(isPhone(testInfo) ? 1 : 2);
   });
 
   test('a complete week reaches confirmation and can go back', async ({ page }) => {

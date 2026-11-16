@@ -35,10 +35,17 @@
         <div class="t-topbar__title">
           <p class="t-topbar__name" id="app-title" data-i18n="diary.shell.appName">Time diary</p>
         </div>
-        <p class="t-topbar__note" id="progress-note" hidden></p>
+        <!-- The progress line opens the review. The visible text stays its
+             accessible name (the summary is what matters); the hidden sentence
+             says what activating it does. -->
+        <button class="t-topbar__note" type="button" id="progress-note" hidden
+                aria-describedby="progress-note-action"></button>
+        <span class="t-vh" id="progress-note-action" data-i18n="diary.review.open">Review the week</span>
+        <!-- Opens the review, not the submission: the lock belongs to the last
+             step inside it, so the label and the icon say "check". -->
         <button class="t-btn t-btn--secondary t-btn--sm" type="button" id="submit-btn" hidden>
-          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
-          <span data-i18n="diary.shell.submit">Submit</span>
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+          <span data-i18n="diary.shell.submit">Review</span>
         </button>
       </div>
 
@@ -123,8 +130,11 @@
       <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
         <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
                     data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
-        <!-- Copying needs a filled day, which only the diary has (shellChrome
-             hides it outside that stage). -->
+        <!-- Reviewing needs the diary, which is why both of these are hidden
+             outside that stage (shellChrome.apply). -->
+        <li id="menu-review-item" hidden><button class="t-drawer__item" type="button" id="menu-review"
+                    data-i18n="diary.review.open">Review the week</button></li>
+        <!-- Copying needs a filled day, which only the diary has. -->
         <li id="menu-copy-item" hidden><button class="t-drawer__item" type="button" id="menu-copy"
                     data-i18n="diary.copy.open">Copy days…</button></li>
         <!-- Skipping ends the study's diary part, so it is only offered when the

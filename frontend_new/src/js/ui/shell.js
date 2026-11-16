@@ -55,6 +55,8 @@ export function readShell(root) {
     menuSkipItem: maybe('#menu-skip-item'),
     menuCopy: maybe('#menu-copy'),
     menuCopyItem: maybe('#menu-copy-item'),
+    menuReview: maybe('#menu-review'),
+    menuReviewItem: maybe('#menu-review-item'),
     footer: maybe('#footer'),
     footerLinks: maybe('#footer-links'),
     nav: {

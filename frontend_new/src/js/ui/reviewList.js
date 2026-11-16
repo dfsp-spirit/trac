@@ -33,29 +33,55 @@ function stateText(day, t) {
 }
 
 /**
+ * One line per row of the day, in the timeline's order: the entry, the stretch
+ * with nothing in it, or what is left of the night before.
+ *
  * @param {import('../domain/review.js').ReviewRow} row
  * @param {(minutes: number) => string} clock Formats a day-relative minute.
- * @param {(key: string) => string} t
+ * @param {(key: string, params?: Record<string, string | number>) => string} t
  * @returns {HTMLLIElement}
  */
 function renderRow(row, clock, t) {
-  const item = el('li');
+  const item = el('li', row.kind === 'activity' ? null : `t-review__row--${row.kind}`);
 
-  const swatch = el('span', 't-pat t-pat--sm');
-  swatch.setAttribute('aria-hidden', 'true');
-  if (row.color) swatch.style.background = row.color;
-  else swatch.classList.add('t-pat--general');
+  // A gap has nothing to show in the swatch column; the empty cell keeps the
+  // three columns aligned.
+  const swatch = el('span');
+  if (row.kind !== 'gap') {
+    swatch.className = 't-pat t-pat--sm';
+    swatch.setAttribute('aria-hidden', 'true');
+    if (row.color) swatch.style.background = row.color;
+    else swatch.classList.add('t-pat--general');
+  }
   item.append(swatch);
 
   const time = el('span', 't-review__time');
-  time.textContent = `${clock(row.start)} – ${clock(row.end)}`;
+  // The range is one unbreakable piece; "(next day)" may wrap under it, which is
+  // the only way a night entry fits the column at 320px.
+  const range = el('span', 't-review__range');
+  if (row.kind === 'continued') {
+    // The same cue the timeline uses for a block that reaches in from the day
+    // before; the words in the text column carry it for a screen reader.
+    const up = el('span', null, '↑ ');
+    up.setAttribute('aria-hidden', 'true');
+    range.append(up);
+  }
+  range.append(document.createTextNode(`${clock(row.start)} – ${clock(row.end)}`));
+  time.append(range);
   if (row.nextDay) {
     time.append(el('small', null, ` ${t('diary.review.nextDay')}`));
   }
   item.append(time);
 
-  const what = el('span', 't-review__what', row.name);
-  if (row.detail) what.append(el('small', null, row.detail));
+  const what = el('span', 't-review__what');
+  if (row.kind === 'gap') {
+    what.textContent = t('diary.review.nothingAdded');
+  } else {
+    what.textContent = row.name;
+    if (row.kind === 'continued') {
+      what.append(el('span', 't-review__note', ` (${t('diary.review.continued')})`));
+    }
+  }
   item.append(what);
 
   return item;
