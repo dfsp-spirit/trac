@@ -161,6 +161,30 @@
   participant diffing the timeline to find out which days to redo
   (`describeSkipped()` in `ui/messages.js`).
 
+## Copying a day
+- `ui/copyDay.js` is the seam (dialog + toast + undo), `ui/copyDayDialog.js` the
+  markup, `ui/copyDayText.js` the two sentences, `domain/dayCopy.js` the rules
+  (`ownCounts`, `copyableDays`, `planCopy`). The planner mirrors the server's
+  `POST /day-copies`, so `tests/unit/day-copy.test.js` pins the answer without a
+  browser.
+- The source day is a **receipt block above the target grid**, never a chip among
+  the targets: "where do I copy from" and "where do I copy to" must not be told
+  apart by a border style. The source chip stays visible in the grid (the week's
+  shape) but is inert.
+- A day with entries gets a **dot** on its chip, not a count - a number under the
+  weekday reads as a duration. The count lives in the sentence under the grid,
+  which names only the days that lose something: "Wird überschrieben: Mittwoch
+  (2 Einträge)". The button carries the consequence too ("Kopieren und
+  ersetzen"), and the toast afterwards offers an undo that restores the replaced
+  rows - no confirmation dialog (D9).
+- `copyableDays()` is deliberately **not** `daySummaries().hasData`: a day whose
+  only content is the tail of the previous night looks filled but owns no rows,
+  and there would be nothing to copy.
+- Entry points: the "Tag kopieren" button in each day heading (`timeline.js`,
+  rendered inert when the day owns no rows), "Tage kopieren…" under the day rail,
+  and the same entry in the drawer menu for phones. All three open one dialog;
+  only the source preselection differs.
+
 ## Toast placement
 - The toast lives in the panel's column above 1200px (D28), which is exactly
   where the panel's footer buttons are. It therefore lets clicks through

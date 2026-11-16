@@ -51,6 +51,7 @@ snapshot" with one row per activity, addressed by `client_uuid`.
 | `PATCH` | `/activities/{client_uuid}` | Change one row |
 | `DELETE` | `/activities/{client_uuid}` | Remove one row |
 | `DELETE` | `/activity-groups/{group_id}` | Remove every row one create produced |
+| `POST` | `/day-copies` | Copy one day onto one or more other days (overwrite) |
 | `POST` | `/diary/submit` | Lock the diary; idempotent |
 
 Rules that must not drift:
@@ -69,6 +70,14 @@ Rules that must not drift:
 - Errors carry a machine-readable `detail.code` (`overlap.limit_reached`,
   `activity.duplicate`, `day.ends_at_midnight`, `days.incomplete`, ...); the
   frontend maps those codes to translations and never parses message text.
+- **`POST /day-copies` overwrites**: a target day's own rows are deleted first.
+  Every target gets its own outcome (`copied`, or `skipped` with a code), all of
+  them land in one transaction and share one `group_id`, and the response carries
+  the replaced rows so the client can offer an undo that restores them (D9). The
+  last day still refuses a row that runs past its end (`day.ends_at_midnight`),
+  and a neighbour's cross-midnight tail counts towards `max_overlap` like any
+  other row. The day window test is day-relative, so a 23:00-01:00 entry is
+  intra-day for a study whose day starts at 04:00.
 
 ## Participant-facing links (imprint, data protection, study pages)
 

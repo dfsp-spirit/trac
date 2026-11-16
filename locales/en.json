@@ -329,6 +329,31 @@
       "submittedText": "The research team has it. You can still read it, but not change it.",
       "locked": "Submitted. The diary can be read, not changed."
     },
+    "copy": {
+      "title": "Copy a day",
+      "open": "Copy days…",
+      "thisDay": "Copy this day",
+      "source": "Source",
+      "selectSource": "Choose a day…",
+      "change": "Change",
+      "targets": "Copy to",
+      "pickSource": "Choose the day to copy from.",
+      "pickTargets": "Choose one or more days.",
+      "entries_one": "{{count}} entry",
+      "entries_other": "{{count}} entries",
+      "overwrite": "Will be overwritten: {{days}}",
+      "overwriteItem": "{{day}} ({{count}})",
+      "skipped": "Not copied: {{details}}",
+      "submit": "Copy",
+      "submitReplace": "Copy and overwrite",
+      "cancel": "Cancel",
+      "success": "Copied to {{days}}",
+      "failed": "Could not copy. Please try again.",
+      "nothingToCopy": "There is nothing to copy yet.",
+      "needsEntries": "This day has no entries yet.",
+      "chipFilled": "has entries",
+      "chipSource": "source day"
+    },
     "panel": {
       "chooseActivity": "Choose an activity",
       "recent": "Used recently",
@@ -421,6 +446,10 @@
       "dayRange": {
         "title": "Day not available",
         "text": "This day is not part of the study."
+      },
+      "copySourceEmpty": {
+        "title": "Nothing to copy",
+        "text": "The source day has no activities."
       },
       "needsOption": {
         "title": "Choose an option",
