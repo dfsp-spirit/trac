@@ -16,6 +16,7 @@ import { pickInitialLanguage } from './domain/language.js';
 import { parseIdentity } from './domain/router.js';
 import { createDiaryActions } from './state/diary.js';
 import { createInitialState, createStore } from './state/store.js';
+import { createCopyDay } from './ui/copyDay.js';
 import { createDiaryScreen } from './ui/diaryScreen.js';
 import { createDiaryView } from './ui/diaryView.js';
 import { adoptParticipantId } from './ui/identity.js';
@@ -46,8 +47,7 @@ export function mount({ root, params }) {
   const participantId = adoptParticipantId({ studyName, participantId: identity.participant || config.participantId });
 
   const store = createStore(createInitialState({ language }));
-  // Opt-in, unlinked usability signals; silent until the session says the study
-  // collects them (domain/uxEvents.js).
+  // Opt-in usability signals, unlinked and silent until the study asks (domain/uxEvents.js).
   const signals = createSignals({
     send: studyName ? createSignalSender(config.apiBaseUrl, studyName) : null,
     getLanguage: () => store.get().language,
@@ -56,6 +56,7 @@ export function mount({ root, params }) {
 
   /** @type {(key: string, values?: Record<string, string | number>) => string} */
   const t = (key, values) => translator.t(key, values);
+  const tCount = /** @type {(k: string, n: number) => string} */ ((k, n) => translator.tCount(k, n));
 
   const handles = readShell(root);
   const {
@@ -79,8 +80,9 @@ export function mount({ root, params }) {
 
   const wide = window.matchMedia('(min-width: 1200px)');
 
-  // Shell parts that depend on the study config (shellChrome.js); `onSkip` is
-  // deferred because its machinery is created below and only runs on confirm.
+  let copy = /** @type {ReturnType<typeof createCopyDay> | null} */ (null); // wired below
+
+  // Shell parts that depend on the study config (shellChrome.js); callbacks are deferred.
   const chrome = createShellChrome({
     shell: handles,
     t,
@@ -88,6 +90,7 @@ export function mount({ root, params }) {
     onLanguageChange: (next) => void languageSwitch.setLanguage(next),
     onSkip: (body) =>
       actions ? actions.skip(body).then(() => stageMachine.refresh()) : undefined,
+    onCopy: () => copy?.open(),
   });
 
   const api =
@@ -96,15 +99,17 @@ export function mount({ root, params }) {
           onError: (info) => signals.track('api.error', info),
         })
       : null;
-  const diaryDeps = { store, getLanguage: () => store.get().language };
   const actions = api
     ? createDiaryActions({
-        ...diaryDeps,
+        store,
+        getLanguage: () => store.get().language,
         api,
         multiTimelinePolicy: config.multiTimelinePolicy,
         onRefused: (refusal) => signals.track('diary.blocked', refusal),
       })
     : null;
+
+  copy = createCopyDay({ root, store, actions, t, tCount, toastRegion, signals });
 
   const { hostPanel } = createPanelHost({
     section: sectionHost,
@@ -114,11 +119,9 @@ export function mount({ root, params }) {
     translate: (host) => applyTranslations(host, translator),
   });
 
-  /** @returns {boolean} */
   const isLocked = () => Boolean(store.get().diary?.study.submitted_at);
 
-  /** The view the panel's suggestions are read from; created further down. */
-  /** @type {ReturnType<typeof createDiaryView> | null} */
+  /** @type {ReturnType<typeof createDiaryView> | null} The view the panel reads from. */
   let viewRef = null;
 
   const panels = createPanelController({
@@ -211,6 +214,8 @@ export function mount({ root, params }) {
     submitBtn,
     dialogHost,
     isLocked,
+    copy,
+    copyDaysBtn: handles.copyDays,
   });
 
   const finePointer = window.matchMedia('(pointer: fine)');
@@ -280,6 +285,7 @@ export function mount({ root, params }) {
       screen.destroy();
       shortcuts.destroy();
       review.destroy();
+      copy?.destroy();
       chrome.destroy();
       signals.destroy();
     },

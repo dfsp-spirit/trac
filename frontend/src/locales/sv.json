@@ -329,6 +329,31 @@
       "submittedText": "Forskargruppen har fått den. Du kan fortfarande läsa den, men inte ändra den.",
       "locked": "Inskickad. Dagboken kan läsas men inte ändras."
     },
+    "copy": {
+      "title": "Kopiera en dag",
+      "open": "Kopiera dagar…",
+      "thisDay": "Kopiera dagen",
+      "source": "Källa",
+      "selectSource": "Välj en dag…",
+      "change": "Ändra",
+      "targets": "Kopiera till",
+      "pickSource": "Välj dagen som ska kopieras.",
+      "pickTargets": "Välj en eller flera dagar.",
+      "entries_one": "{{count}} post",
+      "entries_other": "{{count}} poster",
+      "overwrite": "Skrivs över: {{days}}",
+      "overwriteItem": "{{day}} ({{count}})",
+      "skipped": "Inte kopierat: {{details}}",
+      "submit": "Kopiera",
+      "submitReplace": "Kopiera och skriv över",
+      "cancel": "Avbryt",
+      "success": "Kopierat till {{days}}",
+      "failed": "Det gick inte att kopiera. Försök igen.",
+      "nothingToCopy": "Det finns inget att kopiera än.",
+      "needsEntries": "Den här dagen har inga poster än.",
+      "chipFilled": "har poster",
+      "chipSource": "källdag"
+    },
     "panel": {
       "chooseActivity": "Välj en aktivitet",
       "recent": "Senast använd",
@@ -421,6 +446,10 @@
       "dayRange": {
         "title": "Dagen är inte tillgänglig",
         "text": "Den här dagen ingår inte i studien."
+      },
+      "copySourceEmpty": {
+        "title": "Inget att kopiera",
+        "text": "Källdagen har inga poster."
       },
       "needsOption": {
         "title": "Välj ett alternativ",

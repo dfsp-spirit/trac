@@ -329,6 +329,31 @@
       "submittedText": "Das Forschungsteam hat es erhalten. Du kannst es noch lesen, aber nicht mehr ändern.",
       "locked": "Abgeschickt. Das Tagebuch ist lesbar, aber nicht mehr änderbar."
     },
+    "copy": {
+      "title": "Tag kopieren",
+      "open": "Tage kopieren…",
+      "thisDay": "Tag kopieren",
+      "source": "Quelle",
+      "selectSource": "Tag wählen…",
+      "change": "Ändern",
+      "targets": "Kopieren nach",
+      "pickSource": "Wähle den Tag, der kopiert wird.",
+      "pickTargets": "Wähle einen oder mehrere Tage.",
+      "entries_one": "{{count}} Eintrag",
+      "entries_other": "{{count}} Einträge",
+      "overwrite": "Wird überschrieben: {{days}}",
+      "overwriteItem": "{{day}} ({{count}})",
+      "skipped": "Nicht kopiert: {{details}}",
+      "submit": "Kopieren",
+      "submitReplace": "Kopieren und ersetzen",
+      "cancel": "Abbrechen",
+      "success": "Nach {{days}} kopiert",
+      "failed": "Kopieren hat nicht geklappt. Bitte versuche es erneut.",
+      "nothingToCopy": "Es gibt noch nichts zu kopieren.",
+      "needsEntries": "Dieser Tag hat noch keine Einträge.",
+      "chipFilled": "hat Einträge",
+      "chipSource": "Quelltag"
+    },
     "panel": {
       "chooseActivity": "Aktivität wählen",
       "recent": "Zuletzt verwendet",
@@ -421,6 +446,10 @@
       "dayRange": {
         "title": "Tag nicht verfügbar",
         "text": "Dieser Tag gehört nicht zur Studie."
+      },
+      "copySourceEmpty": {
+        "title": "Nichts zu kopieren",
+        "text": "Der Quelltag hat keine Einträge."
       },
       "needsOption": {
         "title": "Option wählen",

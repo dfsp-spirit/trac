@@ -112,6 +112,16 @@ test.describe('accessibility', () => {
     await expectNoA11yViolations(page, 'review dialog');
   });
 
+  test('the copy-day dialog', async ({ page }) => {
+    // `ready_02` again: days with entries, so the source receipt and the marked
+    // target chips are both on screen. Opened from a day heading, which exists on
+    // both legs (the rail does not).
+    await openDiary(page, 'ready_02', 'newui_08_prefilled');
+    await page.locator('#days .t-timeline-day[data-day-index="0"] [data-copy-day]').click();
+    await expect(page.locator('#copy-day-dialog')).toHaveAttribute('open', '');
+    await expectNoA11yViolations(page, 'copy dialog');
+  });
+
   test('the skip dialog', async ({ page }) => {
     // `skip_02` is the read-only half of that fixture: the dialog is scanned and
     // cancelled, so the participant stays usable.

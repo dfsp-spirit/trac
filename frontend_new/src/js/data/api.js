@@ -210,6 +210,20 @@ export function createApi(baseUrl, studyName, participantId, { onError } = {}) {
       }),
 
     /**
+     * Copy one day onto one or more other days (D18). The target days are
+     * overwritten; the response carries the rows it created *and* the ones it
+     * replaced, which is what makes an undo possible.
+     *
+     * @param {{ source_day_index: number, target_day_indexes: number[], group_id?: string }} body
+     * @returns {Promise<any>}
+     */
+    copyDay: (body) =>
+      request(`${diaryRoot}/day-copies`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+
+    /**
      * Lock the diary. Idempotent, so a retry after a lost response is harmless.
      *
      * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean, stage: string }>}

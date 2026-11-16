@@ -86,7 +86,10 @@ test('the scanner finds keys, so the guards below cannot pass vacuously', () => 
 
 test('every referenced key exists in every locale', () => {
   const missing = [];
-  for (const reference of references) {
+  // A plural key is stored as `<key>_one` / `<key>_other` only; the loader never
+  // looks the bare key up, so requiring it here would contradict `tCount` (the
+  // plural test below checks those two forms).
+  for (const reference of references.filter((item) => !item.plural)) {
     for (const file of localeFiles) {
       if (typeof lookup(locales[file], reference.key) !== 'string') {
         missing.push(`${file}: ${reference.key} (referenced from ${reference.file})`);

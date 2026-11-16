@@ -18,6 +18,7 @@ export const codes = {
   'activity.duplicate': 'diary.error.duplicate',
   'day.ends_at_midnight': 'diary.error.lastMidnight',
   'day.out_of_range': 'diary.error.dayRange',
+  'day.copy_source_empty': 'diary.error.copySourceEmpty',
   'form.chooseOption': 'diary.error.needsOption',
   'form.needsText': 'diary.error.needsText',
   'study_already_submitted': 'diary.error.submitted',
@@ -59,9 +60,12 @@ export function describeError(t, code, meta = {}) {
  * @param {Array<{ day_label_index?: number, code?: string }>} skipped
  * @param {Array<{ index: number, name: string, displayName?: string | null, displayNames?: Record<string, string>, display_name?: string | null, display_names?: Record<string, string> }>} days
  * @param {string} language
+ * @param {string} [prefixKey] The sentence the details belong to. A copy refuses
+ *   targets for the same reasons an add does, but "Not copied" is not "Not
+ *   added", so the caller may name the action.
  * @returns {string}
  */
-export function describeSkipped(t, skipped, days, language) {
+export function describeSkipped(t, skipped, days, language, prefixKey = 'diary.toast.skipped') {
   /** @type {Map<string, number[]>} */
   const byReason = new Map();
   for (const item of skipped) {
@@ -73,5 +77,5 @@ export function describeSkipped(t, skipped, days, language) {
       t('diary.toast.skippedItem', { days: dayLabelList(indexes, days, language), reason })
     )
     .join(', ');
-  return t('diary.toast.skipped', { details });
+  return t(prefixKey, { details });
 }

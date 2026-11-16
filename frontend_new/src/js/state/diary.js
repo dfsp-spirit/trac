@@ -9,6 +9,8 @@
  */
 
 import { toCreateItem } from '../domain/diary.js';
+import { withCreated, withUpdated, withoutUuids } from '../domain/diaryMerges.js';
+import { createCopyActions } from './copyDay.js';
 import { normalizePolicy, selectTimelineKeys } from '../domain/timelines.js';
 import { newUuid } from '../domain/uuid.js';
 
@@ -20,52 +22,12 @@ import { newUuid } from '../domain/uuid.js';
  */
 
 /**
- * @param {any} result Response of POST /activities
- * @param {ApiDiary} diary
- * @returns {ApiDiary}
- */
-function withCreated(result, diary) {
-  /** @type {ApiActivity[]} */
-  const created = result?.activities || [];
-  const known = new Set(diary.activities.map((activity) => activity.client_uuid));
-  const additions = created.filter((activity) => !known.has(activity.client_uuid));
-  return { ...diary, activities: [...diary.activities, ...additions] };
-}
-
-/**
- * @param {string} clientUuid
- * @param {ApiActivity} updated
- * @param {ApiDiary} diary
- * @returns {ApiDiary}
- */
-function withUpdated(clientUuid, updated, diary) {
-  return {
-    ...diary,
-    activities: diary.activities.map((activity) =>
-      activity.client_uuid === clientUuid ? { ...activity, ...updated } : activity
-    ),
-  };
-}
-
-/**
- * @param {Set<string>} uuids
- * @param {ApiDiary} diary
- * @returns {ApiDiary}
- */
-function withoutUuids(uuids, diary) {
-  return {
-    ...diary,
-    activities: diary.activities.filter((activity) => !uuids.has(activity.client_uuid)),
-  };
-}
-
-/**
  * @param {{
  *   store: Store,
  *   api: Api,
  *   getLanguage: () => string,
  *   multiTimelinePolicy?: string,
- *   onRefused?: (refusal: { stage: 'activity_save' | 'study_submit', codes: string[] }) => void,
+ *   onRefused?: (refusal: { stage: 'activity_save' | 'study_submit' | 'multi_day', codes: string[] }) => void,
  * }} deps `onRefused` hears the refusals a participant can act on (a rule said
  *   no), which is the signal that answers "where do people get stuck". Plain
  *   breakage goes to the API client's `onError` hook instead.
@@ -287,5 +249,18 @@ export function createDiaryActions({
     }
   }
 
-  return { load, create, update, remove, removeWithUndo, removeGroup, submit, skip };
+  const copy = createCopyActions({ store, api, onRefused, create, remove, removeGroup });
+
+  return {
+    load,
+    create,
+    update,
+    remove,
+    removeWithUndo,
+    removeGroup,
+    copyDay: copy.copyDay,
+    undoCopy: copy.undoCopy,
+    submit,
+    skip,
+  };
 }

@@ -675,3 +675,118 @@ async def test_an_unknown_timelines_value_is_refused():
         )
 
     assert response.status_code == 400, response.text
+
+
+# --------------------------------------------------------------------------- #
+# Copying a day (D18, D19)
+# --------------------------------------------------------------------------- #
+def _copy(study: str, participant: str) -> str:
+    return _url(study, participant, "/day-copies")
+
+
+@pytest.mark.asyncio
+async def test_copying_a_day_onto_two_days_replaces_what_was_there():
+    """One request, per-target outcomes, one group id, and the replaced rows come
+    back - which is what the client needs to offer an undo that restores them."""
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client)
+        await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=100, start=480, end=600, days=[0])]},
+        )
+        await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=101, start=600, end=660, days=[2])]},
+        )
+
+        response = await client.post(
+            _copy(study, participant),
+            json={"source_day_index": 0, "target_day_indexes": [1, 2]},
+        )
+        assert response.status_code == 201, response.text
+        payload = response.json()
+        diary = await _diary(client, study, participant)
+
+    assert [item["day_label_index"] for item in payload["results"]] == [1, 2]
+    assert all(item["status"] == "copied" for item in payload["results"])
+    assert payload["results"][0]["replaced"] == 0
+    assert payload["results"][1]["replaced"] == 1
+    assert len(payload["activities"]) == 2
+    assert len(payload["replaced"]) == 1
+    assert payload["replaced"][0]["activity_code"] == 101
+    assert {activity["group_id"] for activity in payload["activities"]} == {payload["group_id"]}
+    assert all(
+        activity["group_id"] == payload["group_id"] for activity in payload["activities"]
+    )
+
+    grouped = _activities_by_day(diary)
+    for day_index in (0, 1, 2):
+        assert len(grouped[day_index]) == 1
+        assert grouped[day_index][0]["activity_code"] == 100
+        assert grouped[day_index][0]["start_minutes"] == 480
+        assert grouped[day_index][0]["end_minutes"] == 600
+
+    # The copy is an independent set of rows, so the source row still exists.
+    assert len({activity["client_uuid"] for activity in diary["activities"]}) == 3
+
+
+@pytest.mark.asyncio
+async def test_copying_a_night_entry_onto_the_last_day_is_refused_for_that_day():
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client)
+        await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=100, start=1380, end=1500, days=[0])]},
+        )
+
+        response = await client.post(
+            _copy(study, participant),
+            json={"source_day_index": 0, "target_day_indexes": [1, 2]},
+        )
+        diary = await _diary(client, study, participant)
+
+    assert response.status_code == 201, response.text
+    results = {item["day_label_index"]: item for item in response.json()["results"]}
+    assert results[1]["status"] == "copied"
+    assert results[2]["status"] == "skipped"
+    assert results[2]["code"] == "day.ends_at_midnight"
+    assert [activity["day_label_index"] for activity in diary["activities"]] == [0, 1]
+
+
+@pytest.mark.asyncio
+async def test_copying_an_empty_day_is_a_rule_not_a_failure():
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client)
+        response = await client.post(
+            _copy(study, participant),
+            json={"source_day_index": 0, "target_day_indexes": [1]},
+        )
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"]["code"] == "day.copy_source_empty"
+
+
+@pytest.mark.asyncio
+async def test_a_copy_is_refused_once_the_diary_is_submitted():
+    """A copy rewrites a whole day, so it honours the submission lock like every
+    other write (the legacy endpoint needed a regression test for exactly this)."""
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client, min_coverage=60)
+        await client.post(
+            _url(study, participant, "/activities"),
+            json={"items": [_item(code=100, start=480, end=600, days=[0, 1, 2])]},
+        )
+        submitted = await client.post(_url(study, participant, "/diary/submit"))
+        assert submitted.status_code == 200, submitted.text
+
+        response = await client.post(
+            _copy(study, participant),
+            json={"source_day_index": 0, "target_day_indexes": [1]},
+        )
+
+    assert response.status_code == 403, response.text
+    assert response.json()["detail"]["code"] == "study_already_submitted"

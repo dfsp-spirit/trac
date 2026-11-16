@@ -7,6 +7,7 @@
  * Extracted from the composition root so that file stays a list of parts rather
  * than a list of parts plus their behaviour.
  */
+import { copyableDays } from '../domain/dayCopy.js';
 import { scrollToDay } from './timeline.js';
 
 /**
@@ -23,7 +24,11 @@ import { scrollToDay } from './timeline.js';
  *   submitBtn: HTMLElement,
  *   dialogHost: HTMLDialogElement | null,
  *   isLocked: () => boolean,
- * }} deps
+ *   copy: { open: (options?: { sourceDay?: number | null }) => void },
+ *   copyDaysBtn: HTMLElement | null,
+ * }} deps `copy` is the day-copy dialog; the two entry points that live in this
+ *   screen ("this day" in a heading, the button under the rail) only report which
+ *   day they belong to.
  */
 export function createDiaryScreen({
   store,
@@ -36,6 +41,8 @@ export function createDiaryScreen({
   submitBtn,
   dialogHost,
   isLocked,
+  copy,
+  copyDaysBtn,
 }) {
   /** @param {number} dayIndex */
   function goToDay(dayIndex) {
@@ -65,6 +72,11 @@ export function createDiaryScreen({
       locked,
     });
     panels.sync(locked);
+    if (copyDaysBtn) {
+      const canCopy = !locked && copyableDays(state.diary).length > 0;
+      if (canCopy) copyDaysBtn.removeAttribute('aria-disabled');
+      else copyDaysBtn.setAttribute('aria-disabled', 'true');
+    }
   }
 
   function addActivity() {
@@ -82,12 +94,25 @@ export function createDiaryScreen({
 
   /** @param {Event} event */
   function onTimelineClick(event) {
+    const trigger =
+      event.target instanceof Element ? event.target.closest('[data-copy-day]') : null;
+    if (trigger) {
+      const sourceDay = Number(trigger.getAttribute('data-copy-day'));
+      if (trigger.getAttribute('aria-disabled') !== 'true') copy.open({ sourceDay });
+      return;
+    }
     panels.openFromEvent(event);
+  }
+
+  function onCopyDays() {
+    if (copyDaysBtn?.getAttribute('aria-disabled') === 'true') return;
+    copy.open();
   }
 
   fab.addEventListener('click', addActivity);
   submitBtn.addEventListener('click', review.open);
   daysHost.addEventListener('click', onTimelineClick);
+  copyDaysBtn?.addEventListener('click', onCopyDays);
 
   return {
     render,
@@ -99,6 +124,7 @@ export function createDiaryScreen({
       fab.removeEventListener('click', addActivity);
       submitBtn.removeEventListener('click', review.open);
       daysHost.removeEventListener('click', onTimelineClick);
+      copyDaysBtn?.removeEventListener('click', onCopyDays);
     },
   };
 }

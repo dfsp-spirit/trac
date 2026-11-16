@@ -60,11 +60,19 @@ export function timeInput() {
  * language* ("Mo", "Di", "Mi" in German, "Må", "Ti" in Swedish) - the internal
  * name is English, so slicing it gave "mo", "tu", "we" to everyone.
  *
+ * `options` exists for the copy dialog, which reuses the same grid with two
+ * differences: the chips that already hold entries get a dot, and the source day
+ * is inert (it is where the entries come from, not a target). Both states are
+ * part of the accessible name, because a dot alone says nothing to a screen
+ * reader.
+ *
  * @param {Array<{ index: number, name: string, display_name?: string | null, display_names?: Record<string, string> }>} days
  * @param {string} language
+ * @param {{ filled?: number[], source?: number | null, filledLabel?: string, sourceLabel?: string }} [options]
  * @returns {{ element: HTMLElement, inputs: HTMLInputElement[] }}
  */
-export function dayChips(days, language = '') {
+export function dayChips(days, language = '', options = {}) {
+  const { filled = [], source = null, filledLabel = '', sourceLabel = '' } = options;
   const element = el('div', 't-days__grid');
   /** @type {HTMLInputElement[]} */
   const inputs = [];
@@ -76,7 +84,22 @@ export function dayChips(days, language = '') {
     input.name = 'days';
     input.value = String(day.index);
     const label = dayLabel(day, language);
-    input.setAttribute('aria-label', label);
+    const isSource = source === day.index;
+    const isFilled = filled.includes(day.index);
+
+    if (isSource) {
+      chip.classList.add('t-day-chip--source');
+      input.disabled = true;
+    }
+    input.setAttribute(
+      'aria-label',
+      isSource && sourceLabel
+        ? `${label}, ${sourceLabel}`
+        : isFilled && filledLabel
+          ? `${label}, ${filledLabel}`
+          : label
+    );
+
     const weekday = el('span', 't-day-chip__wd', label.slice(0, 2));
     weekday.setAttribute('aria-hidden', 'true');
     // The chip's selected look is a class, not `:has(input:checked)`, because the
@@ -86,6 +109,14 @@ export function dayChips(days, language = '') {
       chip.classList.toggle('t-day-chip--checked', input.checked)
     );
     chip.append(input, weekday);
+
+    if (isFilled && !isSource) {
+      chip.classList.add('t-day-chip--filled');
+      const mark = el('span', 't-day-chip__mark');
+      mark.setAttribute('aria-hidden', 'true');
+      chip.append(mark);
+    }
+
     element.append(chip);
     inputs.push(input);
   }

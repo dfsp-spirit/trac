@@ -8,6 +8,7 @@
  * in domain/geometry.js; this file only turns them into elements.
  */
 import { dayLabel, layoutForDay } from '../domain/diary.js';
+import { ownCounts } from '../domain/dayCopy.js';
 import { formatClock } from '../domain/time.js';
 import { isColour, readableInk } from '../domain/color.js';
 
@@ -133,11 +134,12 @@ function renderGap(start, end, dayIndex, dayStart, t) {
 /**
  * @param {import('../domain/diary.js').ApiDiary} diary
  * @param {import('../domain/diary.js').ApiDiary['days'][number]} day
+ * @param {Set<number>} copyable Days that own at least one entry.
  * @param {Translator} t
  * @param {string} language
  * @returns {HTMLElement}
  */
-function renderDay(diary, day, t, language) {
+function renderDay(diary, day, copyable, t, language) {
   const dayStart = diary.study.day_start_minutes || 0;
   const layout = layoutForDay(diary, day.index);
   const byUuid = new Map(diary.activities.map((activity) => [activity.client_uuid, activity]));
@@ -147,9 +149,25 @@ function renderDay(diary, day, t, language) {
   section.dataset.dayIndex = String(day.index);
 
   const label = dayLabel(day, language);
-  const heading = el('h2', 't-timeline-day__head');
+  const head = el('div', 't-timeline-day__head');
+  const heading = el('h2', 't-timeline-day__title');
   heading.id = `h-${day.name}`;
   heading.textContent = label;
+  head.append(heading);
+  // Copying is offered per day, next to the day's name: that is the moment the
+  // thought occurs ("this day looks like Tuesday"). A day with nothing of its own
+  // cannot be a source, so its button stays visible but inert - a button that
+  // appears out of nowhere is worse than one that explains itself.
+  if (!diary.study.submitted_at) {
+    const copy = el('button', 't-btn t-btn--ghost t-btn--sm t-timeline-day__copy', t('diary.copy.thisDay'));
+    copy.type = 'button';
+    copy.dataset.copyDay = String(day.index);
+    if (!copyable.has(day.index)) {
+      copy.setAttribute('aria-disabled', 'true');
+      copy.title = t('diary.copy.needsEntries');
+    }
+    head.append(copy);
+  }
   section.setAttribute('aria-labelledby', heading.id);
 
   const grid = el('div', 't-timeline-grid');
@@ -184,7 +202,7 @@ function renderDay(diary, day, t, language) {
   for (const [, node] of items) track.append(node);
 
   grid.append(hours, track);
-  section.append(heading, grid);
+  section.append(head, grid);
   return section;
 }
 
@@ -201,8 +219,9 @@ function renderDay(diary, day, t, language) {
  */
 export function renderTimeline(host, { diary, language, t }) {
   const fragment = document.createDocumentFragment();
+  const copyable = new Set(ownCounts(diary).keys());
   for (const day of diary.days) {
-    fragment.append(renderDay(diary, day, t, language));
+    fragment.append(renderDay(diary, day, copyable, t, language));
   }
   host.replaceChildren(fragment);
   return Array.from(host.querySelectorAll('.t-timeline-day'));

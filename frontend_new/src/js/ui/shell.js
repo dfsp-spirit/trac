@@ -34,6 +34,7 @@ export function readShell(root) {
     dayNav: must('.t-daynav'),
     noticesHost: must('#timeline-notices'),
     railList: must('#rail-list'),
+    copyDays: maybe('#copy-days'),
     progressNote: must('#progress-note'),
     fab: must('#fab'),
     submitBtn: must('#submit-btn'),
@@ -51,6 +52,8 @@ export function readShell(root) {
     menuPages: maybe('#menu-pages'),
     menuSkip: maybe('#menu-skip'),
     menuSkipItem: maybe('#menu-skip-item'),
+    menuCopy: maybe('#menu-copy'),
+    menuCopyItem: maybe('#menu-copy-item'),
     footer: maybe('#footer'),
     footerLinks: maybe('#footer-links'),
     nav: {

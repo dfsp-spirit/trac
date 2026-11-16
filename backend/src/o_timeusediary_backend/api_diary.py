@@ -67,6 +67,8 @@ CODE_DAY_RANGE = "day.out_of_range"
 CODE_LAST_MIDNIGHT = "day.ends_at_midnight"
 CODE_BAD_TIME = "time.end_not_after_start"
 CODE_TOO_LONG = "time.too_long"
+CODE_COPY_SOURCE_EMPTY = "day.copy_source_empty"
+CODE_COPY_SAME_DAY = "day.copy_same_day"
 
 MINUTES_PER_DAY = 1440
 
@@ -101,6 +103,18 @@ class NewActivityItem(ActivityFields):
 
 class CreateActivitiesRequest(BaseModel):
     items: List[NewActivityItem]
+    group_id: Optional[str] = None
+    catalogue_version: Optional[str] = None
+
+
+class CopyDayRequest(BaseModel):
+    """Copy one day's activities onto one or more other days (D19).
+
+    The target days are overwritten: their own rows are replaced by the copy.
+    """
+
+    source_day_index: int
+    target_day_indexes: List[int] = Field(default_factory=list)
     group_id: Optional[str] = None
     catalogue_version: Optional[str] = None
 
@@ -235,6 +249,17 @@ def _range_error(start_minutes: int, end_minutes: int) -> Optional[str]:
     if end_minutes - start_minutes > MINUTES_PER_DAY:
         return CODE_TOO_LONG
     return None
+
+
+def _crosses_day_window(row: Activity, day_start_minutes: int) -> bool:
+    """Does this row run past the end of its own reporting day?
+
+    Measured on the day-relative axis, which is the rule the client mirrors: a
+    23:00-01:00 entry is intra-day for a study whose day starts at 04:00.
+    ``end_minutes > MINUTES_PER_DAY`` would only be right for a 00:00 day start.
+    """
+    duration = row.end_minutes - row.start_minutes
+    return to_day_relative(row.start_minutes, day_start_minutes) + duration > MINUTES_PER_DAY
 
 
 def _duplicate_exists(
@@ -1020,3 +1045,218 @@ def delete_activity_group(
     )
     session.commit()
     return {"deleted": result.rowcount or 0}
+
+
+@router.post("/day-copies", status_code=201)
+def copy_day(
+    payload: CopyDayRequest,
+    context: DiaryContext = Depends(get_writable_diary_context),
+    session: Session = Depends(get_session),
+):
+    """Copy one day's activities onto one or more other days (D18, D19).
+
+    Each target day is overwritten: its own rows are deleted and replaced by a
+    verbatim copy of the source day's rows, with rows that started on the day
+    after the target left alone. All targets land in one transaction and share
+    one ``group_id``; every target gets its own outcome, so a target the rules
+    refuse (the last day cannot hold a night entry, a neighbouring day already
+    fills the same minutes) is reported while the others are copied.
+
+    The same rules as the create endpoint apply to the result: the client mirrors
+    them for instant feedback, this is the authority. Rows that were replaced
+    travel back with the response, which is what lets the client offer an undo
+    that restores them instead of a confirmation dialog (D9).
+    """
+    study = context.study
+    participant_id = context.study_participant.participant_id
+
+    day_labels = _ordered_day_labels(session, study)
+    day_ids_by_index = _day_ids_by_index(day_labels)
+    index_by_day_id = _index_by_day_id(day_labels)
+    day_count = len(day_labels)
+
+    source_label_id = day_ids_by_index.get(payload.source_day_index)
+    if source_label_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": CODE_DAY_RANGE,
+                "message": "The source day is not part of this study.",
+            },
+        )
+
+    targets = sorted(set(payload.target_day_indexes))
+    if not targets:
+        raise HTTPException(status_code=400, detail="No target days given.")
+
+    existing = _activity_rows(session, study, participant_id)
+    source_rows = [row for row in existing if row.day_label_id == source_label_id]
+    if not source_rows:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": CODE_COPY_SOURCE_EMPTY,
+                "message": "The source day has no activities to copy.",
+            },
+        )
+
+    max_overlap_by_timeline = {
+        int(timeline.id): timeline.max_overlap
+        for timeline in session.exec(
+            select(Timeline).where(Timeline.study_id == study.id)
+        ).all()
+    }
+    copy_contains_night = any(
+        _crosses_day_window(row, study.day_start_minutes) for row in source_rows
+    )
+    group_id = payload.group_id or str(uuid.uuid4())
+    # The simulated state of the diary as the targets are accepted one by one, so
+    # a later target is validated against the rows the earlier ones created.
+    current_rows = list(existing)
+    results: List[dict] = []
+    created: List[Activity] = []
+    replaced: List[Activity] = []
+
+    for day_index in targets:
+        if day_index == payload.source_day_index:
+            results.append(
+                {
+                    "day_label_index": day_index,
+                    "status": "skipped",
+                    "code": CODE_COPY_SAME_DAY,
+                }
+            )
+            continue
+
+        target_label_id = day_ids_by_index.get(day_index)
+        if target_label_id is None:
+            results.append(
+                {
+                    "day_label_index": day_index,
+                    "status": "skipped",
+                    "code": CODE_DAY_RANGE,
+                }
+            )
+            continue
+
+        if copy_contains_night and day_index >= day_count - 1:
+            results.append(
+                {
+                    "day_label_index": day_index,
+                    "status": "skipped",
+                    "code": CODE_LAST_MIDNIGHT,
+                }
+            )
+            continue
+
+        target_rows = [row for row in current_rows if row.day_label_id == target_label_id]
+        remaining = [row for row in current_rows if row.day_label_id != target_label_id]
+
+        planned: List[Activity] = []
+        violation: Optional[dict] = None
+        for source in source_rows:
+            candidate = Activity(
+                study_id=study.id,
+                participant_id=participant_id,
+                day_label_id=target_label_id,
+                timeline_id=source.timeline_id,
+                activity_code=source.activity_code,
+                start_minutes=source.start_minutes,
+                end_minutes=source.end_minutes,
+                activity_name=source.activity_name,
+                activity_path_frontend=source.activity_path_frontend,
+                color=source.color,
+                category=source.category,
+                frequency_key=source.frequency_key,
+                parent_activity_code=source.parent_activity_code,
+                # A fresh identity per row: the copy is an independent set of
+                # rows, and a retry must not be mistaken for the same write.
+                client_uuid=_row_uuid(None, day_index),
+                group_id=group_id,
+                catalogue_version=source.catalogue_version or payload.catalogue_version,
+            )
+            violation = _overlap_violation(
+                [*remaining, *planned],
+                candidate=_absolute_interval(
+                    day_label_id=target_label_id,
+                    start_minutes=candidate.start_minutes,
+                    end_minutes=candidate.end_minutes,
+                    day_start_minutes=study.day_start_minutes,
+                    index_by_day_id=index_by_day_id,
+                ),
+                # A study with no timeline cannot have activities, so the
+                # strictest limit is also the unreachable one.
+                max_overlap=max_overlap_by_timeline.get(int(source.timeline_id), 1),
+                day_start_minutes=study.day_start_minutes,
+                index_by_day_id=index_by_day_id,
+            )
+            if violation:
+                break
+            planned.append(candidate)
+
+        if violation:
+            results.append(
+                {
+                    "day_label_index": day_index,
+                    "status": "skipped",
+                    **violation,
+                }
+            )
+            continue
+
+        current_rows = [*remaining, *planned]
+        created.extend(planned)
+        replaced.extend(target_rows)
+        results.append(
+            {
+                "day_label_index": day_index,
+                "status": "copied",
+                "copied": len(planned),
+                "replaced": len(target_rows),
+            }
+        )
+
+    # Serialise the rows that are about to disappear before they are deleted:
+    # after the commit their attributes cannot be read any more.
+    timeline_names = _timeline_names(session, study)
+    replaced_payload = [
+        _serialize_activity(row, index_by_day_id, timeline_names) for row in replaced
+    ]
+
+    try:
+        for row in replaced:
+            session.delete(row)
+        session.flush()
+        for row in created:
+            session.add(row)
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": CODE_DUPLICATE,
+                "message": "This activity was already saved. Reload the diary.",
+            },
+        )
+    for row in created:
+        session.refresh(row)
+
+    logger.info(
+        "Participant '%s' copied day index %d onto %d day(s) in study '%s': %d row(s), %d replaced",
+        participant_id,
+        payload.source_day_index,
+        len(targets),
+        study.name_short,
+        len(created),
+        len(replaced),
+    )
+
+    return {
+        "group_id": group_id,
+        "results": results,
+        "activities": [
+            _serialize_activity(row, index_by_day_id, timeline_names) for row in created
+        ],
+        "replaced": replaced_payload,
+    }

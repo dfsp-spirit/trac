@@ -68,6 +68,10 @@
     <aside class="t-rail" aria-labelledby="rail-title">
       <h2 class="t-rail__title" id="rail-title" data-i18n="diary.shell.days">Days</h2>
       <ol class="t-rail__list" id="rail-list"></ol>
+      <!-- Always present, inert while no day has entries: a button that appears
+           out of nowhere is harder to find than one that explains itself. -->
+      <button class="t-btn t-btn--ghost t-btn--block t-rail__copy" type="button" id="copy-days"
+              data-i18n="diary.copy.open">Copy days…</button>
     </aside>
 
     <!-- Column 2: the continuous timeline. Day sections are rendered here. -->
@@ -115,6 +119,10 @@
       <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
         <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
                     data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
+        <!-- Copying needs a filled day, which only the diary has (shellChrome
+             hides it outside that stage). -->
+        <li id="menu-copy-item" hidden><button class="t-drawer__item" type="button" id="menu-copy"
+                    data-i18n="diary.copy.open">Copy days…</button></li>
         <!-- Skipping ends the study's diary part, so it is only offered when the
              study asks for it (`allow_skip_timeuse`) and never on the phone-only
              surface: the menu is the one place that needs it (D41). -->
