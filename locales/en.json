@@ -350,7 +350,6 @@
       "success": "Copied to {{days}}",
       "failed": "Could not copy. Please try again.",
       "nothingToCopy": "There is nothing to copy yet.",
-      "needsEntries": "This day has no entries yet.",
       "chipFilled": "has entries",
       "chipSource": "source day"
     },

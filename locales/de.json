@@ -350,7 +350,6 @@
       "success": "Nach {{days}} kopiert",
       "failed": "Kopieren hat nicht geklappt. Bitte versuche es erneut.",
       "nothingToCopy": "Es gibt noch nichts zu kopieren.",
-      "needsEntries": "Dieser Tag hat noch keine Einträge.",
       "chipFilled": "hat Einträge",
       "chipSource": "Quelltag"
     },
