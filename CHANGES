@@ -2,7 +2,7 @@ TRAC MPIAE Changes
 ===================
 
 
-Verion 0.26.0 -- Improve new frontend
+Version 0.26.0 -- Improve new frontend
 --------------------------------------
 - NEW: add tiny daystrip overview component
 - FIX: fix translation, add missing keys
