@@ -5,6 +5,19 @@
 - SQLModel/SQLAlchemy ORM models in `backend/src/o_timeusediary_backend/models.py`.
 - Schema helper scripts in `database/`.
 
+## Backend portability (the DBMS matrix must stay green)
+- The manual DBMS matrix workflow runs the integration suite against
+  PostgreSQL, MariaDB and SQL Server. Write portable SQLAlchemy, not
+  PostgreSQL SQL.
+- **Boolean predicates:** compare with `== false()` / `== true()`, not
+  `.is_(False)`. `.is_()` renders `IS 0` where the backend has no native
+  boolean type (SQL Server), which is a syntax error there.
+  `backend/tests/unit/test_sql_portability_guards.py` fails on that shape, so the
+  regular unit suite catches it without the manual matrix.
+- **Read order is stated, never inherited.** Add `order_by(...)` to every query
+  whose row order reaches a response or a test; an unordered `SELECT` returns
+  different orders on different backends.
+
 ## Seeding / Hydration
 - Study config source: `backend/studies_config.json`.
 - Activity source files: `backend/activities_*.json`.

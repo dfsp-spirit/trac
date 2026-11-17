@@ -123,7 +123,7 @@ from .api_deps.available_activities import (
     get_study_activities_config_model,
 )
 from fastapi.responses import HTMLResponse
-from sqlalchemy import func, update, exc as sa_exc
+from sqlalchemy import false, func, update, exc as sa_exc
 from sqlalchemy import and_ as sa_and_, or_ as sa_or_
 from io import StringIO, BytesIO
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
@@ -2444,7 +2444,11 @@ async def admin_study_detail(
             session.exec(
                 select(func.count(StudyParticipant.id)).where(
                     StudyParticipant.study_id == study.id,
-                    StudyParticipant.consent_given.is_(False),
+                    # ``.is_(False)`` renders ``IS 0`` on backends without a
+                    # native boolean type (e.g. SQL Server), which is a syntax
+                    # error there. ``== false()`` stays ``= 0``/``= false``
+                    # everywhere and keeps the same NULL semantics.
+                    StudyParticipant.consent_given == false(),
                 )
             ).first()
             or 0

@@ -370,9 +370,17 @@ def _row_uuid(client_uuid: Optional[str], day_index: int) -> str:
 def _activity_rows(
     session: Session, study: Study, participant_id: str, timeline_id: Optional[int] = None
 ) -> List[Activity]:
-    statement = select(Activity).where(
-        Activity.study_id == study.id,
-        Activity.participant_id == participant_id,
+    statement = (
+        select(Activity)
+        .join(DayLabel, DayLabel.id == Activity.day_label_id)
+        .where(
+            Activity.study_id == study.id,
+            Activity.participant_id == participant_id,
+        )
+        # An unordered SELECT returns whatever the backend feels like (MariaDB
+        # gave a different order than PostgreSQL), so the read order is stated
+        # explicitly: day rail order, then time of day, then row identity.
+        .order_by(DayLabel.display_order, Activity.start_minutes, Activity.id)
     )
     if timeline_id is not None:
         statement = statement.where(Activity.timeline_id == timeline_id)
