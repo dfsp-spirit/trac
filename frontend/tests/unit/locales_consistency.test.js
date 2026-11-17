@@ -46,10 +46,18 @@ const LANGUAGE_NEUTRAL_VALUES = new Set([
   'Name', // de: German for "Name"
   'Code', // de: "Code" is the same word
   '{{count}} min', // sv: "min" is the SI-style abbreviation, same as en
-  // The shared "<study> - <page>" title pattern: pure placeholder glue, no
-  // words of its own, and every locale orders these two the same way.
-  '{{study}} - {{page}}',
+  // Same abbreviation in the neighbour line ("Monday 09:00-09:30, 30 min");
+  // every other word in it is a placeholder.
+  '{{name}} {{range}}, {{minutes}} min',
 ]);
+
+// A placeholder is not a word. "{{day}} ({{count}})" and "{{study}} - {{page}}"
+// are punctuation and references only - every locale renders them identically,
+// and "translating" one could only move a bracket or rename a placeholder,
+// which locale_values.test.js already rejects. Only what is left after the
+// placeholders are removed is language that needs translating.
+const PLACEHOLDER = /\{\{\s*[A-Za-z0-9_]+\s*\}\}/g;
+const wordsOf = (value) => value.replace(PLACEHOLDER, '');
 
 test('every locale file is valid JSON and shares the same key set as en.json', () => {
   assert.ok(localeFiles.length >= 2, 'expected at least 2 locale files');
@@ -141,7 +149,7 @@ test('non-English locales contain no untranslated English values', () => {
         typeof value === 'string' &&
         value === enValue &&
         enValue.trim() !== '' &&
-        /[A-Za-z]/.test(enValue) && // ignore pure symbols like "✓"
+        /[A-Za-z]/.test(wordsOf(enValue)) && // ignore "✓" and placeholder glue
         !LANGUAGE_NEUTRAL_VALUES.has(enValue)
       ) {
         untranslated.push(key);
