@@ -2,6 +2,36 @@ TRAC MPIAE Changes
 ===================
 
 
+Verion 0.26.0 -- Improve new frontend
+--------------------------------------
+- NEW: add tiny daystrip overview component
+- FIX: fix translation, add missing keys
+- NEW: implement external task handling in new frontend, see #141
+- NEW: refine workflow regarding button states and submission
+- NEW: support 2 column layout for activity overview view on desktop
+- NEW: add message with reason why copy day button is disabled if no activities exist yet
+- NEW: add option to copy days to new frontend
+- NEW: add new plan discussing request to have 1 parent fill out for 2 twins in one session, as intermittent days.
+- NEW: improve display of close activities
+- NEW: switch time picker to native one on mobile, typing or select h/m separately on desktop, instead of miles long dropdown
+- FIX: adapt DB script to accomodate for existence of new test DB, which prevented dropping tuduser as it still owned that one, leading to permission issues later
+- NEW: enforce consistent and URL-safe rules for naming of studies name_short property
+- NEW: add central format check for pid, allow uploading participant lists as TSV/CSV files in admin interface
+- NEW: support TSV export of participant links
+- NEW: add hint on full days before adding an activity
+- FIX: localize day abbreviations, eg in activity selector, section to select other days with same activity
+- NEW: improve hints in activity add component
+- CHG: make admin area favicon red instead of black
+- NEW: add consistent defaults for start time, end time of a new activity, based on view position
+- FIX: keep child activity, not parent, in recently used section of activity panel. use favicon from admin panel enerywhere.
+- NEW: rework admin area: remove duplicate participants table, improve performance, rearrange details page
+- FIX: in recent activity list, fix entries for custom and child activities, which showed the parent instead
+- NEW: enable browser saving and ux signals saving in open study, add to consent text
+- NEW: add quick change button to ux signals page in admin panel
+- NEW: support collecting UX events, requires study-level opt-in, needs to be told to participants in consent form
+
+
+
 Version 0.25.0 -- New mobile-first frontend variant
 ----------------------------------------------------
 - NEW: add new frontend under frontend_new/, as an alternative to the old part of
