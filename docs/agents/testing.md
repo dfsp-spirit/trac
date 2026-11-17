@@ -32,3 +32,4 @@
 ## Environment Notes
 - Recommended local integration topology uses Nginx/dev reverse proxy to mirror deployed routing.
 - E2E tests require required app services to be running before invocation, started with `--test-db`.
+- **Pages deploy:** `deploy_frontend_ghpages.yml` copies `frontend/src/` and `docs/` to the `gh-pages` branch, where GitHub Pages builds the site with Jekyll. Jekyll runs Liquid over every markdown file first, so a doc must wrap Liquid-looking snippets (Jinja {% raw %}`{% block %}`{% endraw %} tags, locale {% raw %}`{{placeholders}}`{% endraw %}) in Jekyll's `raw` / `endraw` tags; otherwise the build fails with `Liquid syntax error: Unknown tag` or the snippet silently vanishes. The workflow now validates `docs/` before pushing, so a broken doc never reaches `gh-pages`.

@@ -15,6 +15,37 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validate docs are safe for the Jekyll build
+        run: |
+          # docs/ is published on gh-pages, where GitHub Pages renders every
+          # markdown file with Jekyll. Jekyll runs Liquid over the file before
+          # the markdown, so a plain ``{% ... %}`` / ``{{ ... }}`` in a doc (a
+          # Jinja snippet, a locale placeholder) either fails the build with
+          # "Liquid syntax error: Unknown tag" or silently disappears from the
+          # rendered page. Wrap such snippets in {% raw %}...{% endraw %}.
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          raw_block = re.compile(r"\{%\s*raw\s*%\}.*?\{%\s*endraw\s*%\}", re.S)
+          liquid = re.compile(r"\{%|\{\{")
+          offenders = []
+          for path in sorted(pathlib.Path("docs").rglob("*.md")):
+              text = raw_block.sub("", path.read_text(encoding="utf-8"))
+              for match in liquid.finditer(text):
+                  line = text[: match.start()].count("\n") + 1
+                  offenders.append(f"{path}:{line}")
+          if offenders:
+              print(
+                  "::error::docs markdown is rendered by Jekyll on gh-pages; "
+                  "wrap Liquid-looking snippets in {% raw %}...{% endraw %}: "
+                  + ", ".join(offenders)
+              )
+              sys.exit(1)
+          print("docs are safe for the Jekyll build")
+          PY
+
       - name: Deploy to gh-pages branch
         run: |
           git config --global user.name "github-actions[bot]"
