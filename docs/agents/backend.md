@@ -61,6 +61,10 @@ Rules that must not drift:
 - **Coverage** comes from `coverage.py` only. The submit gate, the admin progress
   view and `GET /diary` all call it, so the day rail cannot promise something the
   gate then rejects.
+- **Read order is stated, never inherited.** `GET /diary` lists activities by
+  `DayLabel.display_order`, then `start_minutes`, then row id
+  (`_activity_rows`). An unordered `SELECT` returns whatever the backend
+  prefers, which is how MariaDB and PostgreSQL came to disagree.
 - **Access** is decided once, in `api_deps/diary_access.py`: open studies create
   the participant row on first write, and a submitted diary is readable but not
   writable (`study_already_submitted`).
