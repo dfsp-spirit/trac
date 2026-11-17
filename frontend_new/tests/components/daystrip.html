@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: day strip</title>
+    <!-- The strip's look (4px rows, the grey track, the pending row) is part of
+         the component, so the fixture loads its stylesheet rather than only the
+         markup. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/daystrip.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameter:
+        case  empty     one row, nothing recorded
+              single    one activity, one row
+              parallel  two activities at the same time, two rows
+              pending   activities plus the range being configured
+              midnight  the pending range runs past midnight and has to clip
+              badcolour an activity colour the browser cannot parse
+    -->
+    <script type="module">
+      import { buildDayStrip } from '/src/js/ui/dayStrip.js';
+
+      const root = /** @type {HTMLElement} */ (document.getElementById('root'));
+      const kase = new URLSearchParams(window.location.search).get('case') || 'empty';
+
+      /** @param {string} id @param {number} start @param {number} end @param {string | null} color */
+      const record = (id, start, end, color) => ({ id, dayIndex: 0, startMinutes: start, endMinutes: end, color });
+
+      const cases = {
+        empty: {},
+        single: { records: [record('a', 480, 540, '#3366cc')] },
+        parallel: {
+          records: [record('a', 480, 660, '#3366cc'), record('b', 540, 600, '#cc3366')],
+        },
+        pending: {
+          records: [record('a', 480, 540, '#3366cc')],
+          pending: { start: 720, end: 780 },
+        },
+        midnight: { pending: { start: 1380, end: 1500 } },
+        badcolour: { records: [record('a', 0, 60, 'not-a-colour')] },
+      };
+
+      root.append(buildDayStrip({ records: [], dayIndex: 0, ...cases[kase] }));
+    </script>
+  </body>
+</html>

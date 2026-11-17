@@ -707,6 +707,7 @@ executes 247.
 | `skip-diary.spec.js` | 3 | the entry, the dialog's copy (including "the remaining task stays locked"), the note field following the reason, cancel changing nothing, and the one-way skip landing on `done`/`skipped` with its own closing text |
 | `stage-walk.spec.js` | 2 | deep-link guard plus consent → instructions → diary → submit → thanks |
 | `submit-readonly.spec.js` | 1 | the locked, read-only state after submission |
+| `day-strip.spec.js` | 2 | the strip under the day select paints what the day holds, moves with the two time fields, gains a row for parallel entries, and repaints for the day picked in the dropdown |
 | `tasks-stage.spec.js` | 1 | submit → the tasks page, the launch link carrying the participant's token, "check again" not inventing a confirmation, and the callback moving the participant on |
 | `external-task-return.spec.js` | 1 | the provider's return: the callback parameters confirm the task on load (no "check again" needed), the spent token leaves the address bar, and the `return_url` from the invitation becomes the closing page's way back |
 | `task-levels.spec.js` | 1 | the diary gate hides the tasks entirely, level 2 renders as locked with its reason while level 1 is owed, and only both confirmations together reach the thank-you page |
@@ -755,6 +756,7 @@ start date, a thank-you page with no closing text, a rejected consent) is one qu
 | `page.html` | `page.spec.js` | the frame: eyebrow, exactly one `h1`, optional lead/actions/mark, and study Markdown demoted so a `#` becomes an `h2` |
 | `unavailable.html` | `unavailable.spec.js` | the three reasons, plus both fallbacks: no reason at all, and a "say when" reason with no date (never a sentence with a hole in it) |
 | `thanks.html` | `thanks.spec.js` | completed / declined / skipped, a skipper whose study has no skipped text, no closing text at all, the `return_url` way back (and none without one, or after declining) |
+| `daystrip.html` | `daystrip.spec.js` | the day strip's arithmetic: a segment's start/width as a share of 1440 minutes, dynamic rows for parallel entries, the pending row (and its absence), a range clipped at midnight, and an unparseable activity colour falling back to the neutral bar |
 | `tasks.html` | `tasks.spec.js` | open task is a link, confirmed task is a checkmark, a level-locked and a diary-locked task show their reason and no link, hint disappears with the description, and "check again" disables itself while in flight and re-enables after a failure |
 | `consent.html`, `instructions.html` | `consent-instructions.spec.js` | both answers reported as booleans, the failure notice with re-enabled buttons, and the heading fallback |
 

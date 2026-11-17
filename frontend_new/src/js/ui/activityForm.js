@@ -11,6 +11,7 @@ import { validateActivity } from '../domain/validation.js';
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayLabel } from '../domain/diary.js';
 import { el } from './dom.js';
+import { buildDayStrip } from './dayStrip.js';
 import { dayChips, field, syncChips as syncChipsForSelection } from './formFields.js';
 import { createMultiDayHint } from './multiDayHint.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
@@ -24,7 +25,7 @@ import { createTimeRange } from './timeRange.js';
  *   language: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   prefill: { dayIndex: number, startMinutes: number, endMinutes: number, childCode?: number | null, text?: string | null },
- *   existing: Array<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number, activityCode: string | number, name?: string }>,
+ *   existing: Array<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number, activityCode: string | number, name?: string, color?: string | null }>,
  *   dayStartMinutes: number,
  *   maxOverlap: number,
  *   mode: 'create' | 'edit',
@@ -116,6 +117,26 @@ export function renderActivityForm(host, view) {
     onCommit: () => refreshDerived(),
   });
 
+  // Where the selected range lands on its day, against what is already there.
+  // The strip is rebuilt rather than mutated on every committed change - it is
+  // a handful of nodes, and a rebuild cannot drift from the day it shows.
+  // The entry being edited is left out: the pending row already shows where it
+  // is going, and drawing it twice would make the day look busier than the
+  // validation that decides the save actually sees it.
+  const stripRecords = existing.filter((record) => record.id !== current?.client_uuid);
+  const strip = el('div', 't-daystrip-host');
+  dayField.append(strip);
+
+  function refreshStrip() {
+    strip.replaceChildren(
+      buildDayStrip({
+        records: stripRecords,
+        dayIndex: Number(daySelect.value),
+        pending: timeRange.selection(),
+      })
+    );
+  }
+
   // `days`/`language` label a neighbour that sits on another day.
   const neighbours = createTimeNeighbours({
     t, dayStartMinutes, existing, days, language,
@@ -174,6 +195,7 @@ export function renderActivityForm(host, view) {
     syncChipsForSelection(chipInputs, Number(daySelect.value));
     neighbours.refresh();
     multiDay.refresh();
+    refreshStrip();
   };
   refreshDerived();
 

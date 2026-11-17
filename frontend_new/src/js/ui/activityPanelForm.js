@@ -216,6 +216,8 @@ export function createFormController(deps) {
       const existing = diary.activities.map((item) => ({
         ...toTimedActivity(item, dayStart),
         activityCode: item.activity_code,
+        // For the strip, which paints the day the participant is placing into.
+        color: item.color ?? null,
         // For the boundary hint only: validation ignores it.
         name: item.activity_name,
       }));

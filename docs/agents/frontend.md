@@ -138,6 +138,44 @@
   hidden when the day around the range is empty, so an empty form gains no
   clutter.
 
+## The compact day strip
+- **What it answers.** On a phone the activity panel is a modal over the
+  timeline, so while choosing times the participant cannot see the day they are
+  placing into. `ui/dayStrip.js` draws it under the day select: light grey for
+  "nothing recorded", the study's own activity colour where something is, and a
+  row of its own for the range currently in the two time fields. It is a glance,
+  not a reading surface - the surroundings block above still says in words what
+  is around the range.
+- **Percentages, not cells.** Measured on the real surfaces: 288 px for a whole
+  day on the narrowest phone (320 px viewport, full-screen dialog), 347 px in the
+  desktop panel column, 361 px on a 393 px phone. A 10-minute step is therefore
+  **2 px**. A segment is positioned as `start / 1440 * 100%`, so a boundary stays
+  exact at any width and the component costs one node per activity instead of 144
+  cells. Never add a gap between slots: at 2 px a 1 px gutter would be half a
+  slot.
+- **Rows follow the data.** `layoutDay()` already packs lanes exactly as the
+  timeline does, so a day with two overlapping entries grows a second row and the
+  two views cannot disagree about what overlaps. `maxRows` exists only for a
+  caller that cannot afford growth; the form passes nothing (dynamic).
+- **The pending range is a row, not an outline.** A 10-minute range is 2 px wide,
+  so a 1.5 px outline around it would be wider than the range. Its own 4 px row in
+  `--ink` is unambiguous at any length and cannot claim an activity colour.
+- **`aria-hidden`.** Everything the strip shows is stated elsewhere in text
+  (surroundings, duration line), and colour alone may not be the only carrier of
+  information (WCAG 1.4.1), so it stays out of the accessibility tree and the tab
+  order. An entry running past midnight is clipped at the day boundary, like the
+  timeline's tail.
+- **Reuse contract.** `buildDayStrip({ records, dayIndex, pending, maxRows })`
+  returns a node and has no lifecycle; a caller rebuilds it when its data changes
+  (the form does it from `refreshDerived()`, which already runs after every
+  committed time or day change). The entry being edited is filtered out of
+  `records` - the pending row shows where it is going, and drawing it twice would
+  make the day look busier than validation sees it. The day rail and the review
+  page are the intended next callers; do not fork the drawing code for them.
+- Guarded by `tests/components/daystrip.spec.js` (arithmetic, lanes, clipping,
+  bad colours) and `tests/e2e/day-strip.spec.js` (wiring, follow the fields and
+  the day dropdown).
+
 ## "Also on other days?" is planned before it is saved
 - A multi-day save is decided per day on the server (`day_label_indexes` in,
   `status` + `code` per day out), so the client cannot promise anything until
