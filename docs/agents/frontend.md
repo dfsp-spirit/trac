@@ -188,6 +188,24 @@
   structurally similar by design.
 - `nextDay` is strict: an entry that ends exactly at midnight ends the day and
   gets no marker, matching the timeline's `↓`.
+- **The foot button follows readiness.** White (`--secondary`) while `canSubmit`
+  is false - pressing it then is how a participant learns *what* is missing, so it
+  stays enabled and the hint under it says "Noch nicht alle Tage sind
+  vollständig." - and black (`--primary`) once every day meets its requirement.
+  The focus logic targets the foot's first button, because an incomplete week has
+  no `--primary` there at all.
+- **Becoming ready is announced twice**, because nothing else on the page changes
+  at that moment and the progress line does not exist on a phone:
+  the banner in `#timeline-notices` (`renderDiaryNotice`, "Alle Tage sind
+  vollständig" + the send button) and the top bar button, which turns black,
+  changes its icon and says "Absenden" (`diaryView.renderCta`). Both read
+  `progress(diary)` - the same numbers the rail and the submit gate use - so the
+  cue cannot promise something the server refuses, and it reverts as soon as an
+  edit opens a day again.
+- The top bar label is written by `renderCta` and therefore carries **no
+  `data-i18n`**: the translation pass would overwrite a state-dependent text with
+  the static one. The label is refreshed before the state short-circuit, so a
+  language switch on a ready diary switches "Absenden" / "Submit" too.
 
 ## Copying a day
 - `ui/copyDay.js` is the seam (dialog + toast + undo), `ui/copyDayDialog.js` the

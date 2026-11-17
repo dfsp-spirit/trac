@@ -185,9 +185,17 @@ longer protocol - can close it from the menu:
 - **External tasks:** a skip closes the diary but is **not** a filled diary. A
   study with `require_diary_before_external_tasks` keeps its tasks closed for a
   skipper - enforced both by the stage machine and by
-  `_is_external_tasks_locked_by_diary_requirement` (whose payload signal is an
-  empty `continuation_url`). Without that flag the participant continues to the
-  tasks, which is the case the option exists for.
+  `_is_external_tasks_locked_by_diary_requirement`. Without that flag the
+  participant continues to the tasks, which is the case the option exists for.
+  `study-config` reports the gate per task as `locked_reason` (`diary` or
+  `task_level`, `null` when open) next to `task_level`, so a client renders the
+  lock instead of guessing from an empty `continuation_url`. Level locks come
+  from `_build_participant_external_task_unlock_map` and nowhere else.
+- **External-task return URL:** two frontends, two shapes - `_build_external_task_expected_return_url_template`
+  (`study_name`, `pages/tasks.html`) and `_build_external_task_expected_return_url_template_new`
+  (`study`, `index.html`, `#/tasks`). Both are shown in the admin study card; reuse them rather than
+  formatting a return URL again, and remember the HMAC message itself does not depend on which one
+  the provider used.
 - **Export:** the participant export gains `participant_skipped_at`,
   `participant_skip_reason_code` and `participant_skip_note`, but only for studies
   that allow skipping. `study_submitted_at` alone cannot tell a skipped diary
