@@ -11,7 +11,7 @@
  * diary mount itself once, because the diary has its own data, render loop and
  * save state.
  */
-import { ROUTE_DIARY, routeForStage } from '../domain/router.js';
+import { ROUTE_DIARY, ROUTE_TASKS, routeForStage } from '../domain/router.js';
 import { button } from './dom.js';
 import { renderPage } from './page.js';
 import { renderConsent } from './views/consent.js';
@@ -52,6 +52,7 @@ export function createStageMachine({
   let shownRoute = null;
   let diaryMounted = false;
   let locked = false;
+  let lastRefreshAt = 0;
 
   /**
    * Move focus to the new page's heading. Replacing the content drops the
@@ -100,6 +101,7 @@ export function createStageMachine({
    * cached payload from several responses.
    */
   async function refresh() {
+    lastRefreshAt = Date.now();
     session = await requireApi().getStudyConfig(getLanguage());
     onSession?.(session);
     applyStage(session.stage);
@@ -144,7 +146,7 @@ export function createStageMachine({
         onRefresh: refresh,
       });
     } else if (route === 'thanks') {
-      renderThanks(host, { session, t });
+      renderThanks(host, { session, t, returnUrl: router.returnUrl() });
     } else {
       renderUnavailable(host, { session, t });
     }
@@ -152,6 +154,24 @@ export function createStageMachine({
   }
 
   let incompatibleShown = false;
+
+  // Coming back from an external task means coming back to this tab: the
+  // provider confirmed on its side and what this page shows is stale. Only the
+  // tasks stage re-asks, and at most once a second - `focus` also fires for
+  // reasons that have nothing to do with a provider (a dialog closing, the
+  // window regaining focus) and must not become a request storm. Before the
+  // first render `shownRoute` is null, so the browser's own start-up focus
+  // cannot race the initial load.
+  function refreshOnReturn() {
+    if (shownRoute !== ROUTE_TASKS) return;
+    if (Date.now() - lastRefreshAt < 1000) return;
+    void refresh();
+  }
+  const onVisibility = () => {
+    if (!document.hidden) refreshOnReturn();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('focus', refreshOnReturn);
 
   /**
    * Show a plain message instead of any stage: no participant in the URL, a
@@ -229,5 +249,10 @@ export function createStageMachine({
     refresh,
 
     currentRoute: () => shownRoute,
+
+    destroy() {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refreshOnReturn);
+    },
   };
 }

@@ -162,6 +162,26 @@ export function createApi(baseUrl, studyName, participantId, { onError } = {}) {
       }),
 
     /**
+     * Redeem the confirmation a provider returned the participant with
+     * (`docs/external-tasks-v2-spec.md` §5).
+     *
+     * Idempotent: the server treats a second confirmation of the same task as a
+     * success, so a reload of the callback URL is not an error.
+     *
+     * @param {{ taskKey: string, assignedToken: string, hmac?: string | null }} input
+     * @returns {Promise<{ task_key: string, is_confirmed: boolean }>}
+     */
+    confirmExternalTask: ({ taskKey, assignedToken, hmac }) =>
+      request(`${diaryRoot}/external-tasks/confirm`, {
+        method: 'POST',
+        body: JSON.stringify({
+          task_key: taskKey,
+          assigned_token: assignedToken,
+          ...(hmac ? { hmac } : {}),
+        }),
+      }),
+
+    /**
      * Report the device once per load for studies that collect it. The server
      * ignores this when the study's `save_browser_identification` is off, and
      * treats an unchanged snapshot as the same capture.

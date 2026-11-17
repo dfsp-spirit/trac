@@ -12,6 +12,8 @@
         text    1 gives the study its closing text, 0 leaves it out so the
                 fallback sentence has to carry the page.
         skipped 1 adds a *different* skipped text, to prove which one wins.
+        return_url gives the study a destination outside TRAC, which has to
+                become the closing page's one action.
     -->
     <script type="module">
       import { context, flag, param, session } from './fixture.js';
@@ -22,6 +24,7 @@
 
       renderThanks(root, {
         t,
+        returnUrl: param('return_url'),
         session: session({
           done_reason: param('reason', 'completed'),
           study_text_end_completed: withText ? 'Fixture: Das Tagebuch wurde abgegeben.' : null,

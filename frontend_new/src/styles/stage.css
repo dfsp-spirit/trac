@@ -45,3 +45,15 @@
   gap: var(--space-1);
   color: var(--ink-muted);
 }
+/* A task the participant cannot open yet: the reason is text, not a tooltip,
+   and it never looks like the button it is not. */
+.t-task__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 45%;
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: right;
+}

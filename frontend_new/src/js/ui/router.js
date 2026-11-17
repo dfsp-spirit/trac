@@ -13,17 +13,21 @@
  * host before the pilot. Moving to history routes later means changing `apply`
  * and nothing else.
  */
-import { formatRoute, parseRoute, routeForStage } from '../domain/router.js';
+import { formatRoute, parseReturnUrl, parseRoute, routeForStage } from '../domain/router.js';
 
 /**
  * @param {{
  *   onChange: (route: string) => void,
  *   getHash?: () => string,
  *   apply?: (hash: string) => void,
+ *   getSearch?: () => string,
+ *   origin?: () => string,
  * }} deps
  */
-export function createRouter({ onChange, getHash, apply }) {
+export function createRouter({ onChange, getHash, apply, getSearch, origin }) {
   const readHash = getHash || (() => window.location.hash);
+  const readSearch = getSearch || (() => window.location.search);
+  const readOrigin = origin || (() => window.location.origin);
   const writeHash =
     apply ||
     ((/** @type {string} */ hash) => {
@@ -75,5 +79,18 @@ export function createRouter({ onChange, getHash, apply }) {
     return () => window.removeEventListener('hashchange', handler);
   }
 
-  return { go, settle, requested, onHashChange };
+  /**
+   * Where the closing page offers to send the participant (`return_url`).
+   *
+   * Read from the URL each time rather than cached: the query string is this
+   * app's only carrier for it (no device storage), and it survives the guard's
+   * `replaceState` unchanged.
+   *
+   * @returns {string | null}
+   */
+  function returnUrl() {
+    return parseReturnUrl(readSearch(), readOrigin());
+  }
+
+  return { go, settle, requested, returnUrl, onHashChange };
 }

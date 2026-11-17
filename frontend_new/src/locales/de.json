@@ -324,7 +324,10 @@
       "noInvitationTitle": "Keine Einladung gefunden",
       "noInvitationText": "Bitte öffnen Sie den Link aus Ihrer Einladung. Er enthält die Angaben zu Ihrer Studie.",
       "incompatibleTitle": "Diese Studie kann hier nicht angezeigt werden",
-      "incompatibleText": "Diese Version des Tagebuchs unterstützt eine Zeitleiste pro Studie. Bitte wenden Sie sich an das Forschungsteam und nennen Sie den Link, den Sie benutzt haben."
+      "incompatibleText": "Diese Version des Tagebuchs unterstützt eine Zeitleiste pro Studie. Bitte wenden Sie sich an das Forschungsteam und nennen Sie den Link, den Sie benutzt haben.",
+      "taskLockedLevel": "Verfügbar, sobald die vorherigen Aufgaben erledigt sind.",
+      "taskLockedDiary": "Verfügbar, sobald Ihr Tagebuch abgeschickt ist.",
+      "taskContinue": "Weiter"
     },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"

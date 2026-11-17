@@ -717,6 +717,8 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
             "continuation_url": f"{settings.rootpath}/api/studies/{study_name_short}/participants/p1/external-tasks/payment/launch?assigned_token=tok-1",
             "is_confirmed": False,
             "confirmed_at": None,
+            "task_level": 1,
+            "locked_reason": None,
         }
 
         assert external_tasks_by_key["callback_only"] == {
@@ -728,6 +730,8 @@ async def test_study_config_returns_participant_external_tasks_for_none_confirma
             "continuation_url": f"{settings.rootpath}/api/studies/{study_name_short}/participants/p1/external-tasks/callback_only/launch?assigned_token=cb-1",
             "is_confirmed": False,
             "confirmed_at": None,
+            "task_level": 1,
+            "locked_reason": None,
         }
 
 

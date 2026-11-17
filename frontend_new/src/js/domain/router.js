@@ -84,3 +84,34 @@ export function parseIdentity(search) {
     language: pick('lang'),
   };
 }
+
+/**
+ * Where to send the participant once the diary is closed.
+ *
+ * `return_url` is an invitation-link parameter (`admin_tools.html`): a panel
+ * provider hands the participant to TRAC and expects them back. It is neither
+ * identity nor progress, so it is not part of `parseIdentity`; it only matters
+ * when the closing page renders.
+ *
+ * Only http(s) is accepted, and a relative value resolves against `base` - the
+ * same rule the classic client applies, so one invitation link behaves the same
+ * whichever frontend it points at. Anything else is dropped rather than
+ * rendered as a link.
+ *
+ * @param {string} search e.g. "?study=adult&pid=bernd&return_url=https%3A%2F%2Fexample.org"
+ * @param {string} [base] the page's origin, for relative values
+ * @returns {string | null} an absolute URL, or null
+ */
+export function parseReturnUrl(search, base) {
+  const raw = (new URLSearchParams(search || '').get('return_url') || '').trim();
+  if (!raw) return null;
+
+  let parsed;
+  try {
+    parsed = new URL(raw, base || undefined);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+  return parsed.toString();
+}

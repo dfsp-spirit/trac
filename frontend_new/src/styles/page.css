@@ -46,7 +46,8 @@
 }
 
 /* Closing pages (thank-you, declined): a mark, a centred title and their text.
-   No actions - there is nothing left to do. */
+   The one possible action is the way back to the system the participant came
+   from (`return_url`); without one there is nothing left to do. */
 .t-page--confirm {
   justify-items: center;
   gap: var(--space-4);

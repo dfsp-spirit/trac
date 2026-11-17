@@ -2,8 +2,9 @@
  * `views/tasks.js` on a fixture page (D33 rule 8, D37).
  *
  * The e2e spec proves the flow; this one proves the view's own contract: an open
- * task is a link, a confirmed task is not, and "check again" is disabled while it
- * is in flight so a nervous participant cannot fire it twice.
+ * task is a link, a confirmed task is not, a locked one shows the reason the
+ * server gave and never a link, and "check again" is disabled while it is in
+ * flight so a nervous participant cannot fire it twice.
  */
 import { test, expect } from '@playwright/test';
 
@@ -27,6 +28,31 @@ test.describe('tasks view', () => {
     await expect(page.locator('.t-task__done')).toHaveCount(1);
     await expect(page.locator('.t-task a.t-btn')).toHaveCount(0);
     await expect(page.locator('.t-task__done svg')).toHaveCount(1);
+  });
+
+  test('a level-locked task says why and offers no link', async ({ page }) => {
+    // Level n + 1 opens only once every task of level n is confirmed; the server
+    // decides that and sends `locked_reason`.
+    await page.goto('tasks.html?lock=level');
+
+    await expect(page.locator('.t-task')).toHaveCount(1);
+    await expect(page.locator('.t-task a.t-btn')).toHaveCount(0);
+    await expect(page.locator('.t-task__locked svg')).toHaveCount(1);
+    await expect(page.locator('.t-task__locked')).toHaveText(
+      'Verfügbar, sobald die vorherigen Aufgaben erledigt sind.'
+    );
+    await expect(page.locator('.t-task__done')).toHaveCount(0);
+  });
+
+  test('a diary-locked task says the diary has to be submitted first', async ({ page }) => {
+    // The reason a payment task waits: nothing may be opened before the diary is
+    // handed in, even though the participant is already on this page.
+    await page.goto('tasks.html?lock=diary');
+
+    await expect(page.locator('.t-task a.t-btn')).toHaveCount(0);
+    await expect(page.locator('.t-task__locked')).toHaveText(
+      'Verfügbar, sobald Ihr Tagebuch abgeschickt ist.'
+    );
   });
 
   test('the hint line disappears with the description', async ({ page }) => {

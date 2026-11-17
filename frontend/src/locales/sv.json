@@ -324,7 +324,10 @@
       "noInvitationTitle": "Ingen inbjudan hittades",
       "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie.",
       "incompatibleTitle": "Den här studien kan inte visas här",
-      "incompatibleText": "Den här versionen av dagboken stöder en tidslinje per studie. Kontakta forskningsteamet och berätta vilken länk du använde."
+      "incompatibleText": "Den här versionen av dagboken stöder en tidslinje per studie. Kontakta forskningsteamet och berätta vilken länk du använde.",
+      "taskLockedLevel": "Tillgänglig när de föregående uppgifterna är klara.",
+      "taskLockedDiary": "Tillgänglig när din dagbok har skickats in.",
+      "taskContinue": "Fortsätt"
     },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"

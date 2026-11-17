@@ -282,6 +282,7 @@ export function mount({ root, params }) {
       view.destroy();
       stopTopbarWatch();
       stopHashListener();
+      stageMachine.destroy();
       wide.removeEventListener('change', onBreakpoint);
       screen.destroy();
       shortcuts.destroy();
@@ -294,6 +295,4 @@ export function mount({ root, params }) {
 }
 
 const root = /** @type {HTMLElement | null} */ (document.querySelector('.t-app'));
-if (root) {
-  mount({ root, params: new URLSearchParams(window.location.search) });
-}
+if (root) mount({ root, params: new URLSearchParams(window.location.search) });

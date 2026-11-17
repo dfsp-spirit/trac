@@ -11,6 +11,8 @@
         confirmed    1 renders the task as already done
         description  0 drops it, so the hint line has to disappear
         fail         1 makes "check again" reject, for the busy/error path
+        lock         level | diary renders a task the server closed, with the
+                     reason it gave, and no link at all
 
       `window.__refreshes` counts the calls: the button must disable itself while
       a refresh is in flight and enable itself again afterwards.
@@ -23,6 +25,7 @@
       const confirmed = flag('confirmed');
       const withDescription = flag('description', true);
       const shouldFail = flag('fail');
+      const lock = param('lock');
 
       window.__refreshes = 0;
 
@@ -37,8 +40,11 @@
               description: withDescription ? 'Externe Aufgabe für den Test.' : '',
               confirmation_type: 'callback',
               assigned_token: 'fixture-token',
-              continuation_url: '/tud_backend/api/studies/demo/external-tasks/launch?token=fixture-token',
+              continuation_url: lock
+                ? ''
+                : '/tud_backend/api/studies/demo/external-tasks/launch?token=fixture-token',
               is_confirmed: confirmed,
+              locked_reason: lock === 'diary' ? 'diary' : lock === 'level' ? 'task_level' : null,
             },
           ],
         }),

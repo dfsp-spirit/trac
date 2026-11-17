@@ -132,3 +132,55 @@ def test_build_frontend_new_study_join_url_omits_pid_for_open_study_link(monkeyp
     assert (
         url == "https://frontend.example.org/report-new/index.html?study=adult_pilot_de"
     )
+
+
+def test_expected_return_url_template_new_points_at_the_rewrite(monkeypatch):
+    monkeypatch.setenv(
+        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
+    )
+
+    url = api._build_external_task_expected_return_url_template_new(
+        study_name_short="adult_pilot_de",
+        task_key="depression_survey",
+    )
+
+    assert (
+        url == "https://frontend.example.org/report-new/index.html"
+        "?study=adult_pilot_de"
+        "&pid={participant_id}"
+        "&callback_task_key=depression_survey"
+        "&callback_token={assigned_token}"
+        "#/tasks"
+    )
+
+
+def test_expected_return_url_template_new_carries_the_hmac_placeholder(monkeypatch):
+    monkeypatch.setenv(
+        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
+    )
+
+    url = api._build_external_task_expected_return_url_template_new(
+        study_name_short="adult pilot/de",
+        task_key="payment",
+        hmac_secret_reference="survey_hub_v1",
+    )
+
+    assert url.startswith(
+        "https://frontend.example.org/report-new/index.html?study=adult%20pilot%2Fde"
+    )
+    assert url.endswith("&hmac={hmac_signature}#/tasks")
+
+
+def test_locked_reason_names_the_gate_and_never_a_finished_task():
+    reason = api._external_task_locked_reason
+
+    assert reason(is_confirmed=False, can_launch=True, locked_by_diary_requirement=False) is None
+    assert (
+        reason(is_confirmed=False, can_launch=False, locked_by_diary_requirement=False)
+        == "task_level"
+    )
+    assert (
+        reason(is_confirmed=False, can_launch=False, locked_by_diary_requirement=True)
+        == "diary"
+    )
+    assert reason(is_confirmed=True, can_launch=False, locked_by_diary_requirement=False) is None

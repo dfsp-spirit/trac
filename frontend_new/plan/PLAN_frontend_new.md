@@ -435,6 +435,15 @@ JS, and any router dependency. `hashchange`/`popstate` plus a parse function is 
 - **After any step the client re-asks.** The stage alone is not enough to render the next page
   (`done_reason` decides the text), so `ui/stageMachine.js` refetches once per transition rather than
   patching its cached payload from several responses.
+- **A provider's return is redeemed in the boot sequence, not by a view.** The first `study-config`
+  was answered before the confirmation existed, so `ui/boot.js` redeems the callback parameters
+  (`ui/externalTaskReturn.js`) and asks again - otherwise a participant would be shown the task they
+  just finished, with a "check again" button that could never learn anything. The spent token is
+  dropped from the address bar afterwards. On top of that, the tasks stage re-asks on
+  `visibilitychange`/focus (once a second at most), which covers a provider that opened in a new tab.
+- **A locked task is locked in the payload.** The level rule and the diary gate stay in
+  `_build_participant_external_task_unlock_map` / `_is_external_tasks_locked_by_diary_requirement`;
+  the client renders `locked_reason` and never derives a link from a level it computed itself.
 
 **Deployment (the rewrite is served next to the old app, not instead of it).** `frontend_new/src` is
 mounted at `/report-new/` with the API at `/tud_backend/` and the shared locale files at `/locales/`,
@@ -625,12 +634,13 @@ pointing at `activities_newui_main.json`, so a spec can start from a known stage
 | `newui_06_diary` | `diary` | `diary_01/02` | no consent, no instructions; the one used by the activity specs |
 | `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
 | `newui_08_prefilled` | `diary` | `ready_01` 7/7 days complete, `ready_02` 2 partial days, `ready_03` empty | review, coverage, incomplete-submit |
-| `newui_09_tasks` | `diary` | `tasks_01/02` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
+| `newui_09_tasks` | `diary` | `tasks_01`–`tasks_04` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
 | `newui_10_walkthrough` | `consent` | `walk_01/02` | consent **and** instructions, so the full stage walk is possible |
 | `newui_11_skip` | `diary` | `skip_01/02` | `allow_skip_timeuse` **and** `require_diary_before_external_tasks`, so the skip dialog has to say the task stays locked (D41). `skip_02` is only read; `skip_01` is the one that gets skipped |
 | `newui_12_language` | `consent` | `lang_01/02` | the only **multi-language** study (`de` + `en`), with own texts and `footer_links` in both. `lang_01` is read-only; `lang_02` consents once to reach the diary |
 | `newui_13_clientinfo` | `diary` | `client_01/02` | the only study with `save_browser_identification`, so the participant export has the `client_*` block |
 | `newui_14_two_timelines` | `diary` | `two_01` | the only study whose activities config still defines **two** timelines (`primary` 11xx, `secondary` 21xx, own catalogue inline as `activities_json_data`), so `multiTimelinePolicy` and the single-timeline read have a fixture |
+| `newui_15_task_levels` | `diary` | `levels_01` 7/7 days complete | two callback tasks in two levels (`fixture_first` level 1, `fixture_second` level 2) and `require_diary_before_external_tasks`, so both gates can be seen: nothing opens before the diary is submitted, and level 2 opens only once level 1 is confirmed |
 
 The three `unavailable` fixtures only reach the page because the rewrite asks for
 `GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 - that
@@ -698,6 +708,8 @@ executes 247.
 | `stage-walk.spec.js` | 2 | deep-link guard plus consent → instructions → diary → submit → thanks |
 | `submit-readonly.spec.js` | 1 | the locked, read-only state after submission |
 | `tasks-stage.spec.js` | 1 | submit → the tasks page, the launch link carrying the participant's token, "check again" not inventing a confirmation, and the callback moving the participant on |
+| `external-task-return.spec.js` | 1 | the provider's return: the callback parameters confirm the task on load (no "check again" needed), the spent token leaves the address bar, and the `return_url` from the invitation becomes the closing page's way back |
+| `task-levels.spec.js` | 1 | the diary gate hides the tasks entirely, level 2 renders as locked with its reason while level 1 is owed, and only both confirmations together reach the thank-you page |
 | `touch-targets.spec.js` | 1 | the seven day chips stay ≥44px and on screen at the narrowest phone width |
 | `unavailable-stages.spec.js` | 4 | `paused` / `ended` / `not_started` each render their own copy and date, the generic sentence never stands in for a known reason, and no diary chrome is offered |
 | `client-identification.spec.js` | 2 | the device blob reaches the database (read back through the admin participant export) for a study that collects it, and leaves no `client_*` block for one that does not |
@@ -710,8 +722,10 @@ executes 247.
 `activity-nudge`, `activity-search`, `coverage`) clear their activities through the public diary API
 first, so repeated local runs start from the same state. Four specs close something for good: `submit-readonly.spec.js` submits
 `newui_08_prefilled/ready_01`, `stage-walk.spec.js` submits `newui_10_walkthrough/walk_01`,
-`tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, `skip-diary.spec.js` skips
-`newui_11_skip/skip_01`, and `language.spec.js` consents as `newui_12_language/lang_02`. They guard on the stored state and skip with a reset message (see 9.5), which
+`tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, `external-task-return.spec.js` submits and
+confirms `newui_09_tasks/tasks_04`, `task-levels.spec.js` submits and confirms
+`newui_15_task_levels/levels_01`, `skip-diary.spec.js` skips `newui_11_skip/skip_01`, and
+`language.spec.js` consents as `newui_12_language/lang_02`. They guard on the stored state and skip with a reset message (see 9.5), which
 means **a local run of the whole matrix consumes them in the first leg** - CI is unaffected because
 every leg starts from its own database.
 
@@ -740,8 +754,8 @@ start date, a thank-you page with no closing text, a rejected consent) is one qu
 | --- | --- | --- |
 | `page.html` | `page.spec.js` | the frame: eyebrow, exactly one `h1`, optional lead/actions/mark, and study Markdown demoted so a `#` becomes an `h2` |
 | `unavailable.html` | `unavailable.spec.js` | the three reasons, plus both fallbacks: no reason at all, and a "say when" reason with no date (never a sentence with a hole in it) |
-| `thanks.html` | `thanks.spec.js` | completed / declined / skipped, a skipper whose study has no skipped text, and no closing text at all |
-| `tasks.html` | `tasks.spec.js` | open task is a link, confirmed task is a checkmark, hint disappears with the description, and "check again" disables itself while in flight and re-enables after a failure |
+| `thanks.html` | `thanks.spec.js` | completed / declined / skipped, a skipper whose study has no skipped text, no closing text at all, the `return_url` way back (and none without one, or after declining) |
+| `tasks.html` | `tasks.spec.js` | open task is a link, confirmed task is a checkmark, a level-locked and a diary-locked task show their reason and no link, hint disappears with the description, and "check again" disables itself while in flight and re-enables after a failure |
 | `consent.html`, `instructions.html` | `consent-instructions.spec.js` | both answers reported as booleans, the failure notice with re-enabled buttons, and the heading fallback |
 
 Add a fixture page for a new view rather than a `page.evaluate()` blob: a real page is what the rule

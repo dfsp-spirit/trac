@@ -340,6 +340,24 @@ def _get_external_task_level(external_task: StudyExternalTask) -> int:
     return 1
 
 
+def _external_task_locked_reason(
+    *,
+    is_confirmed: bool,
+    can_launch: bool,
+    locked_by_diary_requirement: bool,
+) -> Optional[str]:
+    """Why a participant cannot open this task right now, or ``None``.
+
+    The client renders the reason rather than deriving it (D37): the rule that
+    all tasks of level ``n`` must be confirmed before level ``n + 1`` opens lives
+    here, in ``_build_participant_external_task_unlock_map``, and nowhere else.
+    A confirmed task is never "locked" - it is finished.
+    """
+    if is_confirmed or can_launch:
+        return None
+    return "diary" if locked_by_diary_requirement else "task_level"
+
+
 def _get_hmac_secret_reference_from_task(
     external_task: StudyExternalTask,
 ) -> Optional[str]:
@@ -475,6 +493,35 @@ def _build_external_task_expected_return_url_template(
     return base_url
 
 
+def _build_external_task_expected_return_url_template_new(
+    study_name_short: str,
+    task_key: str,
+    *,
+    hmac_secret_reference: Optional[str] = None,
+) -> str:
+    """The same return contract, pointed at the rewritten frontend.
+
+    The rewrite reads identity from `study`/`pid` (D37) and has no
+    `pages/tasks.html`, so neither the classic page nor the `study_name`
+    parameter applies here. The `#/tasks` fragment is a courtesy, not a
+    requirement: the client asks the server for the stage and settles on the
+    tasks page anyway, so a provider that drops everything after `#` still sends
+    the participant to the right place.
+    """
+    encoded_study = quote(study_name_short, safe="")
+    encoded_task = quote(task_key, safe="")
+    url = (
+        f"{settings.frontend_new_url}/index.html"
+        f"?study={encoded_study}"
+        "&pid={participant_id}"
+        f"&callback_task_key={encoded_task}"
+        "&callback_token={assigned_token}"
+    )
+    if hmac_secret_reference:
+        url += "&hmac={hmac_signature}"
+    return f"{url}#/tasks"
+
+
 def _build_frontend_study_join_url(study_name_short: str, participant_id: str) -> str:
     frontend_url = settings.frontend_url
     query = urlencode(
@@ -594,6 +641,9 @@ def _get_participant_external_tasks(
 
             is_unlocked = unlock_by_task_id.get(external_task.id, True)
             can_launch = is_unlocked and not locked_by_diary_requirement
+            is_confirmed = (
+                existing_assignment.is_confirmed if existing_assignment else False
+            )
 
             tasks.append(
                 ParticipantExternalTaskResponse(
@@ -620,10 +670,12 @@ def _get_participant_external_tasks(
                         if can_launch
                         else ""
                     ),
-                    is_confirmed=(
-                        existing_assignment.is_confirmed
-                        if existing_assignment
-                        else False
+                    is_confirmed=is_confirmed,
+                    task_level=_get_external_task_level(external_task),
+                    locked_reason=_external_task_locked_reason(
+                        is_confirmed=is_confirmed,
+                        can_launch=can_launch,
+                        locked_by_diary_requirement=locked_by_diary_requirement,
                     ),
                     confirmed_at=(
                         existing_assignment.confirmed_at
@@ -644,6 +696,10 @@ def _get_participant_external_tasks(
         localized_description = _get_localized_external_task_text(
             config.get("description"), selected_language, study.default_language
         )
+        can_launch = (
+            unlock_by_task_id.get(external_task.id, True)
+            and not locked_by_diary_requirement
+        )
         tasks.append(
             ParticipantExternalTaskResponse(
                 task_key=external_task.task_key,
@@ -660,12 +716,17 @@ def _get_participant_external_tasks(
                         external_task.task_key,
                         assignment.assigned_token,
                     )
-                    if unlock_by_task_id.get(external_task.id, True)
-                    and not locked_by_diary_requirement
+                    if can_launch
                     else ""
                 ),
                 is_confirmed=assignment.is_confirmed,
                 confirmed_at=assignment.confirmed_at,
+                task_level=_get_external_task_level(external_task),
+                locked_reason=_external_task_locked_reason(
+                    is_confirmed=assignment.is_confirmed,
+                    can_launch=can_launch,
+                    locked_by_diary_requirement=locked_by_diary_requirement,
+                ),
             )
         )
     return tasks
@@ -2513,6 +2574,13 @@ async def admin_study_detail(
                 "description": external_task.description,
                 "url": external_task.url,
                 "expected_return_url": _build_external_task_expected_return_url_template(
+                    study.name_short,
+                    external_task.task_key,
+                    hmac_secret_reference=_get_hmac_secret_reference_from_task(
+                        external_task
+                    ),
+                ),
+                "expected_return_url_new": _build_external_task_expected_return_url_template_new(
                     study.name_short,
                     external_task.task_key,
                     hmac_secret_reference=_get_hmac_secret_reference_from_task(
@@ -10231,6 +10299,11 @@ class ParticipantExternalTaskResponse(BaseModel):
     continuation_url: str
     is_confirmed: bool = False
     confirmed_at: Optional[datetime] = None
+    task_level: int = 1
+    #: None when the participant may open the task now. "task_level" while an
+    #: unconfirmed lower-level task holds it closed, "diary" while the study
+    #: requires a submitted diary first (D37, D41).
+    locked_reason: Optional[str] = None
 
 
 class StudyConfigResponse(BaseModel):

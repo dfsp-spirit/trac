@@ -4,6 +4,7 @@ import {
   ROUTES,
   formatRoute,
   parseIdentity,
+  parseReturnUrl,
   parseRoute,
   routeForStage,
 } from '../../src/js/domain/router.js';
@@ -73,4 +74,33 @@ test('settle corrects a hash that no longer names the stage route', () => {
   hash = '#/diary';
   assert.equal(router.settle('consent'), 'consent');
   assert.equal(hash, '#/consent', 'a hashchange must not outlive the stage guard');
+});
+
+test('return_url is read only when it is a usable http(s) destination', () => {
+  const base = 'https://trac.example.org';
+
+  assert.equal(
+    parseReturnUrl('?return_url=https%3A%2F%2Fpanel.example.org%2Fdone%3Fid%3D7', base),
+    'https://panel.example.org/done?id=7'
+  );
+  assert.equal(
+    parseReturnUrl('?return_url=%2Ffinish', base),
+    'https://trac.example.org/finish',
+    'a relative value resolves against the page, as in the classic client'
+  );
+  assert.equal(parseReturnUrl('?return_url=javascript%3Aalert(1)', base), null);
+  assert.equal(parseReturnUrl('?return_url=', base), null);
+  assert.equal(parseReturnUrl('', base), null);
+  assert.equal(parseReturnUrl('?study=adult&pid=bernd', base), null);
+});
+
+test('the router exposes the return_url so the closing page can offer it', () => {
+  const router = createRouter({
+    onChange: () => {},
+    getHash: () => '#/thanks',
+    getSearch: () => '?study=adult&pid=bernd&return_url=https%3A%2F%2Fpanel.example.org%2Fdone',
+    origin: () => 'https://trac.example.org',
+  });
+
+  assert.equal(router.returnUrl(), 'https://panel.example.org/done');
 });

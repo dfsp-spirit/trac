@@ -50,6 +50,32 @@ test.describe('thanks view', () => {
     );
   });
 
+  test('a return_url becomes the one way out', async ({ page }) => {
+    await page.goto(
+      'thanks.html?reason=completed&return_url=https%3A%2F%2Fpanel.example.org%2Fdone%3Fid%3D7'
+    );
+
+    const back = page.locator('.t-page__actions a.t-btn');
+    await expect(back).toHaveCount(1);
+    await expect(back).toHaveText('Weiter');
+    await expect(back).toHaveAttribute('href', 'https://panel.example.org/done?id=7');
+  });
+
+  test('a study without a return_url gets no action', async ({ page }) => {
+    await page.goto('thanks.html?reason=completed');
+
+    await expect(page.locator('.t-page__actions')).toHaveCount(0);
+  });
+
+  test('declining never sends the participant on as finished', async ({ page }) => {
+    await page.goto(
+      'thanks.html?reason=noconsent&return_url=https%3A%2F%2Fpanel.example.org%2Fdone'
+    );
+
+    await expect(page.locator('.t-page__title')).toHaveText('Danke für Ihre Zeit');
+    await expect(page.locator('.t-page__actions')).toHaveCount(0);
+  });
+
   test('carries a mark and one heading', async ({ page }) => {
     await page.goto('thanks.html?reason=completed');
 

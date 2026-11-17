@@ -324,7 +324,10 @@
       "noInvitationTitle": "No invitation found",
       "noInvitationText": "Please open the link from your invitation. It contains the details of your study.",
       "incompatibleTitle": "This study cannot be shown here",
-      "incompatibleText": "This version of the diary supports one timeline per study. Please contact the research team and tell them which link you used."
+      "incompatibleText": "This version of the diary supports one timeline per study. Please contact the research team and tell them which link you used.",
+      "taskLockedLevel": "Available once the previous tasks are done.",
+      "taskLockedDiary": "Available once your diary has been submitted.",
+      "taskContinue": "Continue"
     },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"
