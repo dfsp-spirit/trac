@@ -159,7 +159,14 @@
   caller that cannot afford growth; the form passes nothing (dynamic).
 - **The pending range is a row, not an outline.** A 10-minute range is 2 px wide,
   so a 1.5 px outline around it would be wider than the range. Its own 4 px row in
-  `--ink` is unambiguous at any length and cannot claim an activity colour.
+  `--ink` is unambiguous at any length and cannot claim an activity colour. The bar
+  breathes between `--ink` and `--surface-300` (2 s, `ease-in-out`, alternate) so
+  "this one is yours" needs no reading. The range is the full grey ramp on
+  purpose: at 4 px tall - 2 px wide for a short entry - a one-step change is
+  invisible, and the light end still sits below the row's own `--surface-100`
+  track, so the bar dims instead of looking deleted. It is the app's only animation, and
+  `base.css` stops it for `prefers-reduced-motion`, where the static black bar in
+  its own row already carries the distinction.
 - **`aria-hidden`.** Everything the strip shows is stated elsewhere in text
   (surroundings, duration line), and colour alone may not be the only carrier of
   information (WCAG 1.4.1), so it stays out of the accessibility tree and the tab

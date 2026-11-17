@@ -81,14 +81,10 @@ test.describe('day strip', () => {
     await expect(rows).toHaveCount(2);
     await expect(rows.nth(1)).toHaveClass(/t-daystrip__row--pending/);
 
-    // 12:00-13:00, in black (--ink) rather than an activity colour.
+    // 12:00-13:00, in its own row rather than an activity colour.
     const [pending] = await segments(page, '.t-daystrip__seg--pending');
     expect(pending.left).toBeCloseTo(50, 3);
     expect(pending.width).toBeCloseTo((60 / 1440) * 100, 3);
-    await expect(page.locator('.t-daystrip__seg--pending')).toHaveCSS(
-      'background-color',
-      'rgb(17, 17, 17)'
-    );
   });
 
   test('a range that runs past midnight stops at the day boundary', async ({ page }) => {
@@ -110,6 +106,22 @@ test.describe('day strip', () => {
       'background-color',
       'rgb(82, 82, 82)'
     );
+  });
+
+  test('the pending bar breathes, and holds still when motion is reduced', async ({ page }) => {
+    await open(page, 'pending');
+    const bar = page.locator('.t-daystrip__seg--pending');
+
+    // A cue, not an alarm: the animation is what says "this bar is the entry
+    // you are editing". Its two endpoints are --ink and --ink-muted.
+    await expect(bar).toHaveCSS('animation-name', 't-daystrip-pending');
+    await expect(bar).toHaveCSS('animation-duration', '2s');
+
+    // base.css stops every animation under reduced motion; the bar then keeps
+    // the static black that its own row already distinguishes.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await expect(bar).toHaveCSS('animation-name', 'none');
+    await expect(bar).toHaveCSS('background-color', 'rgb(17, 17, 17)');
   });
 
   test('no pending range means no pending row', async ({ page }) => {

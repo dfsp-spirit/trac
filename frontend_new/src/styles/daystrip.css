@@ -35,5 +35,19 @@
 }
 
 .t-daystrip__seg--pending {
-  background: var(--ink);
+  background-color: var(--ink);
+  /* The entry being worked on breathes from black down to light grey, so "this
+     bar is mine" does not have to be read off the fields below. base.css
+     switches the animation off for `prefers-reduced-motion`, where the static
+     black bar in its own row already says the same thing. */
+  animation: t-daystrip-pending 2s ease-in-out infinite alternate;
+}
+
+/* The full grey ramp rather than a whisper: at 4px tall (2px wide for a short
+   entry) a change of one or two steps is invisible. The light end still sits
+   below its own --surface-100 track, so the bar dims and returns instead of
+   looking like it was deleted. */
+@keyframes t-daystrip-pending {
+  from { background-color: var(--ink); }
+  to { background-color: var(--surface-300); }
 }
