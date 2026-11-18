@@ -219,6 +219,7 @@
     "shell": {
       "menu": "Meny",
       "appName": "Tidsdagbok",
+      "forWhom": "För: {{name}}",
       "menuTitle": "Meny",
       "menuActions": "Åtgärder",
       "menuPages": "Sidor",
