@@ -1,6 +1,7 @@
+import re
 from datetime import datetime, timezone
 from datetime import time
-from typing import Optional
+from typing import Mapping, Optional
 
 
 def utc_now() -> datetime:
@@ -77,3 +78,53 @@ def localized_study_text(
         or (text_map.get(default_language) if default_language else None)
         or text_map.get("en")
     )
+
+
+#: The participant value study texts may reference. Kept in one place so the
+#: payload builder, the docs and the tests cannot disagree about the spelling.
+DISPLAY_NAME_PLACEHOLDER = "{display_name}"
+
+# Only lower-case keys: study text is prose, and `{Name}` should stay literal
+# rather than silently becoming something else.
+_STUDY_TEXT_PLACEHOLDER_RE = re.compile(r"\{([a-z_]+)\}")
+
+# Backstop only: `display_names.validate_display_name` already rejects every one
+# of these, so a validated name reaches this function inert. It matters for
+# values that did not come through the validator (a repaired row, a future edit
+# path) and costs one pass over a 50-character string.
+_MARKDOWN_SPECIAL_RE = re.compile(r"([\\`*_\[\]()#<>|~])")
+
+
+def _escape_markdown_text(value: str) -> str:
+    return _MARKDOWN_SPECIAL_RE.sub(r"\\\1", value)
+
+
+def substitute_study_text_placeholders(
+    text: Optional[str], values: Mapping[str, Optional[str]]
+) -> Optional[str]:
+    """Replace ``{key}`` tokens in a resolved study text with participant values.
+
+    Runs *after* ``localized_study_text`` (so the study's language has already
+    been chosen) and *before* the client renders the text as Markdown, which is
+    why the substituted value is escaped for Markdown.
+
+    A token whose value is missing is left untouched. Deleting it would break
+    the sentence ("Please fill out the diary for ."), and substituting an empty
+    string hides the real problem; a visible ``{display_name}`` tells the admin
+    that the roster is missing a name for this participant.
+
+    @param text The resolved study text, or None when the study has none.
+    @param values Participant values keyed by placeholder name.
+    @returns The text with known placeholders replaced, or None unchanged.
+    """
+    if not text:
+        return text
+
+    def replace(match: "re.Match[str]") -> str:
+        key = match.group(1)
+        value = values.get(key)
+        if not value:
+            return match.group(0)
+        return _escape_markdown_text(str(value))
+
+    return _STUDY_TEXT_PLACEHOLDER_RE.sub(replace, text)

@@ -45,6 +45,18 @@
   white-space: nowrap;
 }
 
+/* Whose diary this is. One line, muted, truncated - a long name must not push
+   the progress line or the review button out of the top bar. */
+.t-topbar__for {
+  margin: 0;
+  overflow: hidden;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* The progress line is also the way into the review (desktop only, like the
    line itself). It has to look like the text it was, not like a button. */
 button.t-topbar__note {

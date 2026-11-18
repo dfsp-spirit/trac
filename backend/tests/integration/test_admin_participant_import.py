@@ -262,3 +262,115 @@ async def test_paste_box_rejects_invalid_ids_too():
     detail = response.json()["detail"]
     assert "'bad id'" in detail
     assert "letters, digits" in detail
+
+
+@pytest.mark.asyncio
+async def test_display_name_column_is_read_and_reaches_the_participant():
+    """The roster's ``display_name`` is the label the diary is filled out for."""
+    study = "default"
+    prefix = _prefix()
+    participant_id = f"{prefix}_named"
+    csv_text = f"pid,display_name\n{participant_id},Jörg\n"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await _upload(client, study, csv_text.encode("utf-8"))
+            config = await client.get(
+                f"{BASE_URL}/api/studies/{study}/study-config",
+                params={"participant_id": participant_id},
+            )
+        finally:
+            await _remove(client, study, [participant_id])
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["columns"]["used"] == ["pid", "display_name"]
+    assert body["columns"]["ignored"] == []
+
+    assert config.status_code == 200, config.text
+    assert config.json()["participant_display_name"] == "Jörg"
+
+
+@pytest.mark.asyncio
+async def test_reuploading_a_roster_updates_the_display_name():
+    """A corrected file is how a typo gets fixed; the participant row is kept."""
+    study = "default"
+    prefix = _prefix()
+    participant_id = f"{prefix}_fix"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            first = await _upload(
+                client,
+                study,
+                f"pid,display_name\n{participant_id},Tmi\n".encode("utf-8"),
+            )
+            second = await _upload(
+                client,
+                study,
+                f"pid,display_name\n{participant_id},Tim\n".encode("utf-8"),
+            )
+            config = await client.get(
+                f"{BASE_URL}/api/studies/{study}/study-config",
+                params={"participant_id": participant_id},
+            )
+        finally:
+            await _remove(client, study, [participant_id])
+
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
+    assert second.json()["summary"]["already_assigned"] == 1
+    assert second.json()["summary"]["display_names_updated"] == 1
+    assert config.json()["participant_display_name"] == "Tim"
+
+
+@pytest.mark.asyncio
+async def test_an_invalid_display_name_rejects_the_whole_file():
+    study = "default"
+    prefix = _prefix()
+    good_id = f"{prefix}_goodname"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await _upload(
+                client,
+                study,
+                f"pid,display_name\n{good_id},Tim\n{prefix}_bad,<b>Tom</b>\n".encode(
+                    "utf-8"
+                ),
+            )
+            page = await _page_containing(client, study, prefix)
+        finally:
+            await _remove(client, study, [good_id, f"{prefix}_bad"])
+
+    assert response.status_code == 400, response.text
+    assert "display name" in response.json()["detail"]
+    # Nothing was imported, not even the good row.
+    assert good_id not in page
+
+
+@pytest.mark.asyncio
+async def test_display_name_is_shown_and_searchable_in_the_participant_table():
+    """The name is what an admin knows about a participant, so it is a column
+    and a filter, not just a payload field."""
+    study = "default"
+    prefix = _prefix()
+    participant_id = f"{prefix}_shown"
+    # Unique so the name filter cannot match another participant's row.
+    display_name = f"Nm{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await _upload(
+                client,
+                study,
+                f"pid,display_name\n{participant_id},{display_name}\n".encode("utf-8"),
+            )
+            page = await _page_containing(client, study, display_name)
+        finally:
+            await _remove(client, study, [participant_id])
+
+    assert response.status_code == 200, response.text
+    assert participant_id in page
+    assert f"<td>{display_name}</td>" in page
+    assert "Filter by participant ID or name" in page

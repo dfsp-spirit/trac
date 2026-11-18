@@ -28,6 +28,7 @@ export function readShell(root) {
   return {
     root,
     topbar: must('#topbar'),
+    forWhom: maybe('#for-whom'),
     daysHost: must('#days'),
     stageHost: must('#stage-host'),
     shell: must('.t-shell'),

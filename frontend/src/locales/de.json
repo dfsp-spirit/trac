@@ -219,6 +219,7 @@
     "shell": {
       "menu": "Menü",
       "appName": "Zeit-Tagebuch",
+      "forWhom": "Für: {{name}}",
       "menuTitle": "Menü",
       "menuActions": "Aktionen",
       "menuPages": "Seiten",

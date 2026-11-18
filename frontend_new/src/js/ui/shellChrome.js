@@ -9,6 +9,7 @@
  * component is also what keeps the composition root under its size cap.
  */
 import { config } from '../config.js';
+import { documentTitle, forWhomLabel } from '../domain/displayName.js';
 import { offersLanguageChoice, studyLanguageOptions } from '../domain/language.js';
 import { canSkipDiary } from '../domain/skip.js';
 import { createDrawer } from './drawer.js';
@@ -35,6 +36,7 @@ import { createSkipDialog } from './skipDialog.js';
  *     footerLinks: HTMLElement | null,
  *     languageSelect: HTMLSelectElement | null,
  *     menuLanguageBlock: HTMLElement | null,
+ *     forWhom: HTMLElement | null,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   getLanguage: () => string,
@@ -120,6 +122,20 @@ export function createShellChrome({
   /** @type {any} */
   let session = null;
 
+  /**
+   * Whose diary this is, in the topbar and in the document title. Runs with
+   * every session (the name is per participant, not per stage) and again after
+   * a language switch, because the label around it is translated.
+   */
+  function renderForWhom() {
+    const label = forWhomLabel(session, t);
+    if (shell.forWhom) {
+      shell.forWhom.textContent = label;
+      shell.forWhom.hidden = !label;
+    }
+    document.title = documentTitle(session, t);
+  }
+
   return {
     /**
      * The study config is in: offer its languages and render its pages.
@@ -127,6 +143,7 @@ export function createShellChrome({
      */
     apply(studySession) {
       session = studySession;
+      renderForWhom();
       const languages = studyLanguageOptions(
         studySession?.supported_languages ?? [],
         config.supportedLanguages
@@ -151,6 +168,7 @@ export function createShellChrome({
      */
     syncLanguage(language) {
       if (select) select.value = language;
+      renderForWhom();
       legal.render(session);
     },
 

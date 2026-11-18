@@ -332,6 +332,34 @@ its own title scale; this table is about the instructions page.)
 | `study_text_consent` | `{lang: text}` | No | Consent text shown on the consent page. Markdown. |
 | `study_text_end_noconsent` | `{lang: text}` | No | Text shown if the participant did not give consent. Raw HTML. |
 
+#### Participant names in study texts
+
+Every study text above may reference the label the diary is filled out for with
+the placeholder `{display_name}`:
+
+```json
+"study_text_intro": {
+  "de": "Bitte füllen Sie das Tagebuch für {display_name} aus.",
+  "en": "Please fill out the diary for {display_name}."
+}
+```
+
+The value comes from the participant roster (`display_name` column, see
+*Adding participants to a study*) - never from the URL, so a child's name is not
+written into invitation links, server logs or browser history.
+
+Rules worth knowing:
+
+* The placeholder is replaced **after** the study language is chosen and
+  **before** the text is rendered as Markdown. A name that passes the roster
+  validation cannot introduce Markdown or HTML.
+* A participant without a name keeps the literal `{display_name}` in the text.
+  That is deliberate: deleting it would produce a broken sentence ("Diary for ."),
+  and a visible token tells you which roster row is incomplete.
+* Unknown placeholders (anything this version does not know) are left as they
+  are, so a text written for a future feature does not silently lose a word.
+* The name itself is not translated; only the sentence around it is.
+
 #### Study Flow Control
 
 | Field | Type | Required | Description |
@@ -672,15 +700,30 @@ the admin audit log. Share it only through a private channel.
 
 - **Paste IDs**: type or paste them into the box, separated by new lines, commas,
   semicolons or spaces.
-- **Upload a file**: upload a CSV or TSV with a header line. Only the `pid`
-  column is read; any other column is ignored (and counted in the result), so a
-  roster exported from another tool can be uploaded as-is. Tab, semicolon and
+- **Upload a file**: upload a CSV or TSV with a header line. Two columns are
+  read: `pid` (required) and `display_name` (optional, the label shown to that
+  participant, e.g. a child's name; available to study texts as
+  `{display_name}`). Any other column is ignored (and counted in the result), so
+  a roster exported from another tool can be uploaded as-is. Tab, semicolon and
   comma are detected from the content, so German Excel exports work without
   conversion. Use **Validate file** to see the counts without writing anything.
+
+  Re-uploading a roster updates `display_name` for participants that already
+  exist, so a corrected file is the way to fix a typo. Activity data is never
+  touched.
+
+  A display name may contain any Unicode letters (`ä ö ü ß Å æ ø ł ż é ç ñ ő ș ı`
+  and any other script), `-`, `'`, `’`, `.`, digits and single spaces, is at most
+  50 characters long, and must start with a letter or digit. Newlines, tabs,
+  invisible/format characters and markup characters are rejected - an invalid
+  name rejects the whole file, like an invalid `pid`.
 
 Both report how many participants were added, how many already existed, and how
 many rows were duplicates. A single invalid ID rejects the whole file - an
 invitation list silently missing an invitee would be worse than an error.
+
+The participant table shows the name next to the participant ID, and its filter
+box matches both, so "Tim" finds the row without knowing the id.
 
 The endpoint is `POST /api/admin/studies/<name_short>/import-participants`
 (multipart `file`, optional `?dry_run=true`).

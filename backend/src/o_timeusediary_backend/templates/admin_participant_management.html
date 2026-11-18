@@ -70,7 +70,7 @@
             <div class="participant-toolbar" style="margin-top: 0.75rem;">
                 <form class="filter-form" method="get" action="{{ request.scope.root_path }}/admin/participant-management">
                     <input type="hidden" name="study_name_short" value="{{ selected_study.name_short }}">
-                    <input type="search" id="participantFilter" name="q" value="{{ participant_query }}" placeholder="Filter by participant ID" aria-label="Filter participants by participant ID">
+                    <input type="search" id="participantFilter" name="q" value="{{ participant_query }}" placeholder="Filter by participant ID or name" aria-label="Filter participants by participant ID or name">
                     {% set page_sizes = [25, 50, 100, 200] %}
                     {% if per_page not in page_sizes %}{% set page_sizes = [per_page] + page_sizes %}{% endif %}
                     <select id="participantPageSize" name="per_page" aria-label="Rows per page" style="width: auto; min-width: 0; flex: 0 0 auto;">
@@ -101,6 +101,7 @@
                 <thead>
                     <tr>
                         <th>Participant ID</th>
+                        <th>Name</th>
                         <th>Created</th>
                         {% if selected_study_requires_consent %}
                         <th>Consent</th>
@@ -121,6 +122,7 @@
                     {% for participant in current_participants %}
                     <tr>
                         <td><code>{{ participant.id }}</code></td>
+                        <td>{{ participant.display_name or '-' }}</td>
                         <td>{{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else '-' }}</td>
                         {% if selected_study_requires_consent %}
                         <td>
@@ -212,8 +214,10 @@
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Upload participants for study {{ selected_study.name_short }}</h2>
             <div class="hint" style="margin-bottom: 0.5rem;">
-                Upload a CSV or TSV file. The first line must be a header; only the <code>pid</code> column is used,
-                every other column is ignored. {{ participant_id_rule_text }}
+                Upload a CSV or TSV file. The first line must be a header; the <code>pid</code> column is used,
+                and the optional <code>display_name</code> column becomes the label shown to that participant
+                (for example a child's name). Every other column is ignored.
+                {{ participant_id_rule_text }} {{ display_name_rule_text }}
             </div>
             <input type="file" id="participantsFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" />
             <div class="hint" id="participantsFileHint">No file selected.</div>

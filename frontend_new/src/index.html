@@ -35,6 +35,9 @@
         </button>
         <div class="t-topbar__title">
           <p class="t-topbar__name" id="app-title" data-i18n="diary.shell.appName">Time diary</p>
+          <!-- Whose diary this is, from the study's participant roster. Empty
+               and hidden unless the study stores display names. -->
+          <p class="t-topbar__for" id="for-whom" hidden></p>
         </div>
         <!-- The progress line opens the review. The visible text stays its
              accessible name (the summary is what matters); the hidden sentence

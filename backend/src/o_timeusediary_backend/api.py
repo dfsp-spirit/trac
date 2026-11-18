@@ -27,6 +27,7 @@ from typing import (
     Iterable,
     List,
     Literal,
+    Mapping,
     Optional,
     Sequence,
     Set,
@@ -140,12 +141,17 @@ from .api_deps.admin_auth import (
 from .utils import (
     get_time_for_minutes_from_midnight,
     localized_study_text,
+    substitute_study_text_placeholders,
     utc_now,
 )
 from . import stages
 from .api_deps.diary_access import study_availability
-from .api_deps.participant_identity import require_valid_participant_id
+from .api_deps.participant_identity import (
+    require_valid_display_name,
+    require_valid_participant_id,
+)
 from .api_deps.study_identity import require_valid_study_name_short
+from .display_names import DISPLAY_NAME_RULE_TEXT
 from .participant_ids import (
     PARTICIPANT_ID_PATTERN,
     PARTICIPANT_ID_RULE_TEXT,
@@ -160,6 +166,7 @@ from .study_names import (
 from .tabular_files import (
     DelimitedUploadError,
     find_header,
+    find_optional_header,
     parse_delimited_upload,
 )
 from .admin_directory import build_admin_directory
@@ -5191,7 +5198,8 @@ async def admin_participant_management(
     request: Request,
     study_name_short: Optional[str] = Query(None),
     q: Optional[str] = Query(
-        None, description="Filter participants by a participant ID substring."
+        None,
+        description="Filter participants by a participant ID or display-name substring.",
     ),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=10, le=500),
@@ -5202,12 +5210,13 @@ async def admin_participant_management(
     """Render participant-management page for assigning/removing study participants.
 
     The participant table is paginated in the database: ``page``/``per_page``
-    become ``LIMIT``/``OFFSET`` and ``q`` an ID substring filter, so the page cost
-    stays constant for studies with thousands of participants.
+    become ``LIMIT``/``OFFSET`` and ``q`` a substring filter on the participant
+    id and its display name, so the page cost stays constant for studies with
+    thousands of participants.
 
     @param request FastAPI request object for template rendering.
     @param study_name_short Optional selected study short name.
-    @param q Optional participant ID substring filter.
+    @param q Optional participant ID or display-name substring filter.
     @param page 1-based page number of the participant table.
     @param per_page Page size of the participant table.
     @param identity Authenticated admin identity (role + study scope).
@@ -5284,7 +5293,16 @@ async def admin_participant_management(
                 .replace("_", "\\_")
             )
             participant_filters.append(
-                StudyParticipant.participant_id.ilike(f"%{escaped_query}%", escape="\\")
+                sa_or_(
+                    StudyParticipant.participant_id.ilike(
+                        f"%{escaped_query}%", escape="\\"
+                    ),
+                    # The display name is what an admin actually knows about a
+                    # participant ("Tim"), so it searches with the id.
+                    StudyParticipant.display_name.ilike(
+                        f"%{escaped_query}%", escape="\\"
+                    ),
+                )
             )
 
         total_participants = (
@@ -5423,6 +5441,7 @@ async def admin_participant_management(
             current_participants.append(
                 {
                     "id": participant.id,
+                    "display_name": association.display_name,
                     "created_at": participant.created_at,
                     "assigned_at": association.created_at,
                     "consent_given": association.consent_given,
@@ -5508,6 +5527,7 @@ async def admin_participant_management(
     template = templates.get_template("admin_participant_management.html")
     # The client-side hint and validation use the same text as the server rule.
     context_dict["participant_id_rule_text"] = PARTICIPANT_ID_RULE_TEXT
+    context_dict["display_name_rule_text"] = DISPLAY_NAME_RULE_TEXT
     context_dict["participant_id_pattern"] = PARTICIPANT_ID_PATTERN
     html_content = template.render(context_dict)
     return HTMLResponse(content=html_content)
@@ -6966,30 +6986,42 @@ def apply_participant_assignment(
     participant_ids: Sequence[str],
     *,
     dry_run: bool = False,
+    display_names: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, int]:
     """Create missing participants and study links for already-validated ids.
 
     Shared by the paste box and the file upload so both report the same counts;
     ids are expected to be validated and de-duplicated by
-    ``participant_ids.normalize_participant_ids``.
+    ``participant_ids.normalize_participant_ids``, and display names by
+    ``display_names.validate_display_name``.
+
+    A display name is written for every id the mapping has one for, including
+    ids that are already assigned: that is what makes a corrected roster
+    re-upload the way to fix a typo, instead of requiring a second admin screen.
 
     @param session Database session.
     @param study Study to assign the participants to.
     @param participant_ids Valid participant ids, already de-duplicated.
     @param dry_run When true, only count what would happen and write nothing.
+    @param display_names Optional normalized display names keyed by participant id.
     @returns Counts keyed by ``created_and_assigned``,
-        ``already_existed_and_assigned`` and ``already_assigned``.
+        ``already_existed_and_assigned``, ``already_assigned`` and
+        ``display_names_updated``.
     """
+    names = display_names or {}
     summary = {
         "created_and_assigned": 0,
         "already_existed_and_assigned": 0,
         "already_assigned": 0,
+        "display_names_updated": 0,
     }
 
     for participant_id in participant_ids:
         participant_created = session.get(Participant, participant_id) is None
         if participant_created and not dry_run:
             session.add(Participant(id=participant_id))
+
+        display_name = names.get(participant_id)
 
         existing_association = session.exec(
             select(StudyParticipant).where(
@@ -7000,11 +7032,20 @@ def apply_participant_assignment(
 
         if existing_association:
             summary["already_assigned"] += 1
+            if display_name and existing_association.display_name != display_name:
+                summary["display_names_updated"] += 1
+                if not dry_run:
+                    existing_association.display_name = display_name
+                    session.add(existing_association)
             continue
 
         if not dry_run:
             session.add(
-                StudyParticipant(study_id=study.id, participant_id=participant_id)
+                StudyParticipant(
+                    study_id=study.id,
+                    participant_id=participant_id,
+                    display_name=display_name,
+                )
             )
 
         if participant_created:
@@ -7115,14 +7156,20 @@ async def import_participants_from_file(
 ):
     """Add the participants listed in an uploaded CSV or TSV file to a study.
 
-    The first line must be a header; the only column that is read is ``pid``
-    (matched case-insensitively). Every other column is ignored and reported, so
-    a roster can carry extra context without being rejected. Delimiter and
-    encoding are detected from the content: tab, semicolon and comma are
-    accepted, and a UTF-8 BOM is tolerated.
+    The first line must be a header. Two columns are read, both matched
+    case-insensitively: ``pid`` (the id) and the optional ``display_name`` (the
+    label shown to the participant, e.g. a child's name). Every other column is
+    ignored and reported, so a roster can carry extra context without being
+    rejected. Delimiter and encoding are detected from the content: tab,
+    semicolon and comma are accepted, and a UTF-8 BOM is tolerated.
 
-    Invalid ids are an error for the whole file: a roster is a mailing list, and
-    silently dropping an invitee is worse than refusing the upload.
+    Re-uploading a roster updates the display name of participants that already
+    exist, which makes a corrected file the way to fix a typo. Activity data is
+    never touched.
+
+    An invalid id or display name is an error for the whole file: a roster is a
+    mailing list, and silently dropping an invitee - or storing half a name -
+    is worse than refusing the upload.
 
     @param study_name_short Study short name.
     @param file Uploaded CSV or TSV file.
@@ -7142,10 +7189,12 @@ async def import_participants_from_file(
     try:
         parsed = parse_delimited_upload(await file.read())
         pid_header = find_header(parsed.headers, "pid")
+        name_header = find_optional_header(parsed.headers, "display_name")
     except DelimitedUploadError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     participant_ids: List[str] = []
+    display_names: Dict[str, str] = {}
     seen: set[str] = set()
     duplicates_in_file = 0
     errors: List[str] = []
@@ -7163,6 +7212,17 @@ async def import_participants_from_file(
             duplicates_in_file += 1
             continue
         seen.add(participant_id)
+
+        raw_name = row.get(name_header, "") if name_header else ""
+        if raw_name.strip():
+            try:
+                display_names[participant_id] = require_valid_display_name(
+                    raw_name
+                )
+            except HTTPException as error:
+                errors.append(f"Line {line_number}: {error.detail}")
+                continue
+
         participant_ids.append(participant_id)
 
     if errors:
@@ -7175,10 +7235,17 @@ async def import_participants_from_file(
             detail=f"Nothing was imported. {shown}",
         )
 
-    ignored_columns = [header for header in parsed.headers if header != pid_header]
+    used_headers = {pid_header} | ({name_header} if name_header else set())
+    ignored_columns = [
+        header for header in parsed.headers if header.strip() not in used_headers
+    ]
 
     summary = apply_participant_assignment(
-        session, study, participant_ids, dry_run=dry_run
+        session,
+        study,
+        participant_ids,
+        dry_run=dry_run,
+        display_names=display_names,
     )
     if not dry_run:
         session.commit()
@@ -7204,7 +7271,7 @@ async def import_participants_from_file(
             "duplicates_in_file": duplicates_in_file,
         },
         "columns": {
-            "used": [pid_header],
+            "used": [pid_header, name_header] if name_header else [pid_header],
             "ignored": ignored_columns,
             "ignored_count": len(ignored_columns),
         },
@@ -8380,6 +8447,10 @@ async def export_study_participants(
     ``participant_skip*`` columns; ``study_submitted_at`` alone cannot tell a
     skipped diary from a filled one.
 
+    ``participant_display_name`` is the label the diary was filled out for
+    ("Tim"), empty when the study does not use display names. It is display
+    text: joins and analysis key on ``participant_id``.
+
     @param request FastAPI request object.
     @param study_name_short Short name of the study to export.
     @param format Output format, either `csv` or `json`.
@@ -8444,6 +8515,9 @@ async def export_study_participants(
 
         record: Dict[str, Any] = {
             "participant_id": study_participant.participant_id,
+            # Display label only ("Tim"): the analysis still joins on
+            # participant_id, which stays the identity.
+            "participant_display_name": study_participant.display_name,
             "participant_created_at": (
                 participant_created_at.isoformat() if participant_created_at else None
             ),
@@ -10313,6 +10387,9 @@ class ParticipantExternalTaskResponse(BaseModel):
 class StudyConfigResponse(BaseModel):
     study_name: str
     study_name_short: str
+    #: The label the diary is filled out for ("Tim"), or None when the study
+    #: does not use display names. Display only - `pid` stays the identity.
+    participant_display_name: Optional[str] = None
     description: Optional[Union[str, Dict[str, str]]] = None
     allow_unlisted_participants: bool
     require_consent: bool = False
@@ -10545,6 +10622,7 @@ def get_study_config(
     instructions_completed_at = None
     study_submitted_at = None
     skipped_at = None
+    study_participant = None
     if participant_id is not None:
         study_participant = _get_study_participant_association(
             session, study, participant_id
@@ -10556,6 +10634,35 @@ def get_study_config(
             instructions_completed_at = study_participant.instructions_completed_at
             study_submitted_at = study_participant.study_submitted_at
             skipped_at = study_participant.skipped_at
+
+    participant_display_name = (
+        study_participant.display_name if study_participant else None
+    )
+    # Study texts may reference the person the diary is for. Substitution runs
+    # here, after the language was resolved and before the client renders the
+    # text as Markdown, and every participant-facing text gets the same values.
+    text_values = {"display_name": participant_display_name}
+    study_text_intro = substitute_study_text_placeholders(
+        study_text_intro, text_values
+    )
+    study_text_end_completed = substitute_study_text_placeholders(
+        study_text_end_completed, text_values
+    )
+    study_text_end_skipped = substitute_study_text_placeholders(
+        study_text_end_skipped, text_values
+    )
+    study_text_end_noconsent = substitute_study_text_placeholders(
+        study_text_end_noconsent, text_values
+    )
+    study_text_consent = substitute_study_text_placeholders(
+        study_text_consent, text_values
+    )
+    study_text_instructions = substitute_study_text_placeholders(
+        study_text_instructions, text_values
+    )
+    study_text_instructions_title = substitute_study_text_placeholders(
+        study_text_instructions_title, text_values
+    )
 
     participant_external_tasks = _get_participant_external_tasks(
         session, study, participant_id, selected_language, len(day_labels)
@@ -10596,10 +10703,14 @@ def get_study_config(
     )
     if localized_description is None:
         localized_description = _resolve_description(study)
+    localized_description = substitute_study_text_placeholders(
+        localized_description, text_values
+    )
 
     return StudyConfigResponse(
         study_name=study.name,
         study_name_short=study.name_short,
+        participant_display_name=participant_display_name,
         description=localized_description,
         allow_unlisted_participants=study.allow_unlisted_participants,
         require_consent=require_consent,

@@ -11,7 +11,7 @@ from __future__ import annotations
 import csv
 from dataclasses import dataclass
 from io import StringIO
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Ordered by preference when a header line contains the same number of
 # occurrences: tabs are never ambiguous, semicolons are what German Excel writes
@@ -94,13 +94,25 @@ def find_header(headers: List[str], name: str) -> str:
     Column names are matched case-insensitively and ignoring surrounding
     whitespace, because that is how a spreadsheet user types them.
     """
+    header = find_optional_header(headers, name)
+    if header is None:
+        raise DelimitedUploadError(
+            f"The file has no '{name}' column. Found columns: {', '.join(headers)}."
+        )
+    return header
+
+
+def find_optional_header(headers: List[str], name: str) -> Optional[str]:
+    """Return the actual header spelling for ``name``, or None when it is absent.
+
+    The same case-insensitive match as ``find_header``, for columns a roster may
+    carry but does not have to.
+    """
     wanted = name.strip().lower()
     for header in headers:
         if header.strip().lower() == wanted:
             return header.strip()
-    raise DelimitedUploadError(
-        f"The file has no '{name}' column. Found columns: {', '.join(headers)}."
-    )
+    return None
 
 
 def _has_content(cells: List[str]) -> bool:

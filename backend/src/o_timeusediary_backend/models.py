@@ -441,6 +441,12 @@ class StudyParticipant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
     participant_id: str = Field(foreign_key="participants.id", sa_type=String(255))
+    # Display text, never a key: shown in the participant frontend and available
+    # to study texts as `{display_name}`. Per study, because the same person can
+    # be "Tim" in one study and "participant 14" in the next, and because a
+    # child's name must go when the study goes. The rule lives in
+    # `display_names.py`; nothing writes this column without validating it.
+    display_name: Optional[str] = Field(default=None, sa_type=String(64))
     consent_given: Optional[bool] = Field(default=None)
     consent_decided_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
