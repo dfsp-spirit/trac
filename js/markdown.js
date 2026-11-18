@@ -25,9 +25,6 @@ export function renderMarkdown(markdown) {
   let paragraph = [];
   let listType = null;
   let listItems = [];
-  // The first number of an ordered list is part of the Markdown: `3.` starts at
-  // 3. Later numbers are decoration, as in CommonMark.
-  let listStart = 1;
 
   const flushParagraph = () => {
     if (paragraph.length) {
@@ -40,24 +37,20 @@ export function renderMarkdown(markdown) {
     if (!listType || !listItems.length) {
       listType = null;
       listItems = [];
-      listStart = 1;
       return;
     }
-    const start = listType === 'ol' && listStart !== 1 ? ` start="${listStart}"` : '';
     chunks.push(
-      `<${listType}${start}>${listItems.map((item) => `<li>${item}</li>`).join('')}</${listType}>`
+      `<${listType}>${listItems.map((item) => `<li>${item}</li>`).join('')}</${listType}>`
     );
     listType = null;
     listItems = [];
-    listStart = 1;
   };
 
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (!line) {
-      // A blank line between two list items is a loose list, not the end of the
-      // list: flushing here would emit one list per item, each restarting at 1.
       flushParagraph();
+      flushList();
       continue;
     }
 
@@ -81,17 +74,14 @@ export function renderMarkdown(markdown) {
       continue;
     }
 
-    const orderedMatch = line.match(/^(\d+)\.\s+(.*)$/);
+    const orderedMatch = line.match(/^\d+\.\s+(.*)$/);
     if (orderedMatch) {
       flushParagraph();
       if (listType && listType !== 'ol') {
         flushList();
       }
-      if (!listType) {
-        listStart = Number.parseInt(orderedMatch[1], 10);
-      }
       listType = 'ol';
-      listItems.push(parseInlineMarkdown(orderedMatch[2]));
+      listItems.push(parseInlineMarkdown(orderedMatch[1]));
       continue;
     }
 
