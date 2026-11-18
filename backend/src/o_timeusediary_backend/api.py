@@ -151,7 +151,10 @@ from .api_deps.participant_identity import (
     require_valid_participant_id,
 )
 from .api_deps.study_identity import require_valid_study_name_short
-from .display_names import DISPLAY_NAME_RULE_TEXT
+from .display_names import (
+    DISPLAY_NAME_RULE_TEXT,
+    validate_participant_display_names,
+)
 from .participant_ids import (
     PARTICIPANT_ID_PATTERN,
     PARTICIPANT_ID_RULE_TEXT,
@@ -2895,6 +2898,9 @@ class ImportStudiesConfigStudy(BaseModel):
     description: Optional[Union[str, Dict[str, str]]] = None
     day_labels: List[Dict]
     study_participant_ids: List[str] = []
+    # Optional id -> display name map, same rule as in the config file. Present
+    # so a runtime-config export can be imported back without losing names.
+    participant_display_names: Dict[str, str] = Field(default_factory=dict)
     allow_unlisted_participants: bool = True
     default_language: str = "en"
     supported_languages: List[str]
@@ -3210,6 +3216,12 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
         study_payload.study_participant_ids,
         source=f"participant ids of study '{study_payload.name_short}'",
         reject_blank=True,
+    )
+    study_payload.participant_display_names = validate_participant_display_names(
+        study_payload.participant_display_names,
+        study_name_short=study_payload.name_short,
+        study_participant_ids=study_payload.study_participant_ids,
+        allow_unlisted_participants=study_payload.allow_unlisted_participants,
     )
 
     supported_languages = _normalize_languages(study_payload.supported_languages)
@@ -4042,6 +4054,9 @@ def _create_study_from_import_payload(
                 StudyParticipant(
                     study_id=study.id,
                     participant_id=participant_id,
+                    display_name=study_payload.participant_display_names.get(
+                        participant_id
+                    ),
                 )
             )
 
@@ -4977,6 +4992,14 @@ async def export_runtime_studies_config(
                 "description": study.description,
                 "day_labels": day_labels_export,
                 "study_participant_ids": participant_ids,
+                # Part of the technical backup: a restore that lost the labels
+                # would show the wrong child's name in a chain. Never part of a
+                # data export - see the participant/activity exports.
+                "participant_display_names": {
+                    association.participant_id: association.display_name
+                    for association in study_participants
+                    if association.display_name
+                },
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 "require_consent": study.require_consent,
                 "allow_skip_timeuse": study.allow_skip_timeuse,
@@ -8447,9 +8470,9 @@ async def export_study_participants(
     ``participant_skip*`` columns; ``study_submitted_at`` alone cannot tell a
     skipped diary from a filled one.
 
-    ``participant_display_name`` is the label the diary was filled out for
-    ("Tim"), empty when the study does not use display names. It is display
-    text: joins and analysis key on ``participant_id``.
+    Display names are deliberately absent: the participant label ("Tim") lives
+    in the runtime config backup, and never in a result export, so analysis
+    data cannot be associated with a person's name.
 
     @param request FastAPI request object.
     @param study_name_short Short name of the study to export.
@@ -8515,9 +8538,6 @@ async def export_study_participants(
 
         record: Dict[str, Any] = {
             "participant_id": study_participant.participant_id,
-            # Display label only ("Tim"): the analysis still joins on
-            # participant_id, which stays the identity.
-            "participant_display_name": study_participant.display_name,
             "participant_created_at": (
                 participant_created_at.isoformat() if participant_created_at else None
             ),

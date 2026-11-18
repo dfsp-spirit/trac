@@ -28,7 +28,7 @@ single name that the roster never contained.
 from __future__ import annotations
 
 import unicodedata
-from typing import Any, Optional
+from typing import Any, Mapping, Optional, Sequence
 
 DISPLAY_NAME_MAX_LENGTH = 50
 
@@ -150,3 +150,70 @@ def is_valid_display_name(value: Any) -> bool:
         return validate_display_name(value) == value
     except InvalidDisplayNameError:
         return False
+
+
+def validate_participant_display_names(
+    mapping: Optional[Mapping[str, str]],
+    *,
+    study_name_short: str,
+    study_participant_ids: Sequence[str],
+    allow_unlisted_participants: bool,
+) -> dict[str, str]:
+    """Validate the config-file ``participant_display_names`` map.
+
+    The map is optional and sparse: it names some or all of the study's
+    pre-defined participants. It is a *seed* for fixtures and demo studies -
+    production names belong in the roster upload or the admin, not in a file
+    that lives in the repository.
+
+    Rules, all of which fail the import rather than dropping a name silently:
+
+    * every key must be one of ``study_participant_ids`` (a typo in a pid is a
+      participant with no name, which nobody would notice otherwise);
+    * an open study (``allow_unlisted_participants``) has no participant list,
+      so it cannot have names either;
+    * every value follows the shared display-name rule.
+
+    @param mapping The map from the config file, possibly None.
+    @param study_name_short Study name, for the error message.
+    @param study_participant_ids The study's pre-defined participants.
+    @param allow_unlisted_participants Whether the study is open.
+    @returns The normalized map (empty when nothing was given).
+    @raises ValueError When the map breaks one of the rules.
+    """
+    names = dict(mapping or {})
+    if not names:
+        return {}
+
+    if allow_unlisted_participants:
+        raise ValueError(
+            f"Study '{study_name_short}': participant_display_names is only valid "
+            "for studies with allow_unlisted_participants=false - an open study has "
+            "no participant list to name."
+        )
+
+    unknown = sorted(set(names) - set(study_participant_ids))
+    if unknown:
+        shown = ", ".join(unknown[:5])
+        hidden = len(unknown) - 5
+        if hidden > 0:
+            shown += f" and {hidden} more"
+        raise ValueError(
+            f"Study '{study_name_short}': participant_display_names names "
+            f"participant(s) that are not in study_participant_ids: {shown}. "
+            "Add the id to the list or remove the name."
+        )
+
+    normalized: dict[str, str] = {}
+    for participant_id, value in names.items():
+        try:
+            normalized[participant_id] = validate_display_name(
+                value,
+                source=(
+                    f"display name for participant '{participant_id}' "
+                    f"in study '{study_name_short}'"
+                ),
+            )
+        except InvalidDisplayNameError as error:
+            raise ValueError(str(error)) from error
+    return normalized

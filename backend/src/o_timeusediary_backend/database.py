@@ -725,13 +725,27 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                                     StudyParticipant.participant_id == participant_id,
                                 )
                             ).first()
+                            configured_name = (
+                                study_config.participant_display_names.get(
+                                    participant_id
+                                )
+                            )
                             if not existing_association:
                                 session.add(
                                     StudyParticipant(
                                         study_id=existing_study.id,
                                         participant_id=participant_id,
+                                        display_name=configured_name,
                                     )
                                 )
+                            elif (
+                                configured_name
+                                and existing_association.display_name != configured_name
+                            ):
+                                # Re-running the import applies a corrected name,
+                                # the same way a re-uploaded roster does.
+                                existing_association.display_name = configured_name
+                                session.add(existing_association)
                     _ensure_activity_blobs_from_config(
                         session, existing_study, study_config
                     )
@@ -972,7 +986,14 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                             participant = existing_participant
 
                         study_participant = StudyParticipant(
-                            study_id=study.id, participant_id=participant.id
+                            study_id=study.id,
+                            participant_id=participant.id,
+                            # None unless the config names this participant (a
+                            # fixture or demo value; production names come from
+                            # the roster upload).
+                            display_name=study_config.participant_display_names.get(
+                                participant_id
+                            ),
                         )
                         session.add(study_participant)
 

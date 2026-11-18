@@ -538,3 +538,30 @@ def test_extract_study_for_validation_picks_selected_study_from_multiple():
     assert selected_study["name_short"] == "study_b"
     assert sorted(available) == ["study_a", "study_b"]
     assert selection_required is False
+
+
+def test_validate_import_payload_normalizes_participant_display_names():
+    """The runtime config export carries names; importing it back must keep them."""
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1", "p2"]
+    payload["participant_display_names"] = {"p1": "  Jörg  "}
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+    _validate_import_study_payload(study_payload)
+
+    assert study_payload.participant_display_names == {"p1": "Jörg"}
+
+
+def test_validate_import_payload_rejects_a_name_for_an_unknown_participant():
+    payload = _base_payload()
+    payload["allow_unlisted_participants"] = False
+    payload["study_participant_ids"] = ["p1"]
+    payload["participant_display_names"] = {"p2": "Jörg"}
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(ValueError, match="not in study_participant_ids"):
+        _validate_import_study_payload(study_payload)

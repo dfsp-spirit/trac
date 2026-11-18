@@ -255,6 +255,36 @@ defines a single study.
 |---|---|---|---|
 | `study_participant_ids` | `[string]` | No | List of pre-assigned participant IDs (for invite-only studies). Default: `[]`. |
 | `allow_unlisted_participants` | boolean | No | If `true`, open study — any visitor can participate. If `false`, only IDs in `study_participant_ids` are allowed. Required to be `false` when using `external_tasks`. Default: `true`. |
+| `participant_display_names` | `{pid: name}` | No | Optional label per pre-defined participant, shown to the participant and available in study texts as `{display_name}`. Only for closed studies; every key must appear in `study_participant_ids`. See below. |
+
+##### Participant display names in the config file
+
+```json
+"study_participant_ids": ["family01_t1", "family01_t2"],
+"participant_display_names": {
+  "family01_t1": "Tim",
+  "family01_t2": "Tom"
+}
+```
+
+This is a **seed for fixtures and demo studies** (the e2e suite imports
+`studies_config_new.json`, so a fixture can demonstrate the label without a
+second import step). For a real study, do not put children's or participants'
+names in a file that lives in the repository: upload the roster with its
+`display_name` column instead (*Adding participants to a study*). The config file
+is in git, and a deleted name stays in the history.
+
+Re-running `tud studies import` applies a changed name to an existing
+participant, the same way a re-uploaded roster does. Names are part of the
+*runtime config export* (`/api/admin/export/studies-runtime-config`), because a
+restore without them would show the wrong label; they are deliberately **not**
+part of the result exports (participants or activities), so research data cannot
+be associated with a person's name.
+
+An open study (`allow_unlisted_participants: true`) has no participant list to
+name, so the map must be absent or empty there. Unknown keys, invalid names and
+names for open studies all fail the import with a message naming the study and
+the offending value.
 
 ##### Participant ID format
 
@@ -345,8 +375,9 @@ the placeholder `{display_name}`:
 ```
 
 The value comes from the participant roster (`display_name` column, see
-*Adding participants to a study*) - never from the URL, so a child's name is not
-written into invitation links, server logs or browser history.
+*Adding participants to a study*), or from `participant_display_names` in the
+config file for fixtures - never from the URL, so a child's name is not written
+into invitation links, server logs or browser history.
 
 Rules worth knowing:
 

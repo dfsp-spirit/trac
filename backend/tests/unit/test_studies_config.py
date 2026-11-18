@@ -939,3 +939,51 @@ def test_shipped_studies_state_skip_behaviour_explicitly():
     assert (
         not implicit
     ), f"state allow_skip_timeuse explicitly for these studies: {implicit}"
+
+
+def test_load_studies_config_accepts_participant_display_names(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["participant_display_names"] = {"p1": "  Jörg  "}
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    # Normalized on read, so the fixture and the DB agree on one spelling.
+    assert config.studies[0].participant_display_names == {"p1": "Jörg"}
+
+
+def test_load_studies_config_rejects_a_name_for_an_undefined_participant(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["participant_display_names"] = {"p2": "Jörg"}
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="not in study_participant_ids"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_an_invalid_participant_display_name(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["participant_display_names"] = {"p1": "<b>Jörg</b>"}
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid display name"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_names_for_an_open_study(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = True
+    payload["studies"][0]["study_participant_ids"] = []
+    payload["studies"][0]["participant_display_names"] = {"p1": "Jörg"}
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="allow_unlisted_participants=false"):
+        load_studies_config(str(config_file))

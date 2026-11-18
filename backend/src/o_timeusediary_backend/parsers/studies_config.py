@@ -26,6 +26,7 @@ from ..formats import (
     UnsupportedSchemaVersionError,
     coerce_schema_version,
 )
+from ..display_names import validate_participant_display_names
 from ..participant_ids import InvalidParticipantIdError, normalize_participant_ids
 from ..study_names import validate_study_name_short
 
@@ -421,6 +422,10 @@ class CfgFileStudy(BaseModel):
     description: Optional[Union[str, Dict[str, str]]] = None
     day_labels: List[CfgFileDayLabel] = Field(min_length=1)
     study_participant_ids: List[str] = []
+    # Optional id -> display name map ("Tim"). A seed for fixtures and demo
+    # studies; production names belong in the roster upload, not in a file that
+    # lives in the repository. The id list above stays the identity.
+    participant_display_names: Dict[str, str] = Field(default_factory=dict)
     allow_unlisted_participants: bool = True
     default_language: str = "en"  # default to English if not given
     supported_languages: Optional[List[str]] = None
@@ -891,6 +896,21 @@ class CfgFileStudy(BaseModel):
             allow_unlisted_participants=self.allow_unlisted_participants,
             study_participant_ids=self.study_participant_ids,
             external_tasks=self.external_tasks,
+        )
+        return self
+
+    @model_validator(mode="after")
+    def validate_participant_display_names(self) -> "CfgFileStudy":
+        """The name map may only name participants the study defines.
+
+        Runs after the id list was normalized, so a name keyed by a
+        whitespace-padded id is caught here rather than silently ignored.
+        """
+        self.participant_display_names = validate_participant_display_names(
+            self.participant_display_names,
+            study_name_short=self.name_short,
+            study_participant_ids=self.study_participant_ids,
+            allow_unlisted_participants=self.allow_unlisted_participants,
         )
         return self
 
