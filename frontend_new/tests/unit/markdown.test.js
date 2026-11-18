@@ -52,6 +52,19 @@ test('unordered and ordered lists, including a switch between them', () => {
 
 test('text after a list is a paragraph again', () => {
   assert.equal(renderMarkdown('- a\nplain'), '<ul><li>a</li></ul><p>plain</p>');
+  assert.equal(renderMarkdown('- a\n\nplain'), '<ul><li>a</li></ul><p>plain</p>');
+});
+
+test('a blank line between items does not restart the list', () => {
+  // Study texts routinely separate numbered items with blank lines. Ending the
+  // list at each blank line emitted one <ol> per item, so every item rendered
+  // with the number 1.
+  assert.equal(renderMarkdown('1. a\n\n2. b\n\n3. c'), '<ol><li>a</li><li>b</li><li>c</li></ol>');
+  assert.equal(renderMarkdown('- a\n\n- b'), '<ul><li>a</li><li>b</li></ul>');
+});
+
+test('an ordered list keeps the number it starts with', () => {
+  assert.equal(renderMarkdown('3. a\n\n4. b'), '<ol start="3"><li>a</li><li>b</li></ol>');
 });
 
 test('bold and italic, also inside a list item', () => {
