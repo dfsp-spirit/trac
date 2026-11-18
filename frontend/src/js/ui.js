@@ -918,7 +918,12 @@ function updateEmptyTimelineHints() {
     chevron.className = 'fas fa-chevron-right';
     chevron.setAttribute('aria-hidden', 'true');
 
-    row.append(nameSpan, stateSpan, chevron);
+    // The two spans are separate flex items, so without a text separator the
+    // row's text content reads "Secondary Activitynothing entered yet" and the
+    // visible label is no longer a part of the accessible name (WCAG 2.5.3,
+    // axe rule label-content-name-mismatch). Flex layout ignores the
+    // whitespace-only text node, so the visual spacing stays the CSS gap.
+    row.append(nameSpan, document.createTextNode(' '), stateSpan, chevron);
     row.addEventListener('click', async () => {
       row.disabled = true;
       try {
