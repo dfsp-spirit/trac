@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: day rail</title>
+    <!-- The rail's own row layout and coverage strip live in rail.css; the
+         column placement in layout.css needs the desktop breakpoint and is not
+         part of this fixture. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/rail.css" />
+  </head>
+  <body>
+    <aside class="t-rail" aria-labelledby="rail-title">
+      <h2 class="t-rail__title" id="rail-title">Days</h2>
+      <ol class="t-rail__list" id="rail"></ol>
+    </aside>
+    <!--
+      Three days, one per state the coverage row has to draw:
+        day 0  two activities that touch     -> one run
+        day 1  two activities with a gap     -> two runs
+        day 2  no activities                 -> no run at all
+      min_coverage is 600 minutes, more than day 0 covers, so its text stays
+      "to go"; day 2 is empty.
+    -->
+    <script type="module">
+      import { renderDayRail } from '/src/js/ui/dayRail.js';
+
+      const t = (key, params) => (params ? `${key}:${params.minutes}` : key);
+
+      /** @param {string} id @param {number} day @param {number} start @param {number} end */
+      const activity = (id, day, start, end) => ({
+        client_uuid: id,
+        group_id: null,
+        day_label_index: day,
+        activity_code: 100,
+        activity_name: 'Activity',
+        category: 'General',
+        color: null,
+        parent_activity_code: null,
+        frequency_key: null,
+        start_minutes: start,
+        end_minutes: end,
+      });
+
+      const diary = {
+        schema_version: 1,
+        study: { day_start_minutes: 0, submitted_at: null },
+        timeline: { min_coverage: 600, max_overlap: 2 },
+        days: ['Monday', 'Tuesday', 'Wednesday'].map((name, index) => ({
+          index,
+          name: name.toLowerCase(),
+          display_name: name,
+          display_names: { en: name },
+          has_data: false,
+          coverage_minutes: 0,
+          meets_requirement: false,
+        })),
+        activities: [
+          activity('a', 0, 480, 540),
+          activity('b', 0, 540, 600),
+          activity('c', 1, 480, 540),
+          activity('d', 1, 720, 780),
+        ],
+      };
+
+      renderDayRail(document.getElementById('rail'), {
+        diary,
+        language: 'en',
+        t,
+        currentDay: 0,
+      });
+    </script>
+  </body>
+</html>

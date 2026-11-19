@@ -87,6 +87,23 @@ test('day summaries are computed locally, not taken from the payload', () => {
   assert.equal(second.hasData, false);
 });
 
+test('a day summary exposes the covered stretches, not one block', () => {
+  const model = diary([
+    activity({ client_uuid: 'a', start_minutes: 480, end_minutes: 540 }),
+    activity({ client_uuid: 'b', start_minutes: 540, end_minutes: 600 }),
+    activity({ client_uuid: 'c', start_minutes: 480, end_minutes: 600 }),
+    activity({ client_uuid: 'd', start_minutes: 720, end_minutes: 780 }),
+  ]);
+  const [first] = daySummaries(model);
+  // Touching and overlapping activities merge, so the rail cannot show a seam
+  // the day does not have; the separate afternoon entry stays separate.
+  assert.deepEqual(first.runs, [
+    { start: 480, end: 600 },
+    { start: 720, end: 780 },
+  ]);
+  assert.equal(first.coverage, 180);
+});
+
 test('progress counts the days that meet their requirement', () => {
   const model = diary(
     [

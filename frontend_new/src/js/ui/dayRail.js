@@ -7,6 +7,7 @@
  * cannot disagree with what is drawn.
  */
 import { dayLabel, daySummaries } from '../domain/diary.js';
+import { MINUTES_PER_DAY } from '../domain/time.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -54,10 +55,18 @@ export function renderDayRail(host, { diary, language, t, currentDay }) {
         : t('diary.rail.empty');
     row.append(el('span', 't-rail__min', state));
 
+    // One row per contiguous covered stretch, placed where it sits in the day:
+    // the rail shows the day's shape, not a share of a target. The row's text
+    // above carries the progress ("complete" / "X min to go"), so the strip is
+    // decorative and stays out of the accessibility tree.
     const bar = el('span', 't-rail__bar');
-    const fill = el('span', 't-rail__fill');
-    fill.style.setProperty('--fill', `${Math.min(100, (minutes / 1440) * 100)}%`);
-    bar.append(fill);
+    bar.setAttribute('aria-hidden', 'true');
+    for (const run of summary.runs) {
+      const segment = el('span', 't-rail__run');
+      segment.style.left = `${(run.start / MINUTES_PER_DAY) * 100}%`;
+      segment.style.width = `${((run.end - run.start) / MINUTES_PER_DAY) * 100}%`;
+      bar.append(segment);
+    }
     row.append(bar);
 
     // No `aria-label`: the row's own text is its accessible name, and the two

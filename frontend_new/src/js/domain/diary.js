@@ -10,7 +10,7 @@
  * Nothing here mutates the payload.
  */
 import { MINUTES_PER_DAY, toDayRelative } from './time.js';
-import { layoutDay } from './geometry.js';
+import { layoutDay, mergeIntervals } from './geometry.js';
 
 /**
  * @typedef {Object} ApiActivity
@@ -95,7 +95,7 @@ export function meetsRequirement(summary, minCoverage) {
  * activities, so an optimistic edit updates them without a round trip.
  *
  * @param {ApiDiary} diary
- * @returns {Array<{ index: number, name: string, displayName: string, displayNames: Record<string, string>, coverage: number, hasData: boolean, meets: boolean, activities: number }>}
+ * @returns {Array<{ index: number, name: string, displayName: string, displayNames: Record<string, string>, coverage: number, runs: Array<{ start: number, end: number }>, hasData: boolean, meets: boolean, activities: number }>}
  */
 export function daySummaries(diary) {
   const records = timedActivities(diary);
@@ -109,6 +109,10 @@ export function daySummaries(diary) {
       displayName: day.display_name,
       displayNames: day.display_names || {},
       coverage: layout.coverage,
+      // The union of the day's covered intervals, clipped to the day. The rail
+      // draws these as one row, so parallel or touching activities must not
+      // leave a seam the day does not have.
+      runs: mergeIntervals(layout.segments),
       hasData: layout.segments.length > 0,
       meets: false,
       activities: layout.segments.length,

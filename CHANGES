@@ -3,6 +3,7 @@ TRAC MPIAE Changes
 
 Current WIP
 ------------
+- NEW: day rail on desktop draws the covered stretches of each day where they sit (grey = uncovered) instead of one percent bar whose width could disagree with the "complete"/"X min to go" text
 - CHG: remove the global `participants` table. Participants now exist only inside a study (`study_participants`), and the same participant id in two studies is a different participant. `participant_created_at` in the exports is now the date the participant joined that study.
 - FIX: render numbered list items separated by blank lines as one list in study texts, instead of restarting the numbering at 1 per item
 - FIX: give the empty timeline switch hint a text separator so its visible text is part of its accessible name (axe rule label-content-name-mismatch, enabled by default since axe-core 4.14)
