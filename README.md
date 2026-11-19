@@ -14,7 +14,7 @@ TRAC comes with excellent support for mobile clients and a modern, calendar-like
 
 ![TRAC](./trac.png?raw=true "TRAC user interface on a desktop browser")
 
-
+TRAC support parallel activities, internationalisation (i18n), a whide array of browsers, has great accessibility, and a convenient, web-based administration interface for scientists, and full API support for power users or automation.
 
 When using the software in this repo for academical research, please cite it using this [DOI](https://doi.org/10.5281/zenodo.19594929).
 
