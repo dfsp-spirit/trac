@@ -1,6 +1,12 @@
 TRAC MPIAE Changes
 ===================
 
+Current WIP
+------------
+- FIX: render numbered list items separated by blank lines as one list in study texts, instead of restarting the numbering at 1 per item
+- FIX: give the empty timeline switch hint a text separator so its visible text is part of its accessible name (axe rule label-content-name-mismatch, enabled by default since axe-core 4.14)
+- NEW: per-participant display name (roster column `display_name`, or `participant_display_names` in the study config for fixtures), shown in the new frontend and in the admin participant list, usable in study texts as `{display_name}`, and kept in the runtime config export but not in the result exports
+
 
 Version 0.26.0 -- Improve new frontend
 --------------------------------------
@@ -29,9 +35,6 @@ Version 0.26.0 -- Improve new frontend
 - NEW: enable browser saving and ux signals saving in open study, add to consent text
 - NEW: add quick change button to ux signals page in admin panel
 - NEW: support collecting UX events, requires study-level opt-in, needs to be told to participants in consent form
-- FIX: render numbered list items separated by blank lines as one list in study texts, instead of restarting the numbering at 1 per item
-- FIX: give the empty timeline switch hint a text separator so its visible text is part of its accessible name (axe rule label-content-name-mismatch, enabled by default since axe-core 4.14)
-- NEW: per-participant display name (roster column `display_name`, or `participant_display_names` in the study config for fixtures), shown in the new frontend and in the admin participant list, usable in study texts as `{display_name}`, and kept in the runtime config export but not in the result exports
 
 
 
