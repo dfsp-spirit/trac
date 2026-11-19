@@ -5,7 +5,6 @@ from sqlmodel import create_engine, Session, select
 from typing import Generator
 from .models import (
     Study,
-    Participant,
     DayLabel,
     StudyParticipant,
     Timeline,
@@ -563,10 +562,7 @@ def report_on_db_contents():
                 f"  Participants ({len(study_participants)} total, showing first {len(sample_participants)}):"
             )
             for sp in sample_participants:
-                participant = session.get(Participant, sp.participant_id)
-                logger.info(
-                    f"    - {participant.id} (joined: {participant.created_at})"
-                )
+                logger.info(f"    - {sp.participant_id} (joined: {sp.created_at})")
 
             # Report activities count in database for this study
             activities = session.exec(
@@ -589,12 +585,11 @@ def report_on_db_contents():
 
             for activity in sample_activities:
                 study = session.get(Study, activity.study_id)
-                participant = session.get(Participant, activity.participant_id)
                 day_label = session.get(DayLabel, activity.day_label_id)
                 timeline = session.get(Timeline, activity.timeline_id)
 
                 study_name_short = study.name_short if study else "Unknown"
-                participant_id = participant.id if participant else "Unknown"
+                participant_id = activity.participant_id
                 day_label_name = day_label.name if day_label else "Unknown"
                 timeline_name = timeline.name if timeline else "Unknown"
 
@@ -709,16 +704,6 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         study_updated = True
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
-                            existing_participant = session.exec(
-                                select(Participant).where(
-                                    Participant.id == participant_id
-                                )
-                            ).first()
-                            if not existing_participant:
-                                existing_participant = Participant(id=participant_id)
-                                session.add(existing_participant)
-                                session.flush()
-
                             existing_association = session.exec(
                                 select(StudyParticipant).where(
                                     StudyParticipant.study_id == existing_study.id,
@@ -974,20 +959,9 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     and study_config.study_participant_ids
                 ):
                     for participant_id in study_config.study_participant_ids:
-                        existing_participant = session.exec(
-                            select(Participant).where(Participant.id == participant_id)
-                        ).first()
-
-                        if not existing_participant:
-                            participant = Participant(id=participant_id)
-                            session.add(participant)
-                            session.flush()
-                        else:
-                            participant = existing_participant
-
                         study_participant = StudyParticipant(
                             study_id=study.id,
-                            participant_id=participant.id,
+                            participant_id=participant_id,
                             # None unless the config names this participant (a
                             # fixture or demo value; production names come from
                             # the roster upload).
@@ -997,16 +971,8 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         )
                         session.add(study_participant)
 
-                # Ensure participants exist and are associated for hydrated activities
+                # Ensure participants are associated for hydrated activities
                 for participant_id in activities_logged_by_userid.keys():
-                    participant = session.exec(
-                        select(Participant).where(Participant.id == participant_id)
-                    ).first()
-                    if not participant:
-                        participant = Participant(id=participant_id)
-                        session.add(participant)
-                        session.flush()
-
                     existing_association = session.exec(
                         select(StudyParticipant).where(
                             StudyParticipant.study_id == study.id,

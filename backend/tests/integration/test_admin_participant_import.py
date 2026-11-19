@@ -92,7 +92,7 @@ async def test_csv_upload_adds_participants_and_reports_ignored_columns():
     assert body["dry_run"] is False
     assert body["format"] == "csv"
     assert body["summary"]["rows_in_file"] == 2
-    assert body["summary"]["created_and_assigned"] == 2
+    assert body["summary"]["assigned"] == 2
     assert body["summary"]["duplicates_in_file"] == 0
     assert body["columns"] == {
         "used": ["pid"],
@@ -121,7 +121,7 @@ async def test_tsv_upload_is_detected_from_the_content():
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["format"] == "tsv"
-    assert body["summary"]["created_and_assigned"] == 1
+    assert body["summary"]["assigned"] == 1
     assert body["columns"]["used"] == ["PID"]
     assert participant_id in page
 
@@ -144,7 +144,7 @@ async def test_dry_run_creates_nothing():
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["dry_run"] is True
-    assert body["summary"]["created_and_assigned"] == 1
+    assert body["summary"]["assigned"] == 1
     assert participant_id not in page
 
 
@@ -168,7 +168,7 @@ async def test_duplicate_rows_in_the_file_are_counted_once():
     body = response.json()
     assert body["summary"]["rows_in_file"] == 2
     assert body["summary"]["duplicates_in_file"] == 1
-    assert body["summary"]["created_and_assigned"] == 1
+    assert body["summary"]["assigned"] == 1
 
 
 @pytest.mark.asyncio

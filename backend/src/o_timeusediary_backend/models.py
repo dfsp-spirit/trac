@@ -16,27 +16,6 @@ from sqlalchemy import (
 from .utils import utc_now
 
 
-class Participant(SQLModel, table=True):
-    __tablename__ = "participants"
-
-    id: str = Field(
-        primary_key=True, sa_type=String(255)
-    )  # External ID like "bernddasbrot", "annasmith"
-    created_at: datetime = Field(
-        default_factory=utc_now,
-        sa_column=Column(DateTime(timezone=True), nullable=False),
-    )
-
-    # Relationships
-    study_associations: List["StudyParticipant"] = Relationship(
-        back_populates="participant"
-    )
-    activities: List["Activity"] = Relationship(back_populates="participant")
-    external_task_assignments: List["StudyExternalTaskAssignment"] = Relationship(
-        back_populates="participant"
-    )
-
-
 class Study(SQLModel, table=True):
     __tablename__ = "studies"
 
@@ -203,9 +182,7 @@ class StudyExternalTaskAssignment(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     external_task_id: int = Field(foreign_key="study_external_tasks.id", index=True)
-    participant_id: str = Field(
-        foreign_key="participants.id", index=True, sa_type=String(255)
-    )
+    participant_id: str = Field(index=True, sa_type=String(255))
     assigned_token: str = Field(index=True, sa_type=String(512))
     assignment_order: int = Field(default=0, index=True)
     is_confirmed: bool = Field(default=False, index=True)
@@ -218,7 +195,6 @@ class StudyExternalTaskAssignment(SQLModel, table=True):
     )
 
     external_task: StudyExternalTask = Relationship(back_populates="assignments")
-    participant: Participant = Relationship(back_populates="external_task_assignments")
 
 
 class StudyActivityConfigBlob(SQLModel, table=True):
@@ -440,7 +416,9 @@ class StudyParticipant(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    participant_id: str = Field(foreign_key="participants.id", sa_type=String(255))
+    # Study-scoped participant id. The same value in another study is a different
+    # person: studies are independent, and nothing links participants across them.
+    participant_id: str = Field(sa_type=String(255))
     # Display text, never a key: shown in the participant frontend and available
     # to study texts as `{display_name}`. Per study, because the same person can
     # be "Tim" in one study and "participant 14" in the next, and because a
@@ -493,7 +471,6 @@ class StudyParticipant(SQLModel, table=True):
 
     # Relationships
     study: Study = Relationship(back_populates="participants")
-    participant: Participant = Relationship(back_populates="study_associations")
 
 
 class Activity(SQLModel, table=True):
@@ -526,7 +503,7 @@ class Activity(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     study_id: int = Field(foreign_key="studies.id")
-    participant_id: str = Field(foreign_key="participants.id", sa_type=String(255))
+    participant_id: str = Field(sa_type=String(255))
     day_label_id: int = Field(
         foreign_key="day_labels.id"
     )  # Links to specific day label
@@ -576,7 +553,6 @@ class Activity(SQLModel, table=True):
 
     # Relationships
     study: Study = Relationship(back_populates="activities")
-    participant: Participant = Relationship(back_populates="activities")
     day_label: DayLabel = Relationship(back_populates="activities")
     timeline: Timeline = Relationship(back_populates="activities")
 

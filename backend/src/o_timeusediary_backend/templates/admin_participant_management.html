@@ -102,7 +102,7 @@
                     <tr>
                         <th>Participant ID</th>
                         <th>Name</th>
-                        <th>Created</th>
+                        <th>Joined</th>
                         {% if selected_study_requires_consent %}
                         <th>Consent</th>
                         <th>Consent Decided At</th>
@@ -380,7 +380,7 @@
 
         <div class="card">
             <h2 style="margin-bottom: 0.75rem;">Delete users (and their tokens) for study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">Remove participants from this study and delete ALL their assigned external-task tokens at once.<br /><b>WARNING: Deletions are irreversible. The participant record itself is preserved (they may belong to other studies).</b></div>
+            <div class="hint" style="margin-bottom: 0.5rem;">Remove participants from this study and delete ALL their assigned external-task tokens at once.<br /><b>WARNING: Deletions are irreversible. The participant exists only in this study, so removing them here also removes their study association.</b></div>
             <div style="margin-top:0.6rem;">
                 <textarea id="deleteUsersInput" rows="6" placeholder="Participant IDs separated by comma, newline, semicolon, or spaces"></textarea>
                 <div class="hint">Accepts comma, semicolon, newline, or space separated values.</div>
@@ -508,7 +508,7 @@
                     throw new Error(body.detail || 'Failed to add participants');
                 }
 
-                status.textContent = `Added: ${body.summary.created_and_assigned + body.summary.already_existed_and_assigned} (already assigned: ${body.summary.already_assigned})`;
+                status.textContent = `Added: ${body.summary.assigned} (already assigned: ${body.summary.already_assigned})`;
                 status.style.color = '#059669';
                 setTimeout(() => {
                     window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
@@ -649,7 +649,7 @@
                         }
 
                         const s = body.summary || {};
-                        statusEl.textContent = `Participants created: ${s.participants_created || 0}; Assignments created: ${s.assignments_created || 0}; updated: ${s.assignments_updated || 0}`;
+                        statusEl.textContent = `Participants assigned: ${s.participants_assigned || 0}; Assignments created: ${s.assignments_created || 0}; updated: ${s.assignments_updated || 0}`;
                         statusEl.style.color = '#059669';
                         if (body.errors && body.errors.length) {
                             const errList = body.errors.slice(0,10).join('; ');
@@ -885,13 +885,12 @@
             function describeResult(body, dryRun) {
                 const s = body.summary || {};
                 const c = body.columns || {};
-                const imported = (s.created_and_assigned || 0) + (s.already_existed_and_assigned || 0);
+                const imported = (s.assigned || 0) + (s.already_assigned || 0);
                 const ignored = c.ignored_count
                     ? `${c.ignored_count} (${(c.ignored || []).join(', ')})`
                     : 'none';
                 return `${dryRun ? 'File is valid' : 'Imported'}: ${imported} participants `
-                    + `(${s.created_and_assigned || 0} new, ${s.already_existed_and_assigned || 0} already in TRAC, `
-                    + `${s.already_assigned || 0} already in study). `
+                    + `(${s.assigned || 0} new, ${s.already_assigned || 0} already assigned). `
                     + `Rows in file: ${s.rows_in_file || 0}; duplicates in file: ${s.duplicates_in_file || 0}. `
                     + `Columns used: ${(c.used || []).join(', ') || '-'}; ignored: ${ignored}.`;
             }

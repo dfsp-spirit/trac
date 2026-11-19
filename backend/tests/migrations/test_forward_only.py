@@ -28,7 +28,6 @@ from sqlalchemy import text
 # keeps. A migration that loses one of these is a bug in every scenario.
 BASELINE_TABLES = (
     "studies",
-    "participants",
     "study_participants",
     "timelines",
     "day_labels",
@@ -128,13 +127,26 @@ def test_upgrade_from_every_revision_keeps_the_data(scratch_database, revision):
     study = scratch_database.seed(
         "studies", name="Legacy study", name_short=f"legacy_{revision[:4]}"
     )
-    participant = scratch_database.seed(
-        "participants", id=f"legacy_participant_{revision[:4]}"
+    participant_id = f"legacy_participant_{revision[:4]}"
+    # Revisions before 0018 require the global participants row behind the
+    # study_participants foreign key. 0018 drops that table on purpose, so the
+    # participant itself is only expected to survive as a study association.
+    if "participants" in scratch_database.tables():
+        scratch_database.seed("participants", id=participant_id)
+    scratch_database.seed(
+        "study_participants",
+        study_id=scratch_database.scalar(
+            f"SELECT id FROM studies WHERE name_short = '{study['name_short']}'"
+        ),
+        participant_id=participant_id,
     )
 
     scratch_database.upgrade("head")
 
     assert scratch_database.current() == HEAD, f"did not reach head from {revision}"
+    assert "participants" not in scratch_database.tables(), (
+        f"0018 has to drop the global participants table when upgrading from {revision}"
+    )
     for table in BASELINE_TABLES:
         assert (
             table in scratch_database.tables()
@@ -147,10 +159,11 @@ def test_upgrade_from_every_revision_keeps_the_data(scratch_database, revision):
     ), f"the study that existed at {revision} was lost by the upgrade"
     assert (
         scratch_database.scalar(
-            f"SELECT count(*) FROM participants WHERE id = '{participant['id']}'"
+            "SELECT count(*) FROM study_participants "
+            f"WHERE participant_id = '{participant_id}'"
         )
         == 1
-    ), f"the participant that existed at {revision} was lost by the upgrade"
+    ), f"the participant association that existed at {revision} was lost by the upgrade"
 
     # The deployment is only finished when the app's own command still works on
     # the migrated database.

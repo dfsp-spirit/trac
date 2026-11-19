@@ -32,7 +32,6 @@ from o_timeusediary_backend.api_deps.admin_auth import AdminIdentity, ROLE_SUPER
 from o_timeusediary_backend.models import (
     Activity,
     DayLabel,
-    Participant,
     Study,
     StudyActivityConfigBlob,
     StudyParticipant,
@@ -117,7 +116,6 @@ def seeded(session):
         ("p-partial", None),
         ("p-empty", None),
     ):
-        session.add(Participant(id=participant_id))
         session.add(
             StudyParticipant(
                 study_id=study.id,
@@ -191,7 +189,6 @@ def _seed_study_with_activities(
     session.refresh(timeline)
 
     for participant_id in participant_ids:
-        session.add(Participant(id=participant_id))
         session.add(
             StudyParticipant(study_id=study.id, participant_id=participant_id)
         )

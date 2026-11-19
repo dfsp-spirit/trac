@@ -18,7 +18,7 @@ from fastapi import Depends, HTTPException, Path
 from sqlmodel import Session, select
 
 from ..database import get_session
-from ..models import Participant, Study, StudyParticipant
+from ..models import Study, StudyParticipant
 from ..utils import coerce_utc_aware, utc_now
 from .participant_identity import require_valid_participant_id
 
@@ -147,23 +147,15 @@ def get_readable_diary_context(
     return DiaryContext(study=study, study_participant=link)
 
 
-def ensure_participant_rows(session: Session, link: StudyParticipant) -> None:
-    """Create the participant and its study association on first write.
+def ensure_study_participant_row(session: Session, link: StudyParticipant) -> None:
+    """Create the study association on first write.
 
     The readable context hands out an unsaved stand-in for open studies; every
-    endpoint that writes through it has to materialise both rows first. Shared so
+    endpoint that writes through it has to materialise it first. Shared so
     submit, skip and the write path cannot drift apart.
     """
     if link.id is not None:
         return
-
-    participant = session.exec(
-        select(Participant).where(Participant.id == link.participant_id)
-    ).first()
-    if participant is None:
-        participant = Participant(id=link.participant_id)
-        session.add(participant)
-        session.flush()
     session.add(link)
     session.flush()
 
@@ -174,7 +166,7 @@ def get_writable_diary_context(
 ) -> DiaryContext:
     """Context for writing a diary: collecting, allowed, not yet submitted.
 
-    Creates the participant rows on first write for open studies, matching what
+    Creates the study association on first write for open studies, matching what
     the whole-day endpoint has always done.
     """
     study = context.study
@@ -182,7 +174,7 @@ def get_writable_diary_context(
 
     ensure_study_is_currently_available(study)
 
-    ensure_participant_rows(session, link)
+    ensure_study_participant_row(session, link)
 
     if link.study_submitted_at is not None:
         raise HTTPException(

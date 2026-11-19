@@ -48,8 +48,8 @@ async def test_admin_participant_management_page_and_actions_work():
         assign_data = assign_response.json()
         assert "summary" in assign_data
         assert (
-            assign_data["summary"]["created_and_assigned"]
-            + assign_data["summary"]["already_existed_and_assigned"]
+            assign_data["summary"]["assigned"]
+            + assign_data["summary"]["already_assigned"]
             >= 2
         )
 
@@ -885,3 +885,36 @@ async def test_participant_table_shows_progress_state_and_join_links():
                 f"/participants/{participant_id}",
                 auth=ADMIN_AUTH,
             )
+
+
+@pytest.mark.asyncio
+async def test_participant_ids_are_scoped_to_a_study():
+    """The same pid can join two studies; "new" only means new to this study."""
+    pid = f"it_pm_scope_{uuid.uuid4().hex[:8]}"
+    studies = ("default", "adult_pilot_de2")
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            for study in studies:
+                response = await client.post(
+                    f"{BASE_URL}/api/admin/studies/{study}/assign-participants",
+                    json={"participant_ids": [pid], "must_be_new": True},
+                    auth=ADMIN_AUTH,
+                )
+                assert response.status_code == 200, response.text
+                assert response.json()["summary"]["assigned"] == 1
+
+            repeat = await client.post(
+                f"{BASE_URL}/api/admin/studies/{studies[0]}/assign-participants",
+                json={"participant_ids": [pid], "must_be_new": True},
+                auth=ADMIN_AUTH,
+            )
+        finally:
+            for study in studies:
+                await client.delete(
+                    f"{BASE_URL}/api/admin/studies/{study}/participants/{pid}",
+                    auth=ADMIN_AUTH,
+                )
+
+    assert repeat.status_code == 400, repeat.text
+    assert pid in repeat.json()["detail"]["existing_participant_ids"]

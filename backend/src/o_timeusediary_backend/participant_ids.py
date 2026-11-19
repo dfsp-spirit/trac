@@ -1,7 +1,9 @@
 """What a participant id may look like - the single source of truth.
 
-A participant id identifies a person across studies and is also the credential
-carried in an invitation link, so it ends up in URLs, CSV and TSV files. The
+A participant id identifies a participant within one study and is also the
+credential carried in an invitation link, so it ends up in URLs, CSV and TSV
+files. Studies are independent: the same id in another study is a different
+participant, and nothing links the two. The
 rule lives here and nowhere else; every boundary that creates or accepts an id
 (admin paste box, file upload, study config import, CLI import, participant
 frontends) calls into this module instead of writing its own check.

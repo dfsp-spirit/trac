@@ -591,7 +591,7 @@ def test_scientist_manages_participants_in_own_study(scoped_studies):
         _require_authenticated(assign, SCIENTIST_A_AUTH)
         assert assign.status_code == 200, assign.text
         summary = assign.json()["summary"]
-        assert summary["created_and_assigned"] == 2
+        assert summary["assigned"] == 2
         assert summary["total_after_assignment"] == 2
 
         # Both show up on the participant-management page for her study.

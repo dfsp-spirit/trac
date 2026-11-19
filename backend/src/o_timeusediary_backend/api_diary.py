@@ -31,7 +31,7 @@ from sqlmodel import Session, delete, select
 from .api_deps.available_activities import get_study_activities_config_model
 from .api_deps.diary_access import (
     DiaryContext,
-    ensure_participant_rows,
+    ensure_study_participant_row,
     get_readable_diary_context,
     get_writable_diary_context,
 )
@@ -665,9 +665,9 @@ def skip_diary(
         )
     note = (payload.reason_note or "").strip() or None
 
-    # A first write from an open study still has to create the two rows; the
-    # readable context hands out an unsaved stand-in on purpose.
-    ensure_participant_rows(session, participant)
+    # A first write from an open study still has to create the association;
+    # the readable context hands out an unsaved stand-in on purpose.
+    ensure_study_participant_row(session, participant)
 
     # Already closed: report what is stored instead of overwriting it. A diary
     # submitted the normal way is not turned into a skipped one.

@@ -319,7 +319,7 @@ Two operations stay super-admin-only because they are not scoped to a single stu
 Study ownership is an **accident-prevention feature for a trusted group of researchers, not a security boundary**:
 
 - It prevents a scientist from accidentally changing or deleting a colleague's study.
-- It does **not** hide information: study short names are discoverable (study `name_short` values are globally unique, so creating a study with an existing name_short reveals that it exists), and participant IDs are global identifiers that may be shared across studies.
+- It does **not** hide information: study short names are discoverable (study `name_short` values are globally unique, so creating a study with an existing name_short reveals that it exists). Participant IDs are scoped to a study: the same ID in two studies is two unrelated participants, so a scientist seeing one study cannot infer anything about the other.
 - Super admins always have unrestricted access to every study and participant.
 - Co-owners are equals: any owner of a study can delete that study together with its data and can remove the other owners (but not themselves).
 - All accounts use long-lived HTTP Basic Auth credentials. Use strong passwords and serve the admin interface over HTTPS only.

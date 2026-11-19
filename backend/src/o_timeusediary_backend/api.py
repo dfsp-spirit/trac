@@ -82,7 +82,6 @@ from .models import (
     Timeline,
     DayLabel,
     StudyParticipant,
-    Participant,
     StudyActivityConfigBlob,
     StudyExternalTask,
     StudyExternalTaskAssignment,
@@ -1534,19 +1533,6 @@ def get_study_activities_config(
                 status_code=403,
                 detail=f"Participant '{participant_id}' not authorized for this study",
             )
-    else:
-        # Study allows unlisted participants
-        # If participant_id is provided, we can optionally validate they exist
-        if participant_id is not None:
-            # Check if participant exists (optional, for logging/validation)
-            participant = session.exec(
-                select(Participant).where(Participant.id == participant_id)
-            ).first()
-            if not participant:
-                logger.debug(
-                    f"Provided participant_id '{participant_id}' doesn't exist for open study '{study_name_short}'"
-                )
-
     try:
         activities_config, _source, _selected_language = (
             get_study_activities_config_model(
@@ -1795,18 +1781,8 @@ def submit_activities(
                 detail=f"Participant '{participant_id}' not authorized for this study",
             )
     else:
-        # Study allows unlisted participants - ensure participant exists and is linked to study
-        participant = session.exec(
-            select(Participant).where(Participant.id == participant_id)
-        ).first()
-
-        if not participant:
-            # Create the participant since they don't exist yet
-            participant = Participant(id=participant_id)
-            session.add(participant)
-            session.flush()
-
-        # Ensure participant is linked to study (for tracking)
+        # Study allows unlisted participants - ensure the participant is linked
+        # to the study (for tracking)
         study_participant = session.exec(
             select(StudyParticipant).where(
                 StudyParticipant.study_id == study.id,
@@ -2208,12 +2184,13 @@ async def admin_overview(
         )
 
     # Get statistics, scoped to the studies the caller may access.
-    # Super admins keep the previous behaviour of counting globally.
+    # Participant counts are per study: a participant belongs to a study, and the
+    # same id in two studies is two enrolments, not one person.
     total_studies = len(studies)
     accessible_study_ids = [study.id for study in studies]
     if identity.is_super_admin:
         total_participants = (
-            session.exec(select(func.count(Participant.id))).first() or 0
+            session.exec(select(func.count(StudyParticipant.id))).first() or 0
         )
         total_activities_all = (
             session.exec(select(func.count(Activity.id))).first() or 0
@@ -2222,9 +2199,9 @@ async def admin_overview(
         total_participants = (
             (
                 session.exec(
-                    select(
-                        func.count(func.distinct(StudyParticipant.participant_id))
-                    ).where(StudyParticipant.study_id.in_(accessible_study_ids))
+                    select(func.count(StudyParticipant.id)).where(
+                        StudyParticipant.study_id.in_(accessible_study_ids)
+                    )
                 ).first()
                 or 0
             )
@@ -2263,7 +2240,6 @@ async def admin_overview(
     for activity in recent_activities:
         try:
             study = session.get(Study, activity.study_id)
-            participant = session.get(Participant, activity.participant_id)
             day_label = session.get(DayLabel, activity.day_label_id)
             timeline = session.get(Timeline, activity.timeline_id)
 
@@ -2272,7 +2248,7 @@ async def admin_overview(
                     "id": activity.id,
                     "study_name_short": study.name_short if study else "Unknown",
                     "participant_id": activity.participant_id,
-                    "participant_name": participant.id if participant else "Unknown",
+                    "participant_name": activity.participant_id,
                     "day_label": day_label.name if day_label else "Unknown",
                     "day_display_name": day_label.display_name
                     if day_label
@@ -2466,11 +2442,10 @@ async def admin_study_detail(
 
     # --- Activities (last 10) ---
     # One join instead of a lookup per row: the preview is only a glance at the
-    # newest rows, but it must not cost three queries per activity.
+    # newest rows, but it must not cost two queries per activity.
     try:
         activity_rows = session.exec(
-            select(Activity, Participant, DayLabel, Timeline)
-            .join(Participant, Participant.id == Activity.participant_id, isouter=True)
+            select(Activity, DayLabel, Timeline)
             .join(DayLabel, DayLabel.id == Activity.day_label_id, isouter=True)
             .join(Timeline, Timeline.id == Activity.timeline_id, isouter=True)
             .where(Activity.study_id == study.id)
@@ -2486,12 +2461,12 @@ async def admin_study_detail(
         activity_rows = []
 
     enriched_activities = []
-    for activity, participant, day_label, timeline in activity_rows:
+    for activity, day_label, timeline in activity_rows:
         enriched_activities.append(
             {
                 "id": activity.id,
                 "participant_id": activity.participant_id,
-                "participant_name": participant.id if participant else "Unknown",
+                "participant_name": activity.participant_id,
                 "day_label": day_label.name if day_label else "Unknown",
                 "day_display_order": day_label.display_order if day_label else 0,
                 "day_display_name": day_label.display_name if day_label else "Unknown",
@@ -4037,12 +4012,6 @@ def _create_study_from_import_payload(
     )
 
     for participant_id in participant_ids:
-        participant = session.get(Participant, participant_id)
-        if not participant:
-            participant = Participant(id=participant_id)
-            session.add(participant)
-            session.flush()
-
         existing_association = session.exec(
             select(StudyParticipant).where(
                 StudyParticipant.study_id == study.id,
@@ -5421,15 +5390,9 @@ async def admin_participant_management(
                 assignments_by_participant[pid][tk] = a.assigned_token
 
         # Everything the table shows for this page is fetched in a handful of
-        # queries, never per row: participant records, activity counts, day
-        # coverage and join links.
-        participant_records = {}
+        # queries, never per row: activity counts, day coverage and join links.
         activity_counts_by_participant = {}
         if page_participant_ids:
-            for participant in session.exec(
-                select(Participant).where(Participant.id.in_(page_participant_ids))
-            ).all():
-                participant_records[participant.id] = participant
             for participant_id, activity_count in session.exec(
                 select(Activity.participant_id, func.count(Activity.id))
                 .where(
@@ -5456,21 +5419,19 @@ async def admin_participant_management(
         )
 
         for association, last_activity_at in participant_page_rows:
-            participant = participant_records.get(association.participant_id)
-            if not participant:
-                continue
-
-            days_meeting = days_meeting_by_participant.get(participant.id, set())
+            participant_id = association.participant_id
+            days_meeting = days_meeting_by_participant.get(participant_id, set())
             current_participants.append(
                 {
-                    "id": participant.id,
+                    "id": participant_id,
                     "display_name": association.display_name,
-                    "created_at": participant.created_at,
-                    "assigned_at": association.created_at,
+                    # The per-study join date; participants have no server-wide
+                    # record any more.
+                    "created_at": association.created_at,
                     "consent_given": association.consent_given,
                     "consent_decided_at": association.consent_decided_at,
                     "activity_count": activity_counts_by_participant.get(
-                        participant.id, 0
+                        participant_id, 0
                     ),
                     "last_activity_at": last_activity_at,
                     "study_submitted_at": association.study_submitted_at,
@@ -5482,12 +5443,12 @@ async def admin_participant_management(
                         study_days_count > 0 and len(days_meeting) >= study_days_count
                     ),
                     "study_join_url": _build_frontend_study_join_url(
-                        selected_study.name_short, participant.id
+                        selected_study.name_short, participant_id
                     ),
                     "study_join_url_new": _build_frontend_new_study_join_url(
-                        selected_study.name_short, participant.id
+                        selected_study.name_short, participant_id
                     ),
-                    "tokens": assignments_by_participant.get(participant.id, {})
+                    "tokens": assignments_by_participant.get(participant_id, {})
                     if assignments_by_participant
                     else {},
                 }
@@ -5612,9 +5573,10 @@ async def import_external_task_tokens(
             detail=f"Missing required CSV columns: {missing}. Required: {required_headers}",
         )
 
-    # Track summary
-    participants_created = 0
-    participants_existing = 0
+    # Track summary (participants are per study now, so "created" means
+    # "newly assigned to this study")
+    participants_assigned = 0
+    participants_already_assigned = 0
     assignments_created = 0
     assignments_updated = 0
     assignment_skipped_same = 0
@@ -5634,14 +5596,6 @@ async def import_external_task_tokens(
             errors.append(f"Line {lineno}: {error.detail}")
             continue
 
-        participant = session.get(Participant, pid)
-        if not participant:
-            participant = Participant(id=pid)
-            session.add(participant)
-            participants_created += 1
-        else:
-            participants_existing += 1
-
         # ensure study association exists
         assoc = session.exec(
             select(StudyParticipant).where(
@@ -5649,8 +5603,11 @@ async def import_external_task_tokens(
                 StudyParticipant.participant_id == pid,
             )
         ).first()
-        if not assoc:
+        if assoc:
+            participants_already_assigned += 1
+        else:
             session.add(StudyParticipant(study_id=study.id, participant_id=pid))
+            participants_assigned += 1
 
         # handle each task column
         for key in task_keys:
@@ -5712,14 +5669,14 @@ async def import_external_task_tokens(
 
     audit_admin_action(
         current_admin,
-        f"imported external task tokens for study '{study_name_short}' from file {file.filename}: participants_created={participants_created}, assignments_created={assignments_created}, assignments_updated={assignments_updated}",
+        f"imported external task tokens for study '{study_name_short}' from file {file.filename}: participants_assigned={participants_assigned}, assignments_created={assignments_created}, assignments_updated={assignments_updated}",
     )
 
     return {
         "ok": True,
         "summary": {
-            "participants_created": participants_created,
-            "participants_existing": participants_existing,
+            "participants_assigned": participants_assigned,
+            "participants_already_assigned": participants_already_assigned,
             "assignments_created": assignments_created,
             "assignments_updated": assignments_updated,
             "assignment_skipped_same": assignment_skipped_same,
@@ -5921,13 +5878,6 @@ async def generate_external_task_tokens(
             if pid in assigned_participants:
                 skipped_for_task += 1
                 continue
-
-            # Ensure the Participant record exists (StudyParticipant may exist
-            # without a corresponding Participant row if data is stale).
-            # Flush immediately to avoid FK issues during autoflush later.
-            if not session.get(Participant, pid):
-                session.add(Participant(id=pid))
-                session.flush()
 
             # Generate a unique token that doesn't collide with any existing one
             # for this task
@@ -6235,8 +6185,7 @@ async def export_tokens(
     task_keys = [t.task_key for t in external_tasks]
 
     participants = session.exec(
-        select(Participant)
-        .join(StudyParticipant)
+        select(StudyParticipant)
         .where(StudyParticipant.study_id == study.id)
         .order_by(StudyParticipant.id)
     ).all()
@@ -6257,7 +6206,8 @@ async def export_tokens(
                 token_lookup[(key, a.participant_id)] = a.assigned_token
 
     rows = [
-        [p.id] + [token_lookup.get((key, p.id), "") for key in task_keys]
+        [p.participant_id]
+        + [token_lookup.get((key, p.participant_id), "") for key in task_keys]
         for p in participants
     ]
 
@@ -6328,8 +6278,7 @@ async def export_participant_invitation_links(
         )
 
     participants = session.exec(
-        select(Participant)
-        .join(StudyParticipant)
+        select(StudyParticipant)
         .where(StudyParticipant.study_id == study.id)
         .order_by(StudyParticipant.participant_id)
     ).all()
@@ -6343,7 +6292,10 @@ async def export_participant_invitation_links(
     # Written explicitly instead of via export_csv(), which sorts column names
     # and would put the link before the pid.
     rows = [
-        [participant.id, build_invitation_link(study.name_short, participant.id)]
+        [
+            participant.participant_id,
+            build_invitation_link(study.name_short, participant.participant_id),
+        ]
         for participant in participants
     ]
 
@@ -7011,12 +6963,15 @@ def apply_participant_assignment(
     dry_run: bool = False,
     display_names: Optional[Mapping[str, str]] = None,
 ) -> Dict[str, int]:
-    """Create missing participants and study links for already-validated ids.
+    """Assign already-validated ids to a study.
 
     Shared by the paste box and the file upload so both report the same counts;
     ids are expected to be validated and de-duplicated by
     ``participant_ids.normalize_participant_ids``, and display names by
     ``display_names.validate_display_name``.
+
+    Participants exist only inside a study, so an id that is already used in
+    another study is not "existing" here: it is assigned like any other id.
 
     A display name is written for every id the mapping has one for, including
     ids that are already assigned: that is what makes a corrected roster
@@ -7027,23 +6982,17 @@ def apply_participant_assignment(
     @param participant_ids Valid participant ids, already de-duplicated.
     @param dry_run When true, only count what would happen and write nothing.
     @param display_names Optional normalized display names keyed by participant id.
-    @returns Counts keyed by ``created_and_assigned``,
-        ``already_existed_and_assigned``, ``already_assigned`` and
-        ``display_names_updated``.
+    @returns Counts keyed by ``assigned`` (newly assigned to this study),
+        ``already_assigned`` and ``display_names_updated``.
     """
     names = display_names or {}
     summary = {
-        "created_and_assigned": 0,
-        "already_existed_and_assigned": 0,
+        "assigned": 0,
         "already_assigned": 0,
         "display_names_updated": 0,
     }
 
     for participant_id in participant_ids:
-        participant_created = session.get(Participant, participant_id) is None
-        if participant_created and not dry_run:
-            session.add(Participant(id=participant_id))
-
         display_name = names.get(participant_id)
 
         existing_association = session.exec(
@@ -7071,10 +7020,7 @@ def apply_participant_assignment(
                 )
             )
 
-        if participant_created:
-            summary["created_and_assigned"] += 1
-        else:
-            summary["already_existed_and_assigned"] += 1
+        summary["assigned"] += 1
 
     return summary
 
@@ -7111,18 +7057,20 @@ async def assign_participants_to_study(
         raise HTTPException(status_code=400, detail="No valid participant IDs provided")
 
     if payload.must_be_new:
-        existing_participants = session.exec(
-            select(Participant).where(Participant.id.in_(normalized_ids))
-        ).all()
-        if existing_participants:
-            existing_ids = sorted(
-                [participant.id for participant in existing_participants]
+        # "New" is scoped to this study: the same id in another study is an
+        # unrelated participant.
+        already_assigned_ids = session.exec(
+            select(StudyParticipant.participant_id).where(
+                StudyParticipant.study_id == study.id,
+                StudyParticipant.participant_id.in_(normalized_ids),
             )
+        ).all()
+        if already_assigned_ids:
             raise HTTPException(
                 status_code=400,
                 detail={
-                    "message": "Some participants already exist and must_be_new is enabled",
-                    "existing_participant_ids": existing_ids,
+                    "message": "Some participants are already assigned to this study and must_be_new is enabled",
+                    "existing_participant_ids": sorted(already_assigned_ids),
                 },
             )
 
@@ -7145,9 +7093,7 @@ async def assign_participants_to_study(
         f"Admin '{current_admin}' assigned participants to study '{study_name_short}'. "
         f"Summary: {summary}, total_after_assignment={total_after_assignment}"
     )
-    assigned_count = (
-        summary["created_and_assigned"] + summary["already_existed_and_assigned"]
-    )
+    assigned_count = summary["assigned"]
     audit_admin_action(
         current_admin,
         (
@@ -8015,10 +7961,9 @@ async def delete_study_participant_data(
     external-task definitions (incl. their token pool, which becomes
     available again once assignments are removed).
 
-    The global `participants` rows are NOT deleted: they are shared across
-    studies and hold no study-scoped data themselves. Removing the
-    study-participant associations is enough to make the users disappear
-    from this study in the admin interface, exports, and task assignments.
+    Participants exist only inside a study, so removing the study-participant
+    associations is also removing the participants themselves from the admin
+    interface, exports, and task assignments. Other studies are unaffected.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -8094,10 +8039,11 @@ async def delete_study(
     current_admin: str = Depends(verify_admin),
     session: Session = Depends(get_session),
 ):
-    """Delete a study and all study-scoped data.
+    """Delete a study and all its data.
 
     This is intended for administrative cleanup (e.g., integration test artifacts).
-    Shared participant rows are preserved because they may belong to other studies.
+    Participants belong to the study, so they are deleted with it; other studies
+    are unaffected.
     """
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
@@ -8222,8 +8168,7 @@ async def export_study_activities(
 
     # Get all activities for this study with related data
     activities = session.exec(
-        select(Activity, Participant, DayLabel, Timeline)
-        .join(Participant, Activity.participant_id == Participant.id)
+        select(Activity, DayLabel, Timeline)
         .join(DayLabel, Activity.day_label_id == DayLabel.id)
         .join(Timeline, Activity.timeline_id == Timeline.id)
         .where(Activity.study_id == study.id)
@@ -8253,7 +8198,7 @@ async def export_study_activities(
 
     # Prepare the data with dereferenced fields
     export_data = []
-    for activity, participant, day_label, timeline in activities:
+    for activity, day_label, timeline in activities:
         # Duration is the authoritative quantity; the wall-clock start/end
         # times are derived from start + duration and wrapped to a 24 h day.
         # The timeline runs 04:00 -> 04:00 (+1 day), so end_minutes can reach
@@ -8303,7 +8248,7 @@ async def export_study_activities(
                 activity.updated_at.isoformat() if activity.updated_at else None
             ),
             # Context data
-            "participant_id": participant.id,
+            "participant_id": activity.participant_id,
             "day_label": day_label.name,
             "day_label_index": day_label.display_order,
             "timeline_name": timeline.name,
@@ -8321,7 +8266,7 @@ async def export_study_activities(
         # None when the study shows no instructions page or the participant
         # never completed that step. Researchers can combine this with
         # participant_diary_completed_at to compute filling duration themselves.
-        study_participant = study_participant_by_id.get(participant.id)
+        study_participant = study_participant_by_id.get(activity.participant_id)
         record["participant_instructions_completed_at"] = (
             study_participant.instructions_completed_at.isoformat()
             if study_participant and study_participant.instructions_completed_at
@@ -8344,7 +8289,7 @@ async def export_study_activities(
                 }
             )
 
-        comp = completion_map.get(participant.id, {})
+        comp = completion_map.get(activity.participant_id, {})
         diary_at = comp.get("diary_completed_at")
         everything_at = comp.get("everything_completed_at")
         study_submitted = comp.get("study_submitted_at")
@@ -8388,12 +8333,19 @@ async def export_study_activities(
 
         # Add metadata if requested
         if include_metadata:
+            study_participant = study_participant_by_id.get(activity.participant_id)
             record.update(
                 {
                     "created_at": activity.created_at.isoformat(),
                     "data_collection_start": study.data_collection_start.isoformat(),
                     "data_collection_end": study.data_collection_end.isoformat(),
-                    "participant_created_at": participant.created_at.isoformat(),
+                    # The participant's join date in this study. There is no
+                    # server-wide participant record any more.
+                    "participant_created_at": (
+                        study_participant.created_at.isoformat()
+                        if study_participant
+                        else None
+                    ),
                     "timeline_description": timeline.description or "",
                     "timeline_min_coverage": timeline.min_coverage or 0,
                     # Origin of the *_since_diary_start columns, so an analysis
@@ -8518,29 +8470,16 @@ async def export_study_participants(
             detail=f"No participants found for study '{study_name_short}'",
         )
 
-    # Participant.created_at is the earliest timestamp we have for a participant
-    # and stays meaningful even when they never submitted anything.
-    participant_ids = [sp.participant_id for sp in study_participants]
-    participant_created_at_by_id: Dict[str, datetime] = {
-        participant.id: participant.created_at
-        for participant in session.exec(
-            select(Participant).where(Participant.id.in_(participant_ids))
-        ).all()
-    }
-
     completion_map = _build_participant_completion_map(session, study)
 
     export_data = []
     for study_participant in study_participants:
-        participant_created_at = participant_created_at_by_id.get(
-            study_participant.participant_id
-        )
-
         record: Dict[str, Any] = {
             "participant_id": study_participant.participant_id,
-            "participant_created_at": (
-                participant_created_at.isoformat() if participant_created_at else None
-            ),
+            # The date the participant joined this study. Kept under the old
+            # column name for analyses that already read it; participants have no
+            # server-wide record any more.
+            "participant_created_at": study_participant.created_at.isoformat(),
             "study_name": study.name,
             "study_name_short": study.name_short,
             "study_id": study.id,
@@ -9907,20 +9846,6 @@ def get_participant_day_activities(
                 status_code=403,
                 detail=f"Participant '{participant_id}' not authorized for this study",
             )
-    else:
-        # Study allows unlisted participants.
-        # First-time participants may not exist in the DB yet; that is not an error
-        # when loading activities and should behave like "no data yet".
-        participant = session.exec(
-            select(Participant).where(Participant.id == participant_id)
-        ).first()
-        if not participant:
-            logger.info(
-                "Participant '%s' has no stored record yet in open study '%s'; returning empty activity payload.",
-                participant_id,
-                study_name_short,
-            )
-
     # Find the target day label
     day_label = None
     if day_label_name is not None:
@@ -10159,62 +10084,37 @@ def copy_cross_user_template_activities(
     if not study_obj:
         raise HTTPException(status_code=404, detail=f"Study '{study}' not found")
 
-    # Validate source participant exists
-    source_participant = session.exec(
-        select(Participant).where(Participant.id == source_user)
+    # The source must participate in this study. An id that only exists in
+    # another study is an unrelated participant and has no data to copy.
+    source_association = session.exec(
+        select(StudyParticipant).where(
+            StudyParticipant.study_id == study_obj.id,
+            StudyParticipant.participant_id == source_user,
+        )
     ).first()
-    if not source_participant:
+    if not source_association:
         raise HTTPException(
-            status_code=404, detail=f"Source participant '{source_user}' not found"
+            status_code=404,
+            detail=f"Source participant '{source_user}' not found in study '{study}'",
         )
 
-    # For closed studies, source and target must be assigned to this study
-    if not study_obj.allow_unlisted_participants:
-        source_association = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study_obj.id,
-                StudyParticipant.participant_id == source_user,
-            )
-        ).first()
-        if not source_association:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Source participant '{source_user}' is not authorized for study '{study}'",
-            )
-
-        target_association = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study_obj.id,
-                StudyParticipant.participant_id == target_user,
-            )
-        ).first()
-        if not target_association:
+    target_association = session.exec(
+        select(StudyParticipant).where(
+            StudyParticipant.study_id == study_obj.id,
+            StudyParticipant.participant_id == target_user,
+        )
+    ).first()
+    if not target_association:
+        if not study_obj.allow_unlisted_participants:
             raise HTTPException(
                 status_code=403,
                 detail=f"Target participant '{target_user}' is not authorized for closed study '{study}'",
             )
-    else:
-        # Open study: auto-create Participant and StudyParticipant for target_user if needed
-        target_participant = session.exec(
-            select(Participant).where(Participant.id == target_user)
-        ).first()
-        if not target_participant:
-            target_participant = Participant(id=target_user)
-            session.add(target_participant)
-            session.flush()
-
-        target_study_assoc = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study_obj.id,
-                StudyParticipant.participant_id == target_user,
-            )
-        ).first()
-        if not target_study_assoc:
-            target_study_assoc = StudyParticipant(
-                study_id=study_obj.id, participant_id=target_user
-            )
-            session.add(target_study_assoc)
-            session.flush()
+        target_association = StudyParticipant(
+            study_id=study_obj.id, participant_id=target_user
+        )
+        session.add(target_association)
+        session.flush()
 
     # Fetch all source activities
     source_activities = session.exec(
@@ -10548,19 +10448,6 @@ def get_study_config(
                     "message": "You are not authorized to participate in this study.",
                 },
             )
-    else:
-        # Study allows unlisted participants
-        # If participant_id is provided, we can optionally validate they exist
-        if participant_id is not None:
-            # Check if participant exists (optional, for logging/validation)
-            participant = session.exec(
-                select(Participant).where(Participant.id == participant_id)
-            ).first()
-            if not participant:
-                logger.debug(
-                    f"Provided participant_id '{participant_id}' doesn't exist for open study '{study_name_short}'"
-                )
-
     normalized_lang = _normalize_language_code(lang)
     selected_language = normalized_lang or study.default_language
     supported_languages: List[str] = _get_study_blob_languages(session, study.id) or [
@@ -11140,19 +11027,6 @@ def complete_participant_instructions(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    participant = session.exec(
-        select(Participant).where(Participant.id == participant_id)
-    ).first()
-    if not participant:
-        if not study.allow_unlisted_participants:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Participant '{participant_id}' not authorized for this study",
-            )
-        participant = Participant(id=participant_id)
-        session.add(participant)
-        session.flush()
-
     association = _get_study_participant_association(session, study, participant_id)
     if not association:
         if not study.allow_unlisted_participants:
@@ -11193,12 +11067,6 @@ async def set_participant_consent(
         raise HTTPException(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
-
-    participant = session.get(Participant, participant_id)
-    if not participant:
-        participant = Participant(id=participant_id)
-        session.add(participant)
-        session.flush()
 
     association = session.exec(
         select(StudyParticipant).where(
@@ -11354,9 +11222,8 @@ def submit_participant_client_info(
 
     _ensure_study_is_currently_available(study)
 
-    # Resolve participant + association, mirroring the consent/instructions
-    # endpoints: open studies auto-create, closed studies require authorization.
-    participant = session.get(Participant, participant_id)
+    # Resolve the association, mirroring the consent/instructions endpoints:
+    # open studies auto-create it, closed studies require authorization.
     association = _get_study_participant_association(session, study, participant_id)
 
     if association is None and not study.allow_unlisted_participants:
@@ -11369,11 +11236,6 @@ def submit_participant_client_info(
             status_code=403,
             detail=f"Participant '{participant_id}' is not authorized for this study",
         )
-
-    if participant is None:
-        participant = Participant(id=participant_id)
-        session.add(participant)
-        session.flush()
 
     if association is None:
         association = StudyParticipant(

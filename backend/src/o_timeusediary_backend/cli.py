@@ -14,7 +14,7 @@ from .database import (
     show_db_current_revision,
     upgrade_db_schema,
 )
-from .models import Activity, Participant, Study
+from .models import Activity, Study, StudyParticipant
 from .parsers.studies_config import load_studies_config
 from .settings import settings
 
@@ -162,7 +162,9 @@ def _run_ux_events_purge(
 def _get_db_counts() -> dict[str, int]:
     with Session(engine) as session:
         studies_count = session.exec(select(func.count(Study.id))).one()
-        participants_count = session.exec(select(func.count(Participant.id))).one()
+        # One row per participant per study: participants exist only inside a
+        # study, so this counts enrolments.
+        participants_count = session.exec(select(func.count(StudyParticipant.id))).one()
         activities_count = session.exec(select(func.count(Activity.id))).one()
 
     return {
