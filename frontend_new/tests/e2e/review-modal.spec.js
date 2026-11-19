@@ -32,11 +32,11 @@ test.describe('review modal', () => {
       'Noch nicht alle Tage sind vollständig.'
     );
 
-    // One compact row per day: the day's shape, its state, and the one hole
-    // worth pointing at - not a copy of the timeline.
+    // One compact row per day: the day's entries as a coloured strip, its
+    // state, and the one hole worth pointing at - not a copy of the timeline.
     const monday = page.locator(`${REVIEW} .t-review__day`).nth(0);
     await expect(monday.locator('.t-review__state')).toHaveText('Noch 840 Min. offen');
-    await expect(monday.locator('.t-review__strip .t-coverage__run')).toHaveCount(1);
+    await expect(monday.locator('.t-daystrip__seg')).toHaveCount(1);
     await expect(monday.locator('.t-review__gap')).toHaveText(
       'Größte Lücke: 10:00 – 00:00'
     );
@@ -45,7 +45,7 @@ test.describe('review modal', () => {
     await expect(tuesday.locator('.t-review__state')).toHaveText(
       'Noch nichts eingetragen'
     );
-    await expect(tuesday.locator('.t-coverage__run')).toHaveCount(0);
+    await expect(tuesday.locator('.t-daystrip__seg')).toHaveCount(0);
     await expect(tuesday.locator('.t-review__gap')).toHaveCount(0);
 
     // Edit on Wednesday closes the review and makes that day current.
@@ -107,7 +107,7 @@ test.describe('review modal', () => {
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length);
     expect(columns).toBe(1);
     await expect(page.locator(`${REVIEW} .t-review__day`)).toHaveCount(7);
-    await expect(page.locator(`${REVIEW} .t-review__strip`)).toHaveCount(7);
+    await expect(page.locator(`${REVIEW} .t-review .t-daystrip`)).toHaveCount(7);
   });
 
   test('a complete week is announced on the diary and turns the top bar black', async ({

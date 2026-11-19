@@ -1,5 +1,5 @@
-/* Covered stretches, shared by the day rail and the review (ui/coverageStrip.js).
-   The host supplies the track - height, radius, background and
-   `position: relative` - and each run is placed as a share of the 24h day. The
-   min-width keeps a short entry from rounding away at narrow widths. */
+/* Covered stretches of the day rail (ui/coverageStrip.js). The host supplies the
+   track - height, radius, background and `position: relative` - and each run is
+   placed as a share of the 24h day. The min-width keeps a short entry from
+   rounding away at narrow widths. */
 .t-coverage__run { position: absolute; inset-block: 0; min-width: 1px; background: var(--ink); }

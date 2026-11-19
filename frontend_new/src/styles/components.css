@@ -228,6 +228,9 @@ html:has(dialog[open]) { overflow: hidden; }
 /* ---------- Review list (D32) ----------
    One compact row per day: the review is a checkpoint, not a second diary. */
 .t-review { display: grid; gap: var(--space-2); padding: 0 var(--space-4) var(--space-6); }
+/* The coloured strip sits where a single-line bar would; its first row carries
+   the day's shape, the extra rows say how many entries ran in parallel. */
+.t-review__day .t-daystrip { margin-block: 1px; }
 .t-review__day { display: grid; gap: var(--space-1); padding-bottom: var(--space-2); border-bottom: 1px solid var(--line); }
 .t-review__day:last-child { padding-bottom: 0; border-bottom: 0; }
 .t-review__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
@@ -236,9 +239,6 @@ html:has(dialog[open]) { overflow: hidden; }
 .t-review__state { margin: 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
 .t-review__day--open .t-review__state { color: var(--ink); font-weight: 600; }
 .t-review__edit { display: inline-flex; align-items: center; min-height: var(--tap-min); padding: 0 var(--space-2); margin-inline-end: calc(var(--space-2) * -1); color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 2px; }
-/* The day's shape, the same strip the rail draws. The state line above says
-   whether it is enough, so this stays decorative. */
-.t-review__strip { position: relative; height: 8px; border-radius: var(--radius-pill); background: var(--surface-200); overflow: hidden; }
 /* The one hole worth pointing at; the range carries the actionable part. */
 .t-review__gap { margin: 0; font-size: 0.875rem; line-height: 1.25rem; color: var(--ink-muted); }
 .t-review__gap-range { font-family: var(--font-mono); color: var(--ink); }

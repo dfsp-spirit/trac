@@ -177,10 +177,9 @@
   (the form does it from `refreshDerived()`, which already runs after every
   committed time or day change). The entry being edited is filtered out of
   `records` - the pending row shows where it is going, and drawing it twice would
-  make the day look busier than validation sees it. The coloured strip is the
-  form's alone; the rail and the review use the plain coverage picture from
-  `ui/coverageStrip.js` (`appendCoverageRuns`) instead. Do not fork either
-  drawing code.
+  make the day look busier than validation sees it. The rail uses the plain
+  coverage picture from `ui/coverageStrip.js` (`appendCoverageRuns`), the review
+  the coloured one; do not fork either drawing code.
 - Guarded by `tests/components/daystrip.spec.js` (arithmetic, lanes, clipping,
   bad colours) and `tests/e2e/day-strip.spec.js` (wiring, follow the fields and
   the day dropdown).
@@ -220,10 +219,15 @@
   That list repeated the timeline row by row and made the review a long copy of
   the page behind it (several screens on a phone); the timeline is already the
   detail view and *Ändern* opens it on that day.
-- The strip is the same coverage picture as the day rail
-  (`ui/coverageStrip.js`, `aria-hidden`); the state line carries the meaning. The
-  runs are the union of the day's entries clipped at midnight, so touching
-  activities form one stretch.
+- Each day's picture is the **coloured, one-row-per-lane strip**
+  (`ui/dayStrip.js`, `aria-hidden`), the same component the add-activity form
+  uses - not the single-line coverage bar. At review size both scan equally
+  fast, and the coloured one also says *where* the time went, which is what
+  makes a day that looks wrong worth opening. `domain/review.js` therefore
+  returns `records` for the whole week, with `toTimedActivity` applied once and
+  the colour kept exactly as the study set it (no colour is invented). The state
+  line still carries the meaning; `runs` stays in the model because "empty day"
+  and the largest hole are computed from the merged stretches.
 - `domain/review.js` returns `runs` and `largestGap` per day. The hole is the
   longest uncovered stretch of the day, **including a leading or trailing one** -
   an empty evening is exactly what the review should point at, which is why this

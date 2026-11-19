@@ -214,3 +214,20 @@ test('the undo payload rebuilds the row as it was, under a new client id', () =>
     day_label_indexes: [0],
   });
 });
+
+test('the details view gets every entry with its colour, on day-relative times', () => {
+  const model = review(diary({ dayStart: 240 }), 'en');
+
+  const sleeping = model.records.find((record) => record.id === 'a0:0');
+  assert.ok(sleeping);
+  // 08:00 wall clock on a 04:00 day start is 240 minutes into the day.
+  assert.equal(sleeping.dayIndex, 0);
+  assert.equal(sleeping.startMinutes, 240);
+  assert.equal(sleeping.endMinutes, 480);
+  assert.equal(sleeping.color, null);
+
+  const working = model.records.find((record) => record.id === 'a2:2');
+  assert.ok(working);
+  // The colour is the study's own; the strip paints with it, never guesses one.
+  assert.equal(working.color, '#3366cc');
+});

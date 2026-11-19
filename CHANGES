@@ -4,7 +4,7 @@ TRAC MPIAE Changes
 Current WIP
 ------------
 - NEW: copy-dialog shortcuts select the target days in one click. The groups are study configuration (`day_groups` in studies_config.json, each with localized names and the days it contains), so a study can offer "Alle Werktage"/"Wochenende" or a school week instead of the app guessing from weekday names; the section is absent when a study defines none
-- NEW: review page is now a compact week overview: one row per day with its state, the covered stretches as a strip, and the largest remaining hole; the per-activity list and the desktop second column are gone
+- NEW: review page is now a compact week overview: one row per day with its state, the day's entries as the coloured one-row-per-lane strip from the add-activity form (so it also shows where the time went), and the largest remaining hole; the per-activity list and the desktop second column are gone
 - NEW: day rail on desktop draws the covered stretches of each day where they sit (grey = uncovered) instead of one percent bar whose width could disagree with the "complete"/"X min to go" text
 - CHG: remove the global `participants` table. Participants now exist only inside a study (`study_participants`), and the same participant id in two studies is a different participant. `participant_created_at` in the exports is now the date the participant joined that study.
 - FIX: render numbered list items separated by blank lines as one list in study texts, instead of restarting the numbering at 1 per item

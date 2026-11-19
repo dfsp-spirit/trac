@@ -2,8 +2,8 @@
 /**
  * The covered stretches of a day, drawn where they sit.
  *
- * Shared by the day rail and the review so the same week looks the same in
- * both places: the host provides the track (height, radius, background,
+ * The day rail's picture of a day (the review draws the coloured lanes
+ * instead): the host provides the track (height, radius, background,
  * `position: relative`) and the runs are placed as a share of the 24h day.
  * One node per merged run, so a boundary stays exact at any width.
  *

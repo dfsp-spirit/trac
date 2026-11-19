@@ -8,7 +8,7 @@
  * never prose: the modal decides what to say. That keeps the "can I submit?"
  * rule testable without a DOM, and it is the same rule the service applies.
  */
-import { dayLabel, daySummaries } from './diary.js';
+import { dayLabel, daySummaries, toTimedActivity } from './diary.js';
 import { MIN_GAP_MINUTES, uncoveredIntervals } from './geometry.js';
 
 /**
@@ -27,6 +27,10 @@ import { MIN_GAP_MINUTES, uncoveredIntervals } from './geometry.js';
 /**
  * @typedef {Object} Review
  * @property {ReviewDay[]} days
+ * @property {Array<import('./geometry.js').TimedRecord & { color: string | null }>} records
+ *   Every activity of the week, with its study colour, for the "Details" view:
+ *   the coloured strip lays out one row per lane itself, so it wants the whole
+ *   week and the day index rather than a pre-filtered list.
  * @property {number[]} incomplete Days that are not complete yet, in day order.
  * @property {string[]} incompleteLabels Their names, for the message that says
  *   which days still need minutes.
@@ -56,11 +60,21 @@ export function review(diary, language) {
     };
   });
 
+  // The same numbers the strip draws, plus the colour each entry carries. The
+  // day offset is applied once, so an entry crossing midnight lands on the day
+  // it belongs to and not on the wall clock.
+  const dayStart = diary.study.day_start_minutes || 0;
+  const records = diary.activities.map((activity) => ({
+    ...toTimedActivity(activity, dayStart),
+    color: activity.color ?? null,
+  }));
+
   const open = days.filter((day) => !day.meets);
   const incomplete = open.map((day) => day.index);
 
   return {
     days,
+    records,
     incomplete,
     incompleteLabels: open.map((day) => day.label),
     completeDays: days.length - incomplete.length,

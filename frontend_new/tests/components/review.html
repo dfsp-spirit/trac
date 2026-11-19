@@ -3,19 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <title>mount: review list</title>
-    <!-- The review row's own look: head, strip, gap line. The modal shell is
-         not part of this fixture. -->
+    <!-- The review row's own look: head, coloured strip, gap line. The modal
+         shell is not part of this fixture. -->
     <link rel="stylesheet" href="/src/styles/tokens.css" />
     <link rel="stylesheet" href="/src/styles/base.css" />
     <link rel="stylesheet" href="/src/styles/components.css" />
-    <link rel="stylesheet" href="/src/styles/coverage.css" />
+    <link rel="stylesheet" href="/src/styles/daystrip.css" />
   </head>
   <body>
     <div id="root"></div>
     <!--
       Three days against a 600-minute requirement:
         Monday   00:00-10:00  complete, one run, no hole to point at
-        Tuesday  09:00-10:00  open; the empty evening is the largest hole
+        Tuesday  09:00-10:00  open; the empty evening is the largest hole.
+                              Two parallel entries, so the strip has two rows.
         Wednesday  nothing     empty, no strip run and no hole line
     -->
     <script type="module">
@@ -26,15 +27,18 @@
 
       const { root, t } = await context('de');
 
-      /** @param {string} id @param {number} day @param {number} start @param {number} end */
-      const activity = (id, day, start, end) => ({
+      /**
+       * @param {string} id @param {number} day @param {number} start
+       * @param {number} end @param {string | null} [color]
+       */
+      const activity = (id, day, start, end, color = null) => ({
         client_uuid: id,
         group_id: null,
         day_label_index: day,
         activity_code: 100,
         activity_name: 'Activity',
         category: 'General',
-        color: null,
+        color,
         parent_activity_code: null,
         frequency_key: null,
         start_minutes: start,
@@ -56,8 +60,11 @@
           meets_requirement: false,
         })),
         activities: [
-          activity('monday', 0, 0, 600),
-          activity('tuesday', 1, 540, 600),
+          activity('monday', 0, 0, 600, '#3366cc'),
+          // Two parallel entries, so the coloured strip needs two rows and the
+          // test can see that it is not the coverage bar.
+          activity('tuesday', 1, 540, 600, '#cc3333'),
+          activity('tuesday-parallel', 1, 540, 570, '#33aa66'),
         ],
       };
 
