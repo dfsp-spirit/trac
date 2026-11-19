@@ -263,6 +263,13 @@
   the targets: "where do I copy from" and "where do I copy to" must not be told
   apart by a border style. The source chip stays visible in the grid (the week's
   shape) but is inert.
+- The target grid has two **one-click presets** ("Alle Werktage", "Wochenende",
+  `ui/copyDayShortcuts.js`). A preset *replaces* the selection, never adds to it,
+  and never selects the source day. The grouping comes from the study's stable
+  day `name` (full English, the internal two-letter form, and the full German and
+  Swedish weekdays); if any day cannot be classified the whole section is not
+  rendered - a preset that silently left a day out would be worse than none. A
+  study without weekend days simply has no weekend button.
 - A day with entries gets a **dot** on its chip, not a count - a number under the
   weekday reads as a duration. The count lives in the sentence under the grid,
   which names only the days that lose something: "Wird überschrieben: Mittwoch

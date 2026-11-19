@@ -360,7 +360,10 @@
       "failed": "Could not copy. Please try again.",
       "nothingToCopy": "There is nothing to copy yet.",
       "chipFilled": "has entries",
-      "chipSource": "source day"
+      "chipSource": "source day",
+      "shortcuts": "Shortcuts",
+      "workdays": "All work days",
+      "weekend": "Weekend"
     },
     "panel": {
       "chooseActivity": "Choose an activity",

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: copy day dialog</title>
+    <!-- The dialog, the chips and the shortcut buttons are all part of the
+         component bundle. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Query parameter:
+        custom  the study uses day names that are not weekdays, so the shortcut
+                section must not appear (the individual chips still work).
+    -->
+    <script type="module">
+      import { context } from './fixture.js';
+      import { createCopyDayDialog } from '/src/js/ui/copyDayDialog.js';
+
+      const { root, t, tCount } = await context('de');
+      const custom = new URLSearchParams(window.location.search).get('custom') === '1';
+
+      const names = custom
+        ? ['day_0', 'day_1', 'day_2', 'day_3', 'day_4', 'day_5', 'day_6']
+        : ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const labels = [
+        'Montag',
+        'Dienstag',
+        'Mittwoch',
+        'Donnerstag',
+        'Freitag',
+        'Samstag',
+        'Sonntag',
+      ];
+      const days = names.map((name, index) => ({
+        index,
+        name,
+        display_name: labels[index],
+        display_names: { de: labels[index] },
+        has_data: false,
+        coverage_minutes: 0,
+        meets_requirement: false,
+      }));
+
+      const diary = {
+        schema_version: 1,
+        study: { day_start_minutes: 0, submitted_at: null },
+        timeline: { min_coverage: 1440, max_overlap: 2 },
+        days,
+        activities: [
+          {
+            client_uuid: 'monday-activity',
+            day_label_index: 0,
+            activity_code: 1101,
+            activity_name: 'Schlafen',
+            category: 'General',
+            color: null,
+            parent_activity_code: null,
+            frequency_key: null,
+            start_minutes: 600,
+            end_minutes: 660,
+          },
+        ],
+      };
+
+      const dialog = createCopyDayDialog({
+        root,
+        t,
+        tCount,
+        getDiary: () => diary,
+        getLanguage: () => 'de',
+        getCurrentDay: () => 0,
+        onCopy: async () => ({ results: [] }),
+        onCopied: () => {},
+      });
+      dialog.open({ sourceDay: 0 });
+    </script>
+  </body>
+</html>

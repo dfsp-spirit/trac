@@ -1,15 +1,14 @@
 // @ts-check
 /**
- * The copy dialog (D18, D19): pick the source day, tick the days that should
- * become like it, copy.
+ * The copy dialog (D18, D19): pick the source day, tick the days that become
+ * like it, copy.
  *
- * The source is a block of its own above the target grid - never a chip among the
- * targets - because "where do I copy from" and "where do I copy to" must not be
- * told apart by a border style. The target grid is the same day-chip component the
- * activity form uses; its dotted chips are the days that already hold entries, so
- * what is at stake is visible before ticking. No confirmation step: the preview
- * names what will be overwritten, the button says "and overwrite", and the caller
- * offers an undo that restores the replaced rows (D9).
+ * The source is its own block above the grid, never a chip among the targets:
+ * "where do I copy from" and "where do I copy to" must not be told apart by a
+ * border style. The chips are the activity form's component; their dot marks a
+ * day that already holds entries, so what is at stake is visible before ticking.
+ * No confirmation step: the preview names what will be overwritten, the button
+ * says "and overwrite", and the caller offers an undo (D9).
  */
 import { copyableDays, copySource, overwrites, planCopy } from '../domain/dayCopy.js';
 import { dayLabel } from '../domain/diary.js';
@@ -17,10 +16,11 @@ import { el, icon } from './dom.js';
 import { previewText, sourceDetail } from './copyDayText.js';
 import { dayChips } from './formFields.js';
 import { describeError } from './messages.js';
+import { renderTargetShortcuts } from './copyDayShortcuts.js';
+import { notice as noticeBox } from './notice.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
 /** @typedef {import('../domain/diary.js').ApiDiary} ApiDiary */
-
 /**
  * @param {{
  *   root: HTMLElement,
@@ -198,6 +198,13 @@ export function createCopyDayDialog({
     });
     chipInputs = chips.inputs;
     for (const input of chipInputs) input.addEventListener('change', () => updatePreview());
+    const shortcuts = renderTargetShortcuts({
+      days: current.days,
+      sourceDay,
+      inputs: chipInputs,
+      t,
+    });
+    if (shortcuts) fieldset.append(shortcuts);
     fieldset.append(chips.element);
 
     const preview = el('p', 't-hint');
@@ -256,14 +263,10 @@ export function createCopyDayDialog({
 
   /** @param {string} heading @param {string} text */
   function showNotice(heading, text) {
-    const notice = el('div', 't-notice t-notice--attention');
-    notice.setAttribute('role', 'alert');
-    notice.setAttribute('tabindex', '-1');
-    const inner = el('div', 't-notice__body');
-    inner.append(el('p', 't-notice__title', heading), el('p', null, text));
-    notice.append(inner);
-    body.prepend(notice);
-    notice.focus();
+    const box = noticeBox({ title: heading, text });
+    box.setAttribute('tabindex', '-1');
+    body.prepend(box);
+    box.focus();
   }
 
   closeButton.addEventListener('click', () => close());

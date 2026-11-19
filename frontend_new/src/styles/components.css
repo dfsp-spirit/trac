@@ -96,6 +96,10 @@
 /* ---------- Day chips ---------- */
 .t-days { border: 0; margin: 0; padding: 0; min-width: 0; }
 .t-days > legend { padding: 0; margin-bottom: var(--space-1); font-size: 1.125rem; line-height: 1.5rem; font-weight: 600; }
+/* One-click target presets above the grid. The label names the group for a
+   screen reader; the chips below stay the source of truth for what is selected. */
+.t-days__shortcuts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.t-days__shortcuts-label { flex-basis: 100%; font-size: 0.8125rem; line-height: 1.25rem; color: var(--ink-muted); }
 /* Seven across is the shape a week wants, but seven columns of a 288px phone
    leave 34px per target - under the 44px minimum and under our own --tap-min.
    The track minimum wins over the shape: it wraps to five or six wide chips on

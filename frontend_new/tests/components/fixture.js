@@ -42,16 +42,16 @@ export function flag(name, fallback = false) {
  * the assertions can use the strings the participant actually sees.
  *
  * @param {string} [language]
- * @returns {Promise<{ root: HTMLElement, t: (key: string, params?: Record<string, string | number>) => string }>}
+ * @returns {Promise<{ root: HTMLElement, t: (key: string, params?: Record<string, string | number>) => string, tCount: (key: string, count: number) => string }>}
  */
 export async function context(language = 'de') {
   const response = await fetch(`/src/locales/${language}.json`);
   if (!response.ok) throw new Error(`could not load ${language}.json: ${response.status}`);
   const messages = await response.json();
-  const { t } = createTranslator(messages);
+  const { t, tCount } = createTranslator(messages);
   const root = document.getElementById('root');
   if (!(root instanceof HTMLElement)) throw new Error('the fixture page has no #root');
-  return { root, t };
+  return { root, t, tCount };
 }
 
 /**

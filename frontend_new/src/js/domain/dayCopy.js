@@ -68,6 +68,50 @@ export function copyableDays(diary) {
 }
 
 /**
+ * The names a day may carry in the study config for the two shortcut groups.
+ * Only the stable `name` is read - display names are free text and may say
+ * anything. The list covers the names the shipped configs use, the two-letter
+ * form older models were created with, and the full German/Swedish weekdays, so
+ * a translated config still classifies.
+ */
+const WORKDAY_ALIASES = new Set([
+  'monday', 'mon', 'mo', 'montag', 'måndag', 'mandag',
+  'tuesday', 'tue', 'tues', 'tu', 'dienstag', 'tisdag', 'di',
+  'wednesday', 'wed', 'we', 'mittwoch', 'onsdag', 'mi',
+  'thursday', 'thu', 'thur', 'thurs', 'th', 'donnerstag', 'torsdag', 'do',
+  'friday', 'fri', 'fr', 'freitag', 'fredag',
+]);
+const WEEKEND_ALIASES = new Set([
+  'saturday', 'sat', 'sa', 'samstag', 'lördag', 'lordag',
+  'sunday', 'sun', 'su', 'sonntag', 'söndag', 'sondag', 'so',
+]);
+
+/**
+ * The study's days split into work days (Mon-Fri) and the weekend, for the copy
+ * dialog's one-click target presets.
+ *
+ * Returns null when a day cannot be recognised: a study with custom day names
+ * gets no shortcuts rather than a preset that silently leaves a day out. The
+ * caller still shows the individual chips, so nothing becomes unreachable.
+ *
+ * @param {Array<{ index: number, name: string }>} days
+ * @returns {{ workdays: number[], weekend: number[] } | null}
+ */
+export function weekdayGroups(days) {
+  if (!Array.isArray(days) || !days.length) return null;
+
+  /** @type {{ workdays: number[], weekend: number[] }} */
+  const groups = { workdays: [], weekend: [] };
+  for (const day of days) {
+    const name = String(day?.name ?? '').trim().toLowerCase().replace(/\.$/, '');
+    if (WORKDAY_ALIASES.has(name)) groups.workdays.push(day.index);
+    else if (WEEKEND_ALIASES.has(name)) groups.weekend.push(day.index);
+    else return null;
+  }
+  return groups;
+}
+
+/**
  * What the source day would contribute: how many entries, and the span they
  * cover on the day-relative axis (the day's own window, not the wall clock).
  *

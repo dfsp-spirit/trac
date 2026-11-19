@@ -162,6 +162,28 @@ test.describe('copying a day', () => {
     await expect(page.locator('.t-toast')).toContainText('Es gibt noch nichts zu kopieren.');
   });
 
+  test('the shortcuts pick the work days or the weekend', async ({ page }) => {
+    await openDiary(page, pid);
+    await addSchlafen(page, { start: 600, end: 660 });
+    await page
+      .locator('#days .t-timeline-day[data-day-index="0"] [data-copy-day]')
+      .click();
+
+    const dialog = page.locator('#copy-day-dialog');
+    const shortcuts = dialog.locator('.t-days__shortcuts');
+    await expect(shortcuts).toContainText('Schnellauswahl');
+
+    // Monday is the source, so the work-day preset is Tuesday to Friday.
+    await shortcuts.getByRole('button', { name: 'Alle Werktage' }).click();
+    await expect(dialog.locator('.t-day-chip input:checked')).toHaveCount(4);
+    await expect(dialog.locator('[data-slot="copy-submit"]')).toBeEnabled();
+
+    // The second preset replaces the first selection, and the source stays out.
+    await shortcuts.getByRole('button', { name: 'Wochenende' }).click();
+    await expect(dialog.locator('.t-day-chip input:checked')).toHaveCount(2);
+    await expect(dialog.locator('.t-day-chip input[value="0"]')).not.toBeChecked();
+  });
+
   test('the rail opens the dialog without a source and asks for one', async ({ page }, testInfo) => {
     test.skip(isPhone(testInfo), 'the rail is a desktop column (D12)');
     await openDiary(page, pid);
