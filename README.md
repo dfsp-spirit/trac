@@ -12,7 +12,7 @@ TRAC is a web-based data collection software for time-use research: users can re
 TRAC comes with excellent support for mobile clients and a modern, calendar-like user experience (UX) that will instantly feel familiar to your participants.
 
 
-![TRAC](./trac.png.jpg?raw=true "TRAC user interface on a desktop browser")
+![TRAC](./trac.png?raw=true "TRAC user interface on a desktop browser")
 
 
 
