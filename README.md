@@ -7,7 +7,14 @@
 [![E2E Tests](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml)
 
 
-TRAC is a web-based research software for time-use research: users can report what they did during one or more days by selecting activities and placing them on one a timeline that can cover several days, similar to filling out a calendar. You can report several activities at once, like listening to music while cooking.
+TRAC is a web-based data collection software for time-use research: users can report what they did during one or more days by selecting activities and placing them on one a timeline.
+
+TRAC comes with excellent support for mobile clients and a modern, calendar-like user experience (UX) that will instantly feel familiar to your participants.
+
+
+![TRAC](./trac.png.jpg?raw=true "TRAC user interface on a desktop browser")
+
+
 
 When using the software in this repo for academical research, please cite it using this [DOI](https://doi.org/10.5281/zenodo.19594929).
 
