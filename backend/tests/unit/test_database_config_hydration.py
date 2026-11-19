@@ -48,6 +48,7 @@ def _write_studies_config(
     external_tasks: list[dict] | None = None,
     allow_skip_timeuse: bool = True,
     require_diary_before_external_tasks: bool = False,
+    day_groups: list[dict] | None = None,
 ) -> str:
     studies_payload = {
         "studies": [
@@ -75,6 +76,7 @@ def _write_studies_config(
                 "activities_logged_by_userid": activities_logged_by_userid,
                 "data_collection_start": "2024-01-01T00:00:00Z",
                 "data_collection_end": "2026-12-31T23:59:59Z",
+                **({"day_groups": day_groups} if day_groups else {}),
             }
         ]
     }
@@ -366,3 +368,36 @@ def test_create_config_file_studies_in_database_persists_external_tasks(
         ]
     assert [assignment.is_confirmed for assignment in assignments] == [False, False]
     assert [assignment.confirmed_at for assignment in assignments] == [None, None]
+
+
+def test_create_config_file_studies_in_database_stores_and_clears_day_groups(
+    tmp_path, database_module
+):
+    activities_file = _write_activities_file(tmp_path, codes=[100])
+    groups = [{"key": "all", "names": {"en": "All days"}, "days": ["day1"]}]
+    common = {
+        "activities_file": activities_file,
+        "allow_unlisted_participants": True,
+        "study_participant_ids": [],
+        "activities_logged_by_userid": {},
+    }
+
+    config_path = _write_studies_config(tmp_path, day_groups=groups, **common)
+    database_module.create_config_file_studies_in_database(config_path)
+
+    with Session(database_module.engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == "hydration_demo")
+        ).first()
+        assert study.day_groups == groups
+
+    # Re-importing without groups must clear them: otherwise a study the
+    # researcher just removed the shortcuts from keeps showing them.
+    config_path = _write_studies_config(tmp_path, **common)
+    database_module.create_config_file_studies_in_database(config_path)
+
+    with Session(database_module.engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == "hydration_demo")
+        ).first()
+        assert study.day_groups is None

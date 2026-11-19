@@ -75,6 +75,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_intro": {
         "en": "This is our time use study for adults. Please reconstruct a typical week of your daily activities.",
         "sv": "Detta är vår tidsanvändningsstudie för vuxna. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
@@ -216,6 +228,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_intro": {
         "en": "This is our time use study for 15 year olds. Please reconstruct a typical week of your daily activities.",
         "sv": "Detta är vår tidsanvändningsstudie för 15-åringar. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
@@ -343,6 +367,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_intro": {
         "en": "Please fill out this study for 9 year old children. You will be asked to report time use for an entire week.",
         "sv": "Vänligen fyll i denna studie för 9-åringar. Du kommer att bli ombedd att rapportera tidsanvändning för en hel vecka.",
@@ -442,6 +478,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_intro": {
@@ -619,6 +667,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_intro": {
         "de": "Bitte füllen Sie diese Studie für Erwachsene aus. Sie werden gebeten, die Zeitnutzung für eine ganze Woche zu berichten."
       },
@@ -753,6 +813,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_intro": {

@@ -565,3 +565,42 @@ def test_validate_import_payload_rejects_a_name_for_an_unknown_participant():
 
     with pytest.raises(ValueError, match="not in study_participant_ids"):
         _validate_import_study_payload(study_payload)
+
+
+def test_import_payload_keeps_valid_day_groups():
+    payload = _base_payload()
+    payload["day_groups"] = [
+        {
+            "key": "workdays",
+            "names": {"en": "All work days", "de": "Alle Werktage"},
+            "days": ["monday"],
+        }
+    ]
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+    _validate_import_study_payload(study_payload)
+
+    assert [group.key for group in study_payload.day_groups] == ["workdays"]
+    assert study_payload.day_groups[0].days == ["monday"]
+
+
+def test_import_payload_rejects_a_day_group_for_an_unknown_day():
+    """The admin import applies the same rules as the config file."""
+    payload = _base_payload()
+    payload["day_groups"] = [
+        {"key": "workdays", "names": {"en": "Work days"}, "days": ["friday"]}
+    ]
+
+    with pytest.raises(ValidationError, match="unknown day"):
+        ImportStudiesConfigStudy(**payload)
+
+
+def test_import_payload_requires_the_day_group_name_in_the_default_language():
+    payload = _base_payload()
+    payload["day_groups"] = [
+        {"key": "workdays", "names": {"de": "Werktage"}, "days": ["monday"]}
+    ]
+
+    with pytest.raises(ValidationError, match='default language "en"'):
+        ImportStudiesConfigStudy(**payload)

@@ -447,6 +447,39 @@ def _validate_codes_and_frequency(
         )
 
 
+def _resolve_day_groups(study: Study, day_labels: Sequence[DayLabel]) -> List[dict]:
+    """Resolve configured day groups to day indexes for the diary payload.
+
+    The config stores day *names* (stable identities); the participant client
+    works with indexes. Groups whose days vanished are dropped instead of being
+    sent as broken shortcuts.
+    """
+    index_by_name = {
+        label.name.strip(): label.display_order
+        for label in day_labels
+        if isinstance(label.name, str)
+    }
+    resolved: List[dict] = []
+    for group in study.day_groups or []:
+        if not isinstance(group, dict):
+            continue
+        indexes = [
+            index_by_name[name.strip()]
+            for name in group.get("days") or []
+            if isinstance(name, str) and name.strip() in index_by_name
+        ]
+        if not indexes:
+            continue
+        resolved.append(
+            {
+                "key": group.get("key"),
+                "names": group.get("names") or {},
+                "day_indexes": indexes,
+            }
+        )
+    return resolved
+
+
 # --------------------------------------------------------------------------- #
 # Endpoints
 # --------------------------------------------------------------------------- #
@@ -527,6 +560,7 @@ def get_diary(
             "max_overlap": timeline.max_overlap,
         },
         "days": days,
+        "day_groups": _resolve_day_groups(study, day_labels),
         "activities": [
             _serialize_activity(row, index_by_day_id, timeline_names) for row in rows
         ],

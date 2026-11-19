@@ -2,10 +2,12 @@
  * `ui/copyDayDialog.js` on a fixture page (D33 rule 8).
  *
  * The target grid is seven chips; the shortcuts are the one-click answer to
- * "copy this onto every work day" / "onto the weekend". These tests pin that a
- * preset replaces the selection (not adds to it), never selects the source day,
- * updates the chip state the same way a tap does, and disappears when the
- * study's day names cannot be classified.
+ * "copy this onto every work day" / "onto the weekend". The groups come from the
+ * study config (see `day_groups` in studies_config.json), so these tests pin
+ * that the configured label and days are used, that a preset replaces the
+ * selection (not adds to it), never selects the source day, updates the chip
+ * state the same way a tap does, and disappears when the study defines no
+ * groups.
  */
 import { test, expect } from '@playwright/test';
 
@@ -49,12 +51,25 @@ test('work days and the weekend are one click each, and replace the selection', 
   );
 });
 
-test('a study with custom day names gets no shortcut section', async ({ page }) => {
+test('a study without day groups gets no shortcut section', async ({ page }) => {
   await page.goto('copyday.html?custom=1');
 
   const dialog = page.locator(DIALOG);
   await expect(dialog).toBeVisible();
   await expect(dialog.locator('.t-days__shortcuts')).toHaveCount(0);
-  // The chips are still there; only the guess is withheld.
+  // The chips are still there; only the shortcuts are withheld.
   await expect(dialog.locator('.t-day-chip')).toHaveCount(7);
+});
+
+test('a group label the study did not translate falls back to its default language', async ({
+  page,
+}) => {
+  // The interface is Swedish, but "weekend" only has a German name in the
+  // fixture's config.
+  await page.goto('copyday.html?lang=sv');
+
+  const group = page.locator(`${DIALOG} .t-days__shortcuts`);
+  await expect(group.getByRole('button', { name: 'Wochenende' })).toBeVisible();
+  // "workdays" has an English name, but the study default (German) wins over it.
+  await expect(group.getByRole('button', { name: 'Alle Werktage' })).toBeVisible();
 });

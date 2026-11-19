@@ -33,9 +33,10 @@ import { layoutDay, mergeIntervals } from './geometry.js';
 /**
  * @typedef {Object} ApiDiary
  * @property {number} schema_version
- * @property {{ day_start_minutes: number, submitted_at: string | null }} study
+ * @property {{ name_short: string, name: string, default_language: string, day_start_minutes: number, submitted_at: string | null }} study
  * @property {{ key: string, display_name?: string, min_coverage: number | null, max_overlap: number }} timeline
  * @property {Array<{ index: number, name: string, display_name: string, display_names: Record<string, string>, has_data: boolean, coverage_minutes: number, meets_requirement: boolean }>} days
+ * @property {Array<{ key: string, names: Record<string, string>, day_indexes: number[] }>} day_groups
  * @property {ApiActivity[]} activities
  */
 
@@ -165,6 +166,31 @@ export function toCreateItem(activity, clientUuid) {
 export function dayLabel(day, language) {
   const names = day.displayNames || day.display_names || {};
   return names[language] || day.displayName || day.display_name || day.name;
+}
+
+/**
+ * Pick a study-supplied localized label: the interface language, then the
+ * study's default language, then English, then whatever the config has.
+ *
+ * Study content (day groups, for instance) is not app translation - it only has
+ * the languages the researcher wrote - so a missing language must degrade to a
+ * readable label instead of an empty button.
+ *
+ * @param {Record<string, string> | null | undefined} names
+ * @param {string} language
+ * @param {string | null | undefined} defaultLanguage
+ * @returns {string}
+ */
+export function localizedText(names, language, defaultLanguage) {
+  const map = names || {};
+  for (const candidate of [language, defaultLanguage, 'en']) {
+    const text = candidate ? map[candidate] : '';
+    if (typeof text === 'string' && text.trim()) return text;
+  }
+  const first = Object.values(map).find(
+    (text) => typeof text === 'string' && text.trim()
+  );
+  return typeof first === 'string' ? first : '';
 }
 
 /**

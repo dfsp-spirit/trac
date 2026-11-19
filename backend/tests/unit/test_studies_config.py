@@ -987,3 +987,125 @@ def test_load_studies_config_rejects_names_for_an_open_study(tmp_path):
 
     with pytest.raises(ValueError, match="allow_unlisted_participants=false"):
         load_studies_config(str(config_file))
+
+
+def _payload_with_day_groups(day_groups, *, default_language="en"):
+    """A study with two days and the given day_groups."""
+    payload = _valid_studies_payload()
+    study = payload["studies"][0]
+    study["default_language"] = default_language
+    study["day_labels"] = [
+        {
+            "name": "monday",
+            "display_order": 0,
+            "display_names": {"en": "Monday", "sv": "Måndag"},
+        },
+        {
+            "name": "tuesday",
+            "display_order": 1,
+            "display_names": {"en": "Tuesday", "sv": "Tisdag"},
+        },
+    ]
+    study["day_groups"] = day_groups
+    return payload
+
+
+def _write_studies_config(tmp_path, payload):
+    _write_default_multilingual_activities(tmp_path)
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+    return config_file
+
+
+def test_load_studies_config_accepts_day_groups(tmp_path):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [
+                {
+                    "key": "both",
+                    "names": {"en": "Both days", "de": "Beide Tage"},
+                    "days": ["monday", "tuesday"],
+                }
+            ]
+        ),
+    )
+
+    config = load_studies_config(str(config_file))
+
+    assert [group.key for group in config.studies[0].day_groups] == ["both"]
+    assert config.studies[0].day_groups[0].days == ["monday", "tuesday"]
+    assert config.studies[0].day_groups[0].names["de"] == "Beide Tage"
+
+
+def test_load_studies_config_rejects_a_day_group_referencing_an_unknown_day(
+    tmp_path,
+):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [{"key": "workdays", "names": {"en": "Work days"}, "days": ["friday"]}]
+        ),
+    )
+
+    with pytest.raises(ValueError, match="unknown day\\(s\\): friday"):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_requires_a_day_group_name_in_the_default_language(
+    tmp_path,
+):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [{"key": "workdays", "names": {"de": "Werktage"}, "days": ["monday"]}]
+        ),
+    )
+
+    with pytest.raises(ValueError, match='default language "en"'):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_duplicate_day_group_keys(tmp_path):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [
+                {"key": "workdays", "names": {"en": "Work days"}, "days": ["monday"]},
+                {"key": "workdays", "names": {"en": "Also work"}, "days": ["tuesday"]},
+            ]
+        ),
+    )
+
+    with pytest.raises(ValueError, match='duplicate key "workdays"'):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_a_day_listed_twice_in_one_group(tmp_path):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [
+                {
+                    "key": "workdays",
+                    "names": {"en": "Work days"},
+                    "days": ["monday", "monday"],
+                }
+            ]
+        ),
+    )
+
+    with pytest.raises(ValueError, match='day "monday" more than once'):
+        load_studies_config(str(config_file))
+
+
+def test_load_studies_config_rejects_an_empty_day_group(tmp_path):
+    config_file = _write_studies_config(
+        tmp_path,
+        _payload_with_day_groups(
+            [{"key": "workdays", "names": {"en": "Work days"}, "days": []}]
+        ),
+    )
+
+    with pytest.raises(ValueError, match="at least one day"):
+        load_studies_config(str(config_file))

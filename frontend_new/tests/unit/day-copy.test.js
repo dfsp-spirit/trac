@@ -7,7 +7,6 @@ import {
   copySource,
   ownCounts,
   planCopy,
-  weekdayGroups,
 } from '../../src/js/domain/dayCopy.js';
 import { previewText, sourceDetail } from '../../src/js/ui/copyDayText.js';
 import { Codes } from '../../src/js/domain/validation.js';
@@ -239,39 +238,3 @@ test('the source detail carries the count and the range, including a night entry
   );
 });
 
-test('work days and the weekend are grouped from the study day names', () => {
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(
-    (name, index) => ({ index, name })
-  );
-  assert.deepEqual(weekdayGroups(days), {
-    workdays: [0, 1, 2, 3, 4],
-    weekend: [5, 6],
-  });
-});
-
-test('the internal two-letter day names classify too', () => {
-  const days = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'].map((name, index) => ({
-    index,
-    name,
-  }));
-  assert.deepEqual(weekdayGroups(days), { workdays: [0, 1, 2, 3, 4], weekend: [5, 6] });
-});
-
-test('custom day names get no shortcuts rather than a preset that leaves a day out', () => {
-  assert.equal(weekdayGroups(makeDays()), null);
-  assert.equal(
-    weekdayGroups([
-      { index: 0, name: 'monday' },
-      { index: 1, name: 'day_1' },
-    ]),
-    null
-  );
-});
-
-test('a study without weekend days still classifies its work days', () => {
-  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].map((name, index) => ({
-    index,
-    name,
-  }));
-  assert.deepEqual(weekdayGroups(days), { workdays: [0, 1, 2, 3, 4], weekend: [] });
-});

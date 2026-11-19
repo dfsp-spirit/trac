@@ -198,11 +198,9 @@ export function createCopyDayDialog({
     });
     chipInputs = chips.inputs;
     for (const input of chipInputs) input.addEventListener('change', () => updatePreview());
+    const defaultLanguage = current.study.default_language;
     const shortcuts = renderTargetShortcuts({
-      days: current.days,
-      sourceDay,
-      inputs: chipInputs,
-      t,
+      groups: current.day_groups, defaultLanguage, sourceDay, inputs: chipInputs, t, language,
     });
     if (shortcuts) fieldset.append(shortcuts);
     fieldset.append(chips.element);

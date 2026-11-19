@@ -36,6 +36,12 @@ async def test_runtime_export_import_roundtrip_embedded_and_split_zip():
             exported_embedded_study = embedded_export_payload["studies_config"][
                 "studies"
             ][0]
+            # Shortcut groups are study configuration, so a backup without them
+            # would silently remove the copy dialog's buttons on restore.
+            exported_group_keys = [
+                group["key"] for group in exported_embedded_study["day_groups"]
+            ]
+            assert exported_group_keys
 
             embedded_import_study = dict(exported_embedded_study)
             embedded_import_study["name_short"] = embedded_clone_name_short
@@ -63,6 +69,26 @@ async def test_runtime_export_import_roundtrip_embedded_and_split_zip():
             assert embedded_verify_response.status_code == 200
             embedded_verify_payload = embedded_verify_response.json()
             assert "timeline" in embedded_verify_payload
+
+            clone_diary_response = await client.get(
+                f"{BASE_URL}/api/studies/{embedded_clone_name_short}"
+                "/participants/p_roundtrip_diary/diary"
+            )
+            assert clone_diary_response.status_code == 200
+            clone_groups = clone_diary_response.json()["day_groups"]
+            assert [group["key"] for group in clone_groups] == exported_group_keys
+            # The clone resolves the names to the same day indexes the export
+            # listed them under.
+            day_index_by_name = {
+                label["name"]: label["display_order"]
+                for label in exported_embedded_study["day_labels"]
+            }
+            assert [
+                group["day_indexes"] for group in clone_groups
+            ] == [
+                [day_index_by_name[name] for name in group["days"]]
+                for group in exported_embedded_study["day_groups"]
+            ]
 
             # Roundtrip 2: export split ZIP -> create-from-files endpoint
             split_export_response = await client.get(
@@ -165,6 +191,12 @@ async def test_runtime_export_import_roundtrip_external_tasks_closed_study():
             exported_embedded_study = embedded_export_payload["studies_config"][
                 "studies"
             ][0]
+            # Shortcut groups are study configuration, so a backup without them
+            # would silently remove the copy dialog's buttons on restore.
+            exported_group_keys = [
+                group["key"] for group in exported_embedded_study["day_groups"]
+            ]
+            assert exported_group_keys
 
             # Verify external_tasks are present in the export
             assert "external_tasks" in exported_embedded_study

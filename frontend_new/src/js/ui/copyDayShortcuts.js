@@ -1,18 +1,20 @@
 // @ts-check
 /**
- * The one-click target presets in the copy dialog: "All work days" and
- * "Weekend".
+ * The one-click target presets in the copy dialog.
  *
- * A preset means "exactly these": it replaces the selection, so pressing the
- * second one does not leave the first one's days ticked. The source day is
- * never a target and is filtered out; a group that ends up empty (a study with
- * no weekend, say) renders no button. Nothing is rendered at all when the
- * study's day names cannot be classified - the individual chips still work.
+ * The groups are study configuration (`day_groups` in studies_config.json), not
+ * an app concept: whether "all work days" means Mon-Fri, Sun-Thu or a school
+ * week is the researcher's decision, and the API has already resolved each
+ * group to day indexes. A preset means "exactly these": it replaces the
+ * selection, so pressing a second one does not leave the first one's days
+ * ticked. The source day is never a target and is filtered out; a group that
+ * ends up empty renders no button. A study without day groups gets no section.
  */
-import { weekdayGroups } from '../domain/dayCopy.js';
+import { localizedText } from '../domain/diary.js';
 import { el } from './dom.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
+/** @typedef {import('../domain/diary.js').ApiDiary['day_groups'][number]} DayGroup */
 
 /**
  * Replace the checked state of the target chips.
@@ -35,24 +37,31 @@ export function selectTargets(inputs, indexes) {
 
 /**
  * @param {{
- *   days: Array<{ index: number, name: string }>,
+ *   groups: DayGroup[] | null | undefined,
  *   sourceDay: number | null,
  *   inputs: HTMLInputElement[],
  *   t: Translator,
+ *   language: string,
+ *   defaultLanguage: string | null | undefined,
  * }} view
  * @returns {HTMLElement | null}
  */
-export function renderTargetShortcuts({ days, sourceDay, inputs, t }) {
-  const groups = weekdayGroups(days);
-  if (!groups) return null;
-
-  /** @param {number[]} indexes */
-  const selectable = (indexes) => indexes.filter((index) => index !== sourceDay);
-
-  const presets = /** @type {Array<[string, number[]]>} */ ([
-    ['diary.copy.workdays', selectable(groups.workdays)],
-    ['diary.copy.weekend', selectable(groups.weekend)],
-  ]).filter(([, indexes]) => indexes.length > 0);
+export function renderTargetShortcuts({
+  groups,
+  sourceDay,
+  inputs,
+  t,
+  language,
+  defaultLanguage,
+}) {
+  /** @type {Array<{ key: string, text: string, indexes: number[] }>} */
+  const presets = [];
+  for (const group of groups || []) {
+    const text = localizedText(group?.names, language, defaultLanguage);
+    const indexes = (group?.day_indexes || []).filter((index) => index !== sourceDay);
+    if (!text || !indexes.length) continue;
+    presets.push({ key: String(group.key ?? text), text, indexes });
+  }
   if (!presets.length) return null;
 
   const wrap = el('div', 't-days__shortcuts');
@@ -62,10 +71,11 @@ export function renderTargetShortcuts({ days, sourceDay, inputs, t }) {
   wrap.setAttribute('aria-labelledby', label.id);
   wrap.append(label);
 
-  for (const [key, indexes] of presets) {
-    const button = el('button', 't-btn t-btn--secondary t-btn--sm', t(key));
+  for (const preset of presets) {
+    const button = el('button', 't-btn t-btn--secondary t-btn--sm', preset.text);
     button.type = 'button';
-    button.addEventListener('click', () => selectTargets(inputs, indexes));
+    button.dataset.group = preset.key;
+    button.addEventListener('click', () => selectTargets(inputs, preset.indexes));
     wrap.append(button);
   }
   return wrap;

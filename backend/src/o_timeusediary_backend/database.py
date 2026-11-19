@@ -702,6 +702,13 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     if existing_study.save_ux_events != study_config.save_ux_events:
                         existing_study.save_ux_events = study_config.save_ux_events
                         study_updated = True
+                    config_day_groups = (
+                        [group.model_dump() for group in study_config.day_groups]
+                        or None
+                    )
+                    if existing_study.day_groups != config_day_groups:
+                        existing_study.day_groups = config_day_groups
+                        study_updated = True
                     if study_config.study_participant_ids:
                         for participant_id in study_config.study_participant_ids:
                             existing_association = session.exec(
@@ -907,6 +914,10 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     allow_skip_timeuse=study_config.allow_skip_timeuse,
                     require_diary_before_external_tasks=study_config.require_diary_before_external_tasks,
                     default_language=study_config.default_language,
+                    day_groups=(
+                        [group.model_dump() for group in study_config.day_groups]
+                        or None
+                    ),
                     study_text_intro=study_config.study_text_intro,
                     study_text_end_completed=study_config.study_text_end_completed,
                     study_text_end_skipped=study_config.study_text_end_skipped,

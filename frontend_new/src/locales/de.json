@@ -361,9 +361,7 @@
       "nothingToCopy": "Es gibt noch nichts zu kopieren.",
       "chipFilled": "hat Einträge",
       "chipSource": "Quelltag",
-      "shortcuts": "Schnellauswahl",
-      "workdays": "Alle Werktage",
-      "weekend": "Wochenende"
+      "shortcuts": "Schnellauswahl"
     },
     "panel": {
       "chooseActivity": "Aktivität wählen",

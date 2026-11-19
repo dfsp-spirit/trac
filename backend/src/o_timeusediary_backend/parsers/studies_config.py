@@ -55,6 +55,122 @@ class CfgFileDayLabel(BaseModel):
         return {}
 
 
+class CfgFileDayGroup(BaseModel):
+    """One shortcut group for the copy dialog ("All work days", "Weekend").
+
+    The grouping is study content, not an app concept: a study may run a
+    Mon-Fri week, a Sun-Thu week or a school week. The app therefore never
+    derives groups from weekday names; the config states them.
+
+    Example:
+    {
+        "key": "workdays",
+        "names": {"en": "All work days", "de": "Alle Werktage"},
+        "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+    }
+
+    `days` references `day_labels.name`. `names` is localized content like a
+    day's `display_names`, so it must cover the study default language.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    key: str
+    names: Dict[str, str]
+    days: List[str]
+
+    @field_validator("key")
+    @classmethod
+    def validate_key(cls, value: str) -> str:
+        normalized = value.strip() if isinstance(value, str) else ""
+        if not normalized:
+            raise ValueError("day_groups entry must define a non-empty key")
+        if not re.match(r"^[a-z0-9_]+$", normalized):
+            raise ValueError(
+                f'day_groups entry key "{value}" is invalid. '
+                "Use lowercase letters, numbers, and underscores only."
+            )
+        return normalized
+
+    @field_validator("names")
+    @classmethod
+    def validate_names(cls, value: Dict[str, str]) -> Dict[str, str]:
+        if not isinstance(value, dict) or not value:
+            raise ValueError(
+                "day_groups entry must define at least one localized name in 'names'"
+            )
+        for language, text in value.items():
+            if not isinstance(language, str) or not language.strip():
+                raise ValueError(
+                    "day_groups entry has an empty language code in 'names'"
+                )
+            if not isinstance(text, str) or not text.strip():
+                raise ValueError(
+                    f'day_groups entry name for language "{language}" '
+                    "must be a non-empty string"
+                )
+        return value
+
+    @field_validator("days")
+    @classmethod
+    def validate_days(cls, value: List[str]) -> List[str]:
+        if not isinstance(value, list) or not value:
+            raise ValueError(
+                "day_groups entry must reference at least one day in 'days'"
+            )
+        normalized: List[str] = []
+        for day_name in value:
+            if not isinstance(day_name, str) or not day_name.strip():
+                raise ValueError(
+                    "day_groups entry 'days' must contain non-empty day label names"
+                )
+            stripped = day_name.strip()
+            if stripped in normalized:
+                raise ValueError(
+                    f'day_groups entry references day "{stripped}" more than once'
+                )
+            normalized.append(stripped)
+        return normalized
+
+
+def validate_day_group_definitions(
+    day_groups: List[CfgFileDayGroup],
+    day_label_names: List[str],
+    default_language: str,
+    study_name_short: str,
+) -> None:
+    """Validate study day groups against the study's day labels.
+
+    Shared by the config-file parser and the admin import payload so both
+    entry points reject the same broken definitions.
+    """
+    known_days = {name.strip() for name in day_label_names if name and name.strip()}
+    seen_keys: set[str] = set()
+    for group in day_groups:
+        if group.key in seen_keys:
+            raise ValueError(
+                f"Study '{study_name_short}': "
+                f'day_groups contains duplicate key "{group.key}"'
+            )
+        seen_keys.add(group.key)
+
+        unknown = [day for day in group.days if day not in known_days]
+        if unknown:
+            raise ValueError(
+                f"Study '{study_name_short}': "
+                f'day_groups entry "{group.key}" references unknown day(s): '
+                f"{', '.join(unknown)}. Valid day labels: "
+                f"{', '.join(sorted(known_days))}"
+            )
+
+        if default_language not in group.names:
+            raise ValueError(
+                f"Study '{study_name_short}': "
+                f'day_groups entry "{group.key}" must provide a name for the '
+                f'study default language "{default_language}"'
+            )
+
+
 class CfgFileLoggedActivity(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -421,6 +537,9 @@ class CfgFileStudy(BaseModel):
     # Accept either a single-string description (legacy) or a localized map.
     description: Optional[Union[str, Dict[str, str]]] = None
     day_labels: List[CfgFileDayLabel] = Field(min_length=1)
+    # Optional one-click target groups for the copy dialog. Empty means the
+    # dialog shows no shortcut buttons.
+    day_groups: List[CfgFileDayGroup] = Field(default_factory=list)
     study_participant_ids: List[str] = []
     # Optional id -> display name map ("Tim"). A seed for fixtures and demo
     # studies; production names belong in the roster upload, not in a file that
@@ -665,6 +784,16 @@ class CfgFileStudy(BaseModel):
                 )
             seen_display_orders.add(day_label.display_order)
 
+        return self
+
+    @model_validator(mode="after")
+    def validate_day_groups(self) -> "CfgFileStudy":
+        validate_day_group_definitions(
+            self.day_groups,
+            day_label_names=[day_label.name for day_label in self.day_labels],
+            default_language=self.default_language,
+            study_name_short=self.name_short,
+        )
         return self
 
     @model_validator(mode="after")

@@ -12,16 +12,20 @@
   <body>
     <div id="root"></div>
     <!--
-      Query parameter:
-        custom  the study uses day names that are not weekdays, so the shortcut
-                section must not appear (the individual chips still work).
+      Query parameters:
+        custom  the study config defines no day groups, so the shortcut section
+                must not appear (the individual chips still work).
+        lang    interface language, to check that a group label the study did
+                not translate falls back to the study default language.
     -->
     <script type="module">
       import { context } from './fixture.js';
       import { createCopyDayDialog } from '/src/js/ui/copyDayDialog.js';
 
       const { root, t, tCount } = await context('de');
-      const custom = new URLSearchParams(window.location.search).get('custom') === '1';
+      const params = new URLSearchParams(window.location.search);
+      const custom = params.get('custom') === '1';
+      const language = params.get('lang') || 'de';
 
       const names = custom
         ? ['day_0', 'day_1', 'day_2', 'day_3', 'day_4', 'day_5', 'day_6']
@@ -45,11 +49,32 @@
         meets_requirement: false,
       }));
 
+      // The groups come from the study config, already resolved to indexes by
+      // the API. "Weekend" deliberately has no English or Swedish name so the
+      // tests can see the fallback to the study default language.
+      const dayGroups = custom
+        ? []
+        : [
+            {
+              key: 'workdays',
+              names: { de: 'Alle Werktage', en: 'All work days' },
+              day_indexes: [0, 1, 2, 3, 4],
+            },
+            { key: 'weekend', names: { de: 'Wochenende' }, day_indexes: [5, 6] },
+          ];
+
       const diary = {
         schema_version: 1,
-        study: { day_start_minutes: 0, submitted_at: null },
+        study: {
+          name_short: 'demo',
+          name: 'Demo',
+          default_language: 'de',
+          day_start_minutes: 0,
+          submitted_at: null,
+        },
         timeline: { min_coverage: 1440, max_overlap: 2 },
         days,
+        day_groups: dayGroups,
         activities: [
           {
             client_uuid: 'monday-activity',
@@ -71,7 +96,7 @@
         t,
         tCount,
         getDiary: () => diary,
-        getLanguage: () => 'de',
+        getLanguage: () => language,
         getCurrentDay: () => 0,
         onCopy: async () => ({ results: [] }),
         onCopied: () => {},

@@ -60,6 +60,7 @@ async def _create_study(
     max_overlap: int = 2,
     min_coverage: int = 0,
     config: dict | None = None,
+    day_groups: list[dict] | None = None,
 ) -> str:
     study_name_short = f"it_diary_{uuid.uuid4().hex[:8]}"
     payload = {
@@ -88,6 +89,7 @@ async def _create_study(
                 },
                 "data_collection_start": "2024-01-01T00:00:00Z",
                 "data_collection_end": "2028-12-31T23:59:59Z",
+                **({"day_groups": day_groups} if day_groups else {}),
             }
         ],
     }
@@ -188,6 +190,42 @@ async def test_empty_diary_lists_the_days_and_nothing_else():
     assert diary["activities"] == []
     assert diary["timeline"]["max_overlap"] == 2
     assert diary["study"]["submitted_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_diary_payload_resolves_configured_day_groups_to_indexes():
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(
+            client,
+            day_groups=[
+                {
+                    "key": "first_days",
+                    "names": {"en": "First days", "de": "Erste Tage"},
+                    "days": ["monday", "tuesday"],
+                }
+            ],
+        )
+        diary = await _diary(client, study, participant)
+
+    # The config names days; the participant client works with indexes.
+    assert diary["day_groups"] == [
+        {
+            "key": "first_days",
+            "names": {"en": "First days", "de": "Erste Tage"},
+            "day_indexes": [0, 1],
+        }
+    ]
+
+
+@pytest.mark.asyncio
+async def test_diary_payload_has_no_day_groups_when_the_study_defines_none():
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client)
+        diary = await _diary(client, study, participant)
+
+    assert diary["day_groups"] == []
 
 
 @pytest.mark.asyncio

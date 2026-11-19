@@ -5,6 +5,7 @@ import {
   dayLabelList,
   daySummaries,
   layoutForDay,
+  localizedText,
   meetsRequirement,
   progress,
   timedActivities,
@@ -135,6 +136,22 @@ test('a missing translation falls back to the study default, then the internal n
   assert.equal(dayLabel({ name: 'monday', display_name: 'Montag' }, 'sv'), 'Montag');
   assert.equal(dayLabel({ name: 'monday' }, 'en'), 'monday');
   assert.equal(dayLabel({ name: 'monday', displayNames: {} }, 'de'), 'monday');
+});
+
+test('localizedText falls back from the interface language to the study default', () => {
+  const names = { de: 'Alle Werktage', en: 'All work days' };
+  assert.equal(localizedText(names, 'de', 'en'), 'Alle Werktage');
+  // A study that only translated its own default language still labels the
+  // button for a participant on another interface language.
+  assert.equal(localizedText({ de: 'Alle Werktage' }, 'sv', 'de'), 'Alle Werktage');
+  assert.equal(localizedText({ sv: 'Alla arbetsdagar' }, 'de', 'sv'), 'Alla arbetsdagar');
+});
+
+test('localizedText never renders an empty or missing label as text', () => {
+  assert.equal(localizedText({ en: 'Weekend' }, 'de', 'de'), 'Weekend');
+  assert.equal(localizedText({ en: '  ' }, 'en', 'en'), '');
+  assert.equal(localizedText({}, 'de', 'en'), '');
+  assert.equal(localizedText(null, 'de', 'en'), '');
 });
 
 test('dayLabelList names several days in order, without repeats', () => {

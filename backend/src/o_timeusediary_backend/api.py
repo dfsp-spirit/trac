@@ -48,10 +48,12 @@ from .parsers.activities_config import (
     get_all_activity_codes,
 )
 from .parsers.studies_config import (
+    CfgFileDayGroup,
     CfgFileExternalTask,
     OLDEST_READABLE_STUDIES_CONFIG_SCHEMA_VERSION,
     get_external_task_callback_tokens,
     get_external_task_effective_config,
+    validate_day_group_definitions,
     validate_external_tasks_for_study,
 )
 from .formats import (
@@ -2872,6 +2874,10 @@ class ImportStudiesConfigStudy(BaseModel):
     # Accept old string or new localized map
     description: Optional[Union[str, Dict[str, str]]] = None
     day_labels: List[Dict]
+    # Optional one-click target groups, validated against day_labels. Same
+    # shape and rules as in the config file so a runtime-config export can be
+    # imported back unchanged.
+    day_groups: List[CfgFileDayGroup] = Field(default_factory=list)
     study_participant_ids: List[str] = []
     # Optional id -> display name map, same rule as in the config file. Present
     # so a runtime-config export can be imported back without losing names.
@@ -2912,6 +2918,20 @@ class ImportStudiesConfigStudy(BaseModel):
         if v < 0 or v > 1439:
             raise ValueError(f"day_start_minutes must be between 0 and 1439, got {v}")
         return v
+
+    @model_validator(mode="after")
+    def validate_day_groups(self) -> "ImportStudiesConfigStudy":
+        validate_day_group_definitions(
+            self.day_groups,
+            day_label_names=[
+                str(label.get("name") or "")
+                for label in self.day_labels
+                if isinstance(label, dict)
+            ],
+            default_language=self.default_language,
+            study_name_short=self.name_short,
+        )
+        return self
 
 
 class UpdateConsentRequest(BaseModel):
@@ -3924,6 +3944,9 @@ def _create_study_from_import_payload(
         is_paused=study_payload.is_paused,
         require_diary_before_external_tasks=study_payload.require_diary_before_external_tasks,
         default_language=default_language,
+        day_groups=(
+            [group.model_dump() for group in study_payload.day_groups] or None
+        ),
         study_text_intro=study_payload.study_text_intro,
         study_text_end_completed=study_payload.study_text_end_completed,
         study_text_end_skipped=study_payload.study_text_end_skipped,
@@ -4960,6 +4983,9 @@ async def export_runtime_studies_config(
                 "name_short": study.name_short,
                 "description": study.description,
                 "day_labels": day_labels_export,
+                # Part of the technical backup: losing the groups would remove
+                # the copy-dialog shortcuts on restore.
+                "day_groups": list(study.day_groups or []),
                 "study_participant_ids": participant_ids,
                 # Part of the technical backup: a restore that lost the labels
                 # would show the wrong child's name in a chain. Never part of a
@@ -8874,6 +8900,8 @@ async def admin_extract_studies(
                     }
                     for day_label in day_labels
                 ],
+                # Presentation config: the copy dialog's shortcut groups.
+                "day_groups": list(current_study.day_groups or []),
                 "timelines": [
                     {
                         "name": timeline.name,

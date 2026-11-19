@@ -47,6 +47,7 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "save_browser_identification"),
     ("studies", "save_ux_events"),
     ("studies", "day_start_minutes"),
+    ("studies", "day_groups"),
     ("day_labels", "display_names"),
     ("study_participants", "study_submitted_at"),
     ("study_participants", "display_name"),

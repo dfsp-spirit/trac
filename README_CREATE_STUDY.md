@@ -308,6 +308,7 @@ open study cannot introduce an arbitrary string — both frontends generate
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `day_labels` | `[object]` | **Yes** | Array of day definitions (at least one). Each entry has: `name` (machine name, e.g., `"monday"`), `display_order` (integer ≥ 0), and `display_names` (localized map, e.g., `{"en": "Monday", "de": "Montag"}`). |
+| `day_groups` | `[object]` | No | Optional shortcut groups for the diary's "copy a day" dialog, e.g. "All work days" and "Weekend". Each entry has `key` (machine name, `[a-z0-9_]+`), `names` (localized label map, **must** include the study's `default_language`), and `days` (list of `day_labels` `name` values, no repeats). The app never derives groups from weekday names, so a study running a Sun-Thu week or a school week simply says so. A study without `day_groups` shows no shortcut buttons. |
 
 #### Languages & Activities
 
@@ -869,6 +870,26 @@ window.
             "sv": "Söndag",
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": {
+            "en": "All work days",
+            "sv": "Alla arbetsdagar",
+            "de": "Alle Werktage"
+          },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": {
+            "en": "Weekend",
+            "sv": "Helg",
+            "de": "Wochenende"
+          },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_intro": {

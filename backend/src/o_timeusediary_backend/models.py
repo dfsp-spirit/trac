@@ -109,6 +109,15 @@ class Study(SQLModel, table=True):
     owner_usernames: Optional[List[str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # One-click target groups for the copy dialog ("Alle Werktage",
+    # "Wochenende", "Schultage"). Stored as JSON because the meaning is study
+    # content, not an app concept: whether a study runs a Mon-Fri week, a
+    # Sun-Thu week or a school week is the researcher's decision. Shape:
+    # [{"key": "workdays", "names": {"de": "Alle Werktage"}, "days": ["monday"]}]
+    # `days` refers to `day_labels.name`; the read API resolves it to indexes.
+    day_groups: Optional[List[Dict[str, Any]]] = Field(
+        default=None, sa_column=Column(JSON, nullable=True)
+    )
 
     # Relationships
     day_labels: List["DayLabel"] = Relationship(back_populates="study")

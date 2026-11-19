@@ -59,6 +59,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_instructions_title": {
         "de": "Willkommen zu Ihrem 1-wöchigen Zeit-Tagebuch. Vielen Dank für Ihre Teilnahme!"
       },
@@ -156,6 +168,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_instructions_title": {
         "de": "Fixture: Anleitung"
       },
@@ -247,6 +271,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_instructions_title": {
@@ -343,6 +379,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_instructions_title": {
         "de": "Fixture: Anleitung"
       },
@@ -435,6 +483,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_instructions_title": {
@@ -532,6 +592,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_end_completed": {
         "de": "Fixture: Das Tagebuch wurde abgegeben."
       },
@@ -621,6 +693,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_end_completed": {
         "de": "Fixture: Das Tagebuch wurde abgegeben."
       },
@@ -708,6 +792,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_end_completed": {
@@ -812,6 +908,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_end_completed": {
@@ -967,6 +1075,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_instructions_title": {
         "de": "Fixture: Anleitung"
       },
@@ -1060,6 +1180,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_end_completed": {
@@ -1179,6 +1311,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_end_completed": {
         "de": "Fixture: Das Tagebuch wurde abgegeben.",
         "en": "Fixture: The diary was submitted."
@@ -1289,6 +1433,18 @@
           }
         }
       ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
       "study_text_end_completed": {
         "de": "Fixture: Das Tagebuch wurde abgegeben."
       },
@@ -1370,6 +1526,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_text_end_completed": {
@@ -1509,6 +1677,18 @@
           "display_names": {
             "de": "Sonntag"
           }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
         }
       ],
       "study_participant_ids": [
