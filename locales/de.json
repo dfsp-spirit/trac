@@ -261,8 +261,6 @@
       "ctaReady": "Absenden",
       "hintOpen": "Noch nicht alle Tage sind vollständig.",
       "open": "Tagebuch prüfen",
-      "nothingAdded": "Nichts eingetragen",
-      "continued": "Fortsetzung",
       "title": "Tagebuch prüfen",
       "step": "Schritt {{current}} von {{total}}",
       "back": "Zurück zum Tagebuch",
@@ -270,7 +268,6 @@
       "dayComplete": "Vollständig",
       "dayEmpty": "Noch nichts eingetragen",
       "dayToGo": "Noch {{minutes}} Min. offen",
-      "nextDay": "Folgetag",
       "submit": "Tagebuch absenden",
       "hint": "Vor dem Absenden bestätigst du im nächsten Schritt.",
       "rejectedTitle": "Einige Tage sind noch nicht vollständig",
@@ -281,7 +278,8 @@
       "confirmLocked": "Danach kannst du es ansehen, aber nicht mehr ändern.",
       "confirmYes": "Ja, absenden",
       "confirmNo": "Noch nicht, weiter prüfen",
-      "sending": "Wird gesendet …"
+      "sending": "Wird gesendet …",
+      "largestGap": "Größte Lücke:"
     },
     "shortcuts": {
       "title": "Tastenkürzel",

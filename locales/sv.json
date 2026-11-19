@@ -261,8 +261,6 @@
       "ctaReady": "Skicka in",
       "hintOpen": "Inte alla dagar är klara än.",
       "open": "Kontrollera din dagbok",
-      "nothingAdded": "Inget tillagt",
-      "continued": "fortsättning",
       "title": "Kontrollera din dagbok",
       "step": "Steg {{current}} av {{total}}",
       "back": "Tillbaka till dagboken",
@@ -270,7 +268,6 @@
       "dayComplete": "Komplett",
       "dayEmpty": "Inget tillagt än",
       "dayToGo": "{{minutes}} min kvar att fylla i",
-      "nextDay": "nästa dag",
       "submit": "Skicka in dagboken",
       "hint": "Du bekräftar i nästa steg innan något skickas.",
       "rejectedTitle": "Några dagar är inte kompletta än",
@@ -281,7 +278,8 @@
       "confirmLocked": "Efter det kan du läsa den men inte ändra den.",
       "confirmYes": "Ja, skicka in",
       "confirmNo": "Inte än, fortsätt kontrollera",
-      "sending": "Skickar …"
+      "sending": "Skickar …",
+      "largestGap": "Största luckan:"
     },
     "shortcuts": {
       "title": "Tangentbordsgenvägar",

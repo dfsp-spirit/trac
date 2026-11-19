@@ -177,8 +177,10 @@
   (the form does it from `refreshDerived()`, which already runs after every
   committed time or day change). The entry being edited is filtered out of
   `records` - the pending row shows where it is going, and drawing it twice would
-  make the day look busier than validation sees it. The day rail and the review
-  page are the intended next callers; do not fork the drawing code for them.
+  make the day look busier than validation sees it. The coloured strip is the
+  form's alone; the rail and the review use the plain coverage picture from
+  `ui/coverageStrip.js` (`appendCoverageRuns`) instead. Do not fork either
+  drawing code.
 - Guarded by `tests/components/daystrip.spec.js` (arithmetic, lanes, clipping,
   bad colours) and `tests/e2e/day-strip.spec.js` (wiring, follow the fields and
   the day dropdown).
@@ -212,27 +214,26 @@
   more ways in, so finishing never depends on finding one control: the progress
   line (desktop, `#progress-note`, a button whose visible summary stays its
   accessible name) and the drawer menu's "Tagebuch prüfen" (the phone's path).
-- A row is **one line**: time range and name. The category used to be a second
-  line and was dropped - the timeline never showed it either, and it cost a third
-  of the height. The night marker stays inline in the time column: the range is
-  one unbreakable piece, `(next day)` may wrap under it (the only way a night
-  entry fits the 320 px column).
-- `domain/review.js` builds **three row kinds**: `activity`, `continued` (the part
-  of the previous day's night entry that lands on this day, clipped, marked `↑`)
-  and `gap` (an empty stretch between activities, the same 30-minute threshold
-  the timeline draws). Without the continuation a day could say "840 minutes
-  still to add" while its list appeared to begin at 09:00; without gaps the review
-  claimed a completeness the timeline contradicted. Leading and trailing
-  emptiness is deliberately not a gap - that is what the day state is for.
-- From 1200 px up the list is a **two-column spread** (`.t-modal--wide`, 72 rem):
-  row-major flow puts day 1 left and day 2 right, which is what a study with
-  parallel days (one per child, per device) needs to compare. DOM order stays the
-  reading order, so tab and screen-reader order are unaffected; below 1200 px it
-  is one column, and the modal is the screen. A pair is as tall as its taller day
-  (masonry is not available); that is accepted, because a pair is normally
-  structurally similar by design.
-- `nextDay` is strict: an entry that ends exactly at midnight ends the day and
-  gets no marker, matching the timeline's `↓`.
+- The review is a **week overview, not a second diary**. Each day is one compact
+  row: label and state, the day's covered stretches as a strip, and - on open
+  days with entries - the largest remaining hole. There is no per-activity list.
+  That list repeated the timeline row by row and made the review a long copy of
+  the page behind it (several screens on a phone); the timeline is already the
+  detail view and *Ändern* opens it on that day.
+- The strip is the same coverage picture as the day rail
+  (`ui/coverageStrip.js`, `aria-hidden`); the state line carries the meaning. The
+  runs are the union of the day's entries clipped at midnight, so touching
+  activities form one stretch.
+- `domain/review.js` returns `runs` and `largestGap` per day. The hole is the
+  longest uncovered stretch of the day, **including a leading or trailing one** -
+  an empty evening is exactly what the review should point at, which is why this
+  is not `layoutDay().gaps`. It is shown only when the day is open, has entries,
+  and the hole is at least `MIN_GAP_MINUTES`; an empty day says so in words and
+  points nowhere.
+- One column at **every** width. The old two-column spread existed to compare
+  detailed day lists; with one strip per day a single column keeps all seven
+  aligned, which is what makes the week scannable. The modal is the screen below
+  1200 px and a centred card above it, but never a spread.
 - **The foot button follows readiness.** White (`--secondary`) while `canSubmit`
   is false - pressing it then is how a participant learns *what* is missing, so it
   stays enabled and the hint under it says "Noch nicht alle Tage sind
