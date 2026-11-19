@@ -19,35 +19,12 @@
     flex: none;
   }
 
-  /* The review reads as a spread once there is room: two days side by side, so a
-     diary whose days come in parallel pairs (one per child, per device) can be
-     compared without scrolling. Row-major flow keeps DOM order = reading order,
-     and the width only grows for this one dialog. */
-  .t-modal--centred.t-modal--wide {
-    max-width: 72rem;
-  }
-  .t-modal--wide .t-review {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
-  }
 }
 
 /* The bundle's review list brings its own page padding; inside a modal body
    that padding doubles up. */
 .t-modal--centred .t-review {
   padding: 0;
-}
-
-/* Day state under the day name: "Complete", or how much is still missing. */
-.t-review__state {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  color: var(--ink-muted);
-}
-.t-review__day--open .t-review__state {
-  color: var(--ink);
-  font-weight: 600;
 }
 
 /* The shortcut list: key on the left, what it does on the right. */

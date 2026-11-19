@@ -7,7 +7,7 @@
  * cannot disagree with what is drawn.
  */
 import { dayLabel, daySummaries } from '../domain/diary.js';
-import { MINUTES_PER_DAY } from '../domain/time.js';
+import { appendCoverageRuns } from './coverageStrip.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -61,12 +61,7 @@ export function renderDayRail(host, { diary, language, t, currentDay }) {
     // decorative and stays out of the accessibility tree.
     const bar = el('span', 't-rail__bar');
     bar.setAttribute('aria-hidden', 'true');
-    for (const run of summary.runs) {
-      const segment = el('span', 't-rail__run');
-      segment.style.left = `${(run.start / MINUTES_PER_DAY) * 100}%`;
-      segment.style.width = `${((run.end - run.start) / MINUTES_PER_DAY) * 100}%`;
-      bar.append(segment);
-    }
+    appendCoverageRuns(bar, summary.runs);
     row.append(bar);
 
     // No `aria-label`: the row's own text is its accessible name, and the two

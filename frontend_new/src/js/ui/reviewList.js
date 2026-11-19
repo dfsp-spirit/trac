@@ -1,11 +1,15 @@
 // @ts-check
 /**
- * The body of the review step (D32): one section per day, its activities in
- * time order, and an *Edit* link back to that day.
+ * The body of the review step (D32): one compact row per day.
  *
- * Minimal on purpose. One row per activity: swatch, time range, name. The point
- * is "yes, that's my week", not a report - no totals, no durations, no charts.
+ * The review is a checkpoint, not a second diary. Every entry is already on the
+ * timeline, one tap away. What this screen has to answer is "is my week
+ * complete, and if not, where should I work next?" - so each day gets its name,
+ * its state, the covered stretches as a strip, and the one largest hole to
+ * point at. There is no activity list: it lived here once and made the review a
+ * long copy of the page behind it.
  */
+import { appendCoverageRuns } from './coverageStrip.js';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -28,63 +32,8 @@ function el(tag, className, text) {
  */
 function stateText(day, t) {
   if (day.meets) return t('diary.review.dayComplete');
-  if (!day.rows.length) return t('diary.review.dayEmpty');
+  if (!day.runs.length) return t('diary.review.dayEmpty');
   return t('diary.review.dayToGo', { minutes: day.minutesToGo });
-}
-
-/**
- * One line per row of the day, in the timeline's order: the entry, the stretch
- * with nothing in it, or what is left of the night before.
- *
- * @param {import('../domain/review.js').ReviewRow} row
- * @param {(minutes: number) => string} clock Formats a day-relative minute.
- * @param {(key: string, params?: Record<string, string | number>) => string} t
- * @returns {HTMLLIElement}
- */
-function renderRow(row, clock, t) {
-  const item = el('li', row.kind === 'activity' ? null : `t-review__row--${row.kind}`);
-
-  // A gap has nothing to show in the swatch column; the empty cell keeps the
-  // three columns aligned.
-  const swatch = el('span');
-  if (row.kind !== 'gap') {
-    swatch.className = 't-pat t-pat--sm';
-    swatch.setAttribute('aria-hidden', 'true');
-    if (row.color) swatch.style.background = row.color;
-    else swatch.classList.add('t-pat--general');
-  }
-  item.append(swatch);
-
-  const time = el('span', 't-review__time');
-  // The range is one unbreakable piece; "(next day)" may wrap under it, which is
-  // the only way a night entry fits the column at 320px.
-  const range = el('span', 't-review__range');
-  if (row.kind === 'continued') {
-    // The same cue the timeline uses for a block that reaches in from the day
-    // before; the words in the text column carry it for a screen reader.
-    const up = el('span', null, '↑ ');
-    up.setAttribute('aria-hidden', 'true');
-    range.append(up);
-  }
-  range.append(document.createTextNode(`${clock(row.start)} – ${clock(row.end)}`));
-  time.append(range);
-  if (row.nextDay) {
-    time.append(el('small', null, ` ${t('diary.review.nextDay')}`));
-  }
-  item.append(time);
-
-  const what = el('span', 't-review__what');
-  if (row.kind === 'gap') {
-    what.textContent = t('diary.review.nothingAdded');
-  } else {
-    what.textContent = row.name;
-    if (row.kind === 'continued') {
-      what.append(el('span', 't-review__note', ` (${t('diary.review.continued')})`));
-    }
-  }
-  item.append(what);
-
-  return item;
 }
 
 /**
@@ -123,10 +72,27 @@ export function renderReviewList(host, { review, clock, onEdit, t }) {
     head.append(edit);
     section.append(head);
 
-    if (day.rows.length) {
-      const ordered = el('ol');
-      for (const row of day.rows) ordered.append(renderRow(row, clock, t));
-      section.append(ordered);
+    // A glance: the state line above says whether the day is enough, so the
+    // strip stays out of the accessibility tree. Same picture as the day rail.
+    const strip = el('div', 't-review__strip');
+    strip.setAttribute('aria-hidden', 'true');
+    appendCoverageRuns(strip, day.runs);
+    section.append(strip);
+
+    // The one hole worth pointing at. A text line, not a control yet: it names
+    // the stretch so "where do I continue?" does not need a scroll through the
+    // day behind this dialog.
+    if (day.largestGap) {
+      const gap = el('p', 't-review__gap');
+      gap.append(document.createTextNode(`${t('diary.review.largestGap')} `));
+      gap.append(
+        el(
+          'span',
+          't-review__gap-range',
+          `${clock(day.largestGap.start)} – ${clock(day.largestGap.end)}`
+        )
+      );
+      section.append(gap);
     }
 
     list.append(section);

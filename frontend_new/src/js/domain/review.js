@@ -1,31 +1,15 @@
 // @ts-check
 /**
- * The review screen's data (D32): every day in order, its activities in time
- * order, and whether the diary may be submitted.
+ * The review screen's data (D32): every day in order, the covered stretches its
+ * strip draws, the one hole worth pointing at, and whether the diary may be
+ * submitted.
  *
  * Pure, like the rest of domain/. It returns numbers and record references,
  * never prose: the modal decides what to say. That keeps the "can I submit?"
  * rule testable without a DOM, and it is the same rule the service applies.
  */
-import { dayLabel, daySummaries, layoutForDay, timedActivities } from './diary.js';
-import { MINUTES_PER_DAY } from './time.js';
-
-/**
- * One line of a day: an entry the participant placed, the part of an entry from
- * the day before that reaches into this day, or a stretch with nothing in it.
- *
- * The reading order is the timeline's, so the review cannot show a day that looks
- * different from what the participant built (D32).
- *
- * @typedef {Object} ReviewRow
- * @property {'activity' | 'continued' | 'gap'} kind
- * @property {string} id
- * @property {number} start Day-relative minutes, clipped to this day for `continued`.
- * @property {number} end Day-relative minutes; past 1440 when an activity runs over.
- * @property {boolean} nextDay True when the activity ends after midnight.
- * @property {string} name Empty for a gap.
- * @property {string | null} color
- */
+import { dayLabel, daySummaries } from './diary.js';
+import { MIN_GAP_MINUTES, uncoveredIntervals } from './geometry.js';
 
 /**
  * @typedef {Object} ReviewDay
@@ -33,9 +17,11 @@ import { MINUTES_PER_DAY } from './time.js';
  * @property {string} name
  * @property {string} label
  * @property {number} coverage
+ * @property {Array<{ start: number, end: number }>} runs Covered stretches, for the strip.
+ * @property {{ start: number, end: number } | null} largestGap Longest stretch with
+ *   nothing recorded, when the day is open and has data. Null otherwise.
  * @property {number} minutesToGo 0 when the day is complete.
  * @property {boolean} meets
- * @property {ReviewRow[]} rows
  */
 
 /**
@@ -55,33 +41,18 @@ import { MINUTES_PER_DAY } from './time.js';
  * @returns {Review}
  */
 export function review(diary, language) {
-  const records = timedActivities(diary);
   const required = diary.timeline.min_coverage || 0;
-  /** @type {Map<string, import('./diary.js').ApiActivity>} */
-  const byId = new Map(diary.activities.map((activity) => [activity.client_uuid, activity]));
 
   const days = daySummaries(diary).map((summary) => {
-    const layout = layoutForDay(diary, summary.index);
-    const own = records
-      .filter((record) => record.dayIndex === summary.index)
-      .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes)
-      .map((record) => rowFor(record, byId.get(record.id)));
-    const continued = layout.segments
-      .filter((segment) => segment.continuesBefore)
-      .map((segment) => continuedRow(segment, byId.get(segment.record.id)));
-    const gaps = layout.gaps.map((gap) => gapRow(gap, summary.index));
-    const rows = [...continued, ...own, ...gaps].sort(
-      (a, b) => a.start - b.start || ORDER[a.kind] - ORDER[b.kind]
-    );
-
     return {
       index: summary.index,
       name: summary.name,
       label: dayLabel(summary, language),
       coverage: summary.coverage,
+      runs: summary.runs,
+      largestGap: largestGapFor(summary),
       minutesToGo: Math.max(0, required - summary.coverage),
       meets: summary.meets,
-      rows,
     };
   });
 
@@ -98,61 +69,27 @@ export function review(diary, language) {
   };
 }
 
-/** At the same minute, the continuation comes first: it is the earlier story. */
-const ORDER = /** @type {const} */ ({ continued: 0, activity: 1, gap: 2 });
-
 /**
- * @param {import('./geometry.js').TimedRecord} record
- * @param {import('./diary.js').ApiActivity | undefined} activity
- * @returns {ReviewRow}
- */
-function rowFor(record, activity) {
-  return {
-    kind: 'activity',
-    id: record.id,
-    start: record.startMinutes,
-    end: record.endMinutes,
-    // Strictly past the end of the day: an entry that stops at 00:00 ends the
-    // day, it does not reach into the next one (the timeline draws no ↓ either).
-    nextDay: record.endMinutes > MINUTES_PER_DAY,
-    name: activity?.activity_name ?? '',
-    color: activity?.color ?? null,
-  };
-}
-
-/**
- * The visible part of an entry that started the day before. Without it a day can
- * show "840 minutes still to add" while its list appears to begin at 09:00.
+ * The longest hole of a day, when pointing at one is useful: the day is open
+ * and has entries, and the hole is at least a gap (not a few stray minutes the
+ * participant cannot place anything in).
  *
- * @param {import('./geometry.js').DaySegment} segment
- * @param {import('./diary.js').ApiActivity | undefined} activity
- * @returns {ReviewRow}
+ * Leading and trailing holes count - an empty evening is exactly what the
+ * review should point at - which is why this is not `layoutDay().gaps`.
+ *
+ * @param {{ meets: boolean, hasData: boolean, runs: Array<{ start: number, end: number }> }} summary
+ * @returns {{ start: number, end: number } | null}
  */
-function continuedRow(segment, activity) {
-  return {
-    kind: 'continued',
-    id: segment.record.id,
-    start: segment.start,
-    end: segment.end,
-    nextDay: false,
-    name: activity?.activity_name ?? '',
-    color: activity?.color ?? null,
-  };
-}
+function largestGapFor(summary) {
+  if (summary.meets || !summary.hasData) return null;
 
-/**
- * @param {import('./geometry.js').Interval} gap
- * @param {number} dayIndex
- * @returns {ReviewRow}
- */
-function gapRow(gap, dayIndex) {
-  return {
-    kind: 'gap',
-    id: `gap:${dayIndex}:${gap.start}`,
-    start: gap.start,
-    end: gap.end,
-    nextDay: false,
-    name: '',
-    color: null,
-  };
+  /** @type {{ start: number, end: number } | null} */
+  let largest = null;
+  for (const hole of uncoveredIntervals(summary.runs)) {
+    if (hole.end - hole.start < MIN_GAP_MINUTES) continue;
+    if (!largest || hole.end - hole.start > largest.end - largest.start) {
+      largest = hole;
+    }
+  }
+  return largest;
 }

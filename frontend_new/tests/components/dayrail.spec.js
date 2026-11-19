@@ -40,21 +40,21 @@ test('touching activities become one run, a gap stays a gap, an empty day has no
 }) => {
   // Monday: 08:00-09:00 and 09:00-10:00 touch, so the row must show one run,
   // not two segments with a seam the day does not have.
-  await expect(row(page, 0).locator('.t-rail__run')).toHaveCount(1);
-  const [morning] = await runs(page, '.t-rail__row[data-day-index="0"] .t-rail__run');
+  await expect(row(page, 0).locator('.t-coverage__run')).toHaveCount(1);
+  const [morning] = await runs(page, '.t-rail__row[data-day-index="0"] .t-coverage__run');
   expect(morning.left).toBeCloseTo(percent(480), 3);
   expect(morning.width).toBeCloseTo(percent(120), 3);
 
   // Tuesday: 08:00-09:00 and 12:00-13:00 are separate stretches.
-  await expect(row(page, 1).locator('.t-rail__run')).toHaveCount(2);
-  const tuesday = await runs(page, '.t-rail__row[data-day-index="1"] .t-rail__run');
+  await expect(row(page, 1).locator('.t-coverage__run')).toHaveCount(2);
+  const tuesday = await runs(page, '.t-rail__row[data-day-index="1"] .t-coverage__run');
   expect(tuesday[0].left).toBeCloseTo(percent(480), 3);
   expect(tuesday[0].width).toBeCloseTo(percent(60), 3);
   expect(tuesday[1].left).toBeCloseTo(percent(720), 3);
   expect(tuesday[1].width).toBeCloseTo(percent(60), 3);
 
   // Wednesday: the grey track is the whole row.
-  await expect(row(page, 2).locator('.t-rail__run')).toHaveCount(0);
+  await expect(row(page, 2).locator('.t-coverage__run')).toHaveCount(0);
 });
 
 test('the strip is a glance: hidden from assistive tech, the text carries the state', async ({

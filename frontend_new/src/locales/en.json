@@ -261,8 +261,6 @@
       "ctaReady": "Submit",
       "hintOpen": "Not every day is complete yet.",
       "open": "Check your diary",
-      "nothingAdded": "Nothing added",
-      "continued": "continued",
       "title": "Check your diary",
       "step": "Step {{current}} of {{total}}",
       "back": "Back to the diary",
@@ -270,7 +268,6 @@
       "dayComplete": "Complete",
       "dayEmpty": "Nothing added yet",
       "dayToGo": "{{minutes}} min still to add",
-      "nextDay": "next day",
       "submit": "Submit diary",
       "hint": "You confirm on the next step before anything is sent.",
       "rejectedTitle": "Some days are not complete yet",
@@ -281,7 +278,8 @@
       "confirmLocked": "After that you can look at it, but not change it.",
       "confirmYes": "Yes, submit",
       "confirmNo": "Not yet, keep checking",
-      "sending": "Sending…"
+      "sending": "Sending…",
+      "largestGap": "Largest gap:"
     },
     "shortcuts": {
       "title": "Keyboard shortcuts",

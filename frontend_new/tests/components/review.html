@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: review list</title>
+    <!-- The review row's own look: head, strip, gap line. The modal shell is
+         not part of this fixture. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+    <link rel="stylesheet" href="/src/styles/coverage.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      Three days against a 600-minute requirement:
+        Monday   00:00-10:00  complete, one run, no hole to point at
+        Tuesday  09:00-10:00  open; the empty evening is the largest hole
+        Wednesday  nothing     empty, no strip run and no hole line
+    -->
+    <script type="module">
+      import { context } from './fixture.js';
+      import { formatClock } from '/src/js/domain/time.js';
+      import { review } from '/src/js/domain/review.js';
+      import { renderReviewList } from '/src/js/ui/reviewList.js';
+
+      const { root, t } = await context('de');
+
+      /** @param {string} id @param {number} day @param {number} start @param {number} end */
+      const activity = (id, day, start, end) => ({
+        client_uuid: id,
+        group_id: null,
+        day_label_index: day,
+        activity_code: 100,
+        activity_name: 'Activity',
+        category: 'General',
+        color: null,
+        parent_activity_code: null,
+        frequency_key: null,
+        start_minutes: start,
+        end_minutes: end,
+      });
+
+      const names = ['Montag', 'Dienstag', 'Mittwoch'];
+      const diary = {
+        schema_version: 1,
+        study: { day_start_minutes: 0, submitted_at: null },
+        timeline: { min_coverage: 600, max_overlap: 2 },
+        days: names.map((name, index) => ({
+          index,
+          name: name.toLowerCase(),
+          display_name: name,
+          display_names: { de: name },
+          has_data: false,
+          coverage_minutes: 0,
+          meets_requirement: false,
+        })),
+        activities: [
+          activity('monday', 0, 0, 600),
+          activity('tuesday', 1, 540, 600),
+        ],
+      };
+
+      /** @type {number[]} */
+      window.__edits = [];
+      renderReviewList(root, {
+        review: review(diary, 'de'),
+        clock: (minutes) => formatClock(minutes, 0),
+        onEdit: (index) => window.__edits.push(index),
+        t,
+      });
+    </script>
+  </body>
+</html>

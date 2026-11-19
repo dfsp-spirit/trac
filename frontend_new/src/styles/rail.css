@@ -26,8 +26,7 @@
 .t-rail__min { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-muted); }
 /* One row per day, drawn where the covered time sits rather than as a share of
    a total. The grey track is the rest of the day; the row's text above says
-   whether that is enough. min-width keeps a short entry from rounding away at
-   rail width. */
+   whether that is enough. The runs themselves come from coverage.css. */
 .t-rail__bar {
   grid-column: 1 / -1;
   display: block;
@@ -37,5 +36,4 @@
   background: var(--surface-200);
   overflow: hidden;
 }
-.t-rail__run { position: absolute; inset-block: 0; min-width: 1px; background: var(--ink); }
 .t-rail__copy { margin-top: var(--space-3); } .t-rail__copy-hint { margin-top: var(--space-2); }

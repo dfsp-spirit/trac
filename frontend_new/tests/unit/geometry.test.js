@@ -10,12 +10,27 @@ import {
   minutesToPx,
   pxToMinutes,
   segmentsForDay,
+  uncoveredIntervals,
 } from '../../src/js/domain/geometry.js';
 
 /** @param {Partial<{ id: string, dayIndex: number, startMinutes: number, endMinutes: number }>} overrides */
 function rec(overrides = {}) {
   return { id: 'a', dayIndex: 0, startMinutes: 0, endMinutes: 60, ...overrides };
 }
+
+test('uncoveredIntervals counts the empty morning and evening, unlike gapsForDay', () => {
+  const segments = segmentsForDay([rec({ startMinutes: 540, endMinutes: 600 })], 0);
+  assert.deepEqual(gapsForDay(segments), [], 'the edges are not gaps between entries');
+  assert.deepEqual(uncoveredIntervals(segments), [
+    { start: 0, end: 540 },
+    { start: 600, end: MINUTES_PER_DAY },
+  ]);
+});
+
+test('a fully covered day has no uncovered stretch', () => {
+  const segments = segmentsForDay([rec({ startMinutes: 0, endMinutes: MINUTES_PER_DAY })], 0);
+  assert.deepEqual(uncoveredIntervals(segments), []);
+});
 
 test('minutesToPx and pxToMinutes use the hour row, not a step size', () => {
   assert.equal(minutesToPx(60, 64), 64);

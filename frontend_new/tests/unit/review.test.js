@@ -51,6 +51,20 @@ function diary(overrides = {}) {
   };
 }
 
+/** @param {string} id @param {number} day @param {number} start @param {number} end */
+function entry(id, day, start, end) {
+  return {
+    client_uuid: id,
+    day_label_index: day,
+    activity_code: 1,
+    activity_name: 'Working',
+    category: 'Work',
+    color: null,
+    start_minutes: start,
+    end_minutes: end,
+  };
+}
+
 test('a day is complete when its union of minutes reaches the requirement', () => {
   const model = review(diary(), 'en');
   assert.deepEqual(
@@ -86,190 +100,82 @@ test('a fully covered diary can be submitted', () => {
   assert.equal(model.completeDays, 3);
 });
 
-test('rows are in time order and carry the activity, not the segment', () => {
-  const model = review(
-    diary({
-      activities: [
-        {
-          client_uuid: 'late:0',
-          day_label_index: 0,
-          activity_code: 2,
-          activity_name: 'Reading',
-          category: 'Leisure',
-          color: null,
-          start_minutes: 1200,
-          end_minutes: 1320,
-        },
-        {
-          client_uuid: 'early:0',
-          day_label_index: 0,
-          activity_code: 1,
-          activity_name: 'Working',
-          category: 'Work',
-          color: '#3366cc',
-          start_minutes: 540,
-          end_minutes: 720,
-        },
-      ],
-    }),
-    'en'
-  );
-  const rows = model.days[0].rows.filter((row) => row.kind === 'activity');
-  assert.deepEqual(
-    rows.map((row) => row.name),
-    ['Working', 'Reading']
-  );
-  assert.equal(rows[0].color, '#3366cc');
+test('a day exposes its covered stretches for the strip', () => {
+  const model = review(diary(), 'en');
+  assert.deepEqual(model.days[0].runs, [{ start: 480, end: 720 }]);
+  assert.deepEqual(model.days[1].runs, []);
+  // 22:00-01:00 is clipped at midnight; its tail would belong to a fourth day.
+  assert.deepEqual(model.days[2].runs, [{ start: 1320, end: 1440 }]);
 });
 
-test('the empty stretch between two activities is a row of the day', () => {
-  // 09:00-10:00 and 13:00-14:00 leave three hours, which the timeline also draws.
+test('touching and overlapping entries become one stretch', () => {
   const model = review(
     diary({
       activities: [
-        {
-          client_uuid: 'a:0',
-          day_label_index: 0,
-          activity_code: 1,
-          activity_name: 'Working',
-          category: 'Work',
-          color: null,
-          start_minutes: 540,
-          end_minutes: 600,
-        },
-        {
-          client_uuid: 'b:0',
-          day_label_index: 0,
-          activity_code: 2,
-          activity_name: 'Reading',
-          category: 'Leisure',
-          color: null,
-          start_minutes: 780,
-          end_minutes: 840,
-        },
+        entry('a', 0, 540, 600),
+        entry('b', 0, 600, 660),
+        entry('c', 0, 570, 630),
       ],
     }),
     'en'
   );
+  assert.deepEqual(model.days[0].runs, [{ start: 540, end: 660 }]);
+});
 
-  assert.deepEqual(
-    model.days[0].rows.map((row) => [row.kind, row.start, row.end]),
-    [
-      ['activity', 540, 600],
-      ['gap', 600, 780],
-      ['activity', 780, 840],
-    ]
+test('the largest hole includes the empty morning and evening', () => {
+  // One entry 09:00-10:00: the empty evening (14h) beats the empty morning (9h).
+  const model = review(
+    diary({ activities: [entry('a', 0, 540, 600)], minCoverage: 1440 }),
+    'en'
   );
+  assert.deepEqual(model.days[0].largestGap, { start: 600, end: 1440 });
+});
+
+test('the largest hole is the longest one, not the first one', () => {
+  // 00:00-01:00 and 10:00-11:00: holes of 9h and 13h, so the evening wins.
+  const model = review(
+    diary({
+      activities: [entry('a', 0, 0, 60), entry('b', 0, 600, 660)],
+      minCoverage: 1440,
+    }),
+    'en'
+  );
+  assert.deepEqual(model.days[0].largestGap, { start: 660, end: 1440 });
+});
+
+test('a hole shorter than a gap is not pointed at', () => {
+  // Ten minutes left, and the day is still short of its requirement.
+  const model = review(
+    diary({ activities: [entry('a', 0, 0, 1430)], minCoverage: 1440 }),
+    'en'
+  );
+  assert.equal(model.days[0].meets, false);
+  assert.equal(model.days[0].largestGap, null);
+});
+
+test('a complete day and an empty day have no hole to point at', () => {
+  const model = review(diary(), 'en');
+  assert.equal(model.days[0].meets, true);
+  assert.equal(model.days[0].largestGap, null, 'nothing to fix');
+  assert.equal(model.days[1].largestGap, null, 'an empty day says so in words');
 });
 
 test('an entry that ends at midnight does not reach into the next day', () => {
-  const model = review(
-    diary({
-      activities: [
-        {
-          client_uuid: 'evening:0',
-          day_label_index: 0,
-          activity_code: 1,
-          activity_name: 'Reading',
-          category: 'Leisure',
-          color: null,
-          start_minutes: 1320,
-          end_minutes: 1440,
-        },
-      ],
-    }),
-    'en'
-  );
-
-  assert.equal(model.days[0].rows[0].nextDay, false);
-  assert.deepEqual(model.days[1].rows, [], 'nothing of it lands on the next day');
-});
-
-test('an empty day is not a list of gaps, and neither end of a day is one', () => {
-  const model = review(diary(), 'en');
-  assert.deepEqual(
-    model.days[0].rows.map((row) => row.kind),
-    ['activity'],
-    'nothing before 08:00 or after 12:00: those are not gaps between activities'
-  );
-  assert.deepEqual(model.days[1].rows, [], 'an empty day has no gaps either');
+  const model = review(diary({ activities: [entry('a', 0, 1320, 1440)] }), 'en');
+  assert.deepEqual(model.days[0].runs, [{ start: 1320, end: 1440 }]);
+  assert.deepEqual(model.days[1].runs, []);
 });
 
 test('the night before shows up on the day it reaches into', () => {
-  // Day 0 ends at 01:00 the next morning, so day 1 shows the part that lands on it.
-  const model = review(
-    diary({
-      activities: [
-        {
-          client_uuid: 'night:0',
-          day_label_index: 0,
-          activity_code: 1,
-          activity_name: 'Sleeping',
-          category: 'Personal',
-          color: null,
-          start_minutes: 1380,
-          end_minutes: 1500,
-        },
-      ],
-    }),
-    'en'
-  );
-
-  const rows = model.days[1].rows;
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].kind, 'continued');
-  assert.equal(rows[0].name, 'Sleeping');
-  assert.deepEqual([rows[0].start, rows[0].end], [0, 60], 'clipped to this day');
-  assert.equal(rows[0].nextDay, false, 'it ends here, not tomorrow');
+  const model = review(diary({ activities: [entry('a', 0, 1380, 1500)] }), 'en');
+  assert.deepEqual(model.days[1].runs, [{ start: 0, end: 60 }]);
 });
 
-test('the continuation comes first and the gap after it', () => {
-  const model = review(
-    diary({
-      activities: [
-        {
-          client_uuid: 'night:0',
-          day_label_index: 0,
-          activity_code: 1,
-          activity_name: 'Sleeping',
-          category: 'Personal',
-          color: null,
-          start_minutes: 1380,
-          end_minutes: 1500,
-        },
-        {
-          client_uuid: 'noon:1',
-          day_label_index: 1,
-          activity_code: 2,
-          activity_name: 'Working',
-          category: 'Work',
-          color: null,
-          start_minutes: 600,
-          end_minutes: 660,
-        },
-      ],
-    }),
-    'en'
-  );
-
-  assert.deepEqual(
-    model.days[1].rows.map((row) => [row.kind, row.start]),
-    [
-      ['continued', 0],
-      ['gap', 60],
-      ['activity', 600],
-    ]
-  );
-});
-
-test('an activity that runs past midnight is one row, flagged, on its own day', () => {
-  const model = review(diary(), 'en');
-  const rows = model.days[2].rows;
-  assert.equal(rows.length, 1, 'the tail belongs to day 2, it is not a row of its own');
-  assert.equal(rows[0].nextDay, true);
-  assert.equal(rows[0].start, 1320, '22:00 on a midnight day');
-  assert.equal(rows[0].end, 1500, 'past 1440, so the clock wraps to 01:00');
-  assert.deepEqual(model.days[0].rows.map((row) => row.nextDay), [false]);
+test('a shifted day window decides whether a night crosses the boundary', () => {
+  const midnight = review(diary(), 'en');
+  assert.deepEqual(midnight.days[2].runs, [{ start: 1320, end: 1440 }]);
+  const shifted = review(diary({ dayStart: 240 }), 'en');
+  assert.deepEqual(shifted.days[2].runs, [{ start: 1080, end: 1260 }]);
 });
 
 test('minutes still to add never goes negative, and is 0 when complete', () => {
@@ -277,15 +183,6 @@ test('minutes still to add never goes negative, and is 0 when complete', () => {
   assert.equal(model.days[0].minutesToGo, 60, '240 covered of 300 required');
   assert.equal(model.days[1].minutesToGo, 300);
   assert.equal(review(diary(), 'en').days[0].minutesToGo, 0);
-});
-
-test('a shifted day window decides whether a night crosses the boundary', () => {
-  const midnight = review(diary(), 'en').days[2].rows[0];
-  assert.equal(midnight.nextDay, true, '22:00 to 01:00 crosses midnight');
-  const shifted = review(diary({ dayStart: 240 }), 'en').days[2].rows[0];
-  assert.equal(shifted.nextDay, false, 'inside a 04:00 day it is 22:00 to 23:00');
-  assert.equal(shifted.start, 1080);
-  assert.equal(shifted.end, 1260);
 });
 
 test('a day label follows the interface language, with a fallback', () => {
@@ -297,7 +194,8 @@ test('a day label follows the interface language, with a fallback', () => {
 test('an empty study has nothing to submit', () => {
   const model = review({ ...diary({ activities: [] }) }, 'en');
   assert.equal(model.canSubmit, false, 'no days met, so no submission');
-  assert.equal(model.days[0].rows.length, 0);
+  assert.equal(model.days[0].runs.length, 0);
+  assert.equal(model.days[0].largestGap, null);
 });
 
 test('the undo payload rebuilds the row as it was, under a new client id', () => {

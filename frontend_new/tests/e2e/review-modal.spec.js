@@ -32,9 +32,21 @@ test.describe('review modal', () => {
       'Noch nicht alle Tage sind vollständig.'
     );
 
+    // One compact row per day: the day's shape, its state, and the one hole
+    // worth pointing at - not a copy of the timeline.
     const monday = page.locator(`${REVIEW} .t-review__day`).nth(0);
-    await expect(monday.locator('.t-review__time')).toHaveText('00:00 – 10:00');
-    await expect(monday.locator('.t-review__what')).toContainText('Ausruhen');
+    await expect(monday.locator('.t-review__state')).toHaveText('Noch 840 Min. offen');
+    await expect(monday.locator('.t-review__strip .t-coverage__run')).toHaveCount(1);
+    await expect(monday.locator('.t-review__gap')).toHaveText(
+      'Größte Lücke: 10:00 – 00:00'
+    );
+
+    const tuesday = page.locator(`${REVIEW} .t-review__day`).nth(1);
+    await expect(tuesday.locator('.t-review__state')).toHaveText(
+      'Noch nichts eingetragen'
+    );
+    await expect(tuesday.locator('.t-coverage__run')).toHaveCount(0);
+    await expect(tuesday.locator('.t-review__gap')).toHaveCount(0);
 
     // Edit on Wednesday closes the review and makes that day current.
     await page
@@ -83,17 +95,19 @@ test.describe('review modal', () => {
     await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
   });
 
-  test('two days side by side on desktop, one column on a phone', async ({ page }, testInfo) => {
+  test('the week is one column at every width, one strip per day', async ({ page }) => {
     await openDiary(page, 'ready_02', STUDY);
     await page.locator('#submit-btn').click();
     await expect(page.locator(`${REVIEW}[open]`)).toBeVisible();
 
+    // One list, not a spread: a full-width strip per day is what makes the week
+    // scannable, and the old second column was a second copy of the diary.
     const columns = await page
       .locator(`${REVIEW} .t-review`)
       .evaluate((node) => getComputedStyle(node).gridTemplateColumns.split(' ').length);
-    // Consecutive days pair up (day 1 left, day 2 right), so the nth day is where
-    // the eye expects it: the same reading order the DOM has.
-    expect(columns).toBe(isPhone(testInfo) ? 1 : 2);
+    expect(columns).toBe(1);
+    await expect(page.locator(`${REVIEW} .t-review__day`)).toHaveCount(7);
+    await expect(page.locator(`${REVIEW} .t-review__strip`)).toHaveCount(7);
   });
 
   test('a complete week is announced on the diary and turns the top bar black', async ({

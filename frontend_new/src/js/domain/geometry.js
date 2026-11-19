@@ -207,6 +207,29 @@ export function gapsForDay(segments, options = {}) {
 }
 
 /**
+ * The stretches of one day with nothing recorded, from the start of the day to
+ * its end. Unlike `gapsForDay`, an empty morning or evening counts: when the
+ * question is "what should I fill next?", a hole at the edge of the day is the
+ * same kind of hole as one between two entries.
+ *
+ * @param {Interval[]} intervals Covered stretches (any object with start/end).
+ * @returns {Interval[]} Disjoint, in time order; empty when the day is covered.
+ */
+export function uncoveredIntervals(intervals) {
+  const covered = mergeIntervals(intervals);
+
+  /** @type {Interval[]} */
+  const uncovered = [];
+  let cursor = 0;
+  for (const interval of covered) {
+    if (interval.start > cursor) uncovered.push({ start: cursor, end: interval.start });
+    cursor = Math.max(cursor, interval.end);
+  }
+  if (cursor < MINUTES_PER_DAY) uncovered.push({ start: cursor, end: MINUTES_PER_DAY });
+  return uncovered;
+}
+
+/**
  * Everything the timeline renderer needs for one day, in one call.
  *
  * @param {TimedRecord[]} records
