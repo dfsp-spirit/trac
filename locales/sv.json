@@ -361,9 +361,7 @@
       "nothingToCopy": "Det finns inget att kopiera än.",
       "chipFilled": "har poster",
       "chipSource": "källdag",
-      "shortcuts": "Snabbval",
-      "workdays": "Alla arbetsdagar",
-      "weekend": "Helg"
+      "shortcuts": "Snabbval"
     },
     "panel": {
       "chooseActivity": "Välj en aktivitet",

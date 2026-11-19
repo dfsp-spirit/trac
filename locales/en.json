@@ -361,9 +361,7 @@
       "nothingToCopy": "There is nothing to copy yet.",
       "chipFilled": "has entries",
       "chipSource": "source day",
-      "shortcuts": "Shortcuts",
-      "workdays": "All work days",
-      "weekend": "Weekend"
+      "shortcuts": "Shortcuts"
     },
     "panel": {
       "chooseActivity": "Choose an activity",
