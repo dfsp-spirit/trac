@@ -41,19 +41,25 @@ test.describe('review modal', () => {
       'Größte Lücke: 10:00 – 00:00'
     );
 
+    // Tuesday is the fixture's second ten-hour day, and Wednesday is empty -
+    // one row of each so the two states are covered by what the fixture says,
+    // not by what a previous fixture used to say.
     const tuesday = page.locator(`${REVIEW} .t-review__day`).nth(1);
-    await expect(tuesday.locator('.t-review__state')).toHaveText(
+    await expect(tuesday.locator('.t-review__state')).toHaveText('Noch 840 Min. offen');
+    await expect(tuesday.locator('.t-daystrip__seg')).toHaveCount(1);
+    await expect(tuesday.locator('.t-review__gap')).toHaveText(
+      'Größte Lücke: 10:00 – 00:00'
+    );
+
+    const wednesday = page.locator(`${REVIEW} .t-review__day`).nth(2);
+    await expect(wednesday.locator('.t-review__state')).toHaveText(
       'Noch nichts eingetragen'
     );
-    await expect(tuesday.locator('.t-daystrip__seg')).toHaveCount(0);
-    await expect(tuesday.locator('.t-review__gap')).toHaveCount(0);
+    await expect(wednesday.locator('.t-daystrip__seg')).toHaveCount(0);
+    await expect(wednesday.locator('.t-review__gap')).toHaveCount(0);
 
     // Edit on Wednesday closes the review and makes that day current.
-    await page
-      .locator(`${REVIEW} .t-review__day`)
-      .nth(2)
-      .locator('.t-review__edit')
-      .click();
+    await wednesday.locator('.t-review__edit').click();
     await expect(page.locator(`${REVIEW}[open]`)).toHaveCount(0);
     await expect(page.locator('.t-rail__row[data-day-index="2"]')).toHaveAttribute(
       'aria-current',
