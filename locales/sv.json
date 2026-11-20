@@ -328,6 +328,11 @@
       "taskLockedDiary": "Tillgänglig när din dagbok har skickats in.",
       "taskContinue": "Fortsätt"
     },
+    "entry": {
+      "title": "Tillgängliga studier",
+      "lead": "Välj en studie för att delta.",
+      "listLabel": "Studier"
+    },
     "progress": {
       "summary": "{{done}} av {{total}} dagar klara"
     },
