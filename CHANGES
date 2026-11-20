@@ -1,8 +1,8 @@
 TRAC MPIAE Changes
 ===================
 
-Current WIP
-------------
+Version 0.27.0 -- Further improve new frontend
+-----------------------------------------------
 - NEW: copy-dialog shortcuts select the target days in one click. The groups are study configuration (`day_groups` in studies_config.json, each with localized names and the days it contains), so a study can offer "Alle Werktage"/"Wochenende" or a school week instead of the app guessing from weekday names; the section is absent when a study defines none
 - NEW: review page is now a compact week overview: one row per day with its state, the day's entries as the coloured one-row-per-lane strip from the add-activity form (so it also shows where the time went), and the largest remaining hole; the per-activity list and the desktop second column are gone
 - NEW: day rail on desktop draws the covered stretches of each day where they sit (grey = uncovered) instead of one percent bar whose width could disagree with the "complete"/"X min to go" text
