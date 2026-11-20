@@ -166,6 +166,10 @@ The frontend selects the display language in this order:
 2. The participant's browser language (if supported by the study).
 3. The study's `default_language`.
 
+So `default_language` is a fallback, not a forced override: once a language is in
+`supported_languages`, participants whose browser is set to it see the study in
+that language. Add `lang=de` to an invitation link to open it in a fixed language.
+
 Activity lists can also be language-specific via `activities_json_files`.
 
 ### Importing Your Configuration on the command line (server admin only)
