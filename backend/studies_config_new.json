@@ -3,7 +3,10 @@
     {
       "name": "Pilotstudie Erwachsene Deutsch MPIAE Offen",
       "name_short": "pilot_mpiae_01_open",
-      "description": { "de": "Pilotstudie TimeUse für Erwachsene am MPIAE, offen" },
+      "description": {
+        "de": "Pilotstudie TimeUse für Erwachsene am MPIAE, offen",
+        "sv": "Pilotstudie TimeUse för vuxna vid MPIAE, öppen"
+      },
       "allow_skip_timeuse": false,
       "save_browser_identification": true,
       "save_ux_events": true,
@@ -13,49 +16,56 @@
           "name": "monday",
           "display_order": 0,
           "display_names": {
-            "de": "Montag"
+            "de": "Montag",
+            "sv": "Måndag"
           }
         },
         {
           "name": "tuesday",
           "display_order": 1,
           "display_names": {
-            "de": "Dienstag"
+            "de": "Dienstag",
+            "sv": "Tisdag"
           }
         },
         {
           "name": "wednesday",
           "display_order": 2,
           "display_names": {
-            "de": "Mittwoch"
+            "de": "Mittwoch",
+            "sv": "Onsdag"
           }
         },
         {
           "name": "thursday",
           "display_order": 3,
           "display_names": {
-            "de": "Donnerstag"
+            "de": "Donnerstag",
+            "sv": "Torsdag"
           }
         },
         {
           "name": "friday",
           "display_order": 4,
           "display_names": {
-            "de": "Freitag"
+            "de": "Freitag",
+            "sv": "Fredag"
           }
         },
         {
           "name": "saturday",
           "display_order": 5,
           "display_names": {
-            "de": "Samstag"
+            "de": "Samstag",
+            "sv": "Lördag"
           }
         },
         {
           "name": "sunday",
           "display_order": 6,
           "display_names": {
-            "de": "Sonntag"
+            "de": "Sonntag",
+            "sv": "Söndag"
           }
         }
       ],
@@ -72,32 +82,40 @@
         }
       ],
       "study_text_instructions_title": {
-        "de": "Willkommen zu Ihrem 1-wöchigen Zeit-Tagebuch. Vielen Dank für Ihre Teilnahme!"
+        "de": "Willkommen zu Ihrem 1-wöchigen Zeit-Tagebuch. Vielen Dank für Ihre Teilnahme!",
+        "sv": "Välkommen till din tidsdagbok för 1 vecka. Tack för ditt deltagande!"
       },
       "study_text_instructions": {
-        "de": "In dieser Studie möchten wir verstehen, wie Sie Ihre Zeit im Laufe des Tages verbringen – wir sind besonders an Ihrer Freizeit interessiert.\n\nBitte tragen Sie für jeden Tag der letzten Woche (von Montag bis Sonntag) ein, welche Aktivitäten Sie wann ausgeübt haben (z. B. Schlafen, Arbeiten, Essen, Sport oder Freizeitaktivitäten).\n\n#### So füllen Sie das Tagebuch aus\n\n1. Beim Eintragen einer neuen Aktivität können Sie diese direkt für mehrere Tage anlegen.\n\n2. Sie können eingetragene Aktivitäten problemlos im Nachhinein ändern.\n\n3. Bevor Sie die Daten abschicken, habe Sie die Möglichkeit, die Daten noch einmal in einer Übersicht zu prüfen.\n\n4. Bitte versuchen Sie, Ihren Tag möglichst lückenlos abzubilden, sodass alle Zeiten des Tages einer Aktivität zugeordnet sind."
+        "de": "In dieser Studie möchten wir verstehen, wie Sie Ihre Zeit im Laufe des Tages verbringen – wir sind besonders an Ihrer Freizeit interessiert.\n\nBitte tragen Sie für jeden Tag der letzten Woche (von Montag bis Sonntag) ein, welche Aktivitäten Sie wann ausgeübt haben (z. B. Schlafen, Arbeiten, Essen, Sport oder Freizeitaktivitäten).\n\n#### So füllen Sie das Tagebuch aus\n\n1. Beim Eintragen einer neuen Aktivität können Sie diese direkt für mehrere Tage anlegen.\n\n2. Sie können eingetragene Aktivitäten problemlos im Nachhinein ändern.\n\n3. Bevor Sie die Daten abschicken, habe Sie die Möglichkeit, die Daten noch einmal in einer Übersicht zu prüfen.\n\n4. Bitte versuchen Sie, Ihren Tag möglichst lückenlos abzubilden, sodass alle Zeiten des Tages einer Aktivität zugeordnet sind.",
+        "sv": "I den här studien vill vi förstå hur du tillbringar din tid under dagen – vi är särskilt intresserade av din fritid.\n\nAnge för varje dag den senaste veckan (från måndag till söndag) vilka aktiviteter du utförde och när (t.ex. sova, arbeta, äta, motionera eller fritidsaktiviteter).\n\n#### Så här fyller du i dagboken\n\n1. När du registrerar en ny aktivitet kan du skapa den direkt för flera dagar.\n\n2. Du kan enkelt ändra registrerade aktiviteter i efterhand.\n\n3. Innan du skickar in uppgifterna har du möjlighet att granska dem i en översikt.\n\n4. Försök att återge din dag så heltäckande som möjligt, så att alla tider under dagen kopplas till en aktivitet."
       },
       "study_text_end_completed": {
-        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen."
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
+        "sv": "Tack för att du fyllde i den här studien. Ditt bidrag kommer att bli värdefullt för forskningen."
       },
       "study_text_end_skipped": {
-        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!"
+        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
+        "sv": "Du har hoppat över att fylla i den del av studien som handlar om tidsanvändning. Om du har angett något försöker vi använda det. Tack!"
       },
       "require_consent": true,
       "study_text_consent": {
-        "de": "# Time-Use und Wohlbefinden\n\nVielen Dank für Ihr Interesse an unserer Studie. Bitte lesen Sie sich den folgenden Text aufmerksam und in Ruhe durch. Abschließend können Sie bestätigen, dass Sie die Informationen zur Kenntnis genommen haben und bereit sind, an der Studie teilzunehmen.\n\nBei dieser Studie handelt es sich um ein Forschungsvorhaben des Max-Planck-Instituts für Empirische Ästhetik. Ziel der Studie ist es zu untersuchen, wie Sie in der vergangenen Woche Ihre Zeit verbracht haben und ob dies möglicherweise im Zusammenhang mit Ihrem allgemeinen Wohlbefinden steht.\n\nIhre Teilnahme an der Studie ist anonym. Die im Rahmen der Studie erhobenen Daten werden so verarbeitet, dass keine Rückschlüsse auf Ihre Person möglich sind.\n\n## Ablauf\n\nZunächst bitten wir Sie, ein sogenanntes „Time-Use Diary“ auszufüllen. Insgesamt beträgt der Zeitaufwand etwa 20–40 Minuten. Eine Vergütung erfolgt nicht.\n\n## Datenschutz und Freiwilligkeit\n\nDie Teilnahme an dieser Studie ist freiwillig. Sie können die Umfrage jederzeit abbrechen, ohne dass Ihnen daraus Nachteile entstehen.\n\nIhre Daten werden ausschließlich am Max-Planck-Institut für Empirische Ästhetik gespeichert, nur von einem klar definierten Kreis von Mitarbeitenden zu wissenschaftlichen Zwecken ausgewertet und in anonymisierter Form publiziert. Die erhobenen Daten werden für die Dauer des Forschungsvorhabens gespeichert und anschließend gelöscht. Der genaue Zeitpunkt der Löschung richtet sich nach den wissenschaftlichen und rechtlichen Anforderungen des Projekts und wird nach Abschluss der Datenauswertung bzw. Veröffentlichung der Forschungsergebnisse festgelegt.\n\nUm das Tagebuch zu verbessern, zeichnet die App anonyme Nutzungssignale auf (zum Beispiel, welche Validierungsmeldung erschienen ist oder dass eine Suche nichts gefunden hat). Diese Signale sind nicht mit deinen Antworten verknüpft.\n\nUm das Tagebuch zu verbessern und Probleme mit bestimmten Browsern und Browser-Versionen zu identifizieren, speichern wir den Browser-Namen und die Version.\n\nBei Fragen zur Studie oder zum Datenschutz können Sie sich an folgende Ansprechpartnerinnen wenden:\n\n**Person A**\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonA@ae.mpg.de\n\n**Person B **\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonB@ae.mpg.de\n\n**Person C**\nHofgartenstraße 8\n80539 München\nemail@mpg.de\n\n## Einwilligungserklärung\n\n- Ich habe die Studieninformationen gelesen, verstanden und hatte die Gelegenheit, offene Fragen zu klären.\n- Ich nehme freiwillig an dieser Studie teil.\n- Ich willige in die Erhebung, Verarbeitung, wissenschaftliche Auswertung und Veröffentlichung meiner Daten durch das Max-Planck-Institut für Empirische Ästhetik ein."
+        "de": "# Time-Use und Wohlbefinden\n\nVielen Dank für Ihr Interesse an unserer Studie. Bitte lesen Sie sich den folgenden Text aufmerksam und in Ruhe durch. Abschließend können Sie bestätigen, dass Sie die Informationen zur Kenntnis genommen haben und bereit sind, an der Studie teilzunehmen.\n\nBei dieser Studie handelt es sich um ein Forschungsvorhaben des Max-Planck-Instituts für Empirische Ästhetik. Ziel der Studie ist es zu untersuchen, wie Sie in der vergangenen Woche Ihre Zeit verbracht haben und ob dies möglicherweise im Zusammenhang mit Ihrem allgemeinen Wohlbefinden steht.\n\nIhre Teilnahme an der Studie ist anonym. Die im Rahmen der Studie erhobenen Daten werden so verarbeitet, dass keine Rückschlüsse auf Ihre Person möglich sind.\n\n## Ablauf\n\nZunächst bitten wir Sie, ein sogenanntes „Time-Use Diary“ auszufüllen. Insgesamt beträgt der Zeitaufwand etwa 20–40 Minuten. Eine Vergütung erfolgt nicht.\n\n## Datenschutz und Freiwilligkeit\n\nDie Teilnahme an dieser Studie ist freiwillig. Sie können die Umfrage jederzeit abbrechen, ohne dass Ihnen daraus Nachteile entstehen.\n\nIhre Daten werden ausschließlich am Max-Planck-Institut für Empirische Ästhetik gespeichert, nur von einem klar definierten Kreis von Mitarbeitenden zu wissenschaftlichen Zwecken ausgewertet und in anonymisierter Form publiziert. Die erhobenen Daten werden für die Dauer des Forschungsvorhabens gespeichert und anschließend gelöscht. Der genaue Zeitpunkt der Löschung richtet sich nach den wissenschaftlichen und rechtlichen Anforderungen des Projekts und wird nach Abschluss der Datenauswertung bzw. Veröffentlichung der Forschungsergebnisse festgelegt.\n\nUm das Tagebuch zu verbessern, zeichnet die App anonyme Nutzungssignale auf (zum Beispiel, welche Validierungsmeldung erschienen ist oder dass eine Suche nichts gefunden hat). Diese Signale sind nicht mit deinen Antworten verknüpft.\n\nUm das Tagebuch zu verbessern und Probleme mit bestimmten Browsern und Browser-Versionen zu identifizieren, speichern wir den Browser-Namen und die Version.\n\nBei Fragen zur Studie oder zum Datenschutz können Sie sich an folgende Ansprechpartnerinnen wenden:\n\n**Person A**\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonA@ae.mpg.de\n\n**Person B **\nMax-Planck-Institut für empirische Ästhetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonB@ae.mpg.de\n\n**Person C**\nHofgartenstraße 8\n80539 München\nemail@mpg.de\n\n## Einwilligungserklärung\n\n- Ich habe die Studieninformationen gelesen, verstanden und hatte die Gelegenheit, offene Fragen zu klären.\n- Ich nehme freiwillig an dieser Studie teil.\n- Ich willige in die Erhebung, Verarbeitung, wissenschaftliche Auswertung und Veröffentlichung meiner Daten durch das Max-Planck-Institut für Empirische Ästhetik ein.",
+        "sv": "# Tidsanvändning och välbefinnande\n\nTack för ditt intresse för vår studie. Läs igenom följande text noggrant och i lugn och ro. Avslutningsvis kan du bekräfta att du har tagit del av informationen och att du är beredd att delta i studien.\n\nDen här studien är ett forskningsprojekt vid Max-Planck-institutet för empirisk estetik. Syftet med studien är att undersöka hur du använde din tid under den senaste veckan och om det eventuellt har ett samband med ditt allmänna välbefinnande.\n\nDitt deltagande i studien är anonymt. De uppgifter som samlas in inom ramen för studien behandlas så att det inte går att dra slutsatser om din person.\n\n## Förlopp\n\nFörst ber vi dig fylla i en så kallad ”time-use diary” (tidsdagbok). Den totala tidsåtgången är cirka 20–40 minuter. Ingen ersättning utgår.\n\n## Dataskydd och frivillighet\n\nDeltagandet i den här studien är frivilligt. Du kan när som helst avbryta enkäten utan att det medför några nackdelar för dig.\n\nDina uppgifter lagras uteslutande vid Max-Planck-institutet för empirisk estetik, utvärderas endast av en tydligt avgränsad krets medarbetare i vetenskapligt syfte och publiceras i anonymiserad form. De insamlade uppgifterna lagras under forskningsprojektets löptid och raderas därefter. Den exakta tidpunkten för raderingen styrs av projektets vetenskapliga och rättsliga krav och fastställs när dataanalysen har avslutats respektive forskningsresultaten har publicerats.\n\nFör att förbättra dagboken registrerar appen anonyma användningssignaler (till exempel vilket valideringsmeddelande som visades eller att en sökning inte gav några träffar). Dessa signaler är inte kopplade till dina svar.\n\nFör att förbättra dagboken och identifiera problem med vissa webbläsare och webbläsarversioner sparar vi webbläsarens namn och version.\n\nOm du har frågor om studien eller om dataskydd kan du vända dig till följande kontaktpersoner:\n\n**Person A**\nMax-Planck-institutet för empirisk estetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonA@ae.mpg.de\n\n**Person B **\nMax-Planck-institutet för empirisk estetik\nGrüneburgweg 14\n60322 Frankfurt am Main\npersonB@ae.mpg.de\n\n**Person C**\nHofgartenstraße 8\n80539 München\nemail@mpg.de\n\n## Samtyckesförklaring\n\n- Jag har läst och förstått studieinformationen och har haft möjlighet att ställa frågor och få dem besvarade.\n- Jag deltar frivilligt i den här studien.\n- Jag samtycker till att Max-Planck-institutet för empirisk estetik samlar in, behandlar, vetenskapligt utvärderar och publicerar mina uppgifter."
       },
       "study_text_end_noconsent": {
-        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet."
+        "de": "Sie haben keine Einwilligung gegeben und Ihre Daten werden in dieser Studie nicht verwendet.",
+        "sv": "Du har inte gett ditt samtycke och dina uppgifter kommer inte att användas i den här studien."
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
       "default_language": "de",
       "supported_languages": [
-        "de"
+        "de",
+        "sv"
       ],
       "activities_json_files": {
-        "de": "activities_newui_main.json"
+        "de": "activities_newui_main.json",
+        "sv": "activities_newui_main_sv.json"
       },
       "data_collection_start": "2026-06-18T00:00:00Z",
       "data_collection_end": "2027-08-01T23:59:59Z",
@@ -105,7 +123,8 @@
       "inactivity_timeout_minutes": 20,
       "inactivity_timeout_stress_time_left": 5,
       "inactivity_page_custom_text": {
-        "de": "Ihre Sitzung wurde beendet, weil Sie zu lange inaktiv waren. Bitte nutzen Sie Ihren Einladungslink erneut, um mit der Eingabe fortzufahren."
+        "de": "Ihre Sitzung wurde beendet, weil Sie zu lange inaktiv waren. Bitte nutzen Sie Ihren Einladungslink erneut, um mit der Eingabe fortzufahren.",
+        "sv": "Din session har avslutats eftersom du var inaktiv för länge. Använd din inbjudningslänk igen för att fortsätta."
        }
     },
     {

@@ -60,6 +60,13 @@
                   "code": 1124,
                   "label": "gymnasium",
                   "color": "#FFA07A"
+                },
+                {
+                  "name": "Andere Schule",
+                  "examples": "Grundschule, Berufsschule, etc.",
+                  "code": 1125,
+                  "label": "andere schule",
+                  "color": "#FFA03C"
                 }
               ]
             },
