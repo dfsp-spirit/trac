@@ -1,0 +1,485 @@
+{
+  "general": {
+    "language": "en"
+  },
+  "timeline": {
+    "primary": {
+      "name": "Main activity",
+      "description": "Please fill in the entire timeline.",
+      "mode": "single-choice",
+      "min_coverage": 1440,
+      "categories": [
+        {
+          "name": "1. General activities & daily life",
+          "activities": [
+            {
+              "name": "Sleeping",
+              "code": 1101,
+              "label": "Sleeping",
+              "color": "#A8D8EA",
+              "childItems": []
+            },
+            {
+              "name": "Resting",
+              "examples": "Lunch break, relaxation periods",
+              "code": 1102,
+              "label": "Resting",
+              "color": "#B0E0E6",
+              "childItems": []
+            },
+            {
+              "name": "Activities of daily living",
+              "examples": "Eating, cooking, housework, caring for yourself and others",
+              "code": 1104,
+              "label": "Activities of daily living",
+              "color": "#87CEEB",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "2. Work & study",
+          "activities": [
+            {
+              "name": "Paid work",
+              "examples": "Please state the activity.",
+              "code": 1120,
+              "label": "paid work",
+              "color": "#FFB6C1",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "School",
+              "code": 1121,
+              "label": "school",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "Upper secondary school / grammar school",
+                  "code": 1124,
+                  "label": "upper secondary school",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Other school",
+                  "examples": "Primary school, vocational school, etc.",
+                  "code": 1125,
+                  "label": "other school",
+                  "color": "#FFA03C"
+                }
+              ]
+            },
+            {
+              "name": "University",
+              "code": 1127,
+              "label": "university",
+              "color": "#FFA07A",
+              "childItems": [
+                {
+                  "name": "Bachelor",
+                  "code": 1128,
+                  "label": "bachelor",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "Master",
+                  "code": 1129,
+                  "label": "master",
+                  "color": "#FFA07A"
+                },
+                {
+                  "name": "PhD",
+                  "code": 1130,
+                  "label": "phd",
+                  "color": "#FFA07A"
+                }
+              ]
+            },
+            {
+              "name": "Other courses/training",
+              "examples": "Please state the course or training.",
+              "code": 1131,
+              "label": "other courses training",
+              "color": "#FFA07A",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "3. Travel & transport",
+          "activities": [
+            {
+              "name": "On the move (transit)",
+              "code": 1110,
+              "label": "on the move",
+              "color": "#98FB98",
+              "childItems": [
+                {
+                  "name": "Walking",
+                  "code": 1111,
+                  "label": "walking",
+                  "color": "#98FB98"
+                },
+                {
+                  "name": "Cycling",
+                  "code": 1112,
+                  "label": "cycling",
+                  "color": "#90EE90"
+                },
+                {
+                  "name": "Running",
+                  "code": 1113,
+                  "label": "running",
+                  "color": "#9ACD32"
+                },
+                {
+                  "name": "Motorised (e.g. public transport, car)",
+                  "code": 1114,
+                  "label": "motorised",
+                  "color": "#7CFC00"
+                },
+                {
+                  "name": "Other",
+                  "code": 1116,
+                  "label": "other travel",
+                  "color": "#00FA9A",
+                  "is_custom_input": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "4. Sport & physical activity",
+          "activities": [
+            {
+              "name": "Sport & exercise (outside home)",
+              "code": 1166,
+              "label": "sport outside home",
+              "color": "#9370DB",
+              "childItems": [
+                {
+                  "name": "Walking: outdoors alone",
+                  "code": 1168,
+                  "label": "walking outdoors alone",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Walking: outdoors with others",
+                  "code": 1169,
+                  "label": "walking outdoors with others",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Running: outdoors alone",
+                  "code": 1171,
+                  "label": "running outdoors alone",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Running: outdoors with others",
+                  "code": 1172,
+                  "label": "running outdoors with others",
+                  "color": "#9370DB"
+                },
+                {
+                  "name": "Indoor sport (e.g. swimming, classes)",
+                  "code": 1173,
+                  "label": "indoor sport",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Outdoor sport (e.g. cycling, team sports)",
+                  "code": 1174,
+                  "label": "outdoor sport",
+                  "color": "#9370DB",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Sport & exercise (at home)",
+              "code": 1175,
+              "label": "sport at home",
+              "color": "#8A2BE2",
+              "childItems": [],
+              "is_custom_input": true
+            }
+          ]
+        },
+        {
+          "name": "5. Social, leisure, hobbies (non-digital)",
+          "activities": [
+            {
+              "name": "Activities (at home)",
+              "code": 1140,
+              "label": "activities at home",
+              "color": "#DDA0DD",
+              "childItems": [
+                {
+                  "name": "At home: social contact (meeting family/friends)",
+                  "code": 1141,
+                  "label": "social contact at home",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "At home: religious/spiritual practice, meditation",
+                  "code": 1142,
+                  "label": "religion meditation at home",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "At home: reading",
+                  "code": 1143,
+                  "label": "reading at home",
+                  "color": "#DDA0DD"
+                },
+                {
+                  "name": "At home: leisure / hobby (please state)",
+                  "code": 1144,
+                  "label": "hobby at home",
+                  "color": "#DDA0DD",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Every two weeks"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monthly"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Yearly"
+                    }
+                  ]
+                },
+                {
+                  "name": "At home: other (please state)",
+                  "code": 1145,
+                  "label": "other at home",
+                  "color": "#DDA0DD",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Activities (outside home)",
+              "code": 1160,
+              "label": "activities outside home",
+              "color": "#DA70D6",
+              "childItems": [
+                {
+                  "name": "Outside home: social contact (meeting family/friends)",
+                  "code": 1161,
+                  "label": "social contact outside home",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Outside home: religious/spiritual practice, meditation",
+                  "code": 1162,
+                  "label": "religion meditation outside home",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Outside home: reading",
+                  "code": 1163,
+                  "label": "reading outside home",
+                  "color": "#DA70D6"
+                },
+                {
+                  "name": "Outside home: leisure / hobby (please state)",
+                  "code": 1164,
+                  "label": "hobby outside home",
+                  "color": "#DA70D6",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Every two weeks"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monthly"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Yearly"
+                    }
+                  ]
+                },
+                {
+                  "name": "Outside home: cultural activity / event (cinema, theatre, concert, etc.)",
+                  "code": 1165,
+                  "label": "culture event",
+                  "color": "#DA70D6",
+                  "is_custom_input": true,
+                  "frequency_options": [
+                    {
+                      "key": "bi-weekly",
+                      "label": "Every two weeks"
+                    },
+                    {
+                      "key": "monthly",
+                      "label": "Monthly"
+                    },
+                    {
+                      "key": "yearly",
+                      "label": "Yearly"
+                    }
+                  ]
+                },
+                {
+                  "name": "Outside home: other (please state)",
+                  "code": 1176,
+                  "label": "other outside home",
+                  "color": "#DA70D6",
+                  "is_custom_input": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "6. Digital media",
+          "activities": [
+            {
+              "name": "Video streaming (TV shows, YouTube)",
+              "code": 1200,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Social contact (phone, Zoom, FaceTime)",
+              "code": 1201,
+              "color": "#FFE4B5",
+              "childItems": [],
+              "is_custom_input": true
+            },
+            {
+              "name": "Social media",
+              "code": 1210,
+              "color": "#FFD700",
+              "childItems": [
+                {
+                  "name": "Scrolling / consuming content",
+                  "code": 1211,
+                  "label": "Scrolling / consuming content",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Building networks / interacting",
+                  "code": 1212,
+                  "label": "Building networks / interacting",
+                  "color": "#FFD700"
+                },
+                {
+                  "name": "Messenger / chatting",
+                  "code": 1213,
+                  "label": "Messenger / chatting",
+                  "color": "#FFD700"
+                }
+              ]
+            },
+            {
+              "name": "Gaming",
+              "code": 1220,
+              "color": "#FFA500",
+              "childItems": [
+                {
+                  "name": "Console, alone",
+                  "code": 1221,
+                  "label": "Console game, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Console, with others",
+                  "code": 1222,
+                  "label": "Console game, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer game, alone",
+                  "code": 1223,
+                  "label": "Computer game, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Computer game, with others",
+                  "code": 1224,
+                  "label": "Computer game, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile game, alone",
+                  "code": 1225,
+                  "label": "Mobile game, alone",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                },
+                {
+                  "name": "Mobile game, with others",
+                  "code": 1226,
+                  "label": "Mobile game, with others",
+                  "color": "#FFA500",
+                  "is_custom_input": true
+                }
+              ]
+            },
+            {
+              "name": "Listening to audio (music, podcasts, audiobooks)",
+              "code": 1230,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Online learning (e.g. Duolingo, online courses)",
+              "code": 1233,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Reading digitally (news, e-books, articles)",
+              "code": 1231,
+              "color": "#FFE4B5",
+              "childItems": []
+            },
+            {
+              "name": "Web browsing / life admin",
+              "code": 1232,
+              "color": "#FFE4B5",
+              "childItems": []
+            }
+          ]
+        },
+        {
+          "name": "7. Other",
+          "color": "#C0C0C0",
+          "activities": [
+            {
+              "name": "Other activity (please state)",
+              "code": 1248,
+              "color": "#C0C0C0",
+              "is_custom_input": true,
+              "childItems": []
+            },
+            {
+              "name": "Forgotten / not specified",
+              "code": 1249,
+              "color": "#C0C0C0",
+              "childItems": []
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
