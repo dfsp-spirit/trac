@@ -108,6 +108,7 @@
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
+      "is_listed_publicly": true,
       "default_language": "de",
       "supported_languages": [
         "de",

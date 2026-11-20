@@ -329,6 +329,30 @@ def _validate_hmac_secret_reference(
         )
 
 
+def validate_public_listing(
+    *,
+    study_name_short: str,
+    is_listed_publicly: bool,
+    allow_unlisted_participants: bool,
+) -> None:
+    """Refuse a public listing for a study nobody can join without an invitation.
+
+    An invitation-only study has no way in from the public list, so honouring the
+    flag would produce a listing whose links all fail. Saying so is cheaper for
+    the study author than silently ignoring the flag, and it keeps "listed" a
+    statement about the study rather than a wish.
+    """
+    if not is_listed_publicly:
+        return
+    if allow_unlisted_participants:
+        return
+    raise ValueError(
+        f"Study '{study_name_short}': is_listed_publicly requires an open study "
+        "(allow_unlisted_participants: true). An invitation-only study cannot be "
+        "joined from the public study list, so it must not be listed there."
+    )
+
+
 def validate_external_tasks_for_study(
     *,
     study_name_short: str,
@@ -546,6 +570,11 @@ class CfgFileStudy(BaseModel):
     # lives in the repository. The id list above stays the identity.
     participant_display_names: Dict[str, str] = Field(default_factory=dict)
     allow_unlisted_participants: bool = True
+    # Opt-in: show the study on the entry page's public list, which is what a
+    # visitor without an invitation link sees. Only an open study can be joined
+    # there, so listing an invitation-only study is refused (see
+    # validate_public_listing).
+    is_listed_publicly: bool = False
     default_language: str = "en"  # default to English if not given
     supported_languages: Optional[List[str]] = None
     activities_json_file: Optional[Union[str, Dict[str, str]]] = None
@@ -1016,6 +1045,15 @@ class CfgFileStudy(BaseModel):
                 f"got {type(self.description).__name__}."
             )
 
+        return self
+
+    @model_validator(mode="after")
+    def validate_public_listing_config(self) -> "CfgFileStudy":
+        validate_public_listing(
+            study_name_short=self.name_short,
+            is_listed_publicly=self.is_listed_publicly,
+            allow_unlisted_participants=self.allow_unlisted_participants,
+        )
         return self
 
     @model_validator(mode="after")

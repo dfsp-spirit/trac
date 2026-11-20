@@ -234,6 +234,51 @@ def test_load_studies_config_accepts_save_browser_identification_opt_in(tmp_path
     assert config.studies[0].save_browser_identification is True
 
 
+def test_load_studies_config_is_listed_publicly_defaults_false(tmp_path):
+    """The public study list is opt-in: a config that says nothing stays unlisted."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].is_listed_publicly is False
+
+
+def test_load_studies_config_accepts_is_listed_publicly_for_an_open_study(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = True
+    payload["studies"][0]["is_listed_publicly"] = True
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].is_listed_publicly is True
+
+
+def test_load_studies_config_rejects_is_listed_publicly_for_a_closed_study(tmp_path):
+    """A closed study cannot be joined from the public list, so listing it is an error.
+
+    Silently ignoring the flag would leave a config that says "listed" next to a
+    study that never appears, which is exactly the confusion the error prevents.
+    """
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["allow_unlisted_participants"] = False
+    payload["studies"][0]["is_listed_publicly"] = True
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="is_listed_publicly requires an open study"):
+        load_studies_config(str(config_file))
+
+
 def _external_task_payload_open_pool(
     task_key: str,
     *,

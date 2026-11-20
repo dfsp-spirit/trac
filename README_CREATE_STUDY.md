@@ -129,6 +129,12 @@ authoring metadata and says nothing about the schema.
   participants whose IDs appear in `study_participant_ids` can access the
   study. Great to limit access to a set of participants with specific requirements on demographics, that you recruited/ filtered in an exernal tool.
 
+Being open does not put a study on the entry page. The participant frontend
+(`frontend_new/`) shows a list of studies to visitors who arrive without a study
+in the URL; that list contains only studies that opt in with
+`is_listed_publicly: true` (default `false`). Listing an invite-only study is
+rejected at import time, because nobody could join it from there.
+
 ### Languages and Internationalization
 
 Each study defines a `default_language` (a 2-letter ISO 639-1 code like `"en"`,
@@ -255,6 +261,7 @@ defines a single study.
 |---|---|---|---|
 | `study_participant_ids` | `[string]` | No | List of pre-assigned participant IDs (for invite-only studies). Default: `[]`. |
 | `allow_unlisted_participants` | boolean | No | If `true`, open study — any visitor can participate. If `false`, only IDs in `study_participant_ids` are allowed. Required to be `false` when using `external_tasks`. Default: `true`. |
+| `is_listed_publicly` | boolean | No | If `true`, the study appears on the entry page's study list, which visitors see when they open the diary without a study link. Only applies to open studies (`allow_unlisted_participants: true`) — listing an invite-only study is rejected. Only running, unpaused studies are listed. Default: `false`. |
 | `participant_display_names` | `{pid: name}` | No | Optional label per pre-defined participant, shown to the participant and available in study texts as `{display_name}`. Only for closed studies; every key must appear in `study_participant_ids`. See below. |
 
 ##### Participant display names in the config file
@@ -921,6 +928,7 @@ window.
       },
       "study_participant_ids": [],
       "allow_unlisted_participants": true,
+      "is_listed_publicly": true,
       "default_language": "sv",
       "supported_languages": ["en", "sv", "de"],
       "activities_json_files": {

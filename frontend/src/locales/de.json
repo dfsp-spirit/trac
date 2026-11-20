@@ -328,6 +328,11 @@
       "taskLockedDiary": "Verfügbar, sobald Ihr Tagebuch abgeschickt ist.",
       "taskContinue": "Weiter"
     },
+    "entry": {
+      "title": "Verfügbare Studien",
+      "lead": "Wählen Sie eine Studie aus, um teilzunehmen.",
+      "listLabel": "Studien"
+    },
     "progress": {
       "summary": "{{done}} von {{total}} Tagen vollständig"
     },

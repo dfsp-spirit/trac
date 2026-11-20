@@ -32,6 +32,11 @@ class Study(SQLModel, table=True):
         default=None, sa_column=Column(JSON, nullable=True)
     )
     allow_unlisted_participants: bool = Field(default=True)
+    # Opt-in (default false): whether the study is shown in the public list the
+    # entry page offers to visitors who arrive without an invitation link. Only
+    # an open study can be joined that way, so the config parser refuses the
+    # combination "listed but invitation-only" instead of ignoring the flag.
+    is_listed_publicly: bool = Field(default=False)
     require_consent: bool = Field(default=False)
     is_paused: bool = Field(default=False)
     # Opt-in: skipping is meant for studies where the diary is one part of a

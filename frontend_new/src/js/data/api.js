@@ -264,3 +264,27 @@ export function createApi(baseUrl, studyName, participantId, { onError } = {}) {
       }),
   };
 }
+
+/**
+ * The public study list, for the entry page.
+ *
+ * The one request that names neither a study nor a participant: it asks which
+ * studies a visitor may join without an invitation link. It lives here because
+ * no other layer may talk to the network (D33), and it takes no participant so
+ * opening the page cannot create one.
+ *
+ * @param {string} baseUrl e.g. "/tud_backend/api"
+ * @param {string} [language] interface language for the descriptions
+ * @returns {Promise<Array<{ name_short: string, name?: string | null, description?: string | null }>>}
+ */
+export async function listListedStudies(baseUrl, language) {
+  const query = language ? `?lang=${encodeURIComponent(language)}` : '';
+  const response = await fetch(`${baseUrl}/listed_public_studies${query}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw new ApiError(`HTTP ${response.status}`, { status: response.status });
+  }
+  const payload = await response.json();
+  return Array.isArray(payload) ? payload : [];
+}

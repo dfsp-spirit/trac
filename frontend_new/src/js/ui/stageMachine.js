@@ -19,6 +19,7 @@ import { renderInstructions } from './views/instructions.js';
 import { renderThanks } from './views/thanks.js';
 import { renderTasks } from './views/tasks.js';
 import { renderUnavailable } from './views/unavailable.js';
+import { renderStudyList } from './views/studyList.js';
 
 /**
  * @param {{
@@ -223,6 +224,20 @@ export function createStageMachine({
     applyStage,
 
     fail: failPage,
+
+    /**
+     * The entry page: the URL names no study, so there is no participant and no
+     * stage - only the studies a visitor may join without an invitation.
+     *
+     * @param {Array<{ name_short: string, name?: string | null, description?: string | null }>} studies
+     */
+    entry(studies) {
+      for (const node of diaryChrome) node.hidden = true;
+      shownRoute = null;
+      host.hidden = false;
+      renderStudyList(host, { studies, language: getLanguage(), t });
+      focusPage();
+    },
 
     /**
      * A study this app must not show (`multiTimelinePolicy: 'error'`, D1).

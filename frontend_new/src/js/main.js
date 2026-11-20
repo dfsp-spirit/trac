@@ -8,7 +8,7 @@
  * stays under the same size cap so "wiring" cannot become the next god module.
  */
 import { config } from './config.js';
-import { createApi } from './data/api.js';
+import { createApi, listListedStudies } from './data/api.js';
 import { createSignalSender, createSignals } from './data/signals.js';
 import { reportClientInfo } from './data/clientInfo.js';
 import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
@@ -269,6 +269,7 @@ export function mount({ root, params }) {
       store,
       stageMachine,
       t,
+      listStudies: (language) => listListedStudies(config.apiBaseUrl, language),
       onLoaded: async (session) => {
         reportClientInfo(api, session);
         await languageSwitch.adoptStudyLanguage(session, identity.language);

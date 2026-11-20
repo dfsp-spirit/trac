@@ -55,6 +55,7 @@ from .parsers.studies_config import (
     get_external_task_effective_config,
     validate_day_group_definitions,
     validate_external_tasks_for_study,
+    validate_public_listing,
 )
 from .formats import (
     ACTIVITIES_SCHEMA_VERSION,
@@ -2883,6 +2884,9 @@ class ImportStudiesConfigStudy(BaseModel):
     # so a runtime-config export can be imported back without losing names.
     participant_display_names: Dict[str, str] = Field(default_factory=dict)
     allow_unlisted_participants: bool = True
+    # Opt-in: show the study on the entry page's public list. Same rule as in the
+    # config file - only an open study can be joined from that list.
+    is_listed_publicly: bool = False
     default_language: str = "en"
     supported_languages: List[str]
     activities_json_data: Optional[Dict[str, Dict]] = None
@@ -3234,6 +3238,12 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         study_participant_ids=study_payload.study_participant_ids,
         external_tasks=study_payload.external_tasks,
+    )
+
+    validate_public_listing(
+        study_name_short=study_payload.name_short,
+        is_listed_publicly=study_payload.is_listed_publicly,
+        allow_unlisted_participants=study_payload.allow_unlisted_participants,
     )
 
     has_embedded_data = bool(study_payload.activities_json_data)
@@ -3939,6 +3949,7 @@ def _create_study_from_import_payload(
         name_short=study_payload.name_short,
         description=(description_map or fallback_description),
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
+        is_listed_publicly=study_payload.is_listed_publicly,
         require_consent=study_payload.require_consent,
         allow_skip_timeuse=study_payload.allow_skip_timeuse,
         is_paused=study_payload.is_paused,
@@ -4996,6 +5007,9 @@ async def export_runtime_studies_config(
                     if association.display_name
                 },
                 "allow_unlisted_participants": study.allow_unlisted_participants,
+                # Part of the technical backup: a restore that dropped the flag
+                # would silently remove the study from the public list.
+                "is_listed_publicly": study.is_listed_publicly,
                 "require_consent": study.require_consent,
                 "allow_skip_timeuse": study.allow_skip_timeuse,
                 "is_paused": study.is_paused,
@@ -6801,6 +6815,7 @@ async def validate_files_in_memory(
                 # must carry what the study will actually be, not just the counts.
                 "study_name": import_study_payload.name,
                 "allow_unlisted_participants": import_study_payload.allow_unlisted_participants,
+                "is_listed_publicly": import_study_payload.is_listed_publicly,
                 "require_consent": import_study_payload.require_consent,
                 "day_label_count": len(import_study_payload.day_labels),
                 "external_task_count": len(import_study_payload.external_tasks),
@@ -8864,6 +8879,7 @@ async def admin_extract_studies(
                 # participant (e.g. whether a consent step or a skip button
                 # existed at all).
                 "allow_unlisted_participants": current_study.allow_unlisted_participants,
+                "is_listed_publicly": current_study.is_listed_publicly,
                 "require_consent": current_study.require_consent,
                 "is_paused": current_study.is_paused,
                 "allow_skip_timeuse": current_study.allow_skip_timeuse,
@@ -10293,6 +10309,84 @@ async def get_active_open_study_names(session: Session = Depends(get_session)):
 
     except Exception as e:
         logger.error(f"Error fetching active open study names: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while fetching study information",
+        )
+
+
+class PublicStudyResponse(BaseModel):
+    name_short: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+def _localized_study_description(study: Study, language: Optional[str]) -> Optional[str]:
+    """Resolve a study description for one interface language.
+
+    Uses the shared rule for localized study texts (requested language, then the
+    study's own default language, then English) and falls back to the legacy
+    resolver, which also understands a plain string and a JSON-encoded one.
+    """
+    return (
+        localized_study_text(study, "description", language)
+        or _resolve_description(study)
+        or None
+    )
+
+
+@app.get("/api/listed_public_studies", response_model=List[PublicStudyResponse])
+async def get_listed_public_studies(
+    lang: Optional[str] = Query(
+        None, description="Interface language for the study description."
+    ),
+    session: Session = Depends(get_session),
+):
+    """Public list of studies a visitor can join without an invitation link.
+
+    This is what the entry page shows when it is opened without ``study`` in the
+    URL. A study appears when all of these hold:
+
+    1. ``is_listed_publicly`` is set (opt-in; the default is not listed),
+    2. it is an open study (``allow_unlisted_participants``) - an
+       invitation-only study cannot be joined from here,
+    3. its collection window contains now, and
+    4. it is not paused.
+
+    Ordering and filtering are identical for every caller, so the list never
+    suggests a study the diary would refuse. Descriptions are resolved for the
+    requested language and fall back to the study's own default language.
+
+    @param lang Optional interface language (e.g. ``sv``) for descriptions.
+    @param session Database session dependency.
+    @returns A JSON list of joinable, publicly listed studies, ordered by name.
+    """
+    try:
+        now = utc_now()
+        language = _normalize_language_code(lang)
+
+        studies = session.exec(
+            select(Study)
+            .where(
+                Study.is_listed_publicly,
+                Study.allow_unlisted_participants,
+                Study.is_paused == false(),
+                Study.data_collection_start <= now,
+                Study.data_collection_end >= now,
+            )
+            .order_by(Study.name_short)
+        ).all()
+
+        return [
+            PublicStudyResponse(
+                name_short=study.name_short,
+                name=study.name,
+                description=_localized_study_description(study, language),
+            )
+            for study in studies
+        ]
+    except Exception as e:
+        logger.error(f"Error fetching listed public studies: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail="Internal server error while fetching study information",

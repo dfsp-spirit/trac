@@ -325,6 +325,12 @@
                 ],
                 ['Consent', summary.require_consent ? 'Required' : 'Not required'],
                 [
+                    'Public list',
+                    summary.is_listed_publicly
+                        ? 'Listed on the entry page'
+                        : 'Not listed on the entry page',
+                ],
+                [
                     'Activities',
                     `${summary.activity_count ?? 0} in ${summary.timeline_count ?? 0} timeline(s), ${summary.category_count ?? 0} categories`,
                 ],

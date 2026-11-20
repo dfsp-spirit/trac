@@ -702,6 +702,14 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     if existing_study.save_ux_events != study_config.save_ux_events:
                         existing_study.save_ux_events = study_config.save_ux_events
                         study_updated = True
+                    if (
+                        existing_study.is_listed_publicly
+                        != study_config.is_listed_publicly
+                    ):
+                        existing_study.is_listed_publicly = (
+                            study_config.is_listed_publicly
+                        )
+                        study_updated = True
                     config_day_groups = (
                         [group.model_dump() for group in study_config.day_groups]
                         or None
@@ -909,6 +917,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     name_short=study_config.name_short,
                     description=(description_map or fallback_description),
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
+                    is_listed_publicly=study_config.is_listed_publicly,
                     require_consent=study_config.require_consent,
                     is_paused=study_config.is_paused,
                     allow_skip_timeuse=study_config.allow_skip_timeuse,

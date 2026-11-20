@@ -64,12 +64,12 @@ test.describe('accessibility', () => {
     await expectNoA11yViolations(page, 'instructions');
   });
 
-  test('the failure page', async ({ page }) => {
-    // No invitation in the URL: the one page that exists when the API was never
-    // reached, and the only one with no session behind it.
+  test('the entry page', async ({ page }) => {
+    // No invitation in the URL: the page a visitor lands on, and the only one
+    // with no session behind it. It lists the publicly listed studies.
     await page.goto(`${BASE_URL}?lang=de`);
     await expect(page.locator('.t-page__title')).toBeVisible();
-    await expectNoA11yViolations(page, 'failure page');
+    await expectNoA11yViolations(page, 'entry page');
   });
 
   test('the diary, with a filled day', async ({ page }) => {

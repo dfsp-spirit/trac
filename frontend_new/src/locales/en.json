@@ -328,6 +328,11 @@
       "taskLockedDiary": "Available once your diary has been submitted.",
       "taskContinue": "Continue"
     },
+    "entry": {
+      "title": "Available studies",
+      "lead": "Choose a study to take part in.",
+      "listLabel": "Studies"
+    },
     "progress": {
       "summary": "{{done}} of {{total}} days complete"
     },

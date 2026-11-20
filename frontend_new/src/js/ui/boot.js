@@ -25,15 +25,31 @@ import { confirmReturningTask } from './externalTaskReturn.js';
  *   stageMachine: {
  *     show: (session: any) => void,
  *     fail: (message: string, options?: { title?: string, retry?: boolean }) => void,
+ *     entry: (studies: Array<{ name_short: string, name?: string | null, description?: string | null }>) => void,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
+ *   listStudies?: (language: string) => Promise<Array<{ name_short: string, name?: string | null, description?: string | null }>>,
  *   onLoaded?: (session: any) => void | Promise<void>,
  * }} deps
  */
-export async function loadFirstStage({ api, store, stageMachine, t, onLoaded }) {
+export async function loadFirstStage({ api, store, stageMachine, t, listStudies, onLoaded }) {
   if (!api) {
-    // Not a failure: the page was opened without an invitation link. Say what to
-    // do, and do not offer a reload that would land on the same page.
+    // No invitation link: the visitor is on the entry page. It lists the studies
+    // that can be joined without one; when there are none, the plain "no
+    // invitation" message is still the honest answer, and a reload cannot help.
+    if (listStudies) {
+      try {
+        const studies = await listStudies(store.get().language);
+        if (studies.length) {
+          stageMachine.entry(studies);
+          return;
+        }
+      } catch (error) {
+        console.warn('[entry] could not load the study list:', error);
+        stageMachine.fail(t('diary.stage.failedText'));
+        return;
+      }
+    }
     stageMachine.fail(t('diary.stage.noInvitationText'), {
       title: t('diary.stage.noInvitationTitle'),
       retry: false,
