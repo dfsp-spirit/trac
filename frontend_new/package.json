@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:components": "playwright test --config playwright.components.config.js",
-    "sync:locales": "node tools/sync-locales.mjs"
+    "sync:locales": "node tools/sync-locales.mjs",
+    "sync:admin-tokens": "node tools/sync-admin-tokens.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

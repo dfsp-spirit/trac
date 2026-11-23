@@ -6,8 +6,8 @@
 
 {% block content %}
         <div class="header">
-            <h1>TUD Admin Overview</h1>
-            <p>Time Use Diary Database Administration Interface</p>
+            <h1>Admin Overview</h1>
+            <p>Studies, participants, exports and tools for this TRAC deployment.</p>
             <div class="header-info">
                 <div>
                     <strong>Admin:</strong> {{ current_admin }}
@@ -33,14 +33,14 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value">{{ active_studies_count }}</div>
-                <div class="stat-label">Active Studies</div>
+                <div class="stat-label">Active studies</div>
             </div>
         </div>
 
         <!-- Studies Table -->
         <div class="study-section">
             <div class="study-header">
-                <h2>📋 Studies Overview</h2>
+                <h2>Studies overview</h2>
                 <p>Click <strong>Details</strong> to view full study information including participants, timelines, activities, and configuration.</p>
             </div>
             <div class="tab-content">
@@ -51,9 +51,9 @@
                                 <th>Name</th>
                                 <th>Short</th>
                                 <th class="col-md-hide">Owners</th>
-                                <th>Participants</th>
-                                <th>Activities</th>
-                                <th class="col-md-hide">Ext. Tasks</th>
+                                <th class="num">Participants</th>
+                                <th class="num">Activities</th>
+                                <th class="col-md-hide num">Ext. Tasks</th>
                                 <th>Type</th>
                                 <th class="col-md-hide">Period</th>
                                 <th>Status</th>
@@ -65,35 +65,35 @@
                             <tr>
                                 <td>
                                     <strong>{{ sd.study.name }}</strong>
-                                    {% if sd.study.is_paused %}<span class="badge-paused" style="font-size: 0.7rem; margin-left: 0.3rem;">PAUSED</span>{% endif %}
+                                    {% if sd.study.is_paused %}<span class="badge-paused">PAUSED</span>{% endif %}
                                 </td>
                                 <td><span class="badge badge-study">{{ sd.study.name_short }}</span></td>
-                                <td class="col-md-hide" style="font-size: 0.85rem;">
-                                    {% if sd.study.owner_usernames %}{{ sd.study.owner_usernames|join(', ') }}{% else %}<span style="color: var(--muted);">—</span>{% endif %}
+                                <td class="col-md-hide text-sm">
+                                    {% if sd.study.owner_usernames %}{{ sd.study.owner_usernames|join(', ') }}{% else %}<span class="muted">—</span>{% endif %}
                                 </td>
-                                <td>{{ sd.participant_count }}</td>
-                                <td>{{ sd.activity_count }}</td>
-                                <td class="col-md-hide">{{ sd.external_task_count }}</td>
+                                <td class="num">{{ sd.participant_count }}</td>
+                                <td class="num">{{ sd.activity_count }}</td>
+                                <td class="col-md-hide num">{{ sd.external_task_count }}</td>
                                 <td>
                                     {% if sd.is_open %}
-                                    <span style="color: #198754; font-weight: 600;">Open</span>
+                                    <span class="text-ok">Open</span>
                                     {% else %}
-                                    <span style="color: var(--muted);">Closed</span>
+                                    <span class="muted">Closed</span>
                                     {% endif %}
                                 </td>
-                                <td class="col-md-hide" style="font-size: 0.85rem;">
+                                <td class="col-md-hide text-sm">
                                     {{ sd.study.data_collection_start.strftime('%Y-%m-%d') }}<br>
-                                    <span style="color: var(--muted);">→</span> {{ sd.study.data_collection_end.strftime('%Y-%m-%d') }}
+                                    <span class="muted">→</span> {{ sd.study.data_collection_end.strftime('%Y-%m-%d') }}
                                 </td>
                                 <td>
                                     {% if sd.is_actively_collecting %}
-                                    <span style="color: #198754; font-weight: 600;">● Active</span>
+                                    <span class="text-ok">Active</span>
                                     {% else %}
-                                    <span style="color: var(--muted);">Inactive</span>
+                                    <span class="muted">Inactive</span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <a href="{{ request.scope.root_path }}/admin/study/{{ sd.study.name_short }}" class="page-btn" style="display: inline-block; padding: 0.35rem 0.75rem; text-decoration: none; font-size: 0.85rem;">
+                                    <a href="{{ request.scope.root_path }}/admin/study/{{ sd.study.name_short }}" class="page-btn btn-sm">
                                         Details
                                     </a>
                                 </td>
@@ -108,7 +108,7 @@
         <!-- Recent Activities Section -->
         <div class="study-section">
             <div class="study-header">
-                <h2>📊 Recently Logged Activities ({% if is_super_admin %}Across All Studies{% else %}Across Your Studies{% endif %})</h2>
+                <h2>Recent activities ({% if is_super_admin %}across all studies{% else %}across your studies{% endif %})</h2>
                 <p>These are the most recent {{ recent_activities|length }} out of total {{ total_activities_all }} activities recorded {% if is_super_admin %}across all studies{% else %}across the studies you have access to{% endif %}. See the Activities tab of each study to see only results specific to that study.</p>
             </div>
             <div class="tab-content">
@@ -116,13 +116,13 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>DB ID</th>
+                                <th class="num">DB ID</th>
                                 <th>Study</th>
                                 <th>Participant</th>
                                 <th>Day</th>
                                 <th>Timeline</th>
                                 <th>Activity</th>
-                                <th>Code</th>
+                                <th class="num">Code</th>
                                 <th>Time</th>
                                 <th>Created</th>
                             </tr>
@@ -130,15 +130,15 @@
                         <tbody>
                             {% for activity in recent_activities %}
                             <tr>
-                                <td>{{ activity.id }}</td>
+                                <td class="num">{{ activity.id }}</td>
                                 <td>{{ activity.study_name_short }}</td>
                                 <td>{{ activity.participant_name }}</td>
                                 <td>{{ activity.day_label }}</td>
                                 <td>{{ activity.timeline }}</td>
                                 <td>{{ activity.activity_name }}</td>
-                                <td>{{ activity.activity_code }}</td>
+                                <td class="num">{{ activity.activity_code }}</td>
                                 <td class="time-cell">{{ activity.time_range }}</td>
-                                <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="text-sm">{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -150,21 +150,19 @@
         {% if is_super_admin %}
         <div class="study-section">
             <div class="study-header">
-                <h2>⚙️ Runtime Config Export</h2>
+                <h2>Runtime config export</h2>
                 <p>Download the current server runtime studies configuration for all studies, including participants, logged activities, and activities configuration definitions.</p>
                 <p>This file allows you to reproduce the current server state on a different server or environment.</p>
-                <div class="export-buttons" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e9ecef;">
+                <div class="actions">
                     <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config"
                               download="studies_config_{{ current_time.strftime('%Y-%m-%d') }}.json"
-                       class="export-btn"
-                       style="display: inline-block; padding: 0.5rem 1rem; background: #4f46e5; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s;">
-                        📥 Download Server Runtime Config (All Studies)
+                       class="export-btn">
+                        Download server runtime config (all studies)
                     </a>
                     <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?mode=split_zip"
                               download="studies_config_{{ current_time.strftime('%Y-%m-%d') }}.zip"
-                       class="export-btn"
-                       style="display: inline-block; padding: 0.5rem 1rem; background: #0f766e; color: white; text-decoration: none; border-radius: 4px; font-size: 0.9rem; font-weight: 500; transition: background 0.2s; margin-left: 0.5rem;">
-                        📥 Download Runtime Config ZIP (All Studies, Split Files)
+                       class="export-btn">
+                        Download runtime config ZIP (all studies, split files)
                     </a>
                 </div>
             </div>
@@ -172,7 +170,7 @@
         {% else %}
         <div class="study-section">
             <div class="study-header">
-                <h2>⚙️ Runtime Config Export</h2>
+                <h2>Runtime config export</h2>
                 <p>Runtime config backups for a single study are available on that study's detail page.</p>
             </div>
         </div>
@@ -181,7 +179,7 @@
         {% if admin_directory %}
         <div class="study-section">
             <div class="study-header">
-                <h2>🔑 Admin Users</h2>
+                <h2>Admin users</h2>
                 <p>
                     These accounts are configured in the server environment
                     (<code>TUD_API_ADMIN_USERNAME</code>, <code>TUD_API_SCIENTISTS</code>,
@@ -212,7 +210,7 @@
                                     {% if admin.is_current %}<span class="admin-directory-you">you</span>{% endif %}
                                 </td>
                                 <td><span class="badge badge-role-super">Super admin</span></td>
-                                <td style="color: var(--muted);">All studies</td>
+                                <td class="muted">All studies</td>
                             </tr>
                             {% endfor %}
                             {% for scientist in admin_directory.scientists %}
@@ -223,7 +221,7 @@
                                 </td>
                                 <td><span class="badge badge-role-scientist">Scientist</span></td>
                                 <td class="admin-directory-studies">
-                                    {% if scientist.manages %}{{ scientist.manages|join(', ') }}{% else %}<span style="color: var(--muted); font-family: inherit;">— (no studies)</span>{% endif %}
+                                    {% if scientist.manages %}{{ scientist.manages|join(', ') }}{% else %}<span class="muted" style="font-family: inherit;">— (no studies)</span>{% endif %}
                                 </td>
                             </tr>
                             {% endfor %}
@@ -234,7 +232,7 @@
                                     {% if account.is_current %}<span class="admin-directory-you">you</span>{% endif %}
                                 </td>
                                 <td><span class="badge badge-role-backup">Backup (read-only)</span></td>
-                                <td style="color: var(--muted);">All studies, extraction endpoints only</td>
+                                <td class="muted">All studies, extraction endpoints only</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -242,7 +240,7 @@
                 </div>
                 {% if admin_directory.stale_owners %}
                 <div class="admin-directory-stale">
-                    <h3>⚠ Stale study owners</h3>
+                    <h3>Stale study owners</h3>
                     <p>
                         These accounts are still listed as owners of a study but are no longer configured as
                         scientists, so they grant nobody access. Remove them from the study's owner list.

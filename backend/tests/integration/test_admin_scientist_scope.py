@@ -318,7 +318,7 @@ def test_admin_overview_lists_only_accessible_studies(scoped_studies):
 
 @requires_two_scientists
 def test_admin_directory_is_rendered_for_super_admins_only():
-    """The "Admin Users" section names every account, and only for a super admin."""
+    """The "Admin users" section names every account, and only for a super admin."""
     backup_names = settings.backup_names
 
     with httpx.Client(timeout=60.0) as client:
@@ -326,7 +326,7 @@ def test_admin_directory_is_rendered_for_super_admins_only():
         assert super_admin.status_code == 200
         body = super_admin.text
 
-        assert "Admin Users" in body
+        assert "Admin users" in body
         assert ADMIN_AUTH[0] in body
         for scientist in SCIENTISTS:
             assert scientist["name"] in body
@@ -343,7 +343,7 @@ def test_admin_directory_is_rendered_for_super_admins_only():
         _require_authenticated(scientist_overview, SCIENTIST_A_AUTH)
         assert scientist_overview.status_code == 200
         # Absent, not merely hidden: a scientist gets no heading, rows or badges.
-        assert "Admin Users" not in scientist_overview.text
+        assert "Admin users" not in scientist_overview.text
         assert "All studies, extraction endpoints only" not in scientist_overview.text
         for name in backup_names:
             assert name not in scientist_overview.text

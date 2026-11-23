@@ -18,10 +18,10 @@
         <div class="stats-grid">
             <div class="stat-card"><div class="stat-value">{{ participant_count }}</div><div class="stat-label">Participants</div></div>
             <div class="stat-card"><div class="stat-value">{{ total_activities_logged }}</div><div class="stat-label">Activities</div></div>
-            <div class="stat-card"><div class="stat-value">{{ external_task_count }}</div><div class="stat-label">External Tasks</div></div>
-            <div class="stat-card"><div class="stat-value">{{ "Yes" if is_actively_collecting else "No" }}</div><div class="stat-label">Collecting Data</div></div>
-            <div class="stat-card"><div class="stat-value">{{ total_activities_cfg }}</div><div class="stat-label">Cfg Activities</div></div>
-            <div class="stat-card"><div class="stat-value">{{ total_categories_cfg }}</div><div class="stat-label">Cfg Categories</div></div>
+            <div class="stat-card"><div class="stat-value">{{ external_task_count }}</div><div class="stat-label">External tasks</div></div>
+            <div class="stat-card"><div class="stat-value">{{ "Yes" if is_actively_collecting else "No" }}</div><div class="stat-label">Collecting data</div></div>
+            <div class="stat-card"><div class="stat-value">{{ total_activities_cfg }}</div><div class="stat-label">Cfg activities</div></div>
+            <div class="stat-card"><div class="stat-value">{{ total_categories_cfg }}</div><div class="stat-label">Cfg categories</div></div>
         </div>
 
         <div class="study-meta">
@@ -52,9 +52,9 @@
             <div class="tabs">
                 <button class="tab active" onclick="switchTab('timelines-{{ study.name_short }}', this)">Timelines ({{ timeline_stats|length }})</button>
                 <button class="tab" onclick="switchTab('participants-{{ study.name_short }}', this)">Participants ({{ participant_count }})</button>
-                <button class="tab" onclick="switchTab('externaltasks-{{ study.name_short }}', this)">External Tasks ({{ external_task_count }})</button>
-                <button class="tab" onclick="switchTab('daylabels-{{ study.name_short }}', this)">Day Labels ({{ day_labels|length }})</button>
-                <button class="tab" onclick="switchTab('cfgactivities-{{ study.name_short }}', this)">Cfg File Activities ({{ total_activities_cfg }})</button>
+                <button class="tab" onclick="switchTab('externaltasks-{{ study.name_short }}', this)">External tasks ({{ external_task_count }})</button>
+                <button class="tab" onclick="switchTab('daylabels-{{ study.name_short }}', this)">Day labels ({{ day_labels|length }})</button>
+                <button class="tab" onclick="switchTab('cfgactivities-{{ study.name_short }}', this)">Cfg file activities ({{ total_activities_cfg }})</button>
             </div>
             <div class="tab-content">
                 <!-- Timelines -->
@@ -82,7 +82,7 @@
 
                 <!-- Participants -->
                 <div id="participants-{{ study.name_short }}" class="tab-panel">
-                    <div class="study-meta" style="margin-top: 0;">
+                    <div class="study-meta mt-0">
                         <div><strong>Total:</strong> {{ participant_count }}</div>
                         <div><strong>In progress:</strong> {{ participant_in_progress_count }}</div>
                         <div><strong>Submitted:</strong> {{ participant_submitted_count }}</div>
@@ -97,16 +97,16 @@
                         removal) live in Participant Management, where the table is paginated and
                         filterable.
                     </p>
-                    <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1rem;">
-                        <a href="{{ participant_management_url }}" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                            👥 Open participant management ({{ participant_count }})
+                    <div class="actions actions--flush mb-sm">
+                        <a href="{{ participant_management_url }}" class="page-btn">
+                            Open participant management ({{ participant_count }})
                         </a>
                         {% if frontend_open_join_url %}
-                        <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                            ➕ Join as new user
+                        <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn">
+                            Join as new user
                         </a>
-                        <a href="{{ frontend_new_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn" style="display: inline-block; padding: 0.6rem 1.2rem; text-decoration: none; border-radius: 6px; font-weight: 500;">
-                            ➕ Join as new user (new UI)
+                        <a href="{{ frontend_new_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn">
+                            Join as new user (new UI)
                         </a>
                         {% endif %}
                     </div>
@@ -130,9 +130,9 @@
                                 {{ external_task.name }}
                                 <span class="badge badge-timeline">{{ external_task.task_key }}</span>
                                 {% if external_task.has_open_pool %}
-                                <span class="badge" style="background:#dbeafe;color:#1d4ed8;">Open Pool</span>
+                                <span class="badge badge-ok">Open pool</span>
                                 {% else %}
-                                <span class="badge" style="background:#fef3c7;color:#92400e;">By Participant</span>
+                                <span class="badge badge-warn">By participant</span>
                                 {% endif %}
                             </h3>
                             <p><strong>Confirmation:</strong> {{ external_task.confirmation_type }}</p>
@@ -149,13 +149,13 @@
                             <p><strong>Description:</strong> {{ external_task.description }}</p>
                             {% endif %}
 
-                            <p style="margin-top:0.75rem;">
+                            <p class="mt-sm">
                                 <a href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short }}"
-                                   class="btn-primary" style="display:inline-block;padding:0.35rem 0.75rem;text-decoration:none;font-size:0.85rem;">🔑 Manage Tokens</a>
+                                   class="btn-primary btn-sm">Manage tokens</a>
                             </p>
 
                             {% if external_task.assignments %}
-                            <div class="table-container" style="margin-top: 0.75rem;">
+                            <div class="table-container mt-sm">
                                 <table>
                                     <thead><tr><th>Participant</th><th>Assigned Token</th><th>Confirmed</th></tr></thead>
                                     <tbody>
@@ -194,21 +194,20 @@
 
                 <!-- Cfg Activities -->
                 <div id="cfgactivities-{{ study.name_short }}" class="tab-panel">
-                    <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.9rem;">
-                        <label for="cfg-lang-{{ study.name_short }}" style="font-weight: 600;">Language:</label>
+                    <div class="field-row">
+                        <label for="cfg-lang-{{ study.name_short }}">Language:</label>
                         <select id="cfg-lang-{{ study.name_short }}"
-                            onchange="onCfgLanguageChange(this, '{{ study.name_short }}')"
-                            style="padding: 0.35rem 0.5rem; border: 1px solid #ced4da; border-radius: 4px; background: #fff;">
+                            onchange="onCfgLanguageChange(this, '{{ study.name_short }}')">
                             {% for lang in supported_cfg_languages %}
                             <option value="{{ lang }}" {% if lang == selected_cfg_language %}selected{% endif %}>{{ lang|upper }}</option>
                             {% endfor %}
                         </select>
-                        <span style="color: #6c757d; font-size: 0.85rem;">Showing config preview for <strong>{{ selected_cfg_language|upper }}</strong></span>
+                        <span class="muted text-sm">Showing config preview for <strong>{{ selected_cfg_language|upper }}</strong></span>
                     </div>
-                    <p style="margin-bottom: 0.75rem; color: #6c757d; font-size: 0.9rem;">
+                    <p class="section-note">
                         Activities defined in the config file for this study. Each activity line shows its numeric code followed by its <code>frontend_path</code>. Child items are indented one level further than their parent.
                     </p>
-                    <pre style="font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.6; background: #f8f9fa; padding: 1rem 1.25rem; border-radius: 6px; overflow-x: auto; white-space: pre; border: 1px solid #e9ecef;">{{ activities_cfg_text }}</pre>
+                    <pre class="code-block">{{ activities_cfg_text }}</pre>
                 </div>
             </div>
         </section>
@@ -220,26 +219,26 @@
                 <p class="study-section-hint">What this study has collected so far: completion progress over time and the most recent activities stored in the database.</p>
             </div>
             <div class="tabs">
-                <button class="tab active" onclick="switchTab('progress-{{ study.name_short }}', this)">📈 Progress</button>
-                <button class="tab" onclick="switchTab('activities-{{ study.name_short }}', this)">DB Logged Activities ({{ total_activities_logged }})</button>
+                <button class="tab active" onclick="switchTab('progress-{{ study.name_short }}', this)">Progress</button>
+                <button class="tab" onclick="switchTab('activities-{{ study.name_short }}', this)">DB logged activities ({{ total_activities_logged }})</button>
             </div>
             <div class="tab-content">
                 <!-- Progress -->
                 <div id="progress-{{ study.name_short }}" class="tab-panel active">
-                    <div style="max-width: 800px; margin: 0 auto;">
-                        <h3 style="margin-bottom: 0.5rem;">📈 Cumulative Participant Completion</h3>
-                        <p style="color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                    <div class="chart-wrap">
+                        <h3 class="mb-sm">Cumulative participant completion</h3>
+                        <p class="section-note">
                             Shows how many participants have completed the study up to each day.
                             Helps estimate how many will participate over the remaining collection period.
                         </p>
                         <div style="position: relative;">
-                            <canvas id="completionChart-{{ study.name_short }}" width="750" height="400" style="width: 100%; height: auto; max-width: 750px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px;"></canvas>
+                            <canvas id="completionChart-{{ study.name_short }}" width="750" height="400" class="chart-canvas"></canvas>
                             <script id="chart-data-{{ study.name_short }}" type="application/json">{{ {"dates": completion_progress.dates, "tuSeries": completion_progress.timeuse_cumulative, "allSeries": completion_progress.all_completed_cumulative, "hasTasks": completion_progress.has_external_tasks} | tojson }}</script>
                         </div>
-                        <div style="margin-top: 0.75rem; display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem;">
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #4f46e5; border-radius: 2px; margin-right: 0.3rem;"></span> Completed time-use diary</span>
+                        <div class="chart-legend">
+                            <span><span class="legend-swatch legend-swatch--primary"></span> Completed time-use diary</span>
                             {% if completion_progress.has_external_tasks %}
-                            <span><span style="display: inline-block; width: 12px; height: 12px; background: #059669; border-radius: 2px; margin-right: 0.3rem;"></span> Completed everything (incl. external tasks)</span>
+                            <span><span class="legend-swatch legend-swatch--secondary"></span> Completed everything (incl. external tasks)</span>
                             {% endif %}
                         </div>
                     </div>
@@ -250,26 +249,26 @@
                     {% if activities_preview %}
                     <div class="table-container">
                         <table>
-                            <thead><tr><th>ID</th><th>Participant</th><th>Day</th><th>Timeline</th><th>Activity</th><th>Time</th><th>Duration</th><th>Created</th></tr></thead>
+                            <thead><tr><th class="num">ID</th><th>Participant</th><th>Day</th><th>Timeline</th><th>Activity</th><th>Time</th><th class="num">Duration</th><th>Created</th></tr></thead>
                             <tbody>
                                 {% for activity in activities_preview %}
                                 <tr>
-                                    <td>{{ activity.id }}</td>
+                                    <td class="num">{{ activity.id }}</td>
                                     <td><a href="{{ participant_management_url }}&amp;q={{ activity.participant_name|urlencode }}" title="Show this participant in participant management">{{ activity.participant_name }}</a></td>
                                     <td>{{ activity.day_label }}</td>
                                     <td>{{ activity.timeline }}</td>
                                     <td>{{ activity.activity_name }} <small>( Code: {{ activity.activity_code }} )</small><br><div class="activity-path">{{ activity.activity_path_frontend }}</div></td>
                                     <td class="time-cell">{{ activity.time_range }}</td>
-                                    <td>{{ activity.duration }} min</td>
-                                    <td>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="num">{{ activity.duration }} min</td>
+                                    <td class="text-sm">{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
                     </div>
-                    <div class="pagination" style="display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div class="pagination pagination--split">
                         <span>Showing the most recent {{ activities_preview|length }} of {{ total_activities_logged }} activities</span>
-                        <span>Full data: use <strong>Export Study Data</strong> below.</span>
+                        <span>Full data: use <strong>Export study data</strong> below.</span>
                     </div>
                     {% else %}
                     <div class="empty-state"><p>No activities recorded yet by users in the database for this study.</p></div>
@@ -281,7 +280,7 @@
         <!-- Export buttons -->
         <section class="study-section">
             <div class="study-header">
-                <h2>Export Study Data</h2>
+                <h2>Export study data</h2>
                 <p class="study-section-hint">
                     Download research data (CSV/JSON) or the server runtime config for this study.
                     The participant export has one row per participant and is the only place the
@@ -289,32 +288,32 @@
                 </p>
             </div>
             <div class="tab-content">
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="actions actions--flush">
                     {% if total_activities_logged > 0 %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">📥 Download CSV</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">📥 Download JSON</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">📥 CSV Without Metadata</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">Download CSV</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">Download JSON</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">CSV without metadata</a>
                     {% else %}
-                    <span class="export-btn disabled">📥 Download CSV not available (No activities yet)</span>
-                    <span class="export-btn disabled">📥 Download JSON not available (No activities yet)</span>
-                    <span class="export-btn disabled">📥 CSV Without Metadata not available (No activities yet)</span>
+                    <span class="export-btn disabled">CSV not available (no activities yet)</span>
+                    <span class="export-btn disabled">JSON not available (no activities yet)</span>
+                    <span class="export-btn disabled">CSV without metadata not available (no activities yet)</span>
                     {% endif %}
                 </div>
-                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <div class="actions">
                     {% if participant_count > 0 %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">📥 Participants CSV</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">📥 Participants JSON</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">Participants CSV</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">Participants JSON</a>
                     {% if study.save_browser_identification %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">📥 Participants CSV (with client info only)</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">Participants CSV (with client info only)</a>
                     {% endif %}
                     {% else %}
-                    <span class="export-btn disabled">📥 Participants CSV not available (No participants yet)</span>
-                    <span class="export-btn disabled">📥 Participants JSON not available (No participants yet)</span>
+                    <span class="export-btn disabled">Participants CSV not available (no participants yet)</span>
+                    <span class="export-btn disabled">Participants JSON not available (no participants yet)</span>
                     {% endif %}
                 </div>
-                <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">📥 Download Server Runtime Config JSON</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">📥 Download Server Runtime Config ZIP</a>
+                <div class="actions">
+                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">Server runtime config JSON</a>
+                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">Server runtime config ZIP</a>
                 </div>
             </div>
         </section>
@@ -323,20 +322,20 @@
         <div class="edit-section">
             <div class="edit-section-header">
                 <div>
-                    <h3>Edit Study</h3>
+                    <h3>Edit study</h3>
                     <p class="edit-section-warning" id="edit-section-warning-always">
                         WARNING: Editing study properties can negatively impact a running study.
                     </p>
                     <p class="edit-section-warning-blue" id="edit-section-warning">
-                        Editing is locked. Click "Enable Editing" to unlock the fields and make changes.
+                        Editing is locked. Click "Enable editing" to unlock the fields and make changes.
                     </p>
                 </div>
-                <button type="button" class="edit-section-toggle" id="edit-section-toggle-btn" onclick="toggleEditSection()">Enable Editing</button>
+                <button type="button" class="edit-section-toggle" id="edit-section-toggle-btn" onclick="toggleEditSection()">Enable editing</button>
             </div>
 
             <div id="edit-section-body" class="edit-section-body-locked">
                 <div class="window-controls">
-                    <h4>Study Names</h4>
+                    <h4>Study names</h4>
                     <p class="edit-section-warning" id="edit-section-warning-study-names">Changing the short name will break existing invitation links for participants, and external task return URLs.</p>
                     <div class="window-controls-row">
                         <div class="window-control-field">
@@ -344,17 +343,17 @@
                             <input id="rename-name-{{ study.id }}" type="text" class="study-rename-input" value="{{ study.name | e }}" disabled>
                         </div>
                         <div class="window-control-field">
-                            <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
+                            <label for="rename-short-{{ study.id }}"><strong>Short name</strong></label>
                             <input id="rename-short-{{ study.id }}" type="text" class="study-rename-short-input" value="{{ study.name_short | e }}" title="{{ study_name_short_rule_text }}" disabled>
                         </div>
-                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Names</button>
+                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save names</button>
                     </div>
                     <p class="hint">{{ study_name_short_rule_text }}</p>
                     <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
                 </div>
 
                 <div class="window-controls">
-                    <h4>Collection Window</h4>
+                    <h4>Collection window</h4>
                     <p class="edit-section-warning" id="edit-section-warning-collection-window">Pausing a study will prevent users who are currently filling out their diary from submitting their data. The same holds for changing the collection window dates if the old dates include the current date and the new ones do not.</p>
                     <div class="window-controls-row">
                         <div class="window-control-field">
@@ -365,36 +364,36 @@
                             <label for="window-end-{{ study.id }}"><strong>End date</strong></label>
                             <input id="window-end-{{ study.id }}" type="date" value="{{ study.data_collection_end.strftime('%Y-%m-%d') }}" disabled>
                         </div>
-                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Window</button>
+                        <button type="button" class="window-btn window-btn-save" onclick="saveStudyCollectionWindow('{{ study.name_short }}', '{{ study.id }}')" disabled>Save window</button>
                         {% if study.is_paused %}
-                        <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)" disabled>&#9654; Unpause Study</button>
+                        <button type="button" class="window-btn window-btn-unpause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', false)" disabled>&#9654; Unpause study</button>
                         {% else %}
-                        <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)" disabled>&#9646;&#9646; Pause Study</button>
+                        <button type="button" class="window-btn window-btn-pause" onclick="setPauseState('{{ study.name_short }}', '{{ study.id }}', true)" disabled>&#9646;&#9646; Pause study</button>
                         {% endif %}
                     </div>
                     <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
                 </div>
 
                 <div class="danger-zone">
-                    <h4>Danger Zone</h4>
+                    <h4>Danger zone</h4>
                     <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
                     <br />
-                    <p>We recommend to <b>always</b> backup your data before deleting a study, even if you think you will not need it anymore. It's very easy and done in seconds, use the <i>Export Study Data</i> section above.</p>
-                    <div style="margin-top: 0.65rem; display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start;">
+                    <p>We recommend to <b>always</b> backup your data before deleting a study, even if you think you will not need it anymore. It's very easy and done in seconds, use the <i>Export study data</i> section above.</p>
+                    <div class="stack mt-sm">
                         <button type="button" class="danger-btn open-delete-study-btn"
                             data-study-id="{{ study.id }}"
                             data-study-name-short="{{ study.name_short }}"
                             data-study-name="{{ study.name | e }}" disabled>
-                            Delete Study
+                            Delete study
                         </button>
                         <div>
                             <button type="button" class="danger-btn open-delete-participant-data-btn"
                                 data-study-id="{{ study.id }}"
                                 data-study-name-short="{{ study.name_short }}"
                                 data-study-name="{{ study.name | e }}" disabled>
-                                Delete All Participant Data
+                                Delete all participant data
                             </button>
-                            <p style="margin-top: 0.4rem; color: #6b7280; font-size: 0.85rem;">
+                            <p class="hint">
                                 Removes all recorded participant data for this study (diary activities, external-task
                                 assignments, participant associations) while keeping the study itself and its
                                 configuration (days, available activities, timelines, external tasks) intact.
@@ -402,8 +401,8 @@
                         </div>
                     </div>
 
-                    <hr style="border: none; border-top: 1px solid #f3c2c0; margin: 1.2rem 0 0.9rem;">
-                    <h4>Study Owners</h4>
+                    <hr class="rule-danger">
+                    <h4>Study owners</h4>
                     <p>Owners are scientists who can fully administer this study: change its configuration, manage
                         participants and tokens, export data, and delete it. Removing an owner revokes that access
                         immediately.</p>
@@ -1127,7 +1126,7 @@
             if (!body || !toggleBtn || !warning) return;
 
             const inputs = body.querySelectorAll('input, button, select');
-            if (toggleBtn.textContent.trim() === 'Enable Editing') {
+            if (toggleBtn.textContent.trim() === 'Enable editing') {
                 inputs.forEach(function(el) { el.disabled = false; });
                 toggleBtn.textContent = 'Disable Editing';
                 warning.textContent = 'Editing is enabled \u2014 proceed with care.';
@@ -1135,8 +1134,8 @@
                 body.classList.remove('edit-section-body-locked');
             } else {
                 inputs.forEach(function(el) { el.disabled = true; });
-                toggleBtn.textContent = 'Enable Editing';
-                warning.textContent = 'Editing is locked. Click "Enable Editing" to unlock the fields and make changes.';
+                toggleBtn.textContent = 'Enable editing';
+                warning.textContent = 'Editing is locked. Click "Enable editing" to unlock the fields and make changes.';
                 warning.style.color = '#0d6efd';
                 body.classList.add('edit-section-body-locked');
             }

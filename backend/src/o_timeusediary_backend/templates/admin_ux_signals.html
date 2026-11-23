@@ -261,14 +261,14 @@
                 <h2>Signals per day</h2>
                 <p class="muted">{{ report.start }} &ndash; {{ report.days }} day window.</p>
             </div>
-            <div style="padding: 1.5rem;">
+            <div class="day-bars">
                 {% for day in report.daily_totals %}
-                    <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:2px;">
-                        <span class="muted" style="width:6.5rem; font-variant-numeric: tabular-nums;">{{ day.day }}</span>
-                        <span style="flex:1; background: var(--border); height:10px; border-radius:9999px; overflow:hidden;">
-                            <span style="display:block; height:100%; width: {{ day.pct }}%; background: var(--text);"></span>
+                    <div class="day-bar-row">
+                        <span class="muted day-bar-label">{{ day.day }}</span>
+                        <span class="day-bar-track">
+                            <span class="day-bar-fill" style="width: {{ day.pct }}%;"></span>
                         </span>
-                        <span class="muted" style="width:3rem; text-align:right; font-variant-numeric: tabular-nums;">{{ day.count }}</span>
+                        <span class="muted day-bar-count">{{ day.count }}</span>
                     </div>
                 {% endfor %}
             </div>

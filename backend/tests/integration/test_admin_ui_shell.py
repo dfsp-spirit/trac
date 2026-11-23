@@ -42,6 +42,7 @@ async def test_admin_page_uses_the_shared_shell(page_path):
     assert response.status_code == 200, response.text
     body = response.text
 
+    assert "/static/tokens.css" in body
     assert "/static/admin.css" in body
     assert "/static/admin.js" in body
     # One stylesheet, no per-page <style> block.
@@ -98,11 +99,15 @@ async def test_the_open_study_stays_one_click_away():
 async def test_admin_static_assets_are_served():
     async with httpx.AsyncClient(timeout=60.0) as client:
         stylesheet = await client.get(f"{BASE_URL}/static/admin.css")
+        tokens = await client.get(f"{BASE_URL}/static/tokens.css")
         script = await client.get(f"{BASE_URL}/static/admin.js")
 
     assert stylesheet.status_code == 200
     assert "text/css" in stylesheet.headers["content-type"]
+    assert "text/css" in tokens.headers["content-type"]
     assert "--border-strong" in stylesheet.text
+    # The admin maps its palette onto the shared brand layer.
+    assert "--font-sans" in tokens.text
 
     assert script.status_code == 200
     assert "javascript" in script.headers["content-type"]
@@ -177,7 +182,7 @@ async def test_study_detail_page_separates_configuration_from_status():
 
     config_start = body.index("<h2>View study configuration</h2>")
     status_start = body.index("<h2>Status</h2>")
-    export_start = body.index("<h2>Export Study Data</h2>")
+    export_start = body.index("<h2>Export study data</h2>")
     edit_start = body.index('class="edit-section"')
     assert config_start < status_start < export_start < edit_start
 

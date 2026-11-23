@@ -19,7 +19,7 @@
         </div>
 
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Select study</h2>
+            <h2>Select study</h2>
             <div class="select-row">
                 <select id="studySelect">
                     <option value="">-- Select a study --</option>
@@ -53,7 +53,7 @@
                 <div id="pm-participants" class="tab-panel active">
         <div class="card">
             <div class="participant-toolbar">
-                <h2 style="margin: 0;">Participants in study {{ selected_study.name_short }} ({{ total_participants }})</h2>
+                <h2 class="m-0">Participants in study {{ selected_study.name_short }} ({{ total_participants }})</h2>
                 <span class="hint">
                     {% if total_participants %}
                         showing {{ first_row }}&ndash;{{ last_row }}, most recent activity first
@@ -65,9 +65,9 @@
                 </span>
             </div>
             {% if selected_study_requires_consent %}
-            <div class="hint" style="margin-top: 0.75rem;">This study requires consent. Consent status is shown below. If the study contains external tasks, task tokens are displayed as well.</div>
+            <div class="hint mt-sm">This study requires consent. Consent status is shown below. If the study contains external tasks, task tokens are displayed as well.</div>
             {% endif %}
-            <div class="participant-toolbar" style="margin-top: 0.75rem;">
+            <div class="participant-toolbar mt-sm">
                 <form class="filter-form" method="get" action="{{ request.scope.root_path }}/admin/participant-management">
                     <input type="hidden" name="study_name_short" value="{{ selected_study.name_short }}">
                     <input type="search" id="participantFilter" name="q" value="{{ participant_query }}" placeholder="Filter by participant ID or name" aria-label="Filter participants by participant ID or name">
@@ -85,7 +85,7 @@
                 </form>
                 <div>
                     {% if study_participant_total %}
-                    <span style="display: inline-flex; gap: 0.4rem; align-items: center;">
+                    <span class="inline-cluster">
                         <span>&#11015; Invitation links ({{ study_participant_total }}):</span>
                         <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links?format=csv" title="All participants of this study (ignores the ID filter): pid and invitation link">CSV</a>
                         <a class="btn-secondary" href="{{ request.scope.root_path }}/api/admin/studies/{{ study_qs }}/export-invitation-links?format=tsv" title="All participants of this study (ignores the ID filter): pid and invitation link, tab-separated">TSV</a>
@@ -140,21 +140,21 @@
                         <td>{{ participant.activity_count }}</td>
                         <td>
                             {% if participant.all_days_meet_min_coverage %}
-                            <span style="color: #16a34a; font-weight: 600;">{{ participant.total_days }} of {{ participant.total_days }}</span>
+                            <span class="text-ok">{{ participant.total_days }} of {{ participant.total_days }}</span>
                             {% else %}
                             {{ participant.days_meeting_min_coverage }} of {{ participant.total_days }}
                             {% endif %}
                         </td>
                         <td>
                             {% if participant.skipped_at %}
-                            <span style="color: #b45309; font-weight: 600;">Skipped</span>{% if participant.skip_reason_code %} <span class="badge badge-participant">{{ participant.skip_reason_code }}</span>{% endif %}
+                            <span class="text-warn">Skipped</span>{% if participant.skip_reason_code %} <span class="badge badge-participant">{{ participant.skip_reason_code }}</span>{% endif %}
                             {% elif participant.study_submitted_at %}
-                            <span style="color: #16a34a; font-weight: 600;">Submitted</span> <small>{{ participant.study_submitted_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            <span class="text-ok">Submitted</span> <small>{{ participant.study_submitted_at.strftime('%Y-%m-%d %H:%M') }}</small>
                             {% else %}
                             In progress
                             {% endif %}
                         </td>
-                        <td style="white-space: nowrap;">
+                        <td class="nowrap">
                             <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer" title="Open this study in the old frontend as this participant">Join</a>
                             &middot;
                             <a href="{{ participant.study_join_url_new }}" target="_blank" rel="noopener noreferrer" title="Open this study in the new frontend as this participant">new UI</a>
@@ -201,10 +201,10 @@
         </div>
 
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Add participants to study {{ selected_study.name_short }}</h2>
+            <h2>Add participants to study {{ selected_study.name_short }}</h2>
             <textarea id="participantIds" rows="6" placeholder="participant_001,participant_002,participant_003"></textarea>
             <div class="hint">Use new lines, comma, semicolon, or spaces as separators. {{ participant_id_rule_text }}</div>
-            <div style="margin-top: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <div class="actions">
                 <button type="button" class="btn-primary" onclick="addParticipants()">Add participants</button>
                 <button type="button" class="btn-secondary" onclick="clearForm()">Clear</button>
                 <div id="addStatus" class="status"></div>
@@ -212,8 +212,8 @@
         </div>
 
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Upload participants for study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">
+            <h2>Upload participants for study {{ selected_study.name_short }}</h2>
+            <div class="hint mb-xs">
                 Upload a CSV or TSV file. The first line must be a header; the <code>pid</code> column is used,
                 and the optional <code>display_name</code> column becomes the label shown to that participant
                 (for example a child's name). Every other column is ignored.
@@ -221,7 +221,7 @@
             </div>
             <input type="file" id="participantsFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" />
             <div class="hint" id="participantsFileHint">No file selected.</div>
-            <div style="margin-top: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <div class="actions">
                 <button id="validateParticipantsFileBtn" class="btn-secondary" type="button" disabled>Validate file</button>
                 <button id="uploadParticipantsBtn" class="btn-primary" type="button" disabled>Add participants from file</button>
                 <div id="uploadParticipantsStatus" class="status"></div>
@@ -233,20 +233,20 @@
 
         {% if not selected_study_is_open %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Add participants and task tokens to study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">
+            <h2>Add participants and task tokens to study {{ selected_study.name_short }}</h2>
+            <div class="hint mb-xs">
                 Upload a CSV with header row containing a <code>pid</code> column and one column per external task labeled with the task_key (column order does not matter).
             </div>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div style="margin-bottom: 0.5rem;">
+            <div class="mb-xs">
                 <strong>Required task columns:</strong>
-                <div style="margin-top: 0.4rem; color: var(--muted);">
+                <div class="hint">
                     {% for key in selected_study_external_task_keys %}<code>{{ key }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
                 </div>
             </div>
             <input type="file" id="tokensCsv" accept="text/csv,text/plain" />
             <div class="hint" id="tokensCsvHint">No file selected.</div>
-            <div style="margin-top: 0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <div class="actions">
                 <button id="validateTokensBtn" class="btn-secondary" type="button" disabled>Validate CSV</button>
                 <button id="uploadTokensBtn" class="btn-primary" type="button" disabled>Add users and task tokens</button>
                 <div id="tokensStatus" class="status"></div>
@@ -259,20 +259,20 @@
 
         {% if selected_study_is_open %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Add pool tokens to study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">
+            <h2>Add pool tokens to study {{ selected_study.name_short }}</h2>
+            <div class="hint mb-xs">
                 Upload a CSV with header row containing one column per external task labeled with the task_key (no <code>pid</code> column, column order does not matter).
             </div>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div style="margin-bottom: 0.5rem;">
+            <div class="mb-xs">
                 <strong>Required task columns:</strong>
-                <div style="margin-top: 0.4rem; color: var(--muted);">
+                <div class="hint">
                     {% for key in selected_study_external_task_keys %}<code>{{ key }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
                 </div>
             </div>
             <input type="file" id="poolTokensCsv" accept="text/csv,text/plain" />
             <div class="hint" id="poolTokensCsvHint">No file selected.</div>
-            <div style="margin-top: 0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <div class="actions">
                 <button id="validatePoolTokensBtn" class="btn-secondary" type="button" disabled>Validate CSV</button>
                 <button id="uploadPoolTokensBtn" class="btn-primary" type="button" disabled>Add pool tokens</button>
                 <div id="poolTokensStatus" class="status"></div>
@@ -285,17 +285,17 @@
 
         {% if selected_study and not selected_study_is_open %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
+            <h2>Export participants and assigned tokens for study {{ selected_study.name_short }}</h2>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div class="hint" style="margin-bottom: 0.75rem;">
+            <div class="hint mb-md">
             Typically external service providers generate tokens and you import them into our system. This section is useful when an external service provider asks us to provide the tokens.
             </div>
-            <div class="hint" style="margin-bottom: 0.75rem;">
+            <div class="hint mb-md">
                 Generate random tokens for participants that are missing external-task assignments,
                 then download them as a table (CSV or TSV, with <code>pid</code> column) to share with external service operators.
                 Generated tokens are 20-character alphanumeric strings.
             </div>
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <div class="actions actions--flush">
                 <button id="generateTokensBtn" class="btn-primary" type="button">Generate missing assigned tokens</button>
                 <button id="exportCsvBtn" class="btn-secondary" type="button">Export assigned tokens CSV</button>
                 <button id="exportTsvBtn" class="btn-secondary" type="button">Export assigned tokens TSV</button>
@@ -308,18 +308,18 @@
         {% endif %}
         {% if selected_study and selected_study_is_open %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Export pool tokens for study {{ selected_study.name_short }}</h2>
+            <h2>Export pool tokens for study {{ selected_study.name_short }}</h2>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div class="hint" style="margin-bottom: 0.75rem;">
+            <div class="hint mb-md">
                 Generate tokens into the pool for all external tasks of this open study.
                 Then download them as a table (CSV or TSV, no <code>pid</code> column — pool tokens are unassigned)
                 to share with external service operators.
             </div>
-            <div style="margin-bottom: 0.75rem; display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
-                <label for="poolTokenCount" style="white-space: nowrap;">Tokens per task:</label>
+            <div class="actions actions--flush mb-md">
+                <label for="poolTokenCount" class="nowrap">Tokens per task:</label>
                 <input type="number" id="poolTokenCount" min="1" max="10000" value="100" style="width: 100px;" />
             </div>
-            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+            <div class="actions actions--flush">
                 <button id="generatePoolTokensBtn" class="btn-primary" type="button">Generate pool tokens</button>
                 <button id="exportPoolCsvBtn" class="btn-secondary" type="button">Export pool tokens CSV</button>
                 <button id="exportPoolTsvBtn" class="btn-secondary" type="button">Export pool tokens TSV</button>
@@ -335,10 +335,10 @@
                 <div id="pm-danger" class="tab-panel">
 
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">Delete external-task tokens for the selected study and task. Both assigned tokens and unassigned pool tokens are supported.<br /><b>WARNING: Deletions are irreversible, and without a token, you may not be able to link a user to their external task data on the remote system.</b></div>
+            <h2>Delete task tokens (keep users) for study {{ selected_study.name_short }}</h2>
+            <div class="hint mb-xs">Delete external-task tokens for the selected study and task. Both assigned tokens and unassigned pool tokens are supported.<br /><b>WARNING: Deletions are irreversible, and without a token, you may not be able to link a user to their external task data on the remote system.</b></div>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div style="margin-bottom:0.5rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <div class="actions actions--flush mb-xs">
                 <label style="min-width:80px;">Task</label>
                 <select id="deleteTaskSelect">
                     {% for key in selected_study_external_task_keys %}
@@ -347,19 +347,19 @@
                 </select>
             </div>
 
-            <div style="margin-top:0.6rem; display:flex; gap:1rem; align-items:center;">
+            <div class="actions actions--flush">
                 {% if not selected_study_is_open %}
                 <label><input type="radio" name="deleteMode" value="by_pid" checked /> By user (pid)</label>
                 {% endif %}
                 <label><input type="radio" name="deleteMode" value="by_token" {% if selected_study_is_open %}checked{% endif %} /> By token</label>
             </div>
 
-            <div style="margin-top:0.6rem;">
+            <div class="mt-xs">
                 <textarea id="deleteInput" rows="6" placeholder="{% if selected_study_is_open %}Enter comma- or newline-separated tokens{% else %}Enter comma- or newline-separated pids or tokens{% endif %}"></textarea>
                 <div class="hint">Accepts comma or newline separated values. Preview before commit.</div>
             </div>
 
-            <div style="margin-top:0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <div class="actions">
                 <button id="previewDeleteBtn" class="btn-secondary" type="button">Preview deletions</button>
                 <button id="commitDeleteBtn" class="btn-danger" type="button" disabled>Delete tokens (commit)</button>
                 <div id="deleteStatus" class="status"></div>
@@ -368,7 +368,7 @@
             <div id="deletePreview" style="margin-top:0.75rem; display:none;">
                 <h3>Preview</h3>
                 <div id="deletePreviewSummary" class="hint"></div>
-                <div class="table-container" style="margin-top:0.5rem;">
+                <div class="table-container mt-xs">
                     <table id="deletePreviewTable" style="display:none;">
                         <thead><tr><th>Input</th><th>Found</th><th>Participant</th><th>Token</th></tr></thead>
                         <tbody></tbody>
@@ -381,13 +381,13 @@
         </div>
 
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Delete users (and their tokens) for study {{ selected_study.name_short }}</h2>
-            <div class="hint" style="margin-bottom: 0.5rem;">Remove participants from this study and delete ALL their assigned external-task tokens at once.<br /><b>WARNING: Deletions are irreversible. The participant exists only in this study, so removing them here also removes their study association.</b></div>
-            <div style="margin-top:0.6rem;">
+            <h2>Delete users (and their tokens) for study {{ selected_study.name_short }}</h2>
+            <div class="hint mb-xs">Remove participants from this study and delete ALL their assigned external-task tokens at once.<br /><b>WARNING: Deletions are irreversible. The participant exists only in this study, so removing them here also removes their study association.</b></div>
+            <div class="mt-xs">
                 <textarea id="deleteUsersInput" rows="6" placeholder="Participant IDs separated by comma, newline, semicolon, or spaces"></textarea>
                 <div class="hint">Accepts comma, semicolon, newline, or space separated values.</div>
             </div>
-            <div style="margin-top:0.75rem; display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+            <div class="actions">
                 <button id="deleteUsersBtn" class="btn-danger" type="button" disabled>Delete selected users</button>
                 <div id="deleteUsersStatus" class="status"></div>
             </div>
@@ -395,10 +395,10 @@
 
         {% if selected_study %}
         <div class="card">
-            <h2 style="margin-bottom: 0.75rem;">Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
+            <h2>Mass delete all tokens (keep users) for study {{ selected_study.name_short }}</h2>
             {% if selected_study_external_task_keys|length > 0 %}
-            <div class="hint" style="margin-bottom: 0.5rem;">Delete ALL tokens at once across all tasks for this study. Respective counts are shown on the buttons.</div>
-            <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+            <div class="hint mb-xs">Delete ALL tokens at once across all tasks for this study. Respective counts are shown on the buttons.</div>
+            <div class="actions actions--flush">
                 {% if not selected_study_is_open %}
                 <button id="massDeleteAssignedBtn" class="btn-danger" type="button"
                     data-count="{{ selected_study_assigned_token_count }}"
@@ -495,7 +495,7 @@
             }
 
             status.textContent = 'Adding participants...';
-            status.style.color = '#4f46e5';
+            status.style.color = 'var(--ink)';
 
             try {
                 const response = await fetch(`${apiBase}/api/admin/studies/${encodeURIComponent(studyName)}/assign-participants`, {
@@ -511,13 +511,13 @@
                 }
 
                 status.textContent = `Added: ${body.summary.assigned} (already assigned: ${body.summary.already_assigned})`;
-                status.style.color = '#059669';
+                status.style.color = 'var(--ok)';
                 setTimeout(() => {
                     window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
                 }, 700);
             } catch (error) {
                 status.textContent = error.message;
-                status.style.color = '#dc2626';
+                status.style.color = 'var(--danger-strong)';
             }
         }
 
@@ -556,7 +556,7 @@
             if (textarea) textarea.value = '';
             if (status) {
                 status.textContent = '';
-                status.style.color = '#374151';
+                status.style.color = 'var(--muted)';
             }
         }
 
@@ -609,11 +609,11 @@
                         }
                         if (missing.length) {
                             statusEl.textContent = `Missing columns: ${missing.join(', ')}`;
-                            statusEl.style.color = '#dc2626';
+                            statusEl.style.color = 'var(--danger-strong)';
                             uploadBtn.disabled = true;
                         } else {
                             statusEl.textContent = 'CSV validated. Ready to upload.';
-                            statusEl.style.color = '#059669';
+                            statusEl.style.color = 'var(--ok)';
                             uploadBtn.disabled = false;
                         }
                     };
@@ -631,7 +631,7 @@
 
                     uploadBtn.disabled = true;
                     statusEl.textContent = 'Uploading...';
-                    statusEl.style.color = '#4f46e5';
+                    statusEl.style.color = 'var(--ink)';
 
                     try {
                         const form = new FormData();
@@ -645,18 +645,18 @@
                         if (!resp.ok) {
                             const detail = body.detail || 'Import failed';
                             statusEl.textContent = detail;
-                            statusEl.style.color = '#dc2626';
+                            statusEl.style.color = 'var(--danger-strong)';
                             uploadBtn.disabled = false;
                             return;
                         }
 
                         const s = body.summary || {};
                         statusEl.textContent = `Participants assigned: ${s.participants_assigned || 0}; Assignments created: ${s.assignments_created || 0}; updated: ${s.assignments_updated || 0}`;
-                        statusEl.style.color = '#059669';
+                        statusEl.style.color = 'var(--ok)';
                         if (body.errors && body.errors.length) {
                             const errList = body.errors.slice(0,10).join('; ');
                             statusEl.textContent += `; Errors: ${errList}`;
-                            statusEl.style.color = '#b45309';
+                            statusEl.style.color = 'var(--warn)';
                         }
 
                         setTimeout(() => {
@@ -664,7 +664,7 @@
                         }, 900);
                     } catch (err) {
                         statusEl.textContent = `Upload failed: ${err.message}`;
-                        statusEl.style.color = '#dc2626';
+                        statusEl.style.color = 'var(--danger-strong)';
                         uploadBtn.disabled = false;
                     }
                 });
@@ -716,7 +716,7 @@
                         const missing = [];
                         if (headers.includes('pid')) {
                             statusEl.textContent = 'CSV must not contain a pid column. For assigned tokens use the closed-study import.';
-                            statusEl.style.color = '#dc2626';
+                            statusEl.style.color = 'var(--danger-strong)';
                             uploadBtn.disabled = true;
                             return;
                         }
@@ -725,11 +725,11 @@
                         }
                         if (missing.length) {
                             statusEl.textContent = `Missing columns: ${missing.join(', ')}`;
-                            statusEl.style.color = '#dc2626';
+                            statusEl.style.color = 'var(--danger-strong)';
                             uploadBtn.disabled = true;
                         } else {
                             statusEl.textContent = 'CSV validated. Ready to upload.';
-                            statusEl.style.color = '#059669';
+                            statusEl.style.color = 'var(--ok)';
                             uploadBtn.disabled = false;
                         }
                     };
@@ -747,7 +747,7 @@
 
                     uploadBtn.disabled = true;
                     statusEl.textContent = 'Uploading...';
-                    statusEl.style.color = '#4f46e5';
+                    statusEl.style.color = 'var(--ink)';
 
                     try {
                         const form = new FormData();
@@ -761,18 +761,18 @@
                         if (!resp.ok) {
                             const detail = body.detail || 'Import failed';
                             statusEl.textContent = detail;
-                            statusEl.style.color = '#dc2626';
+                            statusEl.style.color = 'var(--danger-strong)';
                             uploadBtn.disabled = false;
                             return;
                         }
 
                         const s = body.summary || {};
                         statusEl.textContent = `Tokens added to pool: ${s.tokens_added || 0}; duplicates skipped: ${s.duplicates_skipped || 0}`;
-                        statusEl.style.color = '#059669';
+                        statusEl.style.color = 'var(--ok)';
                         if (body.errors && body.errors.length) {
                             const errList = body.errors.slice(0,10).join('; ');
                             statusEl.textContent += `; Errors: ${errList}`;
-                            statusEl.style.color = '#b45309';
+                            statusEl.style.color = 'var(--warn)';
                         }
 
                         setTimeout(() => {
@@ -780,7 +780,7 @@
                         }, 900);
                     } catch (err) {
                         statusEl.textContent = `Upload failed: ${err.message}`;
-                        statusEl.style.color = '#dc2626';
+                        statusEl.style.color = 'var(--danger-strong)';
                         uploadBtn.disabled = false;
                     }
                 });
@@ -813,7 +813,7 @@
                 const inputs = parseLines(inputEl.value);
                 if(!inputs.length){ alert('Enter at least one pid or token'); return; }
 
-                statusEl.textContent = 'Previewing...'; statusEl.style.color = '#4f46e5';
+                statusEl.textContent = 'Previewing...'; statusEl.style.color = 'var(--ink)';
                 commitBtn.disabled = true;
                 previewSection.style.display = 'none';
 
@@ -843,10 +843,10 @@
                     }
 
                     previewSummary.textContent = `Input: ${json.total_input || 0}; matched: ${json.matched || 0}; not found: ${json.not_found || 0}`;
-                    statusEl.textContent = 'Preview ready. Review results and commit to delete.'; statusEl.style.color = '#059669';
+                    statusEl.textContent = 'Preview ready. Review results and commit to delete.'; statusEl.style.color = 'var(--ok)';
                     if((json.matched||0) > 0){ commitBtn.disabled = false; }
                 }catch(err){
-                    statusEl.textContent = err.message; statusEl.style.color = '#dc2626';
+                    statusEl.textContent = err.message; statusEl.style.color = 'var(--danger-strong)';
                 }
             });
 
@@ -857,7 +857,7 @@
                 const task = document.getElementById('deleteTaskSelect')?.value;
                 const mode = document.querySelector('input[name=deleteMode]:checked')?.value || 'by_pid';
                 const inputs = parseLines(inputEl.value);
-                statusEl.textContent = 'Deleting...'; statusEl.style.color = '#4f46e5';
+                statusEl.textContent = 'Deleting...'; statusEl.style.color = 'var(--ink)';
                 commitBtn.disabled = true;
 
                 try{
@@ -867,11 +867,11 @@
                     const json = await resp.json().catch(()=>({}));
                     if(!resp.ok){ throw new Error(json.detail || 'Delete failed'); }
 
-                    statusEl.textContent = `Deleted: ${json.deleted || 0}`; statusEl.style.color = '#059669';
+                    statusEl.textContent = `Deleted: ${json.deleted || 0}`; statusEl.style.color = 'var(--ok)';
                     setTimeout(()=>{
                         window.location.href = `${rootPath}/admin/participant-management?study_name_short=${encodeURIComponent(studyName)}`;
                     }, 800);
-                }catch(err){ statusEl.textContent = err.message; statusEl.style.color = '#dc2626'; commitBtn.disabled = false; }
+                }catch(err){ statusEl.textContent = err.message; statusEl.style.color = 'var(--danger-strong)'; commitBtn.disabled = false; }
             });
         })();
 
@@ -963,7 +963,7 @@
 
                     generateBtn.disabled = true;
                     statusEl.textContent = 'Generating assigned tokens...';
-                    statusEl.style.color = '#4f46e5';
+                    statusEl.style.color = 'var(--ink)';
 
                     try {
                         const resp = await fetch(
@@ -977,7 +977,7 @@
 
                         const s = body.summary || {};
                         statusEl.textContent = `Generated ${s.tokens_generated} assigned tokens (${s.tokens_skipped_existing} participants already had tokens)`;
-                        statusEl.style.color = '#059669';
+                        statusEl.style.color = 'var(--ok)';
 
                         // Reload the page to show tokens in the participant table
                         setTimeout(() => {
@@ -985,7 +985,7 @@
                         }, 900);
                     } catch (err) {
                         statusEl.textContent = err.message;
-                        statusEl.style.color = '#dc2626';
+                        statusEl.style.color = 'var(--danger-strong)';
                         generateBtn.disabled = false;
                     }
                 });
@@ -1023,7 +1023,7 @@
 
                     generateBtn.disabled = true;
                     statusEl.textContent = `Generating ${count} pool tokens per task...`;
-                    statusEl.style.color = '#4f46e5';
+                    statusEl.style.color = 'var(--ink)';
 
                     try {
                         const resp = await fetch(
@@ -1042,7 +1042,7 @@
 
                         const s = body.summary || {};
                         statusEl.textContent = `Generated ${s.total_generated} pool tokens across ${(s.tasks||[]).length} tasks.`;
-                        statusEl.style.color = '#059669';
+                        statusEl.style.color = 'var(--ok)';
 
                         // Reload to refresh token counts
                         setTimeout(() => {
@@ -1050,7 +1050,7 @@
                         }, 900);
                     } catch (err) {
                         statusEl.textContent = err.message;
-                        statusEl.style.color = '#dc2626';
+                        statusEl.style.color = 'var(--danger-strong)';
                         generateBtn.disabled = false;
                     }
                 });
@@ -1108,7 +1108,7 @@
                 const endpoint = pendingMode === 'assigned' ? 'delete-all-tokens/assigned' : 'delete-all-tokens/pool';
                 modalConfirm.disabled = true;
                 statusEl.textContent = 'Deleting...';
-                statusEl.style.color = '#4f46e5';
+                statusEl.style.color = 'var(--ink)';
 
                 try {
                     const resp = await fetch(
@@ -1119,7 +1119,7 @@
                     if (!resp.ok) throw new Error(json.detail || 'Delete failed');
 
                     statusEl.textContent = `Deleted ${json.deleted || 0} tokens.`;
-                    statusEl.style.color = '#059669';
+                    statusEl.style.color = 'var(--ok)';
                     hideModal();
 
                     // Reload to refresh counts
@@ -1128,7 +1128,7 @@
                     }, 800);
                 } catch (err) {
                     statusEl.textContent = err.message;
-                    statusEl.style.color = '#dc2626';
+                    statusEl.style.color = 'var(--danger-strong)';
                     hideModal();
                 } finally {
                     modalConfirm.disabled = false;
@@ -1178,7 +1178,7 @@
 
                     deleteBtn.disabled = true;
                     statusEl.textContent = 'Deleting...';
-                    statusEl.style.color = '#4f46e5';
+                    statusEl.style.color = 'var(--ink)';
 
                     try {
                         const resp = await fetch(
@@ -1194,7 +1194,7 @@
                         if (!resp.ok) throw new Error(json.detail || 'Delete failed');
 
                         statusEl.textContent = `Deleted ${json.deleted_participants} participant(s) (${json.deleted_assignments} token assignment(s)).`;
-                        statusEl.style.color = '#059669';
+                        statusEl.style.color = 'var(--ok)';
                         if (json.not_found > 0) {
                             statusEl.textContent += ` Not found: ${json.not_found_pids.join(', ')}.`;
                         }
@@ -1204,7 +1204,7 @@
                         }, 900);
                     } catch (err) {
                         statusEl.textContent = err.message;
-                        statusEl.style.color = '#dc2626';
+                        statusEl.style.color = 'var(--danger-strong)';
                         deleteBtn.disabled = false;
                     }
                 });

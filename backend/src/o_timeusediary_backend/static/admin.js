@@ -100,7 +100,7 @@
         if (!element) {
             return;
         }
-        const colours = { info: '#5f5f5d', ok: '#1f6f43', error: '#b3261e' };
+        const colours = { info: 'var(--muted)', ok: 'var(--ok)', error: 'var(--danger-strong)' };
         element.textContent = message || '';
         element.style.color = colours[kind] || colours.info;
     };

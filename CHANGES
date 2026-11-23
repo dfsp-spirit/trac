@@ -5,6 +5,7 @@ TRAC MPIAE Changes
 Current WIP
 -----------
 - NEW: make the admin pages work better on phones: two stat cards per row, denser tables with a visible scroll edge and a sticky participant id column, one sideways-scrolling tab row, secondary table columns hidden on small screens, and 44px touch targets
+- NEW: restyle the admin portal on one shared design-token layer with the participant app (system font, neutral white/grey palette, consistent buttons and tables, tabular numerals, no emoji headings); the tokens are generated from `frontend_new/` with `npm run sync:admin-tokens`
 
 
 Version 0.27.0 -- Further improve new frontend
