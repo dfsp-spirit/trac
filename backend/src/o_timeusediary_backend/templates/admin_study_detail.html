@@ -341,11 +341,11 @@
                     <div class="window-controls-row">
                         <div class="window-control-field">
                             <label for="rename-name-{{ study.id }}"><strong>Name</strong></label>
-                            <input id="rename-name-{{ study.id }}" type="text" value="{{ study.name | e }}" style="min-width: 18rem;" disabled>
+                            <input id="rename-name-{{ study.id }}" type="text" class="study-rename-input" value="{{ study.name | e }}" disabled>
                         </div>
                         <div class="window-control-field">
                             <label for="rename-short-{{ study.id }}"><strong>Short Name</strong></label>
-                            <input id="rename-short-{{ study.id }}" type="text" value="{{ study.name_short | e }}" style="min-width: 14rem;" title="{{ study_name_short_rule_text }}" disabled>
+                            <input id="rename-short-{{ study.id }}" type="text" class="study-rename-short-input" value="{{ study.name_short | e }}" title="{{ study_name_short_rule_text }}" disabled>
                         </div>
                         <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save Names</button>
                     </div>

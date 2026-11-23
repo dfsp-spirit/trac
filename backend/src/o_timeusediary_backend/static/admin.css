@@ -192,15 +192,28 @@ body {
 
 /* ── Tables ─────────────────────────────────────────────────────────────── */
 
+/* Scroll shadows: the local-attachment surface gradients hide the shadow at
+   either end, so an overflowing table shows an edge until it is scrolled. They
+   live on the container (the table stays transparent) because a background on
+   the table itself would cover them. */
 .table-container {
     overflow-x: auto;
     margin: 1rem 0;
+    background-color: var(--surface);
+    background-image:
+        linear-gradient(to right, var(--surface) 30%, rgba(247, 244, 237, 0)),
+        linear-gradient(to left, var(--surface) 30%, rgba(247, 244, 237, 0)),
+        radial-gradient(farthest-side at 0 50%, rgba(28, 28, 28, 0.16), transparent),
+        radial-gradient(farthest-side at 100% 50%, rgba(28, 28, 28, 0.16), transparent);
+    background-repeat: no-repeat;
+    background-size: 28px 100%, 28px 100%, 18px 100%, 18px 100%;
+    background-position: left center, right center, left center, right center;
+    background-attachment: local, local, scroll, scroll;
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
-    background: var(--surface);
 }
 
 th,
@@ -226,6 +239,9 @@ code {
     border: 1px solid var(--border);
     border-radius: 4px;
     padding: 0.05rem 0.28rem;
+    /* Long URLs and ids (e.g. the tools page example link) must break instead
+       of forcing the whole page into horizontal scrolling. */
+    overflow-wrap: anywhere;
 }
 
 .activity-path {
@@ -818,6 +834,15 @@ textarea {
     padding: 0.45rem 0.5rem;
 }
 
+/* Desktop width of the study rename fields; the mobile block drops the minimum. */
+.study-rename-input {
+    min-width: 18rem;
+}
+
+.study-rename-short-input {
+    min-width: 14rem;
+}
+
 .window-btn {
     border-radius: 4px;
     padding: 0.5rem 0.85rem;
@@ -1017,6 +1042,7 @@ textarea {
 
     .header {
         padding: 1.25rem;
+        margin-bottom: 1rem;
     }
 
     .header h1 {
@@ -1028,8 +1054,30 @@ textarea {
         align-items: flex-start;
     }
 
+    .card {
+        padding: 1rem;
+    }
+
+    /* Two metrics per row: one full-width card per metric scrolled for pages. */
     .stats-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card {
+        padding: 0.8rem 0.6rem;
+    }
+
+    .stat-value {
+        font-size: 1.7rem;
+        line-height: 1.2;
+        margin-bottom: 0.15rem;
+    }
+
+    .stat-label {
+        font-size: 0.72rem;
+        letter-spacing: 0.4px;
     }
 
     .study-meta {
@@ -1037,10 +1085,109 @@ textarea {
         gap: 0.5rem;
     }
 
+    .study-header {
+        padding: 1rem;
+    }
+
+    .tab-content {
+        padding: 0.75rem;
+    }
+
+    /* One sideways-scrolling tab row instead of two or three wrapped rows. */
+    .tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
     .tab {
-        flex: 1;
-        text-align: center;
-        padding: 0.75rem 0.9rem;
+        flex: 0 0 auto;
+        text-align: left;
+        padding: 0.6rem 0.9rem;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+
+    /* Denser cells: more of a wide table fits before it has to scroll, and the
+       nowrap headers keep a column label readable instead of squeezed. */
+    th,
+    td {
+        padding: 0.5rem 0.6rem;
+        font-size: 13px;
+    }
+
+    th {
+        white-space: nowrap;
+    }
+
+    /* iOS zooms into a focused field below 16px and leaves the page zoomed. */
+    input,
+    select,
+    textarea,
+    .danger-modal-input,
+    .owner-add-row select {
+        font-size: 16px;
+    }
+
+    /* Secondary columns stay on the corresponding detail page. */
+    .col-md-hide {
+        display: none;
+    }
+
+    /* Keep the row identifier in view while a wide table scrolls. */
+    .table-sticky-first th:first-child,
+    .table-sticky-first td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        background: var(--surface);
+        box-shadow: 1px 0 0 var(--border);
+    }
+
+    .table-sticky-first th:first-child {
+        background: #f0ede6;
+    }
+
+    .modal-dialog,
+    .danger-modal-card {
+        padding: 1.25rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    .filter-form input[type="search"] {
+        min-width: 0;
+        flex-basis: 100%;
+    }
+
+    .admin-nav {
+        gap: 0.4rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .admin-nav-link {
+        padding: 0.45rem 0.65rem;
+        font-size: 0.82rem;
+    }
+
+    .admin-nav-context {
+        padding: 0 0.2rem;
+        font-size: 0.82rem;
+    }
+
+    /* Touch targets for actions; 44px is the usual minimum. The chip remove
+       button stays small because the chip itself is the target. */
+    button:not(.owner-chip-remove),
+    .btn-secondary,
+    .btn-danger,
+    .page-btn,
+    .export-btn {
+        min-height: 2.5rem;
+    }
+
+    .study-rename-input,
+    .study-rename-short-input {
+        min-width: 0;
+        width: 100%;
     }
 
     .export-btn {

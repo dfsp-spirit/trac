@@ -114,20 +114,22 @@
                 {% endif %}
             </div>
             {% if report.blocked_codes %}
-                <table>
-                    <thead>
-                    <tr><th>Validation code</th><th>Refusals</th><th>Loads affected</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for entry in report.blocked_codes %}
-                        <tr>
-                            <td><code>{{ entry.code }}</code></td>
-                            <td>{{ entry.count }}</td>
-                            <td>{{ entry.loads }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr><th>Validation code</th><th>Refusals</th><th>Loads affected</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in report.blocked_codes %}
+                            <tr>
+                                <td><code>{{ entry.code }}</code></td>
+                                <td>{{ entry.count }}</td>
+                                <td>{{ entry.loads }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <div class="empty-state">No refused saves in this window.</div>
             {% endif %}
@@ -144,20 +146,22 @@
                 {% endif %}
             </div>
             {% if report.no_result_queries %}
-                <table>
-                    <thead>
-                    <tr><th>Term</th><th>Searches</th><th>Loads</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for entry in report.no_result_queries %}
-                        <tr>
-                            <td>{{ entry.query }}</td>
-                            <td>{{ entry.count }}</td>
-                            <td>{{ entry.loads }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr><th>Term</th><th>Searches</th><th>Loads</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in report.no_result_queries %}
+                            <tr>
+                                <td>{{ entry.query }}</td>
+                                <td>{{ entry.count }}</td>
+                                <td>{{ entry.loads }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <div class="empty-state">Every search in this window matched something.</div>
             {% endif %}
@@ -174,22 +178,24 @@
                 {% endif %}
             </div>
             {% if report.form_by_source %}
-                <table>
-                    <thead>
-                    <tr><th>Started from</th><th>Opened</th><th>Saved</th><th>Cancelled</th><th>Unclosed</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for entry in report.form_by_source %}
-                        <tr>
-                            <td>{{ entry.source }}</td>
-                            <td>{{ entry.opened }}</td>
-                            <td>{{ entry.saved }}</td>
-                            <td>{{ entry.cancelled }}</td>
-                            <td>{{ entry.unclosed }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr><th>Started from</th><th>Opened</th><th>Saved</th><th>Cancelled</th><th>Unclosed</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in report.form_by_source %}
+                            <tr>
+                                <td>{{ entry.source }}</td>
+                                <td>{{ entry.opened }}</td>
+                                <td>{{ entry.saved }}</td>
+                                <td>{{ entry.cancelled }}</td>
+                                <td>{{ entry.unclosed }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <div class="empty-state">No activity form was opened in this window.</div>
             {% endif %}
@@ -203,44 +209,48 @@
             </div>
             <h3>API errors</h3>
             {% if report.api_errors %}
-                <table>
-                    <thead>
-                    <tr><th>Method</th><th>Route</th><th>Status</th><th>Code</th><th>Count</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for entry in report.api_errors %}
-                        <tr>
-                            <td>{{ entry.method }}</td>
-                            <td><code>{{ entry.route }}</code></td>
-                            <td>{% if entry.status is not none %}{{ entry.status }}{% else %}–{% endif %}</td>
-                            <td>{{ entry.code or '–' }}</td>
-                            <td>{{ entry.count }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr><th>Method</th><th>Route</th><th>Status</th><th>Code</th><th>Count</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in report.api_errors %}
+                            <tr>
+                                <td>{{ entry.method }}</td>
+                                <td><code>{{ entry.route }}</code></td>
+                                <td>{% if entry.status is not none %}{{ entry.status }}{% else %}–{% endif %}</td>
+                                <td>{{ entry.code or '–' }}</td>
+                                <td>{{ entry.count }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <div class="empty-state">No API errors in this window.</div>
             {% endif %}
 
             <h3>Client errors</h3>
             {% if report.client_errors %}
-                <table>
-                    <thead>
-                    <tr><th>Kind</th><th>Error</th><th>Source</th><th>Line</th><th>Count</th></tr>
-                    </thead>
-                    <tbody>
-                    {% for entry in report.client_errors %}
-                        <tr>
-                            <td>{{ entry.kind }}</td>
-                            <td><code>{{ entry.name }}</code></td>
-                            <td><code>{{ entry.source }}</code></td>
-                            <td>{% if entry.line is not none %}{{ entry.line }}{% else %}–{% endif %}</td>
-                            <td>{{ entry.count }}</td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                        <tr><th>Kind</th><th>Error</th><th>Source</th><th>Line</th><th>Count</th></tr>
+                        </thead>
+                        <tbody>
+                        {% for entry in report.client_errors %}
+                            <tr>
+                                <td>{{ entry.kind }}</td>
+                                <td><code>{{ entry.name }}</code></td>
+                                <td><code>{{ entry.source }}</code></td>
+                                <td>{% if entry.line is not none %}{{ entry.line }}{% else %}–{% endif %}</td>
+                                <td>{{ entry.count }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             {% else %}
                 <div class="empty-state">No client errors in this window.</div>
             {% endif %}
@@ -268,50 +278,58 @@
             <div class="study-header">
                 <h2>Event mix and context</h2>
             </div>
-            <table>
-                <thead>
-                <tr><th>Event</th><th>Count</th><th>Share</th></tr>
-                </thead>
-                <tbody>
-                {% for entry in report.by_name %}
-                    <tr>
-                        <td><code>{{ entry.name }}</code></td>
-                        <td>{{ entry.count }}</td>
-                        <td>{{ entry.share }}%</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <table>
-                <thead>
-                <tr><th>Language</th><th>Count</th></tr>
-                </thead>
-                <tbody>
-                {% for entry in report.context.language %}
-                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <table>
-                <thead>
-                <tr><th>Viewport</th><th>Count</th><th>Share</th></tr>
-                </thead>
-                <tbody>
-                {% for entry in report.context.viewport %}
-                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td><td>{{ entry.share }}%</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
-            <table>
-                <thead>
-                <tr><th>App version</th><th>Count</th></tr>
-                </thead>
-                <tbody>
-                {% for entry in report.context.app_version %}
-                    <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr><th>Event</th><th>Count</th><th>Share</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.by_name %}
+                        <tr>
+                            <td><code>{{ entry.name }}</code></td>
+                            <td>{{ entry.count }}</td>
+                            <td>{{ entry.share }}%</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr><th>Language</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.context.language %}
+                        <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr><th>Viewport</th><th>Count</th><th>Share</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.context.viewport %}
+                        <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td><td>{{ entry.share }}%</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                    <tr><th>App version</th><th>Count</th></tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in report.context.app_version %}
+                        <tr><td>{{ entry.value }}</td><td>{{ entry.count }}</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     {% endif %}
 {% endblock %}

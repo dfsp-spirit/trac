@@ -97,15 +97,15 @@
             </div>
             {% if current_participants %}
             <div class="table-container">
-            <table>
+            <table class="table-sticky-first">
                 <thead>
                     <tr>
                         <th>Participant ID</th>
                         <th>Name</th>
-                        <th>Joined</th>
+                        <th class="col-md-hide">Joined</th>
                         {% if selected_study_requires_consent %}
                         <th>Consent</th>
-                        <th>Consent Decided At</th>
+                        <th class="col-md-hide">Consent Decided At</th>
                         {% endif %}
                         <th>Last Activity</th>
                         <th>Activity Count</th>
@@ -123,7 +123,7 @@
                     <tr>
                         <td><code>{{ participant.id }}</code></td>
                         <td>{{ participant.display_name or '-' }}</td>
-                        <td>{{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else '-' }}</td>
+                        <td class="col-md-hide">{{ participant.created_at.strftime('%Y-%m-%d %H:%M') if participant.created_at else '-' }}</td>
                         {% if selected_study_requires_consent %}
                         <td>
                             {% if participant.consent_given is none %}
@@ -134,7 +134,7 @@
                                 Denied
                             {% endif %}
                         </td>
-                        <td>{{ participant.consent_decided_at.strftime('%Y-%m-%d %H:%M') if participant.consent_decided_at else '-' }}</td>
+                        <td class="col-md-hide">{{ participant.consent_decided_at.strftime('%Y-%m-%d %H:%M') if participant.consent_decided_at else '-' }}</td>
                         {% endif %}
                         <td>{{ participant.last_activity_at.strftime('%Y-%m-%d %H:%M') if participant.last_activity_at else '-' }}</td>
                         <td>{{ participant.activity_count }}</td>
@@ -368,10 +368,12 @@
             <div id="deletePreview" style="margin-top:0.75rem; display:none;">
                 <h3>Preview</h3>
                 <div id="deletePreviewSummary" class="hint"></div>
-                <table id="deletePreviewTable" style="margin-top:0.5rem; display:none;">
-                    <thead><tr><th>Input</th><th>Found</th><th>Participant</th><th>Token</th></tr></thead>
-                    <tbody></tbody>
-                </table>
+                <div class="table-container" style="margin-top:0.5rem;">
+                    <table id="deletePreviewTable" style="display:none;">
+                        <thead><tr><th>Input</th><th>Found</th><th>Participant</th><th>Token</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
             {% else %}
             <div class="empty">This study has no external tasks configured. Token deletion disabled for study {{ selected_study.name_short }}.</div>

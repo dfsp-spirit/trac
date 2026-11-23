@@ -50,12 +50,12 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Short</th>
-                                <th>Owners</th>
+                                <th class="col-md-hide">Owners</th>
                                 <th>Participants</th>
                                 <th>Activities</th>
-                                <th>Ext. Tasks</th>
+                                <th class="col-md-hide">Ext. Tasks</th>
                                 <th>Type</th>
-                                <th>Period</th>
+                                <th class="col-md-hide">Period</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -68,12 +68,12 @@
                                     {% if sd.study.is_paused %}<span class="badge-paused" style="font-size: 0.7rem; margin-left: 0.3rem;">PAUSED</span>{% endif %}
                                 </td>
                                 <td><span class="badge badge-study">{{ sd.study.name_short }}</span></td>
-                                <td style="font-size: 0.85rem;">
+                                <td class="col-md-hide" style="font-size: 0.85rem;">
                                     {% if sd.study.owner_usernames %}{{ sd.study.owner_usernames|join(', ') }}{% else %}<span style="color: var(--muted);">—</span>{% endif %}
                                 </td>
                                 <td>{{ sd.participant_count }}</td>
                                 <td>{{ sd.activity_count }}</td>
-                                <td>{{ sd.external_task_count }}</td>
+                                <td class="col-md-hide">{{ sd.external_task_count }}</td>
                                 <td>
                                     {% if sd.is_open %}
                                     <span style="color: #198754; font-weight: 600;">Open</span>
@@ -81,7 +81,7 @@
                                     <span style="color: var(--muted);">Closed</span>
                                     {% endif %}
                                 </td>
-                                <td style="font-size: 0.85rem;">
+                                <td class="col-md-hide" style="font-size: 0.85rem;">
                                     {{ sd.study.data_collection_start.strftime('%Y-%m-%d') }}<br>
                                     <span style="color: var(--muted);">→</span> {{ sd.study.data_collection_end.strftime('%Y-%m-%d') }}
                                 </td>

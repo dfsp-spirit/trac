@@ -10,8 +10,9 @@ Version 0.27.0 -- Further improve new frontend
 - FIX: render numbered list items separated by blank lines as one list in study texts, instead of restarting the numbering at 1 per item
 - FIX: give the empty timeline switch hint a text separator so its visible text is part of its accessible name (axe rule label-content-name-mismatch, enabled by default since axe-core 4.14)
 - NEW: per-participant display name (roster column `display_name`, or `participant_display_names` in the study config for fixtures), shown in the new frontend and in the admin participant list, usable in study texts as `{display_name}`, and kept in the runtime config export but not in the result exports
+- NEW: make the admin pages work better on phones: two stat cards per row, denser tables with a visible scroll edge and a sticky participant id column, one sideways-scrolling tab row, secondary table columns hidden on small screens, and 44px touch targets
 
-
+"
 Version 0.26.0 -- Improve new frontend
 --------------------------------------
 - NEW: add tiny daystrip overview component
