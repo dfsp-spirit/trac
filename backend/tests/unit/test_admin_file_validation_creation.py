@@ -21,6 +21,7 @@ from o_timeusediary_backend.api_deps.admin_auth import (
     ROLE_SUPER_ADMIN,
     AdminIdentity,
 )
+from o_timeusediary_backend.formats import STUDIES_CONFIG_SCHEMA_VERSION
 from o_timeusediary_backend.models import Study
 from fastapi import UploadFile
 
@@ -198,6 +199,50 @@ async def test_full_study_validation_reports_conflict_notice_for_existing_study(
     assert response_payload["ok"] is True
     assert response_payload["summary"]["creation_mode"] == "create_only"
     assert response_payload["summary"]["transaction_mode"] == "all_or_nothing"
+    assert response_payload["summary"]["creation_eligible"] is False
+    assert response_payload["summary"]["creation_conflicts"]
+    assert any(
+        error.get("type") == "conflict_notice"
+        for error in response_payload.get("errors", [])
+    )
+
+
+@pytest.mark.asyncio
+async def test_full_study_validation_accepts_runtime_export_envelope(db_session):
+    """The admin download is an envelope around studies_config, not a bare payload."""
+    _insert_existing_default_study(db_session)
+
+    studies_config_payload = _load_studies_config_payload()
+    embedded_study = _build_embedded_study_payload(studies_config_payload, "default")
+    export_envelope = {
+        "studies_config": {
+            "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
+            "studies": [embedded_study],
+        },
+        "activities": {"default": embedded_study["activities_json_data"]},
+        "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
+        "tud_backend_version": "unit-test",
+    }
+    export_upload = _make_upload_file(
+        "studies_config_default_export.json",
+        json.dumps(export_envelope).encode("utf-8"),
+    )
+
+    response_payload = await validate_files_in_memory(
+        mode="full_study_embedded",
+        default_language=None,
+        supported_languages_csv=None,
+        activities_language_map=None,
+        full_study_name_short=None,
+        activities_file=None,
+        activities_files=[],
+        studies_config_file=export_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert response_payload["ok"] is True
+    assert response_payload["summary"]["study_name_short"] == "default"
     assert response_payload["summary"]["creation_eligible"] is False
     assert response_payload["summary"]["creation_conflicts"]
     assert any(

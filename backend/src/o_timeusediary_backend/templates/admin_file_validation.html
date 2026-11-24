@@ -7,7 +7,7 @@
 {% block content %}
         <div class="header">
             <h1>Study Setup</h1>
-            <p>Validate a <code>studies_config.json</code> and create the study from it. Validation runs in memory and never modifies existing studies; creation happens only after you confirm the review.</p>
+            <p>Validate a <code>studies_config.json</code> or an embedded runtime-config export and create the study from it. Validation runs in memory and never modifies existing studies; creation happens only after you confirm the review.</p>
             <div class="header-info">
                 <div><strong>Admin:</strong> {{ current_admin }}</div>
                 <div><strong>Last Updated:</strong> {{ current_time.strftime('%Y-%m-%d %H:%M:%S UTC') }}</div>
@@ -18,9 +18,9 @@
             <h2>Create a study</h2>
             <form id="studyForm" novalidate>
                 <div class="field">
-                    <label for="studiesConfigFile">studies_config.json</label>
+                    <label for="studiesConfigFile">studies_config.json or runtime-config export</label>
                     <input id="studiesConfigFile" name="studies_config_file" type="file" accept=".json">
-                    <p class="hint">The file may contain one or several studies. Activities are either embedded (<code>activities_json_data</code>) or referenced as separate files (<code>activities_json_files</code>); this page detects which and asks only for what is missing.</p>
+                    <p class="hint">The file may contain one or several studies. Activities are either embedded (<code>activities_json_data</code>) or referenced as separate files (<code>activities_json_files</code>); this page detects which and asks only for what is missing. The embedded JSON download from the study's export section is accepted directly.</p>
                 </div>
 
                 <div class="field" id="studySelectorField" style="display: none;">
@@ -42,7 +42,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn-primary" id="validateStudyBtn" disabled>Validate</button>
-                    <span class="hint" id="packageMode">Select a studies_config.json to start.</span>
+                    <span class="hint" id="packageMode">Select a studies_config.json or runtime-config export to start.</span>
                 </div>
             </form>
 
@@ -217,9 +217,17 @@
 
         async function readConfigStudies(file) {
             const parsed = JSON.parse(await file.text());
-            const studies = Array.isArray(parsed && parsed.studies) ? parsed.studies : [];
+            // Accept both a bare studies_config and the runtime-config export
+            // bundle written by /api/admin/export/studies-runtime-config.
+            const config =
+                parsed && parsed.studies_config && Array.isArray(parsed.studies_config.studies)
+                    ? parsed.studies_config
+                    : parsed;
+            const studies = Array.isArray(config && config.studies) ? config.studies : [];
             if (!studies.length) {
-                throw new Error('The file has no non-empty "studies" array.');
+                throw new Error(
+                    'The file has no non-empty "studies" array. Select a studies_config.json or an embedded runtime-config export.'
+                );
             }
             return studies;
         }
@@ -235,7 +243,7 @@
 
             const file = configInput.files && configInput.files[0];
             if (!file) {
-                packageMode.textContent = 'Select a studies_config.json to start.';
+                packageMode.textContent = 'Select a studies_config.json or runtime-config export to start.';
                 return;
             }
 

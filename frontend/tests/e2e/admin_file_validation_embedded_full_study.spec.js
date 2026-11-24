@@ -136,3 +136,55 @@ test('admin study setup validates and creates a selected embedded study', async 
     [ADMIN_ROOT_PATH, selectedStudyNameShort]
   );
 });
+
+test('admin study setup accepts a runtime-config export and reports the duplicate name_short', async ({
+  page,
+}) => {
+  test.skip(
+    !ADMIN_USER || !ADMIN_PASS,
+    'Set PLAYWRIGHT_ADMIN_USER and PLAYWRIGHT_ADMIN_PASS to run admin e2e test.'
+  );
+
+  const auth = Buffer.from(`${ADMIN_USER}:${ADMIN_PASS}`).toString('base64');
+  await page.context().setExtraHTTPHeaders({
+    Authorization: `Basic ${auth}`,
+  });
+
+  await page.goto(`${ADMIN_BASE_URL}/admin/file-validation`, {
+    waitUntil: 'domcontentloaded',
+  });
+
+  // Use the same envelope the admin download writes: studies_config + activities.
+  const exportResponse = await page.request.get(
+    `${ADMIN_BASE_URL}/api/admin/export/studies-runtime-config`,
+    {
+      params: { study_name: 'default', mode: 'embedded_json' },
+      headers: { Authorization: `Basic ${auth}` },
+    }
+  );
+  expect(exportResponse.ok()).toBeTruthy();
+  const exportBundle = await exportResponse.json();
+
+  const studyForm = page.locator('#studyForm');
+  await studyForm.locator('input[name="studies_config_file"]').setInputFiles({
+    name: 'studies_config_default_export.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(exportBundle), 'utf8'),
+  });
+
+  // The page must recognize the embedded activities inside the envelope.
+  await expect(page.locator('#packageMode')).toContainText('embedded');
+  await page.locator('#validateStudyBtn').click();
+
+  const result = page.locator('#validationResult');
+  await expect(result).toBeVisible();
+  await expect(result).toContainText('Validation passed');
+  await expect(page.locator('#reviewPanel')).toBeVisible();
+  await expect(page.locator('#createStudyStatus')).toContainText(
+    'Creation blocked'
+  );
+  await expect(page.locator('#createStudyStatus')).toContainText(
+    'already used by study'
+  );
+  await expect(page.locator('#createStudyBtn')).toBeDisabled();
+});

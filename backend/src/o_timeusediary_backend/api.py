@@ -4021,9 +4021,26 @@ def _validate_activities_multilang_in_memory(
     }
 
 
+def _unwrap_studies_config_payload(
+    studies_config_json: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Accept both a bare studies_config and the admin runtime-export bundle.
+
+    The export endpoint writes ``{"studies_config": {"studies": [...]}, ...}``
+    so the file also carries the redundant ``activities`` helper. The admin
+    validation/create flow should accept that download directly instead of
+    asking the admin to extract the inner object by hand.
+    """
+    nested = studies_config_json.get("studies_config")
+    if isinstance(nested, dict) and isinstance(nested.get("studies"), list):
+        return nested
+    return studies_config_json
+
+
 def _extract_single_study_from_studies_config(
     studies_config_json: Dict[str, Any],
 ) -> Dict[str, Any]:
+    studies_config_json = _unwrap_studies_config_payload(studies_config_json)
     studies = studies_config_json.get("studies")
     if not isinstance(studies, list) or not studies:
         raise ValueError("studies_config must contain a non-empty 'studies' array")
@@ -4041,6 +4058,8 @@ def _extract_study_from_studies_config_for_validation(
     studies_config_json: Dict[str, Any],
     selected_study_name_short: Optional[str] = None,
 ) -> Tuple[Dict[str, Any], List[str], bool]:
+    studies_config_json = _unwrap_studies_config_payload(studies_config_json)
+
     # Checked before anything else: a file from a newer TRAC may mean something
     # else entirely, so its per-study fields must not be interpreted.
     ensure_supported_schema_version(
