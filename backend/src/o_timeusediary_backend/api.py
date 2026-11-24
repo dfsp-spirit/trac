@@ -2096,6 +2096,67 @@ def submit_activities(
     }
 
 
+def _build_server_completion_progress(
+    completion_rows: Sequence[Tuple[datetime, Optional[datetime]]],
+    *,
+    today: datetime,
+) -> Dict[str, Any]:
+    """Build the server-wide cumulative finished-participant series.
+
+    ``completion_rows`` are ``(study_submitted_at, skipped_at)`` pairs. A skipped
+    diary also sets ``study_submitted_at`` (that is what closes the study for
+    that participant), so the cumulative line counts both submitted and skipped
+    diaries and reports the split separately.
+
+    This is deliberately participant-row work, not activity-row work: the
+    overview chart must not scan the activities table.
+    """
+    counts_by_day: Dict[date, int] = {}
+    skipped_total = 0
+
+    for submitted_at, skipped_at in completion_rows:
+        if submitted_at is None:
+            continue
+        day = _to_utc_naive(submitted_at).date()
+        counts_by_day[day] = counts_by_day.get(day, 0) + 1
+        if skipped_at is not None:
+            skipped_total += 1
+
+    if not counts_by_day:
+        return {
+            "has_data": False,
+            "dates": [],
+            "cumulative": [],
+            "total_finished": 0,
+            "total_submitted": 0,
+            "total_skipped": 0,
+        }
+
+    end_date = max(max(counts_by_day), _to_utc_naive(today).date())
+    # One zero point before the first completion gives the line a baseline and
+    # keeps a single-day series drawable (the canvas needs at least two points).
+    start_date = min(counts_by_day) - timedelta(days=1)
+
+    dates: List[str] = []
+    cumulative: List[int] = []
+    running_total = 0
+    day_count = (end_date - start_date).days + 1
+    for offset in range(day_count):
+        day = start_date + timedelta(days=offset)
+        running_total += counts_by_day.get(day, 0)
+        dates.append(day.isoformat())
+        cumulative.append(running_total)
+
+    return {
+        "has_data": True,
+        "dates": dates,
+        "cumulative": cumulative,
+        "total_finished": running_total,
+        "total_submitted": running_total - skipped_total,
+        "total_skipped": skipped_total,
+    }
+
+
 @app.get("/admin", name="Admin Overview Page", response_class=HTMLResponse)
 async def admin_overview(
     request: Request,
@@ -2130,6 +2191,27 @@ async def admin_overview(
         now_utc_naive = _to_utc_naive(now_utc)
     except TypeError:
         now_utc_naive = None
+
+    # Server-wide completion chart, super admins only. This reads one row per
+    # participant (submission timestamps), not the activities table.
+    server_completion_progress = None
+    if identity.is_super_admin:
+        try:
+            completion_rows = session.exec(
+                select(
+                    StudyParticipant.study_submitted_at,
+                    StudyParticipant.skipped_at,
+                ).where(StudyParticipant.study_submitted_at.is_not(None))
+            ).all()
+        except TypeError as exc:
+            logger.warning(
+                "Skipping server-wide completion chart due to datetime mismatch: %s",
+                exc,
+            )
+            completion_rows = []
+        server_completion_progress = _build_server_completion_progress(
+            completion_rows, today=now_utc
+        )
 
     for study in studies:
         # Aggregate counts (cheap)
@@ -2308,6 +2390,7 @@ async def admin_overview(
         "total_participants": total_participants,
         "total_activities_all": total_activities_all,
         "recent_activities": enriched_recent_activities,
+        "server_completion_progress": server_completion_progress,
         "admin_directory": admin_directory,
         "is_super_admin": identity.is_super_admin,
         "current_admin_role": identity.role,

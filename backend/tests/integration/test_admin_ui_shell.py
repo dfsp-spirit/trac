@@ -117,6 +117,21 @@ async def test_admin_static_assets_are_served():
 
 
 @pytest.mark.asyncio
+async def test_overview_has_the_server_wide_completion_section():
+    """Super admins get a server-wide finished-participant chart or its empty state."""
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.get(f"{BASE_URL}/admin", auth=ADMIN_AUTH)
+
+    assert response.status_code == 200, response.text
+    body = response.text
+    assert "Finished participants over time" in body
+    assert (
+        'id="serverCompletionChart"' in body
+        or "No finished participants yet." in body
+    )
+
+
+@pytest.mark.asyncio
 async def test_file_validation_page_has_a_single_create_flow():
     """The old modes 3 and 4 are merged: one upload, auto-detection, then review."""
     async with httpx.AsyncClient(timeout=60.0) as client:

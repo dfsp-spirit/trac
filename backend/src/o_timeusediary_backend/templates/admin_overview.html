@@ -37,6 +37,39 @@
             </div>
         </div>
 
+        {% if server_completion_progress %}
+        <!-- Server-wide completion (super admins only) -->
+        <div class="study-section">
+            <div class="study-header">
+                <h2>Finished participants over time</h2>
+                <p>
+                    Server-wide cumulative count of participants whose diary is closed, by submission
+                    date. A skipped diary is finished too, so the line includes skipped diaries.
+                </p>
+            </div>
+            <div class="tab-content">
+                {% if server_completion_progress.has_data %}
+                <div class="chart-wrap">
+                    <p class="section-note">
+                        {{ server_completion_progress.total_finished }} finished
+                        ({{ server_completion_progress.total_submitted }} submitted,
+                        {{ server_completion_progress.total_skipped }} skipped).
+                    </p>
+                    <div style="position: relative;">
+                        <canvas id="serverCompletionChart" width="750" height="400" class="chart-canvas"></canvas>
+                        <script id="server-completion-data" type="application/json">{{ {"dates": server_completion_progress.dates, "cumulative": server_completion_progress.cumulative} | tojson }}</script>
+                    </div>
+                    <div class="chart-legend">
+                        <span><span class="legend-swatch legend-swatch--primary"></span> Finished participants (submitted or skipped)</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="empty-state"><p>No finished participants yet.</p></div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Studies Table -->
         <div class="study-section">
             <div class="study-header">
@@ -556,6 +589,23 @@
                 }
             }
         });
+
+        {% if server_completion_progress and server_completion_progress.has_data %}
+        document.addEventListener('DOMContentLoaded', () => {
+            const dataScript = document.getElementById('server-completion-data');
+            if (!dataScript) {
+                return;
+            }
+            const data = JSON.parse(dataScript.textContent);
+            drawCompletionChart(
+                'serverCompletionChart',
+                data.dates,
+                data.cumulative,
+                [],
+                false
+            );
+        });
+        {% endif %}
 
         // Auto-refresh page every 5 minutes
         setTimeout(() => {

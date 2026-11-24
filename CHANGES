@@ -4,6 +4,7 @@ TRAC MPIAE Changes
 
 Current WIP
 -----------
+- NEW: show a server-wide cumulative **Finished participants over time** chart at the top of the admin overview for super admins; it counts participants whose diary is closed (submitted or skipped) from `study_participants` timestamps, so it does not scan the activities table
 - NEW: group the study detail page's export buttons under **Scientific results**, **Participant state** and **Study configuration on server**, each with a one-line explanation of what the download contains
 - NEW: admin study text editor: a **Texts** page per study edits the description, all `study_text_*` fields and `inactivity_page_custom_text` for every supported language, with missing-translation markers, copy-from-default, optimistic-concurrency protection and the same completeness rule as the config parser
 - FIX: the runtime config export is now lossless for study configuration: it includes `day_start_minutes`, inactivity timeout settings and custom text, footer links and `hide_server_wide_links`, and it preserves the per-language `day_labels[].display_names` instead of writing the default-language name for every language. A new equality roundtrip test exports, imports and exports again and compares the complete study document.

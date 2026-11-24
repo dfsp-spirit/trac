@@ -702,6 +702,20 @@ def test_env_granted_study_is_accessible_without_ownership(scoped_studies):
 
 
 @requires_two_scientists
+def test_overview_completion_chart_is_super_admin_only(scoped_studies):
+    """The server-wide completion chart is rendered for super admins only."""
+    with httpx.Client(timeout=60.0) as client:
+        scientist_response = client.get(f"{BASE_URL}/admin", auth=SCIENTIST_A_AUTH)
+        _require_authenticated(scientist_response, SCIENTIST_A_AUTH)
+        assert scientist_response.status_code == 200
+        assert "Finished participants over time" not in scientist_response.text
+
+        admin_response = client.get(f"{BASE_URL}/admin", auth=ADMIN_AUTH)
+        assert admin_response.status_code == 200
+        assert "Finished participants over time" in admin_response.text
+
+
+@requires_two_scientists
 def test_single_study_export_contains_only_that_study(scoped_studies):
     """The per-study runtime config export never leaks data of other studies."""
     study_a = scoped_studies["study_a"]

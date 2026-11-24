@@ -294,6 +294,8 @@ Because the admin interface is part of the backend application, it must be expos
 
 Each study detail page has a **Texts** page for editing the localized study description, `study_text_*` fields, and inactivity-page text in every supported language. The editor uses the same completeness rules as the config parser: a text that is configured must be present in all supported languages. See `README_CREATE_STUDY.md` for the field semantics.
 
+Super admins also see a server-wide cumulative **Finished participants over time** chart at the top of the overview. It counts closed diaries (submitted or skipped) from participant submission timestamps; it does not scan the activities table.
+
 
 #### 6.1 Study ownership and scientist accounts
 
