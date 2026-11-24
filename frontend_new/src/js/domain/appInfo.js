@@ -8,4 +8,4 @@
  * Lives in `domain/` because that is the one layer every other layer may import,
  * which keeps the option of showing it in the UI open.
  */
-export const APP_VERSION = '0.27.0';
+export const APP_VERSION = '0.28.0';

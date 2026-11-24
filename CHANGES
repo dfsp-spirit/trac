@@ -2,8 +2,8 @@ TRAC MPIAE Changes
 ===================
 
 
-Current WIP
------------
+Version 0.28.0 -- Improve admin interface, fixes
+-------------------------------------------------
 - NEW: show a server-wide cumulative **Finished participants over time** chart at the top of the admin overview for super admins; it counts participants whose diary is closed (submitted or skipped) from `study_participants` timestamps, so it does not scan the activities table
 - NEW: group the study detail page's export buttons under **Scientific results**, **Participant state** and **Study configuration on server**, each with a one-line explanation of what the download contains
 - NEW: resolve a `name_short` clash during file validation directly in the review panel: enter a replacement short name, re-validate with only that field overridden, and create without editing and re-uploading the file. The study details rename form shows the shared short-name rule and validates it live, including that the current short name is not treated as a clash
