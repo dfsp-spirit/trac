@@ -29,11 +29,11 @@ test('admin study detail -> progress tab shows cumulative completion chart', asy
   await expect(page.locator('h1')).toContainText('default');
 
   // Click on the Progress tab
-  await page.getByRole('button', { name: /📈 Progress/i }).click();
+  await page.getByRole('button', { name: 'Progress', exact: true }).click();
 
   // Verify the Progress tab panel is visible
   await expect(
-    page.locator('h3:has-text("Cumulative Participant Completion")')
+    page.getByRole('heading', { name: /cumulative participant completion/i })
   ).toBeVisible();
 
   // Verify the chart canvas exists
