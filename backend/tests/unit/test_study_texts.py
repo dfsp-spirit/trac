@@ -162,3 +162,21 @@ def test_values_from_object_collects_every_spec():
     values = study_text_values_from_object(study)
 
     assert set(values) == set(STUDY_TEXT_FIELD_NAMES)
+
+
+def test_missing_language_is_a_warning_in_restore_mode():
+    values = _values(study_text_intro={"en": "Welcome"})
+
+    warnings = validate_study_text_values(
+        values=values,
+        supported_languages=["en", "sv"],
+        default_language="en",
+        study_name_short="demo",
+        require_complete_translations=False,
+    )
+
+    assert any(
+        "study_text_intro is missing translations for supported_languages: ['sv']"
+        in warning
+        for warning in warnings
+    )

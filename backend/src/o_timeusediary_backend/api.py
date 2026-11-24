@@ -3492,7 +3492,11 @@ def _create_available_catalog_from_validated_activities(
             )
 
 
-def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> Dict:
+def _validate_import_study_payload(
+    study_payload: ImportStudiesConfigStudy,
+    *,
+    require_complete_translations: bool = True,
+) -> Dict:
     # Normalized in place: the creation path reads name_short from this payload,
     # so a value like " demo " must not survive as-is.
     study_payload.name_short = validate_study_name_short(
@@ -3530,11 +3534,12 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     # The CLI/config parser and the admin upload/import path must agree on what
     # a valid set of study texts is. Keep the rules in study_texts.py so the
     # admin editor uses the same policy instead of becoming a third variant.
-    validate_study_text_values(
+    text_warnings = validate_study_text_values(
         values=study_text_values_from_object(study_payload),
         supported_languages=supported_languages,
         default_language=default_language,
         study_name_short=study_payload.name_short,
+        require_complete_translations=require_complete_translations,
     )
 
     validate_external_tasks_for_study(
@@ -3688,6 +3693,7 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
         "default_language": default_language,
         "parsed_activities_by_lang": parsed_activities_by_lang,
         "raw_activities_by_lang": raw_activities_by_lang,
+        "text_warnings": text_warnings,
     }
 
 
@@ -4174,7 +4180,10 @@ async def _prepare_full_study_import_from_uploads(
 
     import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
     try:
-        validated = _validate_import_study_payload(import_study_payload)
+        validated = _validate_import_study_payload(
+            import_study_payload,
+            require_complete_translations=False,
+        )
     except ValueError as error:
         message = str(error)
         if "activities_json_data structure mismatch between language" in message:
@@ -4226,7 +4235,10 @@ async def _prepare_embedded_full_study_import_from_upload(
     study_payload_dict["activities_json_data"] = embedded_activities
 
     import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
-    validated = _validate_import_study_payload(import_study_payload)
+    validated = _validate_import_study_payload(
+        import_study_payload,
+        require_complete_translations=False,
+    )
     return import_study_payload, validated, available_studies
 
 
@@ -7113,6 +7125,17 @@ async def validate_files_in_memory(
         # are reported as warnings so the admin can still tell copies apart.
         creation_warnings: List[Dict[str, Any]] = []
         validation_warnings: List[Dict[str, str]] = []
+
+        # The admin upload flow also restores existing exports, where legacy
+        # rows can have partial translations. They are warnings, not blockers.
+        for message in validated.get("text_warnings", []):
+            validation_warnings.append(
+                {
+                    "message": message,
+                    "path": "studies[0]",
+                    "type": "text_translation_warning",
+                }
+            )
 
         if existing_name_short_study:
             creation_conflicts.append(

@@ -15,7 +15,7 @@ import hashlib
 import json
 import logging
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -159,16 +159,27 @@ def validate_study_text_values(
     supported_languages: Sequence[str],
     default_language: str,
     study_name_short: str,
-) -> None:
+    require_complete_translations: bool = True,
+) -> List[str]:
     """Validate the localized study text fields.
 
-    Raises ``ValueError`` with the same wording the config parser has always
-    used, so existing CLI behaviour and messages stay stable. Extra languages
-    are accepted with a warning (they do not render in the app), matching the
-    parser's previous behaviour.
+    Missing translations are hard errors for authoring paths (CLI/config
+    parser, admin text editor). The admin import flow passes
+    ``require_complete_translations=False`` because it must also restore an
+    existing database export whose maps can be partial; those cases are returned
+    as warnings so the admin still sees them. Values that are not maps, and
+    empty individual strings, stay hard errors in both modes.
+
+    Returns the warning messages (extra language keys, and missing translations
+    in restore mode) so callers can surface them in an API response.
     """
     languages = list(dict.fromkeys(supported_languages))
     language_set = set(languages)
+    warnings: List[str] = []
+
+    def record_warning(message: str) -> None:
+        logger.warning("%s", message)
+        warnings.append(message)
 
     for spec in STUDY_TEXT_FIELD_SPECS:
         value = values.get(spec.key)
@@ -194,12 +205,11 @@ def validate_study_text_values(
 
         for language, text_value in value.items():
             if language not in language_set:
-                logger.warning(
-                    "Study '%s': %s defines extra language '%s' without corresponding activities_json_files entry. "
-                    "This language will not be available in the app.",
-                    study_name_short,
-                    spec.key,
-                    language,
+                record_warning(
+                    f"Study '{study_name_short}': {spec.key} defines extra "
+                    f"language '{language}' without corresponding "
+                    "activities_json_files entry. This language will not be "
+                    "available in the app."
                 )
             if not isinstance(text_value, str) or text_value.strip() == "":
                 raise ValueError(
@@ -208,22 +218,40 @@ def validate_study_text_values(
                 )
 
         if spec.supports_legacy_string and default_language not in value:
-            raise ValueError(
-                f"Study '{study_name_short}': "
-                f"description is a localized map but is missing the default_language "
-                f'"{default_language}". Add a description for "{default_language}".'
+            if require_complete_translations:
+                raise ValueError(
+                    f"Study '{study_name_short}': description is a localized map "
+                    f'but is missing the default_language "{default_language}". '
+                    f'Add a description for "{default_language}".'
+                )
+            record_warning(
+                f"Study '{study_name_short}': description is a localized map "
+                f'but is missing the default_language "{default_language}". '
+                "Participants fall back to another available language."
             )
 
         missing_languages = sorted(language_set - set(value.keys()))
         if missing_languages:
             if spec.supports_legacy_string:
-                raise ValueError(
-                    f"Study '{study_name_short}': "
-                    f"description is missing translations for supported languages: "
-                    f"{missing_languages}. If description is provided as a "
-                    f"localized map, it must include all supported languages."
+                message = (
+                    f"Study '{study_name_short}': description is missing "
+                    f"translations for supported languages: {missing_languages}."
                 )
-            raise ValueError(
-                f"Study '{study_name_short}': "
-                f"{spec.key} is missing translations for supported_languages: {missing_languages}"
+                if require_complete_translations:
+                    message += (
+                        " If description is provided as a localized map, it must "
+                        "include all supported languages."
+                    )
+            else:
+                message = (
+                    f"Study '{study_name_short}': {spec.key} is missing "
+                    f"translations for supported_languages: {missing_languages}."
+                )
+            if require_complete_translations:
+                raise ValueError(message)
+            record_warning(
+                f"{message} Missing languages fall back to the default_language "
+                f'"{default_language}" at runtime.'
             )
+
+    return warnings

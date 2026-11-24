@@ -178,3 +178,72 @@ async def test_validate_full_study_returns_the_review_fields():
     assert summary["day_label_count"] == 1
     assert summary["external_task_count"] == 0
     assert summary["creation_eligible"] is True
+
+
+@pytest.mark.asyncio
+async def test_create_from_files_restores_partial_translations_with_warnings():
+    """Backups of legacy rows can have study texts in only some languages."""
+    study_name_short = f"it_partial_{uuid.uuid4().hex[:8]}"
+
+    activities_en = _minimal_activities_payload()
+    activities_sv = json.loads(json.dumps(activities_en))
+    activities_sv["general"]["language"] = "sv"
+
+    studies_config = {
+        "studies": [
+            {
+                "name": f"Partial Translations Study {study_name_short}",
+                "name_short": study_name_short,
+                "description": {"en": "English description only"},
+                "study_text_intro": {"en": "English intro only"},
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday", "sv": "Måndag"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": True,
+                "default_language": "en",
+                "supported_languages": ["en", "sv"],
+                "activities_json_data": {"en": activities_en, "sv": activities_sv},
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+            }
+        ]
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            response = await client.post(
+                f"{BASE_URL}/api/admin/studies/create-from-files",
+                auth=ADMIN_AUTH,
+                data={"mode": "full_study_embedded"},
+                files={
+                    "studies_config_file": (
+                        "studies_config.json",
+                        json.dumps(studies_config),
+                        "application/json",
+                    )
+                },
+            )
+
+            assert response.status_code == 200, response.text
+            payload = response.json()
+            assert payload["ok"] is True, payload
+            assert payload["summary"]["study_name_short"] == study_name_short
+
+            texts_response = await client.get(
+                f"{BASE_URL}/api/admin/studies/{study_name_short}/texts",
+                auth=ADMIN_AUTH,
+            )
+            assert texts_response.status_code == 200, texts_response.text
+            texts = texts_response.json()["values"]
+            assert texts["description"] == {"en": "English description only"}
+            assert texts["study_text_intro"] == {"en": "English intro only"}
+        finally:
+            await client.delete(
+                f"{BASE_URL}/api/admin/studies/{study_name_short}",
+                auth=ADMIN_AUTH,
+            )

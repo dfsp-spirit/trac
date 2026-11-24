@@ -199,18 +199,28 @@ validate and create studies:
 1. Open the admin interface at `https://your.domain.example.com/<TUD_ROOTPATH>/admin`.
 2. Navigate to **File Validation**.
 3. Select the `studies_config.json` file (with embedded activities data or
-   activities files you upload in the same form).
+   activities files you upload in the same form). You can also upload a
+   runtime-config export downloaded from the admin interface; the validator
+   unwraps its `studies_config` envelope.
 4. Click **Validate** to check the configuration without applying it. The
    interface reports schema violations, missing fields, and cross-language
    inconsistencies.
 5. Review the configuration summary, confirm it, and click **Create study**.
    This flow creates exactly one new study; it does not update an existing one.
 
-The admin interface uses the same validation logic as the CLI `tud studies
-import` command, so you can use whichever workflow you prefer. The web-based
+The admin interface and the CLI `tud studies import` command share the same
+validation logic, so you can use whichever workflow you prefer. The web-based
 validator is especially helpful during iterative configuration development
 because it gives you immediate feedback without needing terminal access to the
 server.
+
+The admin upload flow also serves as a restore path for exported studies.
+Because older database rows can have study texts in only some of their
+supported languages, missing translations are reported there as warnings rather
+than validation errors. The study is still created and the runtime falls back to
+another available language. The CLI parser and the admin text editor remain
+strict: authored configuration and saved edits must contain every supported
+language.
 
 ### Editing study texts in the admin interface
 
@@ -220,7 +230,9 @@ the study description, all `study_text_*` fields, and
 
 If a text is configured at all, it must be filled in every supported language.
 The editor marks missing translations and refuses to save until the text is
-complete; this is the same rule the config parser and the admin import apply.
+complete; this is the same rule the config parser applies. The admin upload flow
+is deliberately more permissive so that legacy exports with partial translations
+can be restored (see above).
 Extra language entries that are not in `supported_languages` are preserved in
 the database but are not shown in the editor, because the app does not render
 them. The end texts (`study_text_end_*`) accept raw HTML; the other fields use

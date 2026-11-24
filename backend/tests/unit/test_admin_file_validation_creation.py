@@ -214,6 +214,9 @@ async def test_full_study_validation_accepts_runtime_export_envelope(db_session)
 
     studies_config_payload = _load_studies_config_payload()
     embedded_study = _build_embedded_study_payload(studies_config_payload, "default")
+    # Simulate a legacy row whose maps were never fully translated.
+    embedded_study["description"] = {"de": "Nur eine deutsche Beschreibung"}
+    embedded_study["study_text_intro"] = {"de": "Nur eine deutsche Einleitung"}
     export_envelope = {
         "studies_config": {
             "schema_version": STUDIES_CONFIG_SCHEMA_VERSION,
@@ -248,6 +251,13 @@ async def test_full_study_validation_accepts_runtime_export_envelope(db_session)
     assert any(
         error.get("type") == "conflict_notice"
         for error in response_payload.get("errors", [])
+    )
+    warning_messages = [
+        warning.get("message", "") for warning in response_payload.get("warnings", [])
+    ]
+    assert any("description is missing translations" in msg for msg in warning_messages)
+    assert any(
+        "study_text_intro is missing translations" in msg for msg in warning_messages
     )
 
 
