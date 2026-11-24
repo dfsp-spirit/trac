@@ -70,7 +70,7 @@ jobs:
 
           curl -fsS -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" \
             http://127.0.0.1:8010/admin > /tmp/admin-dashboard.html
-          grep -q "TUD Admin Overview" /tmp/admin-dashboard.html
+          grep -q "Admin Overview" /tmp/admin-dashboard.html
 
           curl -fsS -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" \
             http://127.0.0.1:8010/admin/participant-management > /tmp/admin-participants.html

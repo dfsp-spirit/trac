@@ -124,6 +124,8 @@ async def test_overview_has_the_server_wide_completion_section():
 
     assert response.status_code == 200, response.text
     body = response.text
+    # Keep this in sync with the wheel-smoke-test page marker.
+    assert "Admin Overview" in body
     assert "Finished participants over time" in body
     assert (
         'id="serverCompletionChart"' in body
