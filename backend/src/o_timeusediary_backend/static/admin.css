@@ -663,6 +663,23 @@ a.btn-secondary:hover {
     pointer-events: none;
 }
 
+.export-group {
+    margin-top: 1.25rem;
+}
+
+.export-group:first-child {
+    margin-top: 0;
+}
+
+.export-group h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.export-group .actions {
+    margin-top: 0.65rem;
+}
+
 /* ── Forms ──────────────────────────────────────────────────────────────── */
 
 .field {

@@ -218,6 +218,19 @@ async def test_study_detail_page_separates_configuration_from_status():
     assert config_section.count('class="tab-panel active"') == 1
     assert status_section.count('class="tab-panel active"') == 1
 
+    # The export buttons are grouped by what the download is for.
+    export_section = body[export_start:edit_start]
+    for heading, explanation in (
+        ("Scientific results", "The activities logged by users"),
+        ("Participant state", "Information like completion state, by participant"),
+        (
+            "Study configuration on server",
+            "Backup of the study configuration including modifications made at runtime",
+        ),
+    ):
+        assert f"<h3>{heading}</h3>" in export_section, heading
+        assert explanation in export_section, heading
+
     # Participants are summarized here and managed in one paginated table, so
     # the page must not grow a second roster again.
     assert "participant-card" not in body

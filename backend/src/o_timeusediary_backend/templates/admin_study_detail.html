@@ -288,32 +288,44 @@
                 </p>
             </div>
             <div class="tab-content">
-                <div class="actions actions--flush">
-                    {% if total_activities_logged > 0 %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">Download CSV</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">Download JSON</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">CSV without metadata</a>
-                    {% else %}
-                    <span class="export-btn disabled">CSV not available (no activities yet)</span>
-                    <span class="export-btn disabled">JSON not available (no activities yet)</span>
-                    <span class="export-btn disabled">CSV without metadata not available (no activities yet)</span>
-                    {% endif %}
+                <div class="export-group">
+                    <h3>Scientific results</h3>
+                    <p class="hint">The activities logged by users</p>
+                    <div class="actions">
+                        {% if total_activities_logged > 0 %}
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv" class="export-btn">Download CSV</a>
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=json" class="export-btn">Download JSON</a>
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/activities?format=csv&include_metadata=false" class="export-btn">CSV without metadata</a>
+                        {% else %}
+                        <span class="export-btn disabled">CSV not available (no activities yet)</span>
+                        <span class="export-btn disabled">JSON not available (no activities yet)</span>
+                        <span class="export-btn disabled">CSV without metadata not available (no activities yet)</span>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="actions">
-                    {% if participant_count > 0 %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">Participants CSV</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">Participants JSON</a>
-                    {% if study.save_browser_identification %}
-                    <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">Participants CSV (with client info only)</a>
-                    {% endif %}
-                    {% else %}
-                    <span class="export-btn disabled">Participants CSV not available (no participants yet)</span>
-                    <span class="export-btn disabled">Participants JSON not available (no participants yet)</span>
-                    {% endif %}
+                <div class="export-group">
+                    <h3>Participant state</h3>
+                    <p class="hint">Information like completion state, by participant</p>
+                    <div class="actions">
+                        {% if participant_count > 0 %}
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv" class="export-btn">Participants CSV</a>
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=json" class="export-btn">Participants JSON</a>
+                        {% if study.save_browser_identification %}
+                        <a href="{{ request.scope.root_path }}/api/admin/export/{{ study.name_short }}/participants?format=csv&only_with_client_info=true" class="export-btn">Participants CSV (with client info only)</a>
+                        {% endif %}
+                        {% else %}
+                        <span class="export-btn disabled">Participants CSV not available (no participants yet)</span>
+                        <span class="export-btn disabled">Participants JSON not available (no participants yet)</span>
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="actions">
-                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">Server runtime config JSON</a>
-                    <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">Server runtime config ZIP</a>
+                <div class="export-group">
+                    <h3>Study configuration on server</h3>
+                    <p class="hint">Backup of the study configuration including modifications made at runtime</p>
+                    <div class="actions">
+                        <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}" class="export-btn">Server runtime config JSON</a>
+                        <a href="{{ request.scope.root_path }}/api/admin/export/studies-runtime-config?study_name={{ study.name_short }}&mode=split_zip" class="export-btn">Server runtime config ZIP</a>
+                    </div>
                 </div>
             </div>
         </section>
