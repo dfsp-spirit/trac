@@ -356,11 +356,12 @@
                         </div>
                         <div class="window-control-field">
                             <label for="rename-short-{{ study.id }}"><strong>Short name</strong></label>
-                            <input id="rename-short-{{ study.id }}" type="text" class="study-rename-short-input" value="{{ study.name_short | e }}" title="{{ study_name_short_rule_text }}" disabled>
+                            <input id="rename-short-{{ study.id }}" type="text" class="study-rename-short-input" value="{{ study.name_short | e }}" maxlength="{{ study_name_short_max_length }}" pattern="{{ study_name_short_pattern }}" title="{{ study_name_short_rule_text }}" aria-describedby="rename-short-rule-{{ study.id }} rename-short-feedback-{{ study.id }}" oninput="validateRenameShortName('{{ study.id }}')" disabled>
                         </div>
                         <button type="button" class="window-btn window-btn-save" onclick="saveStudyName('{{ study.name_short }}', '{{ study.id }}')" disabled>Save names</button>
                     </div>
-                    <p class="hint">{{ study_name_short_rule_text }}</p>
+                    <p class="hint" id="rename-short-rule-{{ study.id }}">{{ study_name_short_rule_text }} It must not be used by another study.</p>
+                    <div class="hint" id="rename-short-feedback-{{ study.id }}" role="status" aria-live="polite"></div>
                     <div class="window-status-msg" id="rename-status-{{ study.id }}"></div>
                 </div>
 
@@ -870,6 +871,28 @@
             if (!statusEl) return;
             statusEl.textContent = message;
             statusEl.style.color = isError ? '#b42318' : '#0f5132';
+        }
+
+        function validateRenameShortName(studyId) {
+            const shortInput = document.getElementById(`rename-short-${studyId}`);
+            const feedback = document.getElementById(`rename-short-feedback-${studyId}`);
+            if (!shortInput || !feedback) return;
+
+            const value = shortInput.value.trim();
+            feedback.textContent = '';
+            feedback.style.color = '';
+
+            if (!value) return;
+            if (!STUDY_NAME_SHORT_RE.test(value)) {
+                feedback.textContent = `Invalid short name '${value}'. ${STUDY_NAME_SHORT_RULE}`;
+                feedback.style.color = '#b42318';
+                return;
+            }
+            if (value === STUDY_NAME_SHORT) {
+                feedback.textContent = 'This is the current short name; the server will not treat it as a clash.';
+                return;
+            }
+            feedback.textContent = 'Short name looks valid. The server checks for clashes with other studies when you save.';
         }
 
         async function saveStudyName(studyNameShort, studyId) {

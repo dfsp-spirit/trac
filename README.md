@@ -153,7 +153,9 @@ import study configurations interactively through the browser.
 
 Each study uses `name_short` as its technical identifier, used in the frontend
 configuration and in participant invitation links via the `study_name` URL
-parameter.
+parameter. It must consist of lowercase letters (`a-z`), digits (`0-9`) and `_`,
+2 to 50 characters. The admin interface shows the same rule in the study rename
+form and when resolving a short-name clash during file validation.
 
 
 

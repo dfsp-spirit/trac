@@ -164,6 +164,7 @@ from .participant_ids import (
     normalize_participant_ids,
 )
 from .study_names import (
+    STUDY_NAME_SHORT_MAX_LENGTH,
     STUDY_NAME_SHORT_PATTERN,
     STUDY_NAME_SHORT_RULE_TEXT,
     validate_study_name_short,
@@ -2903,6 +2904,7 @@ async def admin_study_detail(
         # Rename form hint, taken from the same rule the server enforces.
         "study_name_short_rule_text": STUDY_NAME_SHORT_RULE_TEXT,
         "study_name_short_pattern": STUDY_NAME_SHORT_PATTERN,
+        "study_name_short_max_length": STUDY_NAME_SHORT_MAX_LENGTH,
     }
     template = templates.get_template("admin_study_detail.html")
     html_content = template.render(context_dict)
@@ -4128,6 +4130,7 @@ async def _prepare_full_study_import_from_uploads(
     activities_files: List[UploadFile],
     activities_language_map: Optional[str],
     full_study_name_short: Optional[str],
+    study_name_short_override: Optional[str] = None,
 ) -> Tuple[ImportStudiesConfigStudy, Dict[str, Any], List[str]]:
     studies_config_json = await _parse_json_upload(
         studies_config_file,
@@ -4177,6 +4180,10 @@ async def _prepare_full_study_import_from_uploads(
     study_payload_dict.pop("activities_json_file", None)
     study_payload_dict.pop("activities_json_files", None)
     study_payload_dict["activities_json_data"] = activities_by_lang
+    if study_name_short_override is not None:
+        # Only the identifier is overridden. Everything else still comes from
+        # the uploaded file, so iterative name clashes do not force a re-upload.
+        study_payload_dict["name_short"] = study_name_short_override
 
     import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
     try:
@@ -4203,6 +4210,7 @@ async def _prepare_embedded_full_study_import_from_upload(
     *,
     studies_config_file: UploadFile,
     full_study_name_short: Optional[str],
+    study_name_short_override: Optional[str] = None,
 ) -> Tuple[ImportStudiesConfigStudy, Dict[str, Any], List[str]]:
     studies_config_json = await _parse_json_upload(
         studies_config_file,
@@ -4233,6 +4241,8 @@ async def _prepare_embedded_full_study_import_from_upload(
     study_payload_dict.pop("activities_json_file", None)
     study_payload_dict.pop("activities_json_files", None)
     study_payload_dict["activities_json_data"] = embedded_activities
+    if study_name_short_override is not None:
+        study_payload_dict["name_short"] = study_name_short_override
 
     import_study_payload = ImportStudiesConfigStudy(**study_payload_dict)
     validated = _validate_import_study_payload(
@@ -6903,6 +6913,9 @@ async def admin_file_validation(
         "request": request,
         "current_admin": current_admin,
         "current_time": utc_now(),
+        "study_name_short_pattern": STUDY_NAME_SHORT_PATTERN,
+        "study_name_short_max_length": STUDY_NAME_SHORT_MAX_LENGTH,
+        "study_name_short_rule_text": STUDY_NAME_SHORT_RULE_TEXT,
     }
     template = templates.get_template("admin_file_validation.html")
     html_content = template.render(context_dict)
@@ -6916,6 +6929,7 @@ async def validate_files_in_memory(
     supported_languages_csv: Optional[str] = Form(None),
     activities_language_map: Optional[str] = Form(None),
     full_study_name_short: Optional[str] = Form(None),
+    study_name_short_override: Optional[str] = Form(None),
     activities_file: Optional[UploadFile] = File(None),
     activities_files: List[UploadFile] = File(default_factory=list),
     studies_config_file: Optional[UploadFile] = File(None),
@@ -6929,6 +6943,10 @@ async def validate_files_in_memory(
     - activities_multilang: several activities files + language config
     - full_study: studies_config (one or more studies) + activities files
     - full_study_embedded: one studies_config (one or more studies) with embedded activities_json_data
+
+    ``study_name_short_override`` replaces only the selected study's
+    ``name_short`` after selection, so the review panel can resolve a collision
+    without requiring a new upload.
     """
     allowed_modes = {
         "single_activities",
@@ -7075,6 +7093,7 @@ async def validate_files_in_memory(
                     activities_files=activities_files,
                     activities_language_map=activities_language_map,
                     full_study_name_short=full_study_name_short,
+                    study_name_short_override=study_name_short_override,
                 )
             else:
                 (
@@ -7084,6 +7103,7 @@ async def validate_files_in_memory(
                 ) = await _prepare_embedded_full_study_import_from_upload(
                     studies_config_file=studies_config_file,
                     full_study_name_short=full_study_name_short,
+                    study_name_short_override=study_name_short_override,
                 )
         else:
             raise ValueError(
@@ -7237,6 +7257,7 @@ async def validate_files_in_memory(
 async def create_study_from_validated_uploads(
     mode: str = Form("full_study"),
     full_study_name_short: Optional[str] = Form(None),
+    study_name_short_override: Optional[str] = Form(None),
     activities_language_map: Optional[str] = Form(None),
     activities_files: List[UploadFile] = File(default_factory=list),
     studies_config_file: Optional[UploadFile] = File(None),
@@ -7251,6 +7272,10 @@ async def create_study_from_validated_uploads(
     - all_or_nothing
     - fail if a study with the same name_short already exists (name_short is the
       study identifier; the long display name does not have to be unique)
+
+    ``study_name_short_override`` replaces only the selected study's
+    ``name_short`` after selection, matching the validation request that the
+    admin reviewed.
 
     A study created by a scientist is owned by that scientist; studies created by
     a super admin stay unowned (only super admins can manage them).
@@ -7290,6 +7315,7 @@ async def create_study_from_validated_uploads(
                 activities_files=activities_files,
                 activities_language_map=activities_language_map,
                 full_study_name_short=full_study_name_short,
+                study_name_short_override=study_name_short_override,
             )
         else:
             (
@@ -7299,6 +7325,7 @@ async def create_study_from_validated_uploads(
             ) = await _prepare_embedded_full_study_import_from_upload(
                 studies_config_file=studies_config_file,
                 full_study_name_short=full_study_name_short,
+                study_name_short_override=study_name_short_override,
             )
 
         existing_by_name_short = session.exec(

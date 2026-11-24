@@ -12,6 +12,7 @@ guards the arrangement so a page cannot quietly grow its own copy again:
 Requires a running backend (see ``./test_backend_integration.sh``).
 """
 
+import html
 import os
 
 import httpx
@@ -92,9 +93,9 @@ async def test_the_open_study_stays_one_click_away():
             "</nav>", 1
         )[0]
         position = row.index("ux-signals?study_name_short=default")
-        assert (
-            " active" in row[max(0, position - 160) : position]
-        ), "the UX Signals tab of the open study should be the active one"
+        assert " active" in row[max(0, position - 160) : position], (
+            "the UX Signals tab of the open study should be the active one"
+        )
 
 
 @pytest.mark.asyncio
@@ -128,8 +129,7 @@ async def test_overview_has_the_server_wide_completion_section():
     assert "Admin Overview" in body
     assert "Finished participants over time" in body
     assert (
-        'id="serverCompletionChart"' in body
-        or "No finished participants yet." in body
+        'id="serverCompletionChart"' in body or "No finished participants yet." in body
     )
 
 
@@ -152,10 +152,23 @@ async def test_file_validation_page_has_a_single_create_flow():
         "reviewPanel",
         "reviewConfirmed",
         "createStudyBtn",
+        "nameShortFix",
+        "newNameShort",
+        "applyNameShortBtn",
+        "nameShortFixStatus",
         "successPanel",
         "activityChecks",
     ):
         assert f'id="{element_id}"' in body, element_id
+
+    # Resolving a name_short clash in place shows the same rule the server uses.
+    visible_body = html.unescape(body)
+    assert (
+        "Use lowercase letters (a-z), digits (0-9) and '_', 2 to 50 characters."
+        in visible_body
+    )
+    assert 'pattern="[a-z0-9_]{2,50}"' in body
+    assert 'maxlength="50"' in body
 
     # The second full-study mode form is gone; only the activity-only checks remain.
     assert 'data-mode="full_study"' not in body
@@ -252,3 +265,12 @@ async def test_study_detail_page_separates_configuration_from_status():
     # the page must not grow a second roster again.
     assert "participant-card" not in body
     assert "/admin/participant-management?study_name_short=default" in body
+
+    # The rename form shows the shared name_short rule and gives live feedback.
+    visible_body = html.unescape(body)
+    assert 'class="study-rename-short-input"' in body
+    assert 'id="rename-short-rule-' in body
+    assert 'id="rename-short-feedback-' in body
+    assert 'maxlength="50"' in body
+    assert 'pattern="[a-z0-9_]{2,50}"' in body
+    assert "It must not be used by another study." in visible_body

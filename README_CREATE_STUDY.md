@@ -222,6 +222,14 @@ another available language. The CLI parser and the admin text editor remain
 strict: authored configuration and saved edits must contain every supported
 language.
 
+If creation is blocked only because the `name_short` already exists, the review
+panel offers a **Use a different short name** input. It re-runs the same
+validation with only that field overridden and shows the usual rule (lowercase
+letters, digits and `_`, 2-50 characters); the uploaded file is not modified.
+The same rule is shown next to the rename form on the study details page, which
+also gives live feedback and lets you keep the current short name while changing
+the long display name.
+
 ### Editing study texts in the admin interface
 
 Open a study and choose **Texts** in the study navigation row. The editor covers

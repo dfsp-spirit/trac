@@ -187,4 +187,41 @@ test('admin study setup accepts a runtime-config export and reports the duplicat
     'already used by study'
   );
   await expect(page.locator('#createStudyBtn')).toBeDisabled();
+
+  // The clash can be resolved in place: only name_short changes, everything
+  // else stays as uploaded. The same rule text the server enforces is visible.
+  await expect(page.locator('#nameShortFix')).toBeVisible();
+  await expect(page.locator('#nameShortFix')).toContainText(
+    "Use lowercase letters (a-z), digits (0-9) and '_', 2 to 50 characters."
+  );
+
+  const replacementName = `embedded_restore_${Date.now()}`;
+  await page.locator('#newNameShort').fill(replacementName);
+  await page.locator('#applyNameShortBtn').click();
+
+  await expect(page.locator('#nameShortFix')).toBeHidden();
+  await expect(page.locator('#reviewTable')).toContainText(replacementName);
+  await expect(page.locator('#createStudyStatus')).toContainText(
+    'Ready to create.'
+  );
+
+  await page.locator('#reviewConfirmed').check();
+  await expect(page.locator('#createStudyBtn')).toBeEnabled();
+
+  // Creating must use the overridden short name, not the original one.
+  await page.locator('#createStudyBtn').click();
+  const success = page.locator('#successPanel');
+  await expect(success).toBeVisible();
+  await expect(success).toContainText(
+    `Study '${replacementName}' was created successfully.`
+  );
+
+  await page.evaluate(
+    async ([rootPath, nameShort]) => {
+      await fetch(`${rootPath}/api/admin/studies/${encodeURIComponent(nameShort)}`, {
+        method: 'DELETE',
+      });
+    },
+    [ADMIN_ROOT_PATH, replacementName]
+  );
 });

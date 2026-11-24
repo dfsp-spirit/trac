@@ -189,6 +189,7 @@ async def test_full_study_validation_reports_conflict_notice_for_existing_study(
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short="default",
+        study_name_short_override=None,
         activities_file=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -237,6 +238,7 @@ async def test_full_study_validation_accepts_runtime_export_envelope(db_session)
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short=None,
+        study_name_short_override=None,
         activities_file=None,
         activities_files=[],
         studies_config_file=export_upload,
@@ -273,6 +275,7 @@ async def test_create_from_files_blocks_existing_study_name_short(db_session):
 
     response_payload = await create_study_from_validated_uploads(
         full_study_name_short="default",
+        study_name_short_override=None,
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -330,6 +333,7 @@ async def test_create_from_files_allows_duplicate_study_name_with_notice(db_sess
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_file=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -370,6 +374,7 @@ async def test_create_from_files_allows_duplicate_study_name_with_notice(db_sess
 
     create_payload = await create_study_from_validated_uploads(
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -417,6 +422,7 @@ async def test_create_from_files_creates_only_selected_study_when_config_contain
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_file=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -435,6 +441,7 @@ async def test_create_from_files_creates_only_selected_study_when_config_contain
 
     create_payload = await create_study_from_validated_uploads(
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -468,6 +475,7 @@ async def test_full_study_embedded_requires_selection_for_multi_study_upload(
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short=None,
+        study_name_short_override=None,
         activities_file=None,
         activities_files=[],
         studies_config_file=studies_config_upload,
@@ -509,6 +517,7 @@ async def test_full_study_embedded_validation_and_create_selected_study(db_sessi
         supported_languages_csv=None,
         activities_language_map=None,
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_file=None,
         activities_files=[],
         studies_config_file=studies_config_upload,
@@ -530,6 +539,7 @@ async def test_full_study_embedded_validation_and_create_selected_study(db_sessi
     create_payload = await create_study_from_validated_uploads(
         mode="full_study_embedded",
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_language_map=None,
         activities_files=[],
         studies_config_file=studies_config_upload,
@@ -567,6 +577,7 @@ async def test_create_from_files_assigns_creating_scientist_as_owner(db_session)
 
     create_payload = await create_study_from_validated_uploads(
         full_study_name_short=selected_study_name_short,
+        study_name_short_override=None,
         activities_language_map=None,
         activities_files=activities_uploads,
         studies_config_file=studies_config_upload,
@@ -585,3 +596,58 @@ async def test_create_from_files_assigns_creating_scientist_as_owner(db_session)
     all_studies = db_session.exec(select(Study)).all()
     assert len(all_studies) == 1
     assert all_studies[0].name_short == selected_study_name_short
+
+
+@pytest.mark.asyncio
+async def test_full_study_name_short_override_validates_and_creates(db_session):
+    """The file-validation UI can resolve a name_short clash without a re-upload."""
+    _insert_existing_default_study(db_session)
+
+    studies_config_payload = _load_studies_config_payload()
+    new_name_short = f"default_restored_{uuid.uuid4().hex[:8]}"
+
+    validation_upload, validation_activities = _build_full_study_uploads(
+        studies_config_payload,
+        "default",
+    )
+    validation_payload = await validate_files_in_memory(
+        mode="full_study",
+        default_language=None,
+        supported_languages_csv=None,
+        activities_language_map=None,
+        full_study_name_short="default",
+        study_name_short_override=new_name_short,
+        activities_file=None,
+        activities_files=validation_activities,
+        studies_config_file=validation_upload,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert validation_payload["ok"] is True
+    assert validation_payload["summary"]["study_name_short"] == new_name_short
+    assert validation_payload["summary"]["creation_eligible"] is True
+    assert validation_payload["summary"]["creation_conflicts"] == []
+
+    creation_upload, creation_activities = _build_full_study_uploads(
+        studies_config_payload,
+        "default",
+    )
+    creation_payload = await create_study_from_validated_uploads(
+        mode="full_study",
+        full_study_name_short="default",
+        study_name_short_override=new_name_short,
+        activities_language_map=None,
+        activities_files=creation_activities,
+        studies_config_file=creation_upload,
+        identity=SUPER_ADMIN_IDENTITY,
+        current_admin="unit_test_admin",
+        session=db_session,
+    )
+
+    assert creation_payload["ok"] is True, creation_payload
+    assert creation_payload["summary"]["study_name_short"] == new_name_short
+    created_study = db_session.exec(
+        select(Study).where(Study.name_short == new_name_short)
+    ).first()
+    assert created_study is not None

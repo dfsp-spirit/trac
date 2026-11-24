@@ -62,6 +62,15 @@
                         <button type="button" class="btn-primary" id="createStudyBtn" disabled>Create study</button>
                         <span class="status" id="createStudyStatus" role="status" aria-live="polite"></span>
                     </div>
+                    <div class="field" id="nameShortFix" hidden>
+                        <label for="newNameShort">Use a different short name</label>
+                        <input id="newNameShort" type="text" maxlength="{{ study_name_short_max_length }}" pattern="{{ study_name_short_pattern }}" autocomplete="off" spellcheck="false" aria-describedby="nameShortRule">
+                        <p class="hint" id="nameShortRule">{{ study_name_short_rule_text }} The rest of the study stays exactly as uploaded.</p>
+                        <div class="actions">
+                            <button type="button" class="btn-secondary" id="applyNameShortBtn">Validate new name</button>
+                            <span class="status" id="nameShortFixStatus" role="status" aria-live="polite"></span>
+                        </div>
+                    </div>
                 </div>
                 <div id="summaryBlock"></div>
                 <div id="errorsBlock"></div>
@@ -147,6 +156,10 @@
         const reviewConfirmed = document.getElementById('reviewConfirmed');
         const createBtn = document.getElementById('createStudyBtn');
         const createStatus = document.getElementById('createStudyStatus');
+        const nameShortFix = document.getElementById('nameShortFix');
+        const newNameShortInput = document.getElementById('newNameShort');
+        const applyNameShortBtn = document.getElementById('applyNameShortBtn');
+        const nameShortFixStatus = document.getElementById('nameShortFixStatus');
         const summaryBlock = document.getElementById('summaryBlock');
         const errorsBlock = document.getElementById('errorsBlock');
         const warningsBlock = document.getElementById('warningsBlock');
@@ -159,7 +172,12 @@
         const successInvitesTsvLink = document.getElementById('successInvitesTsvLink');
 
         // Which backend mode the selected study needs; null until a config is read.
-        const state = { studies: [], mode: null, creationAllowed: false };
+        const state = { studies: [], mode: null, creationAllowed: false, nameShortOverride: null };
+
+        // Same rule as study_names.py on the server; the server stays
+        // authoritative, this only saves a round trip.
+        const STUDY_NAME_SHORT_RE = new RegExp(`^(?:{{ study_name_short_pattern }})$`);
+        const STUDY_NAME_SHORT_RULE = {{ study_name_short_rule_text|tojson }};
 
         function escapeHtml(value) {
             return String(value)
@@ -235,6 +253,7 @@
         async function onConfigSelected() {
             resetValidation();
             state.studies = [];
+            state.nameShortOverride = null;
             studySelect.innerHTML = '';
             studySelectorField.style.display = 'none';
             activitiesField.style.display = 'none';
@@ -293,6 +312,9 @@
             const nameShort = state.studies.length > 1 ? studySelect.value : '';
             if (nameShort) {
                 formData.append('full_study_name_short', nameShort);
+            }
+            if (state.nameShortOverride) {
+                formData.append('study_name_short_override', state.nameShortOverride);
             }
 
             if (state.mode === 'full_study') {
@@ -368,6 +390,27 @@
                 );
             } else {
                 setStatus(createStatus, 'Creation is blocked for this study.', 'error');
+            }
+
+            const nameShortConflict = (summary.creation_conflicts || []).find(
+                (conflict) => conflict.field === 'name_short'
+            );
+            nameShortFix.hidden = !nameShortConflict;
+            if (nameShortConflict) {
+                newNameShortInput.value = summary.study_name_short || '';
+                if (state.nameShortOverride) {
+                    setStatus(
+                        nameShortFixStatus,
+                        `'${summary.study_name_short}' is also in use. Choose another short name.`,
+                        'error'
+                    );
+                } else {
+                    setStatus(nameShortFixStatus, '');
+                }
+                newNameShortInput.focus();
+                newNameShortInput.select();
+            } else {
+                setStatus(nameShortFixStatus, '');
             }
         }
 
@@ -464,6 +507,7 @@
         configInput.addEventListener('change', onConfigSelected);
         studySelect.addEventListener('change', () => {
             resetValidation();
+            state.nameShortOverride = null;
             applySelectedStudy();
         });
         activitiesInput.addEventListener('change', () => {
@@ -475,8 +519,7 @@
             createBtn.disabled = !(state.creationAllowed && reviewConfirmed.checked);
         });
 
-        studyForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
+        async function runValidation() {
             resetValidation();
             try {
                 validateBtn.disabled = true;
@@ -496,6 +539,43 @@
             } finally {
                 validateBtn.textContent = 'Validate';
                 validateBtn.disabled = !state.mode;
+            }
+        }
+
+        studyForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            runValidation();
+        });
+
+        async function applyNameShort() {
+            const value = newNameShortInput.value.trim();
+            if (!STUDY_NAME_SHORT_RE.test(value)) {
+                setStatus(
+                    nameShortFixStatus,
+                    `Invalid short name '${value}'. ${STUDY_NAME_SHORT_RULE}`,
+                    'error'
+                );
+                newNameShortInput.focus();
+                return;
+            }
+
+            state.nameShortOverride = value;
+            applyNameShortBtn.disabled = true;
+            applyNameShortBtn.textContent = 'Validating...';
+            setStatus(nameShortFixStatus, 'Validating new name...');
+            try {
+                await runValidation();
+            } finally {
+                applyNameShortBtn.disabled = false;
+                applyNameShortBtn.textContent = 'Validate new name';
+            }
+        }
+
+        applyNameShortBtn.addEventListener('click', applyNameShort);
+        newNameShortInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                applyNameShort();
             }
         });
 
