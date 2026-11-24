@@ -3,7 +3,7 @@ import os
 import uuid
 import zipfile
 from io import BytesIO
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 
 import httpx
 import pytest
@@ -83,9 +83,7 @@ async def test_runtime_export_import_roundtrip_embedded_and_split_zip():
                 label["name"]: label["display_order"]
                 for label in exported_embedded_study["day_labels"]
             }
-            assert [
-                group["day_indexes"] for group in clone_groups
-            ] == [
+            assert [group["day_indexes"] for group in clone_groups] == [
                 [day_index_by_name[name] for name in group["days"]]
                 for group in exported_embedded_study["day_groups"]
             ]
@@ -435,3 +433,238 @@ async def test_runtime_export_import_roundtrip_external_tasks_open_study():
                 f"{BASE_URL}/api/admin/studies/{open_clone_name_short}",
                 auth=ADMIN_AUTH,
             )
+
+
+def _load_activities_for_language(language: str) -> dict:
+    backend_root = Path(__file__).resolve().parents[2]
+    filename = (
+        "activities_ki_adults_en.json"
+        if language == "en"
+        else "activities_ki_adults_sv.json"
+    )
+    return json.loads((backend_root / filename).read_text(encoding="utf-8"))
+
+
+def _kitchen_sink_study_payload(name_short: str, name: str) -> dict:
+    """A study that sets every backup-relevant field to a non-default value."""
+    languages = ["en", "sv"]
+    return {
+        "name": name,
+        "name_short": name_short,
+        "description": {
+            "en": "Kitchen sink description (EN)",
+            "sv": "Kitchen sink description (SV)",
+        },
+        "day_labels": [
+            {
+                "name": "monday",
+                "display_order": 0,
+                "display_names": {"en": "Monday", "sv": "Måndag"},
+            },
+            {
+                "name": "tuesday",
+                "display_order": 1,
+                "display_names": {"en": "Tuesday", "sv": "Tisdag"},
+            },
+        ],
+        "day_groups": [
+            {
+                "key": "workdays",
+                "names": {"en": "All work days", "sv": "Alla arbetsdagar"},
+                "days": ["monday", "tuesday"],
+            }
+        ],
+        "study_participant_ids": ["p1", "p2"],
+        "participant_display_names": {"p1": "Alice"},
+        "allow_unlisted_participants": False,
+        "is_listed_publicly": False,
+        "require_consent": True,
+        "allow_skip_timeuse": True,
+        "is_paused": True,
+        "require_diary_before_external_tasks": True,
+        "save_browser_identification": True,
+        "save_ux_events": True,
+        "default_language": "en",
+        "supported_languages": languages,
+        "activities_json_data": {
+            language: _load_activities_for_language(language) for language in languages
+        },
+        "study_text_intro": {
+            "en": "Welcome (EN)",
+            "sv": "Välkommen (SV)",
+        },
+        "study_text_instructions_title": {
+            "en": "Instructions (EN)",
+            "sv": "Instruktioner (SV)",
+        },
+        "study_text_instructions": {
+            "en": "How to fill this out (EN)",
+            "sv": "Så fyller du i (SV)",
+        },
+        "study_text_consent": {
+            "en": "Please consent (EN)",
+            "sv": "Samtyck (SV)",
+        },
+        "study_text_end_noconsent": {
+            "en": "No consent (EN)",
+            "sv": "Inget samtycke (SV)",
+        },
+        "study_text_end_completed": {
+            "en": "Completed (EN)",
+            "sv": "Klar (SV)",
+        },
+        "study_text_end_skipped": {
+            "en": "Skipped (EN)",
+            "sv": "Hoppade över (SV)",
+        },
+        "inactivity_page_custom_text": {
+            "en": "Session timeout (EN)",
+            "sv": "Sessionen löpte ut (SV)",
+        },
+        "data_collection_start": "2024-01-01T00:00:00Z",
+        "data_collection_end": "2028-12-31T23:59:59Z",
+        "day_start_minutes": 240,
+        "inactivity_timeout_minutes": 20,
+        "inactivity_timeout_stress_time_left": 7,
+        "footer_links": [
+            {
+                "title": {
+                    "en": "Study information",
+                    "sv": "Studieinformation",
+                },
+                "target_url": "https://example.org/study-info",
+            }
+        ],
+        "hide_server_wide_links": True,
+        "external_tasks": [
+            {
+                "task_key": "payment",
+                "name": {"en": "Payment survey", "sv": "Betalningsenkät"},
+                "description": {
+                    "en": "Complete the payment survey.",
+                    "sv": "Fyll i betalningsenkäten.",
+                },
+                "outbound_url": (
+                    "https://example.org/payment?pid={participant_id}"
+                    "&study={study_name}&task={task_key}&survey_token={survey_token}"
+                ),
+                "confirmation_type": "none",
+                "outbound_tokens": [
+                    {
+                        "name": "survey_token",
+                        "by_participant": {"p1": "tok-1", "p2": "tok-2"},
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _without_identity_fields(exported_study: dict) -> dict:
+    normalized = dict(exported_study)
+    normalized["name"] = "<changed for roundtrip>"
+    normalized["name_short"] = "<changed for roundtrip>"
+    return normalized
+
+
+@pytest.mark.asyncio
+async def test_runtime_export_is_lossless_for_every_backup_field():
+    """Exporting, re-importing and exporting again must preserve every setting.
+
+    This is deliberately an equality test: the earlier roundtrip tests only
+    checked that an import succeeded and that a handful of fields survived,
+    which let missing fields default silently on import.
+    """
+    source_short = f"it_lossless_src_{uuid.uuid4().hex[:8]}"
+    clone_short = f"it_lossless_clone_{uuid.uuid4().hex[:8]}"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        try:
+            import_response = await client.post(
+                f"{BASE_URL}/api/admin/studies/import-config",
+                auth=ADMIN_AUTH,
+                json={
+                    "mode": "create_only",
+                    "transaction_mode": "all_or_nothing",
+                    "studies": [
+                        _kitchen_sink_study_payload(
+                            source_short, "Lossless Roundtrip Source"
+                        )
+                    ],
+                },
+            )
+            assert import_response.status_code == 200, import_response.text
+            assert import_response.json()["summary"]["created"] == 1
+
+            source_export_response = await client.get(
+                f"{BASE_URL}/api/admin/export/studies-runtime-config",
+                params={"study_name": source_short, "mode": "embedded_json"},
+                auth=ADMIN_AUTH,
+            )
+            assert source_export_response.status_code == 200
+            source_export = source_export_response.json()
+            source_study = source_export["studies_config"]["studies"][0]
+
+            clone_payload = dict(source_study)
+            clone_payload["name_short"] = clone_short
+            clone_payload["name"] = "Lossless Roundtrip Clone"
+
+            clone_import_response = await client.post(
+                f"{BASE_URL}/api/admin/studies/import-config",
+                auth=ADMIN_AUTH,
+                json={
+                    "schema_version": source_export["studies_config"]["schema_version"],
+                    "mode": "create_only",
+                    "transaction_mode": "all_or_nothing",
+                    "studies": [clone_payload],
+                },
+            )
+            assert clone_import_response.status_code == 200, clone_import_response.text
+            assert clone_import_response.json()["summary"]["created"] == 1
+
+            clone_export_response = await client.get(
+                f"{BASE_URL}/api/admin/export/studies-runtime-config",
+                params={"study_name": clone_short, "mode": "embedded_json"},
+                auth=ADMIN_AUTH,
+            )
+            assert clone_export_response.status_code == 200
+            clone_export = clone_export_response.json()
+            clone_study = clone_export["studies_config"]["studies"][0]
+
+            assert _without_identity_fields(clone_study) == _without_identity_fields(
+                source_study
+            )
+
+            # The split ZIP is built from the same study dict, but assert the
+            # previously missing fields are present there too.
+            split_response = await client.get(
+                f"{BASE_URL}/api/admin/export/studies-runtime-config",
+                params={"study_name": source_short, "mode": "split_zip"},
+                auth=ADMIN_AUTH,
+            )
+            assert split_response.status_code == 200
+            archive = zipfile.ZipFile(BytesIO(split_response.content))
+            split_study = json.loads(
+                archive.read("studies_config.json").decode("utf-8")
+            )["studies"][0]
+            assert split_study["day_start_minutes"] == 240
+            assert split_study["inactivity_timeout_minutes"] == 20
+            assert split_study["inactivity_page_custom_text"] == {
+                "en": "Session timeout (EN)",
+                "sv": "Sessionen löpte ut (SV)",
+            }
+            assert split_study["footer_links"][0]["title"] == {
+                "en": "Study information",
+                "sv": "Studieinformation",
+            }
+            assert split_study["hide_server_wide_links"] is True
+            assert split_study["day_labels"][0]["display_names"] == {
+                "en": "Monday",
+                "sv": "Måndag",
+            }
+        finally:
+            for study_name_short in [source_short, clone_short]:
+                await client.delete(
+                    f"{BASE_URL}/api/admin/studies/{study_name_short}",
+                    auth=ADMIN_AUTH,
+                )

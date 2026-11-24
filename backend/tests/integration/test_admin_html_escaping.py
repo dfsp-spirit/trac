@@ -123,7 +123,14 @@ async def test_unknown_study_page_escapes_name_from_url():
 
 
 @pytest.mark.asyncio
-async def test_study_detail_page_escapes_stored_study_name(created_studies_for_cleanup):
+@pytest.mark.parametrize(
+    "page_suffix",
+    ["", "/texts"],
+    ids=["study-detail", "study-texts"],
+)
+async def test_study_pages_escape_stored_study_name(
+    created_studies_for_cleanup, page_suffix
+):
     """A study whose display name contains HTML must render escaped (Jinja)."""
     study_short = f"it_xss_{uuid.uuid4().hex[:8]}"
     hostile_name = "<script>alert('study')</script>"
@@ -133,7 +140,7 @@ async def test_study_detail_page_escapes_stored_study_name(created_studies_for_c
         created_studies_for_cleanup.append(study_short)
 
         response = await client.get(
-            f"{BASE_URL}/admin/study/{study_short}", auth=ADMIN_AUTH
+            f"{BASE_URL}/admin/study/{study_short}{page_suffix}", auth=ADMIN_AUTH
         )
 
     _require_authenticated(response, ADMIN_AUTH)

@@ -1332,6 +1332,146 @@ textarea {
     padding-left: 1.25rem;
 }
 
+/* ── Study text editor ──────────────────────────────────────────────────── */
+
+.study-text-editor {
+    margin-top: 1rem;
+}
+
+.text-editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.text-editor-language-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.text-editor-language-tab {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--text);
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.text-editor-language-tab.active {
+    background: var(--inverse-bg);
+    border-color: var(--inverse-bg);
+    color: var(--inverse-ink);
+}
+
+.text-editor-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.text-editor-group {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.text-editor-group h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.05rem;
+}
+
+.text-editor-field {
+    margin-top: 0.75rem;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface-100);
+}
+
+.text-editor-field-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.text-editor-field-label {
+    font-weight: 600;
+}
+
+.text-editor-badge {
+    display: inline-block;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-pill);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.text-editor-badge.text-ok {
+    color: var(--ok);
+    border-color: var(--ok);
+    background: var(--surface);
+}
+
+.text-editor-badge.text-warn {
+    color: var(--warn);
+    border-color: var(--warn);
+    background: var(--surface);
+}
+
+.text-editor-help {
+    margin: 0.35rem 0 0.5rem;
+}
+
+.text-editor-input {
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    min-height: 8rem;
+}
+
+.text-editor-field-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.4rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.text-editor-link-btn {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--text);
+    font-size: 0.8rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.text-editor-validation {
+    margin: 0.5rem 0;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--danger-strong);
+    border-left: 3px solid var(--danger-strong);
+    border-radius: var(--radius-md);
+    background: #fdf2f1;
+    color: var(--danger-strong);
+    font-size: 0.85rem;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -1493,5 +1633,22 @@ textarea {
         width: 100%;
         text-align: center;
         margin-bottom: 0.5rem;
+    }
+
+    .text-editor-toolbar {
+        flex-direction: column;
+    }
+
+    .text-editor-actions {
+        width: 100%;
+    }
+
+    .text-editor-actions .btn-primary,
+    .text-editor-actions .btn-secondary {
+        flex: 1;
+    }
+
+    .text-editor-field {
+        padding: 0.75rem;
     }
 }

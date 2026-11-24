@@ -168,6 +168,14 @@ from .study_names import (
     STUDY_NAME_SHORT_RULE_TEXT,
     validate_study_name_short,
 )
+from .study_texts import (
+    STUDY_TEXT_FIELD_NAMES,
+    canonical_study_text_values,
+    study_text_revision,
+    study_text_specs_payload,
+    study_text_values_from_object,
+    validate_study_text_values,
+)
 from .tabular_files import (
     DelimitedUploadError,
     find_header,
@@ -2818,6 +2826,209 @@ async def admin_study_detail(
     return HTMLResponse(content=html_content)
 
 
+@app.get(
+    "/admin/study/{name_short}/texts",
+    name="Admin Study Texts Page",
+    response_class=HTMLResponse,
+)
+async def admin_study_texts(
+    request: Request,
+    name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Render the multi-language editor for the study's localized texts."""
+    study = session.exec(select(Study).where(Study.name_short == name_short)).first()
+    if not study:
+        safe_name = html.escape(name_short)
+        safe_root_path = html.escape(str(request.scope.get("root_path", "")))
+        return HTMLResponse(
+            content=(
+                f"<html><body><h1>Study '{safe_name}' not found</h1>"
+                f"<a href='{safe_root_path}/admin'>Back to overview</a>"
+                "</body></html>"
+            ),
+            status_code=404,
+        )
+
+    logger.info(
+        "Admin '%s' opened the study text editor for '%s'.",
+        current_admin,
+        study.name_short,
+    )
+    audit_admin_action(
+        current_admin, f"opened study text editor for '{study.name_short}'"
+    )
+
+    supported_languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    context_dict = {
+        "request": request,
+        "current_admin": current_admin,
+        "current_time": utc_now(),
+        "study": study,
+        "supported_languages": supported_languages,
+    }
+    template = templates.get_template("admin_study_texts.html")
+    return HTMLResponse(content=template.render(context_dict))
+
+
+class StudyTextsPatchRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    # Content hash returned by GET. Rejecting a stale value prevents one admin
+    # from silently overwriting another admin's text changes.
+    revision: str
+    values: Dict[str, Optional[Dict[str, str]]]
+
+    @field_validator("revision")
+    @classmethod
+    def validate_revision(cls, value: str) -> str:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("revision must be a non-empty string")
+        return value.strip()
+
+
+def _study_texts_payload(
+    study: Study, supported_languages: Sequence[str]
+) -> Dict[str, Any]:
+    values = canonical_study_text_values(study)
+    return {
+        "study_name_short": study.name_short,
+        "default_language": study.default_language,
+        "supported_languages": list(supported_languages),
+        "values": values,
+        "revision": study_text_revision(values),
+        "fields": study_text_specs_payload(),
+    }
+
+
+@app.get(
+    "/api/admin/studies/{study_name_short}/texts",
+    name="Get study texts",
+)
+async def get_study_texts(
+    study_name_short: str,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Return the editable localized study texts and their editor metadata."""
+    study = _get_study_or_404(session, study_name_short)
+    supported_languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    return _study_texts_payload(study, supported_languages)
+
+
+@app.patch(
+    "/api/admin/studies/{study_name_short}/texts",
+    name="Update study texts",
+)
+async def update_study_texts(
+    study_name_short: str,
+    payload: StudyTextsPatchRequest,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Update one or more localized study texts.
+
+    The request carries only the fields the admin changed. Each field value is a
+    complete map for the supported languages; a missing language is filled from
+    the stored map, so a partial update cannot accidentally drop a translation.
+    Send ``null`` (or an empty object) to clear an optional field.
+    """
+    study = _get_study_or_404(session, study_name_short)
+    supported_languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    supported_set = set(supported_languages)
+
+    current_values = canonical_study_text_values(study)
+    current_revision = study_text_revision(current_values)
+    if payload.revision != current_revision:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "The study texts changed since this page was loaded. "
+                "Reload the page and try again."
+            ),
+        )
+
+    unknown_fields = sorted(set(payload.values) - set(STUDY_TEXT_FIELD_NAMES))
+    if unknown_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unknown study text field(s): {unknown_fields}",
+        )
+
+    new_values: Dict[str, Any] = dict(current_values)
+    changed_fields: List[str] = []
+
+    for field_name, incoming in payload.values.items():
+        current = current_values.get(field_name)
+        if incoming is None or incoming == {}:
+            merged: Optional[Dict[str, str]] = None
+        else:
+            unknown_languages = sorted(set(incoming) - supported_set)
+            if unknown_languages:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"{field_name} contains unsupported language(s): "
+                        f"{unknown_languages}. Supported: {supported_languages}"
+                    ),
+                )
+            # Preserve any extra language keys that already existed on the row;
+            # they are not rendered by the app but should not be lost because an
+            # admin edited one of the supported translations.
+            merged = dict(current) if isinstance(current, dict) else {}
+            merged.update(incoming)
+
+        if merged != current:
+            new_values[field_name] = merged
+            changed_fields.append(field_name)
+
+    if not changed_fields:
+        result = _study_texts_payload(study, supported_languages)
+        result["changed"] = False
+        result["changed_fields"] = []
+        return result
+
+    try:
+        # Validate what this PATCH writes, not unrelated legacy fields: a study
+        # may still have a single-string description while another text is
+        # being edited. The shared rules still apply to every changed field.
+        validate_study_text_values(
+            values={field: new_values[field] for field in changed_fields},
+            supported_languages=supported_languages,
+            default_language=study.default_language,
+            study_name_short=study.name_short,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    for field_name in changed_fields:
+        setattr(study, field_name, new_values[field_name])
+
+    session.add(study)
+    session.commit()
+    session.refresh(study)
+
+    audit_admin_action(
+        current_admin,
+        (
+            f"edited study texts for '{study.name_short}' "
+            f"(fields: {', '.join(sorted(changed_fields))})"
+        ),
+    )
+
+    result = _study_texts_payload(study, supported_languages)
+    result["changed"] = True
+    result["changed_fields"] = sorted(changed_fields)
+    return result
+
+
 class AssignParticipantsRequest(BaseModel):
     participant_ids: List[str]
     must_be_new: bool = False
@@ -3232,6 +3443,16 @@ def _validate_import_study_payload(study_payload: ImportStudiesConfigStudy) -> D
     default_language = _normalize_language_code(study_payload.default_language)
     if default_language not in supported_languages:
         raise ValueError("default_language must be included in supported_languages")
+
+    # The CLI/config parser and the admin upload/import path must agree on what
+    # a valid set of study texts is. Keep the rules in study_texts.py so the
+    # admin editor uses the same policy instead of becoming a third variant.
+    validate_study_text_values(
+        values=study_text_values_from_object(study_payload),
+        supported_languages=supported_languages,
+        default_language=default_language,
+        study_name_short=study_payload.name_short,
+    )
 
     validate_external_tasks_for_study(
         study_name_short=study_payload.name_short,
@@ -4824,6 +5045,24 @@ async def remove_study_owner(
     }
 
 
+def _export_day_label_display_names(
+    day_label: DayLabel, supported_languages: Sequence[str]
+) -> Dict[str, str]:
+    """Return the localized day-label names for the runtime-config export.
+
+    ``display_names`` is the authoritative map; ``display_name`` is only the
+    default-language convenience column. Fall back to it per language for legacy
+    rows whose map is missing, so the export remains importable.
+    """
+    stored = (
+        day_label.display_names if isinstance(day_label.display_names, dict) else {}
+    )
+    return {
+        language: stored.get(language) or day_label.display_name
+        for language in supported_languages
+    }
+
+
 def _with_activities_schema_version(payload: Any) -> Any:
     """Return an exported activities payload that declares its schema version.
 
@@ -4919,10 +5158,13 @@ async def export_runtime_studies_config(
                 {
                     "name": day_label.name,
                     "display_order": day_label.display_order,
-                    "display_names": {
-                        language: day_label.display_name
-                        for language in supported_languages
-                    },
+                    # The map is the authoritative translation. `display_name`
+                    # only holds the default-language value for legacy rows, so
+                    # using it for every language would silently erase the
+                    # other translations on a restore.
+                    "display_names": _export_day_label_display_names(
+                        day_label, supported_languages
+                    ),
                 }
             )
 
@@ -5016,6 +5258,17 @@ async def export_runtime_studies_config(
                 "require_diary_before_external_tasks": study.require_diary_before_external_tasks,
                 "save_browser_identification": study.save_browser_identification,
                 "save_ux_events": study.save_ux_events,
+                # Backup-relevant presentation/runtime settings. These are not
+                # derived from the activities payload, so an export that omits
+                # them silently changes the restored study.
+                "day_start_minutes": study.day_start_minutes,
+                "inactivity_timeout_minutes": study.inactivity_timeout_minutes,
+                "inactivity_timeout_stress_time_left": (
+                    study.inactivity_timeout_stress_time_left
+                ),
+                "inactivity_page_custom_text": study.inactivity_page_custom_text,
+                "footer_links": study.footer_links,
+                "hide_server_wide_links": study.hide_server_wide_links,
                 "external_tasks": [
                     {
                         "task_key": external_task.task_key,

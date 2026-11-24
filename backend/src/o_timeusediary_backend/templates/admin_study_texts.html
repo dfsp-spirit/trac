@@ -1,0 +1,52 @@
+{% extends "admin_base.html" %}
+{% from "partials/admin_nav.html" import admin_nav with context %}
+
+{% block title %}Study texts · {{ study.name }} · TRAC Admin{% endblock %}
+{% block nav %}{{ admin_nav('texts', study) }}{% endblock %}
+
+{% block content %}
+        <div class="header">
+            <h1>Study texts <span class="badge badge-study">{{ study.name_short }}</span></h1>
+            <p>Edit the localized texts shown to participants in <strong>{{ study.name }}</strong>.</p>
+            <div class="header-info">
+                <div><strong>Admin:</strong> {{ current_admin }}</div>
+                <div><strong>Default language:</strong> {{ study.default_language }}</div>
+                <div><strong>Supported languages:</strong> {{ supported_languages|join(', ') }}</div>
+            </div>
+        </div>
+
+        <div class="edit-section-warning" role="note">
+            Editing texts affects what future participants see. Editing the consent text does not
+            re-consent participants who already agreed.
+        </div>
+
+        <div class="card study-text-editor" id="studyTextsEditor"
+             data-study-name-short="{{ study.name_short }}">
+            <div id="textEditorLoading" class="hint">Loading study texts…</div>
+            <div id="textEditorError" class="result-box" hidden></div>
+
+            <div id="textEditorContent" hidden>
+                <div class="text-editor-toolbar">
+                    <div class="text-editor-language-tabs" id="textEditorLanguageTabs"
+                         role="tablist" aria-label="Editing language"></div>
+                    <div class="text-editor-actions">
+                        <button type="button" class="btn-secondary" id="textEditorReloadBtn">
+                            Discard changes
+                        </button>
+                        <button type="button" class="btn-primary" id="textEditorSaveBtn" disabled>
+                            Save texts
+                        </button>
+                    </div>
+                </div>
+
+                <p class="hint" id="textEditorLanguageHint"></p>
+                <div class="text-editor-validation" id="textEditorValidation" role="alert" hidden></div>
+                <div id="textEditorFields"></div>
+                <div class="status" id="textEditorStatus" role="status" aria-live="polite"></div>
+            </div>
+        </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ request.scope.root_path }}/static/admin_study_texts.js"></script>
+{% endblock %}

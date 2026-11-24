@@ -197,23 +197,47 @@ In addition to the CLI, the **admin web interface** provides a graphical way to
 validate and create studies:
 
 1. Open the admin interface at `https://your.domain.example.com/<TUD_ROOTPATH>/admin`.
-2. Navigate to the **Study Import** section.
-3. Paste your `studies_config.json` content (with embedded activities data or
-   references to activities files) into the text area.
-4. Click **Validate** to check your configuration for errors without applying
-   it.  The interface reports any schema violations, missing fields, or
-   cross-language inconsistencies.
-5. If validation succeeds, click **Import** to create or update the study(ies).
+2. Navigate to **File Validation**.
+3. Select the `studies_config.json` file (with embedded activities data or
+   activities files you upload in the same form).
+4. Click **Validate** to check the configuration without applying it. The
+   interface reports schema violations, missing fields, and cross-language
+   inconsistencies.
+5. Review the configuration summary, confirm it, and click **Create study**.
+   This flow creates exactly one new study; it does not update an existing one.
 
 The admin interface uses the same validation logic as the CLI `tud studies
-import` command, so you can use whichever workflow you prefer.  The web-based
+import` command, so you can use whichever workflow you prefer. The web-based
 validator is especially helpful during iterative configuration development
 because it gives you immediate feedback without needing terminal access to the
 server.
 
-The admin interface also supports **exporting** your current runtime study
+### Editing study texts in the admin interface
+
+Open a study and choose **Texts** in the study navigation row. The editor covers
+the study description, all `study_text_*` fields, and
+`inactivity_page_custom_text`. Pick a language and edit its version of each text.
+
+If a text is configured at all, it must be filled in every supported language.
+The editor marks missing translations and refuses to save until the text is
+complete; this is the same rule the config parser and the admin import apply.
+Extra language entries that are not in `supported_languages` are preserved in
+the database but are not shown in the editor, because the app does not render
+them. The end texts (`study_text_end_*`) accept raw HTML; the other fields use
+Markdown where the participant frontend renders Markdown. The editor deliberately
+shows plain text only, not a rendered preview.
+
+Editing the consent text changes what future participants see; it does not
+re-consent participants who already agreed.
+
+The admin interface also supports **exporting** the current runtime study
 configuration via `GET /api/admin/export/studies-runtime-config`, which is
-useful for backups, cloning studies, or migrating between environments.
+useful for backups, cloning studies, or migrating between environments. The
+export is intended to be lossless for study configuration: it includes the
+collection window, day start, inactivity settings and text, day labels and their
+translations, day groups, footer links, flags, study texts, and external-task
+configuration. Ownership (`owner_usernames`) and recorded participant data are
+intentionally excluded.
 
 ---
 

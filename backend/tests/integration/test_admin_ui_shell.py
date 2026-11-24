@@ -26,6 +26,7 @@ ADMIN_AUTH = (settings.admin_username, settings.admin_password)
 ADMIN_PAGES = [
     "/admin",
     "/admin/study/default",
+    "/admin/study/default/texts",
     "/admin/participant-management",
     "/admin/file-validation",
     "/admin/ux-signals",
@@ -63,12 +64,13 @@ async def test_admin_page_uses_the_shared_shell(page_path):
 async def test_the_open_study_stays_one_click_away():
     """Every page that knows the open study renders it in the second nav row.
 
-    Switching between Study Details, Participants and UX Signals for the *same*
-    study is the common admin loop, so the row never drops one of them - and the
-    page you are on is the one marked active.
+    Switching between Study Details, Texts, Participants and UX Signals for the
+    *same* study is the common admin loop, so the row never drops one of them -
+    and the page you are on is the one marked active.
     """
     pages = (
         "/admin/study/default",
+        "/admin/study/default/texts",
         "/admin/participant-management?study_name_short=default",
         "/admin/ux-signals?study_name_short=default",
     )
@@ -79,7 +81,7 @@ async def test_the_open_study_stays_one_click_away():
             row = response.text.split('aria-label="Selected study"', 1)[1].split(
                 "</nav>", 1
             )[0]
-            for label in ("Study Details", "Participants", "UX Signals"):
+            for label in ("Study Details", "Texts", "Participants", "UX Signals"):
                 assert f">{label}</a>" in row.replace("\n", ""), (page_path, label)
             assert "study_name_short=default" in row, page_path
 

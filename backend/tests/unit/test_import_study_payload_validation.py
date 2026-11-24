@@ -197,6 +197,45 @@ def test_import_study_payload_require_consent_can_be_true():
     assert study_payload.require_consent is True
 
 
+def _multilingual_activities_payload():
+    english = _minimal_activities_payload([100])
+    swedish = _minimal_activities_payload([100])
+    swedish["general"]["language"] = "sv"
+    return {"en": english, "sv": swedish}
+
+
+def test_validate_import_payload_rejects_partial_study_texts():
+    payload = _base_payload()
+    payload["supported_languages"] = ["en", "sv"]
+    payload["day_labels"][0]["display_names"] = {"en": "Monday", "sv": "Måndag"}
+    payload["activities_json_data"] = _multilingual_activities_payload()
+    payload["study_text_intro"] = {"en": "Welcome"}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match="study_text_intro is missing translations for supported_languages: \\['sv'\\]",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_partial_inactivity_text():
+    payload = _base_payload()
+    payload["supported_languages"] = ["en", "sv"]
+    payload["day_labels"][0]["display_names"] = {"en": "Monday", "sv": "Måndag"}
+    payload["activities_json_data"] = _multilingual_activities_payload()
+    payload["inactivity_page_custom_text"] = {"en": "Timeout"}
+
+    study_payload = ImportStudiesConfigStudy(**payload)
+
+    with pytest.raises(
+        ValueError,
+        match="inactivity_page_custom_text is missing translations for supported_languages: \\['sv'\\]",
+    ):
+        _validate_import_study_payload(study_payload)
+
+
 def test_import_study_payload_accepts_study_text_consent_and_noconsent():
     payload = _base_payload()
     payload["require_consent"] = True

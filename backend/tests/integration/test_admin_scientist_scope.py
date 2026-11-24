@@ -730,6 +730,13 @@ def test_single_study_export_contains_only_that_study(scoped_studies):
 # matrix fail, which is the point: it is an exhaustive guard.
 STUDY_SCOPED_ADMIN_ENDPOINTS = [
     ("GET", "/admin/study/{study}", None),
+    ("GET", "/admin/study/{study}/texts", None),
+    ("GET", "/api/admin/studies/{study}/texts", None),
+    (
+        "PATCH",
+        "/api/admin/studies/{study}/texts",
+        {"revision": "stale", "values": {}},
+    ),
     ("GET", "/api/admin/studies/{study}/available-activities-summary", None),
     (
         "PATCH",

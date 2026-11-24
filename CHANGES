@@ -4,6 +4,9 @@ TRAC MPIAE Changes
 
 Current WIP
 -----------
+- NEW: admin study text editor: a **Texts** page per study edits the description, all `study_text_*` fields and `inactivity_page_custom_text` for every supported language, with missing-translation markers, copy-from-default, optimistic-concurrency protection and the same completeness rule as the config parser
+- FIX: the runtime config export is now lossless for study configuration: it includes `day_start_minutes`, inactivity timeout settings and custom text, footer links and `hide_server_wide_links`, and it preserves the per-language `day_labels[].display_names` instead of writing the default-language name for every language. A new equality roundtrip test exports, imports and exports again and compares the complete study document.
+- FIX: the admin upload/import path now validates `study_text_*`, `description` and `inactivity_page_custom_text` with the same shared rules as the CLI/config parser, so the two workflows can no longer accept different text configurations
 - NEW: make the admin pages work better on phones: two stat cards per row, denser tables with a visible scroll edge and a sticky participant id column, one sideways-scrolling tab row, secondary table columns hidden on small screens, and 44px touch targets
 - NEW: restyle the admin portal on one shared design-token layer with the participant app (system font, neutral white/grey palette, consistent buttons and tables, tabular numerals, no emoji headings); the tokens are generated from `frontend_new/` with `npm run sync:admin-tokens`
 

@@ -292,6 +292,8 @@ https://your.domain.example.com/tud_backend/admin
 
 Because the admin interface is part of the backend application, it must be exposed through the same reverse-proxy setup as the API. As with the rest of the backend, it should only be made available over HTTPS.
 
+Each study detail page has a **Texts** page for editing the localized study description, `study_text_*` fields, and inactivity-page text in every supported language. The editor uses the same completeness rules as the config parser: a text that is configured must be present in all supported languages. See `README_CREATE_STUDY.md` for the field semantics.
+
 
 #### 6.1 Study ownership and scientist accounts
 
@@ -365,6 +367,7 @@ Some endpoints are especially useful for automation, monitoring, backup, and int
 
 - `GET /api/health` checks that the backend is running and can reach the database. This is useful for uptime monitoring and health checks.
 - `POST /api/admin/studies/import-config` creates one or more studies from a study configuration payload (including activities and study texts), which is useful for automated study setup and server-to-server provisioning workflows. Restricted to super admins.
+- `GET` / `PATCH /api/admin/studies/{study_name_short}/texts` reads or updates the localized study texts (`description`, `study_text_*`, `inactivity_page_custom_text`). The PATCH body carries the `revision` returned by GET and only the changed fields, so concurrent edits are detected instead of silently overwritten.
 - `PATCH /api/admin/studies/{study_name_short}/collection-window` updates the study data-collection time window (`data_collection_start`/`data_collection_end`), which is useful for closing a study early, extending it, or pausing data collection by setting a date range that excludes today.
 - `GET /api/admin/export/studies-runtime-config` exports the full runtime study configuration together with participant assignments and logged activities. This is useful for backups and server-to-server synchronization. Exporting all studies at once is restricted to super admins; pass `study_name` to export a single study.
 - `PATCH /api/admin/studies/{study_name_short}/owners` replaces the list of scientist owners of a study (`{"owner_usernames": ["alice", "bob"]}`). Only configured scientists can be owners; an empty list makes the study super-admin-only.

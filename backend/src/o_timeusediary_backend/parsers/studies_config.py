@@ -29,6 +29,7 @@ from ..formats import (
 from ..display_names import validate_participant_display_names
 from ..participant_ids import InvalidParticipantIdError, normalize_participant_ids
 from ..study_names import validate_study_name_short
+from ..study_texts import study_text_values_from_object, validate_study_text_values
 
 # Oldest studies_config schema this reader still parses. Currently only the
 # current shape is understood, so the floor equals the version above.
@@ -976,74 +977,12 @@ class CfgFileStudy(BaseModel):
                     extra_languages,
                 )
 
-        for text_field_name in [
-            "study_text_intro",
-            "study_text_end_completed",
-            "study_text_end_skipped",
-            "study_text_end_noconsent",
-            "study_text_consent",
-            "study_text_instructions",
-            "study_text_instructions_title",
-        ]:
-            text_map = getattr(self, text_field_name, None)
-            if text_map is None:
-                continue
-            if not isinstance(text_map, dict):
-                raise ValueError(
-                    f"Study '{self.name_short}': "
-                    f"{text_field_name} must be an object mapping language codes to text"
-                )
-            for language, text_value in text_map.items():
-                if language not in required_languages:
-                    logger.warning(
-                        "Study '%s': %s defines extra language '%s' without corresponding activities_json_files entry. "
-                        "This language will not be available in the app.",
-                        self.name_short,
-                        text_field_name,
-                        language,
-                    )
-                if not isinstance(text_value, str) or text_value.strip() == "":
-                    raise ValueError(
-                        f"Study '{self.name_short}': "
-                        f'{text_field_name}["{language}"] must be a non-empty string'
-                    )
-
-            missing_languages = sorted(required_languages - set(text_map.keys()))
-            if missing_languages:
-                raise ValueError(
-                    f"Study '{self.name_short}': "
-                    f"{text_field_name} is missing translations for supported_languages: {missing_languages}"
-                )
-
-        # Validate description: if it's a localized map, it must contain the
-        # default language and all supported languages.
-        if isinstance(self.description, dict):
-            if self.default_language not in self.description:
-                raise ValueError(
-                    f"Study '{self.name_short}': "
-                    f"description is a localized map but is missing the default_language "
-                    f'"{self.default_language}". Add a description for "{self.default_language}".'
-                )
-            missing_desc_languages = sorted(
-                required_languages - set(self.description.keys())
-            )
-            if missing_desc_languages:
-                raise ValueError(
-                    f"Study '{self.name_short}': "
-                    f"description is missing translations for supported languages: "
-                    f"{missing_desc_languages}. If description is provided as a "
-                    f"localized map, it must include all supported languages."
-                )
-        elif isinstance(self.description, str):
-            # Legacy single-string description: valid for the default language.
-            # No further cross-language check needed.
-            pass
-        elif self.description is not None:
-            raise ValueError(
-                f"Study '{self.name_short}': "
-                f"description must be either a string or a localized map (dict), "
-                f"got {type(self.description).__name__}."
-            )
+        validate_study_text_values(
+            values=study_text_values_from_object(self),
+            supported_languages=sorted(required_languages),
+            default_language=self.default_language,
+            study_name_short=self.name_short,
+        )
 
         return self
 
