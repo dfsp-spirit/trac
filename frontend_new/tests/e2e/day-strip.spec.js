@@ -22,9 +22,16 @@ import {
 
 const PID = 'diary_01';
 
+/**
+ * The strip this spec is about, addressed through its host: the day rail draws
+ * one strip per weekday on the same page, so `.t-daystrip` alone matches the
+ * whole week.
+ */
+const STRIP = '.t-daystrip-host > .t-daystrip';
+
 /** @param {import('@playwright/test').Page} page */
 function strip(page) {
-  return page.locator('.t-daystrip');
+  return page.locator(STRIP);
 }
 
 /**
@@ -34,10 +41,13 @@ function strip(page) {
  * @param {string} selector
  */
 async function bar(page, selector) {
-  return page.$eval(selector, (node) => ({
-    left: parseFloat(node.style.left),
-    width: parseFloat(node.style.width),
-  }));
+  return strip(page)
+    .locator(selector)
+    .first()
+    .evaluate((node) => ({
+      left: parseFloat(node.style.left),
+      width: parseFloat(node.style.width),
+    }));
 }
 
 /** @param {import('@playwright/test').Page} page */
@@ -58,9 +68,11 @@ test.describe('day strip in the add-activity form', () => {
     await expect(strip(page)).toHaveAttribute('aria-hidden', 'true');
 
     // An empty day: one lane row, plus the row for the range being configured.
-    await expect(page.locator('.t-daystrip__row')).toHaveCount(2);
-    await expect(page.locator('.t-daystrip__row--pending')).toHaveCount(1);
-    await expect(page.locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')).toHaveCount(0);
+    await expect(strip(page).locator('.t-daystrip__row')).toHaveCount(2);
+    await expect(strip(page).locator('.t-daystrip__row--pending')).toHaveCount(1);
+    await expect(
+      strip(page).locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')
+    ).toHaveCount(0);
 
     // 08:00-09:00 is a tenth of the way in and a twenty-fourth wide.
     await setTime(page, '#form-start', 480);
@@ -73,7 +85,7 @@ test.describe('day strip in the add-activity form', () => {
 
     // Reopen: the saved entry is now in the day, and the new range in its row.
     await chooseActivity(page, 1102);
-    await expect(page.locator('.t-daystrip__row')).toHaveCount(2);
+    await expect(strip(page).locator('.t-daystrip__row')).toHaveCount(2);
     const saved = await bar(page, '.t-daystrip__seg:not(.t-daystrip__seg--pending)');
     expect(saved.left).toBeCloseTo((480 / 1440) * 100, 2);
     expect(saved.width).toBeCloseTo((60 / 1440) * 100, 2);
@@ -92,14 +104,18 @@ test.describe('day strip in the add-activity form', () => {
     await chooseActivity(page, 1104);
 
     // Two lanes for the overlap, plus the row for the range being configured.
-    await expect(page.locator('.t-daystrip__row')).toHaveCount(3);
-    await expect(page.locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')).toHaveCount(2);
+    await expect(strip(page).locator('.t-daystrip__row')).toHaveCount(3);
+    await expect(
+      strip(page).locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')
+    ).toHaveCount(2);
 
     // The surrounding entries belong to this day only: another day is empty
     // apart from the pending row.
     await page.locator('#form-day').selectOption('1');
-    await expect(page.locator('.t-daystrip__row')).toHaveCount(2);
-    await expect(page.locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')).toHaveCount(0);
-    await expect(page.locator('.t-daystrip__row--pending')).toHaveCount(1);
+    await expect(strip(page).locator('.t-daystrip__row')).toHaveCount(2);
+    await expect(
+      strip(page).locator('.t-daystrip__seg:not(.t-daystrip__seg--pending)')
+    ).toHaveCount(0);
+    await expect(strip(page).locator('.t-daystrip__row--pending')).toHaveCount(1);
   });
 });
