@@ -703,6 +703,14 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         existing_study.save_ux_events = study_config.save_ux_events
                         study_updated = True
                     if (
+                        existing_study.num_recent_activities_shown
+                        != study_config.num_recent_activities_shown
+                    ):
+                        existing_study.num_recent_activities_shown = (
+                            study_config.num_recent_activities_shown
+                        )
+                        study_updated = True
+                    if (
                         existing_study.is_listed_publicly
                         != study_config.is_listed_publicly
                     ):
@@ -923,6 +931,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     allow_skip_timeuse=study_config.allow_skip_timeuse,
                     require_diary_before_external_tasks=study_config.require_diary_before_external_tasks,
                     default_language=study_config.default_language,
+                    num_recent_activities_shown=study_config.num_recent_activities_shown,
                     day_groups=(
                         [group.model_dump() for group in study_config.day_groups]
                         or None

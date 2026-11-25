@@ -3205,6 +3205,8 @@ class ImportStudiesConfigStudy(BaseModel):
     # Where the reporting day starts (D26). 0 = midnight; 240 keeps the legacy
     # 04:00 convention for a study that was designed around it.
     day_start_minutes: int = 0
+    # "Used recently" shortcuts above the catalogue (D28). 0 hides the section.
+    num_recent_activities_shown: int = Field(default=5, ge=0)
     inactivity_timeout_minutes: int = 0
     inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
@@ -4315,6 +4317,7 @@ def _create_study_from_import_payload(
         data_collection_start=study_payload.data_collection_start,
         data_collection_end=study_payload.data_collection_end,
         day_start_minutes=study_payload.day_start_minutes,
+        num_recent_activities_shown=study_payload.num_recent_activities_shown,
         inactivity_timeout_minutes=study_payload.inactivity_timeout_minutes,
         inactivity_timeout_stress_time_left=study_payload.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
@@ -5387,6 +5390,7 @@ async def export_runtime_studies_config(
                 # derived from the activities payload, so an export that omits
                 # them silently changes the restored study.
                 "day_start_minutes": study.day_start_minutes,
+                "num_recent_activities_shown": study.num_recent_activities_shown,
                 "inactivity_timeout_minutes": study.inactivity_timeout_minutes,
                 "inactivity_timeout_stress_time_left": (
                     study.inactivity_timeout_stress_time_left

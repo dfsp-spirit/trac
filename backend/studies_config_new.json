@@ -1801,6 +1801,135 @@
           "sunday": [{ "timeline": "primary", "activity_code": 1101, "start_minutes": 0, "end_minutes": 1440 }]
         }
       }
+    },
+    {
+      "name": "Fixture: Ohne Zuletzt-verwendet-Zeile",
+      "name_short": "newui_16_no_recents",
+      "description": {
+        "de": "Fixture für num_recent_activities_shown = 0: Das Aktivitäten-Panel zeigt keine \"Zuletzt verwendet\"-Zeile, auch wenn Einträge vorhanden sind."
+      },
+      "allow_skip_timeuse": false,
+      "save_browser_identification": false,
+      "day_start_minutes": 0,
+      "num_recent_activities_shown": 0,
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "day_groups": [
+        {
+          "key": "workdays",
+          "names": { "en": "All work days", "de": "Alle Werktage", "sv": "Alla arbetsdagar" },
+          "days": ["monday", "tuesday", "wednesday", "thursday", "friday"]
+        },
+        {
+          "key": "weekend",
+          "names": { "en": "Weekend", "de": "Wochenende", "sv": "Helg" },
+          "days": ["saturday", "sunday"]
+        }
+      ],
+      "require_consent": false,
+      "study_text_end_completed": {
+        "de": "Fixture: Das Tagebuch wurde abgegeben."
+      },
+      "study_participant_ids": [
+        "norecents_01"
+      ],
+      "allow_unlisted_participants": false,
+      "default_language": "de",
+      "supported_languages": [
+        "de"
+      ],
+      "activities_json_data": {
+        "de": {
+          "general": {
+            "app_name": "TRAC",
+            "version": "fixture",
+            "language": "de"
+          },
+          "timeline": {
+            "primary": {
+              "name": "Hauptaktivität",
+              "description": "",
+              "mode": "single-choice",
+              "min_coverage": 0,
+              "max_overlap": 2,
+              "categories": [
+                {
+                  "name": "Haupt",
+                  "activities": [
+                    {
+                      "name": "Schlafen",
+                      "code": 1101,
+                      "label": "schlafen",
+                      "childItems": []
+                    },
+                    {
+                      "name": "Arbeiten",
+                      "code": 1102,
+                      "label": "arbeiten",
+                      "childItems": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2027-12-31T23:59:59Z",
+      "is_paused": false,
+      "require_diary_before_external_tasks": false,
+      "external_tasks": [],
+      "activities_logged_by_userid": {}
     }
   ]
 }

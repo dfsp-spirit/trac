@@ -208,6 +208,45 @@ def test_load_studies_config_accepts_allow_skip_timeuse_setting(tmp_path):
     assert config.studies[0].allow_skip_timeuse is True
 
 
+def test_load_studies_config_num_recent_activities_shown_defaults_to_five(tmp_path):
+    """Existing studies keep the "Used recently" row the client used to hard-code."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].num_recent_activities_shown == 5
+
+
+def test_load_studies_config_accepts_zero_recent_activities_shown(tmp_path):
+    """0 is a real setting, not a missing value: it hides the shortcut row."""
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["num_recent_activities_shown"] = 0
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    config = load_studies_config(str(config_file))
+
+    assert config.studies[0].num_recent_activities_shown == 0
+
+
+def test_load_studies_config_rejects_negative_recent_activities_shown(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+    payload = _valid_studies_payload()
+    payload["studies"][0]["num_recent_activities_shown"] = -1
+
+    config_file = tmp_path / "studies_config.json"
+    config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="num_recent_activities_shown"):
+        load_studies_config(str(config_file))
+
+
 def test_load_studies_config_save_browser_identification_defaults_false(tmp_path):
     """Browser/device identification is opt-in and must stay off unless asked for."""
     _write_default_multilingual_activities(tmp_path)

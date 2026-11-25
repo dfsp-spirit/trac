@@ -85,6 +85,10 @@ class Study(SQLModel, table=True):
     # as clock minutes and clipped to [day_start, day_start + 24h), so this is
     # the only place the window is defined.
     day_start_minutes: int = Field(default=0)
+    # How many "Used recently" shortcuts the participant's activity panel shows
+    # above the catalogue. Purely presentational: 0 hides the section, which is
+    # what a study with a crowded catalogue sets to give the list the room.
+    num_recent_activities_shown: int = Field(default=5)
     # Inactivity timeout configuration
     inactivity_timeout_minutes: int = Field(default=0)
     inactivity_timeout_stress_time_left: int = Field(default=5)

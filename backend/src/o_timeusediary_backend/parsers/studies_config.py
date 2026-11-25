@@ -608,6 +608,14 @@ class CfgFileStudy(BaseModel):
             "240 = the 04:00 convention of the legacy frontend."
         ),
     )
+    num_recent_activities_shown: int = Field(
+        default=5,
+        ge=0,
+        description=(
+            "How many 'Used recently' shortcuts the participant's activity panel "
+            "shows above the catalogue. 0 hides the section entirely."
+        ),
+    )
     inactivity_timeout_minutes: int = Field(
         default=0,
         description="Minutes of user inactivity before session timeout. Set to 0 to disable.",

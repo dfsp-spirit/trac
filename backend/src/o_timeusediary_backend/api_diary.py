@@ -551,6 +551,7 @@ def get_diary(
                 else None
             ),
             "allow_skip_timeuse": study.allow_skip_timeuse,
+            "num_recent_activities_shown": study.num_recent_activities_shown,
         },
         "timeline": {
             "key": timeline.name,

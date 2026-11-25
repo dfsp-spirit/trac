@@ -49,6 +49,7 @@ def _write_studies_config(
     allow_skip_timeuse: bool = True,
     require_diary_before_external_tasks: bool = False,
     day_groups: list[dict] | None = None,
+    num_recent_activities_shown: int | None = None,
 ) -> str:
     studies_payload = {
         "studies": [
@@ -77,6 +78,11 @@ def _write_studies_config(
                 "data_collection_start": "2024-01-01T00:00:00Z",
                 "data_collection_end": "2026-12-31T23:59:59Z",
                 **({"day_groups": day_groups} if day_groups else {}),
+                **(
+                    {"num_recent_activities_shown": num_recent_activities_shown}
+                    if num_recent_activities_shown is not None
+                    else {}
+                ),
             }
         ]
     }
@@ -401,3 +407,42 @@ def test_create_config_file_studies_in_database_stores_and_clears_day_groups(
             select(Study).where(Study.name_short == "hydration_demo")
         ).first()
         assert study.day_groups is None
+
+
+def test_create_config_file_studies_in_database_hydrates_recent_activity_limit(
+    tmp_path, database_module
+):
+    """A re-import must apply a changed "Used recently" limit.
+
+    Otherwise a study that switches the shortcut row off in the config would
+    keep showing it until someone edited the database by hand.
+    """
+    activities_file = _write_activities_file(tmp_path, codes=[100])
+    common = {
+        "activities_file": activities_file,
+        "allow_unlisted_participants": True,
+        "study_participant_ids": [],
+        "activities_logged_by_userid": {},
+    }
+
+    config_path = _write_studies_config(
+        tmp_path, num_recent_activities_shown=2, **common
+    )
+    database_module.create_config_file_studies_in_database(config_path)
+
+    with Session(database_module.engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == "hydration_demo")
+        ).first()
+        assert study.num_recent_activities_shown == 2
+
+    config_path = _write_studies_config(
+        tmp_path, num_recent_activities_shown=0, **common
+    )
+    database_module.create_config_file_studies_in_database(config_path)
+
+    with Session(database_module.engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == "hydration_demo")
+        ).first()
+        assert study.num_recent_activities_shown == 0

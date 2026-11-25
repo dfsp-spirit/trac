@@ -215,6 +215,8 @@ test('the list is capped', () => {
     recentEntries(entries, activities, { limit: 2 }).map((item) => item.entry.code),
     [5, 4]
   );
+  // A study can hide the row entirely by setting the number to 0.
+  assert.deepEqual(recentEntries(entries, activities, { limit: 0 }), []);
 });
 
 test('codes no longer in the catalogue are skipped', () => {

@@ -116,6 +116,21 @@ export function recentEntries(entries, activities, { limit = 5 } = {}) {
 }
 
 /**
+ * `recentEntries` with the limit this participant's study configured. The
+ * number travels in the diary payload; a study that sets 0 shows no shortcuts,
+ * which is how it gets the section out of the way.
+ *
+ * @param {import('./activitySearch.js').CatalogueEntry[]} entries
+ * @param {import('../domain/diary.js').ApiDiary | null} diary
+ * @returns {RecentEntry[]}
+ */
+export function recentEntriesForDiary(entries, diary) {
+  return recentEntries(entries, diary?.activities ?? [], {
+    limit: diary?.study?.num_recent_activities_shown,
+  });
+}
+
+/**
  * The catalogue row a stored activity was picked from.
  *
  * A stored sub-activity keeps its own `activity_code` and names its parent in

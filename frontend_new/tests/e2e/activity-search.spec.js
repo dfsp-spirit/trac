@@ -292,4 +292,23 @@ test.describe('activity search', () => {
     await chip.click();
     await expect(page.locator('#form-child')).toHaveValue('1112');
   });
+
+  test('a study that sets 0 shows no "Used recently" row', async ({ page, request }) => {
+    // `num_recent_activities_shown` is a per-study setting; the fixture sets it
+    // to 0, which must hide the section even though the day has an entry the
+    // default limit would turn into a shortcut.
+    const study = 'newui_16_no_recents';
+    const pid = 'norecents_01';
+    await clearActivities(request, pid, study);
+
+    await openDiary(page, pid, study);
+    await addActivity(page, 1101, { start: 480, end: 540 });
+    await expect(page.locator('#days .t-event')).toHaveCount(1);
+
+    await openPanel(page);
+    await expect(recentGroup(page)).toHaveCount(0);
+    await expect(page.getByText('Zuletzt verwendet')).toHaveCount(0);
+
+    await clearActivities(request, pid, study);
+  });
 });

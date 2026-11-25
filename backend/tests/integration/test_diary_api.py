@@ -61,6 +61,7 @@ async def _create_study(
     min_coverage: int = 0,
     config: dict | None = None,
     day_groups: list[dict] | None = None,
+    num_recent_activities_shown: int | None = None,
 ) -> str:
     study_name_short = f"it_diary_{uuid.uuid4().hex[:8]}"
     payload = {
@@ -90,6 +91,11 @@ async def _create_study(
                 "data_collection_start": "2024-01-01T00:00:00Z",
                 "data_collection_end": "2028-12-31T23:59:59Z",
                 **({"day_groups": day_groups} if day_groups else {}),
+                **(
+                    {"num_recent_activities_shown": num_recent_activities_shown}
+                    if num_recent_activities_shown is not None
+                    else {}
+                ),
             }
         ],
     }
@@ -190,6 +196,22 @@ async def test_empty_diary_lists_the_days_and_nothing_else():
     assert diary["activities"] == []
     assert diary["timeline"]["max_overlap"] == 2
     assert diary["study"]["submitted_at"] is None
+    assert diary["study"]["num_recent_activities_shown"] == 5
+
+
+@pytest.mark.asyncio
+async def test_diary_payload_carries_the_recent_activity_limit():
+    """The panel's "Used recently" row is a study setting, not a client constant.
+
+    0 has to arrive as-is: a client that treated it as falsy would fall back to
+    the default and show the row the study asked to hide.
+    """
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(client, num_recent_activities_shown=0)
+        diary = await _diary(client, study, participant)
+
+    assert diary["study"]["num_recent_activities_shown"] == 0
 
 
 @pytest.mark.asyncio

@@ -524,6 +524,7 @@ def _kitchen_sink_study_payload(name_short: str, name: str) -> dict:
         "data_collection_start": "2024-01-01T00:00:00Z",
         "data_collection_end": "2028-12-31T23:59:59Z",
         "day_start_minutes": 240,
+        "num_recent_activities_shown": 2,
         "inactivity_timeout_minutes": 20,
         "inactivity_timeout_stress_time_left": 7,
         "footer_links": [
@@ -648,6 +649,7 @@ async def test_runtime_export_is_lossless_for_every_backup_field():
                 archive.read("studies_config.json").decode("utf-8")
             )["studies"][0]
             assert split_study["day_start_minutes"] == 240
+            assert split_study["num_recent_activities_shown"] == 2
             assert split_study["inactivity_timeout_minutes"] == 20
             assert split_study["inactivity_page_custom_text"] == {
                 "en": "Session timeout (EN)",

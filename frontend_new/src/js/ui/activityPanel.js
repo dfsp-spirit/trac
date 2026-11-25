@@ -11,7 +11,7 @@
 import { createFormController } from './activityPanelForm.js';
 import { renderActivityList } from './activityList.js';
 import { flattenCatalogue, searchHits } from './activitySearch.js';
-import { recentEntries } from './recentActivities.js';
+import { recentEntriesForDiary } from './recentActivities.js';
 import { dayLabel, daySummaries } from '../domain/diary.js';
 import { createFormVisit } from './formVisit.js';
 import { describeError } from './messages.js';
@@ -133,8 +133,8 @@ export function createActivityPanel(deps) {
     renderActivityList(content, {
       entries: all,
       // With a query the matches are the whole answer; the shortcut row is for
-      // browsing.
-      recents: query ? [] : recentEntries(all, diary?.activities ?? []),
+      // browsing. A study that sets the limit to 0 has no shortcut row at all.
+      recents: query ? [] : recentEntriesForDiary(all, diary),
       query,
       t,
       onChoose: (hit, groupKind) =>

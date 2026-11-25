@@ -455,6 +455,12 @@ Rules worth knowing:
 | `allow_skip_timeuse` | boolean | No | If `true`, the participant can skip the time-use reporting via a button and still reach the end page. If `false`, the skip button is not displayed and they must fill out the diary to reach the end page. Default: `true`. |
 | `is_paused` | boolean | No | If `true`, the study is paused and participants cannot submit new data. Default: `false`. |
 
+#### Diary Display
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `num_recent_activities_shown` | integer | No | How many "Used recently" shortcuts the activity panel shows above the catalogue. Set to `0` to hide the section entirely and give the catalogue the room. Must be `0` or greater. Default: `5`. |
+
 #### Data Collection Window
 
 | Field | Type | Required | Description |
