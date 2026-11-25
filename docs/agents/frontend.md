@@ -96,6 +96,9 @@
   two shortcuts, and the "used recently" chip prefills the field. A custom
   sub-activity is such a row too, which is why the text is read with *its* name
   as the prefix.
+- How many shortcuts the row shows is the study's `num_recent_activities_shown`
+  (default 5), delivered in the diary payload under `study`; `0` hides the
+  section entirely. The client never hard-codes the number.
 - `activityform.spec.js` mounts the form with a custom sub-activity and pins
   visibility, the composed name, the refusal without text, the search prefill and
   the edit round-trip.
