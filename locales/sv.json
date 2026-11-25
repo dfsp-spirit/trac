@@ -216,6 +216,9 @@
     "accessStudy": "Öppna studien '{{study}}'"
   },
   "diary": {
+    "message": {
+      "dismiss": "Stäng det här meddelandet"
+    },
     "shell": {
       "menu": "Meny",
       "appName": "Tidsdagbok",
