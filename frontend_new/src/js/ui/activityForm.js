@@ -8,11 +8,11 @@
  */
 import { STEP_MINUTES } from '../domain/time.js';
 import { validateActivity } from '../domain/validation.js';
-import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { dayLabel } from '../domain/diary.js';
 import { el } from './dom.js';
 import { buildDayStrip } from './dayStrip.js';
 import { dayChips, field, syncChips as syncChipsForSelection } from './formFields.js';
+import { createCustomField } from './customField.js';
 import { createMultiDayHint } from './multiDayHint.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
 import { createTimeRange } from './timeRange.js';
@@ -64,66 +64,19 @@ export function renderActivityForm(host, view) {
     form.append(field(t('diary.form.option'), 'form-child', childSelect));
   }
 
-  /**
-   * The chosen sub-activity, when it is a custom input of its own.
-   *
-   * `is_custom_input` is a property of the catalogue *row*, and a sub-activity is
-   * a row: "Sport in Innenräumen (z.B. Schwimmen, Kurse)" asks for the
-   * participant's own words even though its parent does not.
-   *
-   * @returns {import('./activitySearch.js').CatalogueChild | null}
-   */
-  function selectedCustomChild() {
-    if (!childSelect || !childSelect.value) return null;
-    const code = Number(childSelect.value);
-    const child = entry.children.find((item) => item.code === code);
-    return child && child.customInput ? child : null;
-  }
-
-  /**
-   * What the free-text value belongs to, or null when this form takes no text.
-   * The typed words are appended to *that* row's name ("Sport in Innenräumen
-   * (…): Yoga"), never to the parent's.
-   *
-   * @returns {{ code: number, name: string } | null}
-   */
-  function customTarget() {
-    if (entry.isCustomInput) return { code: entry.code, name: entry.name };
-    return selectedCustomChild();
-  }
-
-  /** @type {HTMLElement | null} */
-  let textField = null;
-  /** @type {HTMLInputElement | null} */
-  let textInput = null;
-  if (entry.isCustomInput || entry.children.some((child) => child.customInput)) {
-    textInput = el('input', 't-input');
-    textInput.type = 'text';
-    textInput.maxLength = 200;
-    textInput.autocomplete = 'off';
-    textField = field(t('diary.form.what'), 'form-text', textInput);
-    form.append(textField);
-  }
-
-  /** Show the text field only while a custom row is the one being saved. */
-  function syncCustomField() {
-    if (!textField) return;
-    textField.hidden = customTarget() === null;
-  }
-
-  if (textInput) {
-    // A stored name carries its row's prefix; a shortcut holds just the text.
-    const target = customTarget();
-    if (current && target && current.parent_activity_code === entry.code) {
-      textInput.value = customActivityText(target.name, current.activity_name);
-    } else if (prefill.text) {
-      textInput.value = prefill.text;
-    }
-  }
-  syncCustomField();
-  // Switching between a plain and a custom sub-activity adds or removes a field,
-  // so the choice cannot be read once at render time.
-  if (childSelect) childSelect.addEventListener('change', syncCustomField);
+  // Free text belongs to a row, which can be the entry or the chosen
+  // sub-activity: the field follows that choice (visibility, prefix, and the
+  // stored name), so it cannot be decided here once.
+  const custom = createCustomField({
+    entry,
+    childSelect,
+    t,
+    storedActivity: current,
+    prefillText: prefill.text,
+  });
+  if (custom.element) form.append(custom.element);
+  custom.sync();
+  if (childSelect) childSelect.addEventListener('change', custom.sync);
 
   /** @type {HTMLSelectElement | null} */
   let frequencySelect = null;
@@ -274,11 +227,10 @@ export function renderActivityForm(host, view) {
     // The free-text value belongs to the row being saved: the entry itself for a
     // custom activity, the chosen sub-activity for a custom sub-activity. Both
     // keep their own code; the entry stays the parent in either case.
-    const target = customTarget();
-    if (target) {
-      const text = textInput ? textInput.value.trim() : '';
-      if (!text) return { ok: false, code: 'form.needsText' };
-      activityName = composeCustomName(target.name, text);
+    const typed = custom.result();
+    if (typed) {
+      if ('error' in typed) return { ok: false, code: typed.error };
+      activityName = typed.name;
       parentCode = entry.code;
     }
 
