@@ -148,6 +148,17 @@ cd backend/
 uv run tud studies import --config studies_config.json
 ```
 
+To remove a study and every row that belongs to it (participants, activities,
+study configuration, external tasks), use the same cascade deletion as the admin
+interface:
+
+```bash
+cd backend/
+uv run tud studies delete my_study --dry-run   # show what would be deleted
+uv run tud studies delete my_study             # asks for confirmation
+uv run tud studies delete my_study --yes       # non-interactive
+```
+
 The admin web interface at `<TUD_ROOTPATH>/admin` also lets you validate and
 import study configurations interactively through the browser.
 

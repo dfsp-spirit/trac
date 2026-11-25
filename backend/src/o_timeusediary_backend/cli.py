@@ -17,6 +17,7 @@ from .database import (
 from .models import Activity, Study, StudyParticipant
 from .parsers.studies_config import load_studies_config
 from .settings import settings
+from .study_cleanup import delete_study_data
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -74,6 +75,25 @@ def _build_parser() -> argparse.ArgumentParser:
             "Output file path for the backup ZIP. "
             "If omitted, the filename from the export response is used in the current directory."
         ),
+    )
+
+    delete_parser = studies_subparsers.add_parser(
+        "delete",
+        help="Delete a study and all data that belongs to it",
+    )
+    delete_parser.add_argument(
+        "study_name_short",
+        help="Short name of the study to delete",
+    )
+    delete_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Report the rows that would be deleted, without deleting them.",
+    )
+    delete_parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Delete without asking for interactive confirmation.",
     )
 
     ux_parser = subparsers.add_parser(
@@ -366,6 +386,62 @@ def _run_studies_export_runtime_config(output: str | None) -> int:
     return 0
 
 
+def _study_row_counts(session: Session, study_id: int) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for label, model in (("participants", StudyParticipant), ("activities", Activity)):
+        counts[label] = int(
+            session.exec(
+                select(func.count())
+                .select_from(model)
+                .where(model.study_id == study_id)
+            ).one()
+            or 0
+        )
+    return counts
+
+
+def _run_studies_delete(study_name_short: str, dry_run: bool, assume_yes: bool) -> int:
+    with Session(engine) as session:
+        study = session.exec(
+            select(Study).where(Study.name_short == study_name_short)
+        ).first()
+        if study is None:
+            print(f"Study '{study_name_short}' not found.")
+            return 1
+
+        if dry_run:
+            counts = _study_row_counts(session, study.id)
+            print(
+                f"Would delete study '{study_name_short}' "
+                f"({counts['participants']} participants, "
+                f"{counts['activities']} activities) and all its study configuration."
+            )
+            return 0
+
+        if not assume_yes:
+            if not sys.stdin.isatty():
+                print(
+                    "Refusing to delete without confirmation. "
+                    "Re-run with --yes to delete non-interactively."
+                )
+                return 1
+            answer = input(
+                f"Delete study '{study_name_short}' and all its data? [y/N] "
+            )
+            if answer.strip().lower() not in {"y", "yes"}:
+                print("Aborted.")
+                return 1
+
+        if not delete_study_data(session, study_name_short):
+            print(f"Study '{study_name_short}' not found.")
+            return 1
+
+        session.commit()
+
+    print(f"Deleted study '{study_name_short}'.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
@@ -383,6 +459,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "studies" and args.studies_command == "export-runtime-config":
         return _run_studies_export_runtime_config(args.output)
+
+    if args.command == "studies" and args.studies_command == "delete":
+        return _run_studies_delete(
+            args.study_name_short,
+            dry_run=args.dry_run,
+            assume_yes=args.yes,
+        )
 
     if args.command == "ux-events" and args.ux_command == "purge":
         return _run_ux_events_purge(args.days, args.study, args.dry_run)

@@ -340,3 +340,112 @@ def test_cli_studies_export_runtime_config_uses_directory_output(monkeypatch, tm
 
     assert exit_code == 0
     assert (tmp_path / "my_export.zip").read_bytes() == b"zip-bytes"
+
+
+class _FakeStudyResult:
+    def __init__(self, value):
+        self._value = value
+
+    def first(self):
+        return self._value
+
+    def one(self):
+        return self._value
+
+
+class _FakeDeleteSession:
+    last_committed = False
+
+    def __init__(self, _engine):
+        _FakeDeleteSession.last_committed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def exec(self, _statement):
+        return _FakeStudyResult(SimpleNamespace(id=1))
+
+    def commit(self):
+        _FakeDeleteSession.last_committed = True
+
+
+class _MissingStudySession(_FakeDeleteSession):
+    def exec(self, _statement):
+        return _FakeStudyResult(None)
+
+
+def _patch_studies_delete(monkeypatch, session_class):
+    calls = []
+
+    def _fake_delete_study_data(_session, study_name_short):
+        calls.append(study_name_short)
+        return True
+
+    monkeypatch.setattr(cli, "Session", session_class)
+    monkeypatch.setattr(cli, "delete_study_data", _fake_delete_study_data)
+    monkeypatch.setattr(
+        cli,
+        "_study_row_counts",
+        lambda _session, _study_id: {"participants": 2, "activities": 3},
+    )
+    return calls
+
+
+def test_cli_studies_delete_requires_confirmation_without_yes(monkeypatch, capsys):
+    calls = _patch_studies_delete(monkeypatch, _FakeDeleteSession)
+    monkeypatch.setattr("sys.stdin", SimpleNamespace(isatty=lambda: False))
+
+    exit_code = cli.main(["studies", "delete", "demo"])
+
+    assert exit_code == 1
+    assert calls == []
+    assert "Refusing to delete without confirmation" in capsys.readouterr().out
+
+
+def test_cli_studies_delete_aborts_on_negative_prompt(monkeypatch, capsys):
+    calls = _patch_studies_delete(monkeypatch, _FakeDeleteSession)
+    monkeypatch.setattr("sys.stdin", SimpleNamespace(isatty=lambda: True))
+    monkeypatch.setattr("builtins.input", lambda _prompt: "n")
+
+    exit_code = cli.main(["studies", "delete", "demo"])
+
+    assert exit_code == 1
+    assert calls == []
+    assert "Aborted." in capsys.readouterr().out
+
+
+def test_cli_studies_delete_with_yes_deletes_study(monkeypatch, capsys):
+    calls = _patch_studies_delete(monkeypatch, _FakeDeleteSession)
+
+    exit_code = cli.main(["studies", "delete", "demo", "--yes"])
+
+    assert exit_code == 0
+    assert calls == ["demo"]
+    assert _FakeDeleteSession.last_committed is True
+    assert "Deleted study 'demo'." in capsys.readouterr().out
+
+
+def test_cli_studies_delete_dry_run_reports_without_deleting(monkeypatch, capsys):
+    calls = _patch_studies_delete(monkeypatch, _FakeDeleteSession)
+
+    exit_code = cli.main(["studies", "delete", "demo", "--dry-run"])
+
+    assert exit_code == 0
+    assert calls == []
+    assert _FakeDeleteSession.last_committed is False
+    output = capsys.readouterr().out
+    assert "Would delete study 'demo'" in output
+    assert "2 participants, 3 activities" in output
+
+
+def test_cli_studies_delete_reports_missing_study(monkeypatch, capsys):
+    calls = _patch_studies_delete(monkeypatch, _MissingStudySession)
+
+    exit_code = cli.main(["studies", "delete", "missing", "--yes"])
+
+    assert exit_code == 1
+    assert calls == []
+    assert "Study 'missing' not found." in capsys.readouterr().out

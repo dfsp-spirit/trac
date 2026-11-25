@@ -1,6 +1,11 @@
 TRAC MPIAE Changes
 ===================
 
+Current WIP
+------------
+
+- NEW: `tud studies delete <name_short> [--dry-run] [--yes]` deletes a study and all of its data from the command line. It shares the cascade-deletion code with `DELETE /api/admin/studies/{name_short}`, refuses to run without confirmation unless `--yes` is passed, and can report the affected rows with `--dry-run`-
+
 
 Version 0.28.0 -- Improve admin interface, fixes
 -------------------------------------------------

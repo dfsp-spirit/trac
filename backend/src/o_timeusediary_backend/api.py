@@ -101,6 +101,7 @@ from .database import (
     get_timelines_for_study,
     ensure_external_task_assignments,
 )
+from .study_cleanup import delete_study_data
 from pathlib import Path
 import hashlib
 import html
@@ -8491,66 +8492,10 @@ async def delete_study(
     Participants belong to the study, so they are deleted with it; other studies
     are unaffected.
     """
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
+    if not delete_study_data(session, study_name_short):
         raise HTTPException(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
-
-    external_task_ids = session.exec(
-        select(StudyExternalTask.id).where(StudyExternalTask.study_id == study.id)
-    ).all()
-
-    available_activity_ids = session.exec(
-        select(StudyAvailableActivity.id).where(
-            StudyAvailableActivity.study_id == study.id
-        )
-    ).all()
-
-    if external_task_ids:
-        session.exec(
-            delete(StudyExternalTaskAssignment).where(
-                StudyExternalTaskAssignment.external_task_id.in_(external_task_ids)
-            )
-        )
-
-    if available_activity_ids:
-        session.exec(
-            delete(StudyAvailableActivityI18n).where(
-                StudyAvailableActivityI18n.activity_id.in_(available_activity_ids)
-            )
-        )
-
-    session.exec(delete(Activity).where(Activity.study_id == study.id))
-    session.exec(delete(StudyParticipant).where(StudyParticipant.study_id == study.id))
-    session.exec(
-        delete(StudyActivityConfigBlob).where(
-            StudyActivityConfigBlob.study_id == study.id
-        )
-    )
-    session.exec(
-        delete(StudyAvailableActivity).where(
-            StudyAvailableActivity.study_id == study.id
-        )
-    )
-    session.exec(
-        delete(StudyAvailableCategory).where(
-            StudyAvailableCategory.study_id == study.id
-        )
-    )
-    session.exec(
-        delete(StudyAvailableTimeline).where(
-            StudyAvailableTimeline.study_id == study.id
-        )
-    )
-    session.exec(
-        delete(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
-    )
-    session.exec(delete(Timeline).where(Timeline.study_id == study.id))
-    session.exec(delete(DayLabel).where(DayLabel.study_id == study.id))
-    session.exec(delete(Study).where(Study.id == study.id))
 
     session.commit()
 
