@@ -5,9 +5,24 @@
  *
  * The numbers come from the same domain functions the timeline uses, so the rail
  * cannot disagree with what is drawn.
+ *
+ * EXPERIMENT: the per-day picture is the review's coloured day strip
+ * (`ui/dayStrip.js`) instead of the black/white coverage bar, so a week can be
+ * scanned for "where did the time go" without opening the review. The old bar
+ * and `ui/coverageStrip.js` are kept behind `strip: 'coverage'` for comparison;
+ * delete that branch (and coverage.css) if the coloured strip stays.
  */
-import { dayLabel, daySummaries } from '../domain/diary.js';
+import { colouredActivities, dayLabel, daySummaries } from '../domain/diary.js';
+import { buildDayStrip } from './dayStrip.js';
 import { appendCoverageRuns } from './coverageStrip.js';
+
+/**
+ * Which per-day picture the rail draws. `'colour'` is the experiment; flipping
+ * this back to `'coverage'` is all it takes to compare the two in the app.
+ *
+ * @type {'colour' | 'coverage'}
+ */
+export const RAIL_STRIP_DEFAULT = 'colour';
 
 /**
  * @template {keyof HTMLElementTagNameMap} K
@@ -30,11 +45,17 @@ function el(tag, className, text) {
  *   language: string,
  *   t: (key: string, params?: Record<string, string | number>) => string,
  *   currentDay: number,
- * }} view
+ *   strip?: 'colour' | 'coverage',
+ * }} view `strip` defaults to `RAIL_STRIP_DEFAULT`; it exists so the component
+ *   fixture can render both pictures while the experiment runs.
  */
-export function renderDayRail(host, { diary, language, t, currentDay }) {
+export function renderDayRail(
+  host,
+  { diary, language, t, currentDay, strip = RAIL_STRIP_DEFAULT }
+) {
   const summaries = daySummaries(diary);
   const required = diary.timeline.min_coverage || 0;
+  const records = strip === 'colour' ? colouredActivities(diary) : [];
   const fragment = document.createDocumentFragment();
 
   for (const summary of summaries) {
@@ -55,14 +76,21 @@ export function renderDayRail(host, { diary, language, t, currentDay }) {
         : t('diary.rail.empty');
     row.append(el('span', 't-rail__min', state));
 
-    // One row per contiguous covered stretch, placed where it sits in the day:
-    // the rail shows the day's shape, not a share of a target. The row's text
-    // above carries the progress ("complete" / "X min to go"), so the strip is
-    // decorative and stays out of the accessibility tree.
-    const bar = el('span', 't-rail__bar');
-    bar.setAttribute('aria-hidden', 'true');
-    appendCoverageRuns(bar, summary.runs);
-    row.append(bar);
+    // One picture per day, placed where the time sits: the rail shows the day's
+    // shape, not a share of a target. The row's text above carries the progress
+    // ("complete" / "X min to go"), so both pictures are decorative and stay out
+    // of the accessibility tree (`buildDayStrip` sets `aria-hidden` itself).
+    if (strip === 'colour') {
+      // The review's coloured lanes: one row per parallel activity, with the
+      // study's own activity colours instead of one black stretch per run.
+      row.append(buildDayStrip({ records, dayIndex: summary.index }));
+    } else {
+      // The previous picture: black covered stretches on a grey track.
+      const bar = el('span', 't-rail__bar');
+      bar.setAttribute('aria-hidden', 'true');
+      appendCoverageRuns(bar, summary.runs);
+      row.append(bar);
+    }
 
     // No `aria-label`: the row's own text is its accessible name, and the two
     // must not drift apart. A hand-written label ("Montag, 0 Minuten abgedeckt")

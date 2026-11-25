@@ -8,7 +8,7 @@
  * never prose: the modal decides what to say. That keeps the "can I submit?"
  * rule testable without a DOM, and it is the same rule the service applies.
  */
-import { dayLabel, daySummaries, toTimedActivity } from './diary.js';
+import { colouredActivities, dayLabel, daySummaries } from './diary.js';
 import { MIN_GAP_MINUTES, uncoveredIntervals } from './geometry.js';
 
 /**
@@ -60,14 +60,9 @@ export function review(diary, language) {
     };
   });
 
-  // The same numbers the strip draws, plus the colour each entry carries. The
-  // day offset is applied once, so an entry crossing midnight lands on the day
-  // it belongs to and not on the wall clock.
-  const dayStart = diary.study.day_start_minutes || 0;
-  const records = diary.activities.map((activity) => ({
-    ...toTimedActivity(activity, dayStart),
-    color: activity.color ?? null,
-  }));
+  // The same numbers the strip draws, plus the colour each entry carries. Shared
+  // with the day rail, which mounts the same strip.
+  const records = colouredActivities(diary);
 
   const open = days.filter((day) => !day.meets);
   const incomplete = open.map((day) => day.index);

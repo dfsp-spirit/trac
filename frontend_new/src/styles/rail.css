@@ -26,7 +26,9 @@
 .t-rail__min { font-family: var(--font-mono); font-size: 0.8125rem; color: var(--ink-muted); }
 /* One row per day, drawn where the covered time sits rather than as a share of
    a total. The grey track is the rest of the day; the row's text above says
-   whether that is enough. The runs themselves come from coverage.css. */
+   whether that is enough. The runs themselves come from coverage.css.
+   (Kept for the comparison: the rail currently mounts the coloured strip from
+   daystrip.css instead - see `RAIL_STRIP_DEFAULT` in ui/dayRail.js.) */
 .t-rail__bar {
   grid-column: 1 / -1;
   display: block;
@@ -36,4 +38,9 @@
   background: var(--surface-200);
   overflow: hidden;
 }
+
+/* The review's coloured day strip in the rail: it spans both of the row's
+   columns, exactly where the black bar sat. Rows, gaps and colours are
+   daystrip.css's job; the rail only places it. */
+.t-rail__row .t-daystrip { grid-column: 1 / -1; margin-block: 1px; }
 .t-rail__copy { margin-top: var(--space-3); } .t-rail__copy-hint { margin-top: var(--space-2); }

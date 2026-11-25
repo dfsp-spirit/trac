@@ -67,6 +67,22 @@ export function timedActivities(diary) {
 }
 
 /**
+ * Every activity of the diary with the colour it carries, for the coloured day
+ * strip (`ui/dayStrip.js`): the review page and the day rail must draw the same
+ * picture, so both mount these records instead of mapping them themselves.
+ *
+ * @param {ApiDiary} diary
+ * @returns {Array<import('./geometry.js').TimedRecord & { color: string | null }>}
+ */
+export function colouredActivities(diary) {
+  const dayStart = diary.study.day_start_minutes || 0;
+  return diary.activities.map((activity) => ({
+    ...toTimedActivity(activity, dayStart),
+    color: activity.color ?? null,
+  }));
+}
+
+/**
  * Lanes, coverage and gaps for one day.
  *
  * @param {ApiDiary} diary
