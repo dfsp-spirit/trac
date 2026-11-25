@@ -78,6 +78,28 @@
   "2 Std. 30 Min.". `endInput`'s `aria-describedby` points at that line. The last
   day keeps its hint that activities end by midnight.
 
+## Custom input (free text) in the activity form
+- `is_custom_input` is a property of a catalogue **row**, and a sub-activity is a
+  row. The pilot study's "Sport in Innenräumen (z.B. Schwimmen, Kurse)" is a
+  child of "Sport & Bewegung (Außer Haus)" that asks for the participant's own
+  words, so the form has to look at the *chosen* row, not only at the parent:
+  `flattenCatalogue()` keeps the flag per child (`children[].customInput`) and
+  `renderActivityForm` shows the text field only while a custom row is selected
+  (`customTarget()`), toggling it on the child select's `change`. Dropping the
+  flag in `flattenCatalogue` is what silently turned those sub-activities into
+  plain ones.
+- The typed words are appended to **that row's** name ("Sport in Innenräumen
+  (…): Yoga") and the row keeps its own `activity_code`, with the parent in
+  `parent_activity_code` - the same compose/split pair (`domain/activityName.js`)
+  the parent-level custom input uses, so an edit never doubles the prefix.
+- `recentEntries()` keys a custom row by the typed text, per row: two texts are
+  two shortcuts, and the "used recently" chip prefills the field. A custom
+  sub-activity is such a row too, which is why the text is read with *its* name
+  as the prefix.
+- `activityform.spec.js` mounts the form with a custom sub-activity and pins
+  visibility, the composed name, the refusal without text, the search prefill and
+  the edit round-trip.
+
 ## Surroundings block in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
   participant cannot look up while choosing times is where the neighbouring
