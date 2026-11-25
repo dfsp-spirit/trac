@@ -306,14 +306,23 @@
   telling that participant "this day has no entries" contradicts the screen.
 
 ## Toast placement
-- The toast lives in the panel's column above 1200px (D28), which is exactly
-  where the panel's footer buttons are. It therefore lets clicks through
-  (`pointer-events: none` on the box in `layout.css`, `auto` on the Undo
-  button): without it, clicking "Zum Zeitplan hinzufügen" during the toast's 6 s
-  lifetime hit the toast text - and the Undo button sat under the pointer,
-  deleting the entry just saved. Below 1200px the panel is a dialog in the top
-  layer, so nothing is covered; the toast keeps its usual behaviour there.
-  `activity-lifecycle.spec.js` ("the save toast does not swallow the next save")
+- Above 1200px the toast keeps the panel's width and stays tied to the panel it
+  reports on (D28), but it sits one gap *left* of the panel's column instead of in
+  it. Inside the column it covered the footer, and the only part that takes a
+  click is the Undo button - so reaching "Speichern und weitere" through the toast
+  could undo the entry just saved. The box still never takes clicks
+  (`pointer-events: none` in `layout.css`); only its own controls (`Undo`, the
+  close ×) opt back in. Below 1200px the panel is a dialog in the top layer, so
+  the toast cannot cover it - while the panel is open the toast is painted
+  underneath it, which is why a delete closes the panel (`deleteWithUndo`).
+- The toast is dismissible before its 6 s run out. The close control is icon-only
+  on purpose: a text label ("Schließen" / "Dismiss") took width from the message
+  and wrapped it onto a third line. `ui/toast.js` always appends it; an
+  action-less toast (an error line) is dismissible too.
+- `ui/activityPanel.js` hides the toast when the *next* entry's form opens: the
+  receipt belongs to the entry just saved, and on desktop it would otherwise still
+  be on screen while the next save is configured.
+- `activity-lifecycle.spec.js` ("the save toast does not swallow the next save")
   clicks the next save with a 3 s timeout, so a regression cannot hide behind
   the toast timing out.
 

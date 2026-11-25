@@ -63,12 +63,13 @@ test.describe('activity lifecycle', () => {
     await addSchlafen(page, { start: 480, end: 540 });
     await expect(page.locator('.t-toast')).toBeVisible();
 
-    // Saving again while the toast is still up. Above 1200px the toast floats
-    // over the panel's footer, so this click used to land on the toast text
-    // instead - or on its Undo button, deleting the entry just saved. The short
-    // timeout is the assertion: the click has to be accepted now, not when the
-    // toast times out six seconds later.
+    // Saving again while the toast is still up. Above 1200px the toast sits
+    // beside the panel's column, so it no longer covers the footer; on every
+    // host, opening the next entry's form dismisses the receipt. Either way this
+    // click has to be accepted immediately, not when the toast times out six
+    // seconds later.
     await chooseActivity(page, 1102);
+    await expect(page.locator('.t-toast')).toHaveCount(0);
     await setTime(page, '#form-start', 600);
     await setTime(page, '#form-end', 660);
     await page.locator('[data-slot="actions"] .t-btn--primary').click({ timeout: 3000 });

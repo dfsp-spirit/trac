@@ -74,15 +74,22 @@
 
   .t-fab { display: none; }
 
-  /* Toast belongs to the panel it reports on, not to the viewport edge (D28). */
+  /* Toast belongs to the panel it reports on, not to the viewport edge (D28) -
+     but it sits just outside the panel's column, not in it: inside, it covered
+     the footer, and the one part that does take the click is the Undo button, so
+     reaching "Speichern und weitere" through the toast could undo the entry just
+     saved. Same width, one gap to the left of the column. */
   .t-toast-region {
     inset-inline: auto;
-    inset-inline-end: max(var(--space-4), calc((100vw - var(--shell-max)) / 2));
+    inset-inline-end: calc(max(var(--space-4), (100vw - var(--shell-max)) / 2) + var(--panel-width) + var(--space-4));
     width: min(var(--panel-width), calc(100vw - 2 * var(--space-4)));
     bottom: var(--space-4);
   }
-  /* Covers the footer here: clicks reach the buttons under it, only Undo stays clickable (docs/agents/frontend.md). */
-  .t-toast-region > * { pointer-events: none; } .t-toast-region .t-toast__action { pointer-events: auto; }
+  /* Nothing may become unclickable because a receipt floats over it: the box
+     never takes clicks, only its own controls do. */
+  .t-toast-region > * { pointer-events: none; }
+  .t-toast-region .t-toast__action,
+  .t-toast-region .t-toast__close { pointer-events: auto; }
 }
 
 /* Footer with the deployment's legal pages: desktop only. A phone has the same

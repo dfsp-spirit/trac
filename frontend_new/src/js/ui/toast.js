@@ -1,10 +1,14 @@
 // @ts-check
 /**
- * Toast host: one message at a time, optional undo action.
+ * Toast host: one message at a time, optional undo action, always dismissible.
  *
  * Deletes are undone here rather than by a confirmation dialog (D9), so the
  * toast is part of the interaction model, not decoration. It lives in a live
  * region that exists before the message does, so screen readers announce it.
+ *
+ * The close control is not decoration either: the toast times itself out, and
+ * a timed message that sits over the flow (a participant adding entries one
+ * after another) needs a way out that does not wait for the timer.
  */
 
 /**
@@ -50,6 +54,17 @@ export function createToast(host, labels) {
       });
       toast.append(button);
     }
+
+    // Icon-only so the message keeps its width: a text label wrapped it onto a
+    // third line and made the toast 18px taller. The name comes from the
+    // translator, so the control is announced in the participant's language.
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 't-toast__close';
+    close.setAttribute('aria-label', labels.dismiss());
+    close.textContent = '×';
+    close.addEventListener('click', () => hide());
+    toast.append(close);
 
     host.replaceChildren(toast);
     timer = setTimeout(hide, 6000);

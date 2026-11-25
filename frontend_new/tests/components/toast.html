@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: toast</title>
+    <!-- The toast and the panel it must not cover. The shell needs layout.css
+         for the desktop grid (rail | timeline | panel); the panel's footer is the
+         control the toast used to land on. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+    <link rel="stylesheet" href="/src/styles/page.css" />
+    <link rel="stylesheet" href="/src/styles/panel.css" />
+    <link rel="stylesheet" href="/src/styles/dialogs.css" />
+    <link rel="stylesheet" href="/src/styles/stage.css" />
+    <link rel="stylesheet" href="/src/styles/entry.css" />
+    <link rel="stylesheet" href="/src/styles/layout.css" />
+    <link rel="stylesheet" href="/src/styles/rail.css" />
+  </head>
+  <body>
+    <div class="t-app" id="root">
+      <!-- Stand-in for the sticky top bar: the panel starts below it, which is
+           what puts its footer at the bottom of the viewport. -->
+      <header style="height: 121px; border-bottom: 1px solid var(--line)">Topbar</header>
+      <div class="t-shell">
+        <aside class="t-rail"><h2 class="t-rail__title">Tage</h2></aside>
+        <main class="t-timeline"></main>
+        <section class="t-activity-panel" id="panel">
+          <div class="t-activity-panel__head">
+            <div class="t-activity-panel__titlebar"><h2>Aktivitäten</h2></div>
+          </div>
+          <div class="t-activity-panel__body"></div>
+          <div class="t-activity-panel__foot" data-slot="actions">
+            <button class="t-btn t-btn--primary t-btn--block" type="button">
+              Zur Zeitleiste hinzufügen
+            </button>
+            <button class="t-btn t-btn--secondary t-btn--block" type="button">
+              Speichern und weitere
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Same markup as index.html: the live region exists before the message. -->
+    <div class="t-toast-region" id="toast-region" role="status" aria-live="polite"></div>
+
+    <script type="module">
+      import { context } from './fixture.js';
+      import { createToast } from '/src/js/ui/toast.js';
+
+      const { t } = await context('de');
+      const toast = createToast(document.getElementById('toast-region'), {
+        undo: () => t('diary.toast.undo'),
+        dismiss: () => t('diary.toast.dismiss'),
+      });
+
+      window.__toast = toast;
+      window.__addedMessage = t('diary.toast.added', {
+        name: 'Arbeiten',
+        range: '08:00–10:00',
+      });
+      window.__done = true;
+    </script>
+  </body>
+</html>

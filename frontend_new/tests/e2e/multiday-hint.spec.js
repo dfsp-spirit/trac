@@ -20,8 +20,8 @@ import {
  *
  * Two is `max_overlap` in this fixture, so a third entry no longer fits. Seeding
  * them directly keeps this spec about the hint: two saves through the form would
- * also mean two toasts, and a visible toast covers the panel's footer buttons
- * until it times out.
+ * also mean two toasts, and the toast would be replaced by the second save
+ * before the first could be read.
  *
  * @param {import('@playwright/test').APIRequestContext} request
  * @param {string} pid
