@@ -11,6 +11,18 @@
 import { generalTimelineSettings } from '../domain/timelines.js';
 
 /**
+ * A sub-activity row. `customInput` mirrors the config's `is_custom_input`, which
+ * a sub-activity may set exactly like its parent may (the study's "Sport in
+ * Innenräumen (z.B. Schwimmen, Kurse)" asks for the participant's words): the
+ * form needs it to know whether to offer the text field.
+ *
+ * @typedef {Object} CatalogueChild
+ * @property {number} code
+ * @property {string} name
+ * @property {boolean} customInput
+ */
+
+/**
  * @typedef {Object} CatalogueEntry
  * @property {number} code
  * @property {string} name
@@ -19,7 +31,7 @@ import { generalTimelineSettings } from '../domain/timelines.js';
  * @property {string | null} color
  * @property {string | null} examples
  * @property {boolean} isCustomInput
- * @property {Array<{ code: number, name: string }>} children
+ * @property {CatalogueChild[]} children
  * @property {Array<{ key: string, label: string }>} frequencyOptions
  * @property {string} haystack Folded text used by the search.
  */
@@ -27,7 +39,7 @@ import { generalTimelineSettings } from '../domain/timelines.js';
 /**
  * @typedef {Object} SearchHit
  * @property {CatalogueEntry} entry The catalogue row this hit belongs to.
- * @property {{ code: number, name: string } | null} child The matched sub-activity, if the hit is one.
+ * @property {CatalogueChild | null} child The matched sub-activity, if the hit is one.
  * @property {number} rank 0 for a word-start match, 1 for an inner match.
  * @property {number} position Where the match starts in the folded text.
  * @property {string} [label] Title override: a custom shortcut shows the typed text.
@@ -92,7 +104,13 @@ export function flattenCatalogue(catalogue, timelineKeys = null) {
       if (!categories.includes(category.name)) categories.push(category.name);
       for (const activity of category.activities || []) {
         const children = (activity.childItems || []).map(
-          (/** @type {any} */ child) => ({ code: Number(child.code), name: String(child.name) })
+          (/** @type {any} */ child) => ({
+            code: Number(child.code),
+            name: String(child.name),
+            // A sub-activity can be a custom input in its own right; dropping
+            // this flag here is what made the form skip its text field.
+            customInput: Boolean(child.is_custom_input),
+          })
         );
         const frequencyOptions = (activity.frequency_options || []).map(
           (/** @type {any} */ option) => ({ key: String(option.key), label: String(option.label) })

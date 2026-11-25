@@ -28,22 +28,25 @@ export function createFormVisit({ track, now = () => Date.now() }) {
     /**
      * @param {{
      *   entry: any,
+     *   child?: { customInput?: boolean } | null,
      *   editing: boolean,
      *   groupKind?: 'recent' | 'catalogue',
      *   query?: string,
-     * }} start
+     * }} start `child` is the sub-activity the form opens with; it can be a
+     *   custom input itself, which is the same kind of visit as a custom entry's.
      */
-    begin({ entry, editing, groupKind = 'catalogue', query = '' }) {
+    begin({ entry, child = null, editing, groupKind = 'catalogue', query = '' }) {
+      const isCustomRow = Boolean(entry?.isCustomInput || child?.customInput);
       source = editing
         ? 'edit'
-        : entry?.isCustomInput
+        : isCustomRow
           ? 'custom'
           : groupKind === 'recent'
             ? 'recent'
             : query
               ? 'search'
               : 'catalogue';
-      isCustom = Boolean(entry?.isCustomInput);
+      isCustom = isCustomRow;
       hasOptions = (entry?.children?.length ?? 0) > 0;
       openedAt = now();
       open = true;

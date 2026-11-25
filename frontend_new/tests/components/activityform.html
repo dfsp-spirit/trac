@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: activity form (sub-activity selection)</title>
+    <!-- The form is the only place where a catalogue row becomes a saved entry,
+         so its own stylesheets are loaded: the text field's visibility is what
+         the spec drives. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+    <link rel="stylesheet" href="/src/styles/daystrip.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!--
+      One parent with a sub-activity that is a custom input of its own
+      (`is_custom_input` on a child item, as in the pilot study's
+      "Sport in Innenräumen (z.B. Schwimmen, Kurse)").
+
+      Query parameters:
+        custom_parent  the parent itself is a custom input, no children
+        child          a sub-activity code to preselect (the search/shortcut path)
+        edit           render in edit mode for the stored row given by `activity`
+    -->
+    <script type="module">
+      import { createTranslator } from '/src/js/data/i18n.js';
+      import { renderActivityForm } from '/src/js/ui/activityForm.js';
+      import { flattenCatalogue } from '/src/js/ui/activitySearch.js';
+
+      const messages = await (await fetch('/src/locales/de.json')).json();
+      const { t } = createTranslator(messages);
+
+      const catalogue = {
+        general: { version: '1' },
+        timeline: {
+          primary: {
+            min_coverage: 1440,
+            max_overlap: 2,
+            categories: [
+              {
+                name: 'Sport',
+                activities: [
+                  {
+                    code: 1166,
+                    name: 'Sport & Bewegung (Außer Haus)',
+                    color: '#9370DB',
+                    childItems: [
+                      { code: 1171, name: 'Joggen: Draußen alleine', color: '#9370DB' },
+                      {
+                        code: 1173,
+                        name: 'Sport in Innenräumen (z.B. Schwimmen, Kurse)',
+                        color: '#9370DB',
+                        is_custom_input: true,
+                      },
+                    ],
+                  },
+                  { code: 1167, name: 'Sport & Bewegung (Zuhause)', color: '#9370DB' },
+                ],
+              },
+              {
+                name: 'Arbeit',
+                activities: [
+                  { code: 1101, name: 'Arbeiten', color: '#3366cc' },
+                  { code: 1199, name: 'Bezahlte Arbeit', is_custom_input: true },
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const params = new URLSearchParams(window.location.search);
+      const { entries } = flattenCatalogue(catalogue);
+      const byCode = (code) => entries.find((entry) => entry.code === code);
+
+      const dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
+      const days = dayNames.map((name, index) => ({
+        index,
+        name: name.toLowerCase(),
+        display_name: name,
+        display_names: { de: name },
+      }));
+
+      const customParent = params.get('custom_parent') === '1';
+      const childCode = Number(params.get('child') || 0);
+      const editing = params.get('edit') === '1';
+
+      const entry = customParent ? byCode(1199) : byCode(1166);
+      const activity = editing
+        ? {
+            client_uuid: 'stored',
+            day_label_index: 0,
+            activity_code: childCode || entry.code,
+            activity_name: params.get('activity_name') || '',
+            category: entry.category,
+            color: entry.color,
+            parent_activity_code: childCode ? entry.code : entry.code,
+            frequency_key: null,
+            start_minutes: 480,
+            end_minutes: 600,
+          }
+        : null;
+
+      const form = renderActivityForm(document.getElementById('root'), {
+        entry,
+        days,
+        language: 'de',
+        t,
+        prefill: {
+          dayIndex: 0,
+          startMinutes: 480,
+          endMinutes: 600,
+          childCode: childCode || null,
+          text: null,
+        },
+        existing: [],
+        dayStartMinutes: 0,
+        maxOverlap: 2,
+        mode: editing ? 'edit' : 'create',
+        activity,
+      });
+
+      window.__read = () => form.read();
+      window.__entry = entry;
+      window.__done = true;
+    </script>
+  </body>
+</html>

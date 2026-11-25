@@ -12,10 +12,11 @@ import { customActivityText } from '../domain/activityName.js';
  * @typedef {Object} RecentEntry
  * @property {import('./activitySearch.js').CatalogueEntry} entry The catalogue
  *   row the shortcut opens.
- * @property {{ code: number, name: string } | null} child The sub-activity the
- *   participant picked, if the row was one.
+ * @property {import('./activitySearch.js').CatalogueChild | null} child The
+ *   sub-activity the participant picked, if the row was one.
  * @property {string | null} label Title override, or null to use the entry name.
- *   Only a custom entry has one: the typed text is its activity.
+ *   Only a custom row has one: the typed text is its activity, and a custom
+ *   sub-activity is such a row.
  * @property {string | null} prefillText What the form should prefill, if anything.
  */
 
@@ -47,7 +48,7 @@ export function recentEntries(entries, activities, { limit = 5 } = {}) {
 
   /** @type {Map<number, import('./activitySearch.js').CatalogueEntry>} */
   const byCode = new Map(entries.map((entry) => [entry.code, entry]));
-  /** @type {Map<number, { entry: import('./activitySearch.js').CatalogueEntry, child: { code: number, name: string } }>} */
+  /** @type {Map<number, { entry: import('./activitySearch.js').CatalogueEntry, child: import('./activitySearch.js').CatalogueChild }>} */
   const byChildCode = new Map();
   for (const catalogueEntry of entries) {
     for (const child of catalogueEntry.children) {
@@ -65,8 +66,16 @@ export function recentEntries(entries, activities, { limit = 5 } = {}) {
     if (!picked) continue;
     const { entry, child } = picked;
 
-    const typedText = entry.isCustomInput
-      ? customActivityText(entry.name, activity.activity_name) || null
+    // Custom text belongs to the row that asked for it: the entry for a custom
+    // activity, the sub-activity for a custom sub-activity (its stored name is
+    // prefixed with the sub-activity's own name, not the parent's).
+    const customName = child?.customInput
+      ? child.name
+      : entry.isCustomInput
+        ? entry.name
+        : null;
+    const typedText = customName
+      ? customActivityText(customName, activity.activity_name) || null
       : null;
     // Keyed by the row that was picked: a sub-activity and its parent are two
     // shortcuts, and a custom entry is keyed by the participant's words instead
@@ -116,9 +125,9 @@ export function recentEntries(entries, activities, { limit = 5 } = {}) {
  * opens.
  *
  * @param {Map<number, import('./activitySearch.js').CatalogueEntry>} byCode
- * @param {Map<number, { entry: import('./activitySearch.js').CatalogueEntry, child: { code: number, name: string } }>} byChildCode
+ * @param {Map<number, { entry: import('./activitySearch.js').CatalogueEntry, child: import('./activitySearch.js').CatalogueChild }>} byChildCode
  * @param {{ activity_code: number, parent_activity_code?: number | null }} activity
- * @returns {{ entry: import('./activitySearch.js').CatalogueEntry, child: { code: number, name: string } | null } | null}
+ * @returns {{ entry: import('./activitySearch.js').CatalogueEntry, child: import('./activitySearch.js').CatalogueChild | null } | null}
  */
 function resolvePickedRow(byCode, byChildCode, activity) {
   const code = Number(activity.activity_code);

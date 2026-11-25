@@ -24,7 +24,12 @@ const config = {
             {
               code: 102,
               name: 'Travelling',
-              childItems: [{ code: 1021, name: 'Travelling: cycle' }],
+              childItems: [
+                { code: 1021, name: 'Travelling: cycle' },
+                // A sub-activity may be a custom input in its own right; the
+                // flag has to survive flattening or the form skips its text field.
+                { code: 1022, name: 'Travelling: indoor sport', is_custom_input: true },
+              ],
               frequency_options: [{ key: 'often', label: 'Often' }],
             },
           ],
@@ -46,7 +51,10 @@ test('the catalogue is flattened with children, options and timeline limits', ()
   assert.equal(maxOverlap, 3);
 
   const travelling = entries.find((entry) => entry.code === 102);
-  assert.deepEqual(travelling.children, [{ code: 1021, name: 'Travelling: cycle' }]);
+  assert.deepEqual(travelling.children, [
+    { code: 1021, name: 'Travelling: cycle', customInput: false },
+    { code: 1022, name: 'Travelling: indoor sport', customInput: true },
+  ]);
   assert.deepEqual(travelling.frequencyOptions, [{ key: 'often', label: 'Often' }]);
   assert.equal(entries.find((entry) => entry.code === 200).isCustomInput, true);
 });
@@ -149,7 +157,11 @@ test('a sub-activity stays the row the participant picked', () => {
   ]);
 
   assert.equal(recent.entry.code, 102);
-  assert.deepEqual(recent.child, { code: 1021, name: 'Travelling: cycle' });
+  assert.deepEqual(recent.child, {
+    code: 1021,
+    name: 'Travelling: cycle',
+    customInput: false,
+  });
   assert.equal(recent.label, null);
 });
 
@@ -233,6 +245,53 @@ test('a custom input is a shortcut per typed text, not per code', () => {
   );
 });
 
+test('a custom sub-activity is a shortcut per typed text, like a custom entry', () => {
+  // The sub-activity asks for the participant's words, so its stored name is
+  // prefixed with its *own* name. The shortcut must remember the text (or the
+  // form opens with an empty field) and be titled by it.
+  const recents = recentEntries(SPORT_ENTRIES, [
+    {
+      activity_code: 1173,
+      parent_activity_code: 1166,
+      activity_name: 'Sport in Innenräumen (z.B. Schwimmen, Kurse): Yoga',
+      created_at: '2026-10-01T10:00:00+00:00',
+      updated_at: '2026-10-01T10:00:00+00:00',
+    },
+    {
+      activity_code: 1173,
+      parent_activity_code: 1166,
+      activity_name: 'Sport in Innenräumen (z.B. Schwimmen, Kurse): Klettern',
+      created_at: '2026-10-02T10:00:00+00:00',
+      updated_at: '2026-10-02T10:00:00+00:00',
+    },
+  ]);
+
+  assert.deepEqual(
+    recents.map((item) => [item.entry.code, item.child && item.child.code, item.label, item.prefillText]),
+    [
+      [1166, 1173, 'Klettern', 'Klettern'],
+      [1166, 1173, 'Yoga', 'Yoga'],
+    ]
+  );
+});
+
+test('a plain sub-activity of the same parent is not given custom text', () => {
+  // The prefix rule is per row: "Joggen: Draußen alleine" is a plain row even
+  // though it shares its parent with a custom one.
+  const recents = recentEntries(SPORT_ENTRIES, [
+    {
+      activity_code: 1171,
+      parent_activity_code: 1166,
+      activity_name: 'Joggen: Draußen alleine',
+      created_at: '2026-10-01T10:00:00+00:00',
+      updated_at: '2026-10-01T10:00:00+00:00',
+    },
+  ]);
+
+  assert.equal(recents[0].label, null);
+  assert.equal(recents[0].prefillText, null);
+});
+
 test('the same custom text used on several days counts once', () => {
   const recents = recentEntries(RECENT_ENTRIES, [
     custom(200, 'Paid work: Programming', '2026-10-01T10:00:00+00:00'),
@@ -298,6 +357,11 @@ const sport = {
                 { code: 1171, name: 'Joggen: Draußen alleine' },
                 { code: 1172, name: 'Joggen: Draußen mit anderen' },
                 { code: 1168, name: 'Gehen: Draußen alleine' },
+                {
+                  code: 1173,
+                  name: 'Sport in Innenräumen (z.B. Schwimmen, Kurse)',
+                  is_custom_input: true,
+                },
               ],
             },
             { code: 1167, name: 'Sport & Bewegung (Zuhause)' },

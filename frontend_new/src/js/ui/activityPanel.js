@@ -160,7 +160,7 @@ export function createActivityPanel(deps) {
   /**
    * @param {import('./activitySearch.js').CatalogueEntry} entry
    * @param {import('../domain/diary.js').ApiActivity | null} [activity]
-   * @param {{ code: number, name: string } | null} [child] Sub-activity to preselect.
+   * @param {import('./activitySearch.js').CatalogueChild | null} [child] Sub-activity to preselect.
    * @param {'recent' | 'catalogue'} [groupKind] Which list the entry was clicked in.
    * @param {string | null} [prefillText] Typed text of a custom shortcut, if any.
    */
@@ -173,7 +173,7 @@ export function createActivityPanel(deps) {
   ) {
     mode = 'form';
     scrollOffset = content.scrollTop;
-    visit.begin({ entry, editing: Boolean(activity), groupKind, query });
+    visit.begin({ entry, child, editing: Boolean(activity), groupKind, query });
     if (title) title.textContent = activity ? t('diary.panel.editActivity') : t('diary.panel.addActivity');
     searchRow.hidden = true;
     if (backButton) backButton.hidden = false;
