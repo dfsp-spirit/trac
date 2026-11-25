@@ -38,6 +38,17 @@ export const ALLOWED_IMPORTS = {
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build']);
 
 /**
+ * The one module allowed to touch device storage.
+ *
+ * A banner has to remember that this browser dismissed it, and there is no
+ * server-side place for that: participants have no accounts and dismissing a
+ * notice must work on the entry page too. The module stores opaque message keys
+ * only - no participant, no study, no text - so the exception does not open a
+ * path for participant data. Everything else stays under the D33 rule.
+ */
+export const DEVICE_STORAGE_ALLOWLIST = new Set(['src/js/ui/dismissedMessages.js']);
+
+/**
  * @typedef {Object} Violation
  * @property {string} rule
  * @property {string} file Path relative to the root.
@@ -135,7 +146,10 @@ export function checkTree(root) {
           add('no-document-element', file, lineNumber, 'the document root is the host app\'s, not ours');
         }
       }
-      if (/localStorage|sessionStorage|indexedDB/.test(line)) {
+      if (
+        /localStorage|sessionStorage|indexedDB/.test(line) &&
+        !DEVICE_STORAGE_ALLOWLIST.has(relativePath)
+      ) {
         add('no-device-storage', file, lineNumber, 'saving goes to the server; no device-only store (D-plan)');
       }
       if (layer !== 'data' && /\bfetch\s*\(|XMLHttpRequest|EventSource/.test(line)) {

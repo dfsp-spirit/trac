@@ -19,6 +19,7 @@ from o_timeusediary_backend.models import (
     StudyAvailableTimeline,
     StudyExternalTask,
     StudyExternalTaskAssignment,
+    StudyMessage,
     StudyParticipant,
     Timeline,
 )
@@ -32,6 +33,7 @@ STUDY_TABLES = (
     StudyAvailableCategory,
     StudyAvailableTimeline,
     StudyExternalTask,
+    StudyMessage,
     StudyParticipant,
     Timeline,
 )
@@ -118,6 +120,9 @@ def _populate_study(session: Session, study: Study) -> dict[str, int]:
     )
     session.add(external_task)
     session.add(StudyParticipant(study_id=study.id, participant_id="p1"))
+    session.add(
+        StudyMessage(study_id=study.id, text={"en": "Maintenance tonight"}, is_active=True)
+    )
     session.add(
         Activity(
             study_id=study.id,

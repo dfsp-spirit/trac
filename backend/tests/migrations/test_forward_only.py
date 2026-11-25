@@ -69,7 +69,7 @@ COLUMNS_ADDED_AFTER_0003 = (
 # Whole tables that later migrations add. A pre-Alembic database cannot have
 # them, so the simulation drops them before stamping - otherwise `create_table`
 # in the migration would fail on an object that is already there.
-TABLES_ADDED_AFTER_0003 = ("ux_events",)
+TABLES_ADDED_AFTER_0003 = ("ux_events", "server_message", "study_messages")
 
 # Constraints and indexes that 0013 adds. They exist in the create_all() schema
 # too, so an adopted database has to have them dropped before the upgrade - a

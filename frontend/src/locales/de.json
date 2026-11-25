@@ -216,6 +216,9 @@
     "accessStudy": "Studie „{{study}}“ aufrufen"
   },
   "diary": {
+    "message": {
+      "dismiss": "Diese Mitteilung schließen"
+    },
     "shell": {
       "menu": "Menü",
       "appName": "Zeit-Tagebuch",

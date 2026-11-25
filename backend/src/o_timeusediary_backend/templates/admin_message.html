@@ -1,0 +1,51 @@
+{% extends "admin_base.html" %}
+{% from "partials/admin_nav.html" import admin_nav with context %}
+
+{% block title %}Study message · {{ study.name }} · TRAC Admin{% endblock %}
+{% block nav %}{{ admin_nav('message', study) }}{% endblock %}
+
+{% block content %}
+        <div class="header">
+            <h1>Study message <span class="badge badge-study">{{ study.name_short }}</span></h1>
+            <p>One optional banner that <strong>{{ study.name }}</strong> shows to its participants.</p>
+            <div class="header-info">
+                <div><strong>Admin:</strong> {{ current_admin }}</div>
+                <div><strong>Default language:</strong> {{ study.default_language }}</div>
+                <div><strong>Languages:</strong> {{ languages|join(', ') }}</div>
+            </div>
+        </div>
+
+        <div class="card message-editor" data-message-form="study"
+             data-study-name-short="{{ study.name_short }}">
+            <p class="hint">
+                Shown at the top of this study's participant pages as a dismissible banner.
+                Leave a language empty to fall back to the study's default language. Participants
+                who dismiss the banner see it again once the text or the switch changes.
+            </p>
+
+            <label class="message-switch">
+                <input type="checkbox" data-message-active
+                       {% if message and message.is_active %}checked{% endif %}>
+                Show this message to participants
+            </label>
+
+            <div class="message-languages">
+                {% for language in languages %}
+                <label class="message-language">
+                    <span class="message-language-label">{{ language }}</span>
+                    <textarea rows="3" data-message-language="{{ language }}"
+                              placeholder="Message in {{ language }} (optional)">{% if message %}{{ (message.text or {}).get(language, '') }}{% endif %}</textarea>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="message-actions">
+                <button type="button" class="btn-primary" id="messageSaveBtn">Save message</button>
+                <span class="status" id="messageStatus" role="status" aria-live="polite"></span>
+            </div>
+        </div>
+{% endblock %}
+
+{% block scripts %}
+    <script src="{{ request.scope.root_path }}/static/admin_messages.js"></script>
+{% endblock %}

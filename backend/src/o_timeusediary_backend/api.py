@@ -113,6 +113,12 @@ from .api_deps.frequency import (
 )
 from .api_deps.diary_access import ensure_study_is_currently_available
 from .api_diary import router as diary_router
+from .api_messages import router as messages_router
+from .messages import (
+    get_server_message,
+    get_study_message,
+    server_message_languages as list_server_message_languages,
+)
 from .coverage import (
     TimedActivity,
     coverage_by_day_and_timeline,
@@ -1264,6 +1270,7 @@ app = FastAPI(
 )
 
 app.include_router(diary_router)
+app.include_router(messages_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2379,6 +2386,15 @@ async def admin_overview(
             current_username=current_admin,
         )
 
+    # The one server-wide banner message. Super admins own it and get the form;
+    # scientists still see the message itself through the banner that admin.js
+    # injects on every page.
+    server_message_row = None
+    server_message_langs: List[str] = []
+    if identity.is_super_admin:
+        server_message_row = get_server_message(session)
+        server_message_langs = list_server_message_languages(session)
+
     # Render template manually to avoid Starlette TemplateResponse caching issues with wheel-installed packages.
     # When templates are installed from a wheel, Starlette's TemplateResponse cache fails with "unhashable type: dict".
     context_dict = {
@@ -2396,6 +2412,8 @@ async def admin_overview(
         "admin_directory": admin_directory,
         "is_super_admin": identity.is_super_admin,
         "current_admin_role": identity.role,
+        "server_message": server_message_row,
+        "server_message_languages": server_message_langs,
         "current_time": utc_now(),
     }
     template = templates.get_template("admin_overview.html")
@@ -2957,6 +2975,65 @@ async def admin_study_texts(
         "supported_languages": supported_languages,
     }
     template = templates.get_template("admin_study_texts.html")
+    return HTMLResponse(content=template.render(context_dict))
+
+
+@app.get(
+    "/admin/study/{name_short}/message",
+    name="Admin Study Message Page",
+    response_class=HTMLResponse,
+)
+async def admin_study_message(
+    request: Request,
+    name_short: str,
+    identity: AdminIdentity = Depends(require_admin_identity),
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Edit the one banner message this study shows to its participants.
+
+    The shell is rendered here; saving goes through
+    ``PUT /api/admin/studies/{name}/message`` (see ``api_messages.py``). Access
+    for scientists is enforced by the shared admin auth dependency, which scopes
+    every ``/admin/study/<name>`` path to the caller's studies.
+    """
+    study = session.exec(select(Study).where(Study.name_short == name_short)).first()
+    if not study:
+        safe_name = html.escape(name_short)
+        safe_root_path = html.escape(str(request.scope.get("root_path", "")))
+        return HTMLResponse(
+            content=(
+                f"<html><body><h1>Study '{safe_name}' not found</h1>"
+                f"<a href='{safe_root_path}/admin'>Back to overview</a>"
+                "</body></html>"
+            ),
+            status_code=404,
+        )
+
+    logger.info(
+        "Admin '%s' opened the message editor for '%s'.",
+        current_admin,
+        study.name_short,
+    )
+
+    message = get_study_message(session, study.id)
+    # The study's own languages plus any language already stored in the message:
+    # dropping a language from the study must not make old text uneditable.
+    languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    stored_languages = list((message.text or {}).keys()) if message else []
+    languages = sorted(set(languages) | set(stored_languages))
+
+    context_dict = {
+        "request": request,
+        "current_admin": current_admin,
+        "current_time": utc_now(),
+        "study": study,
+        "message": message,
+        "languages": languages,
+    }
+    template = templates.get_template("admin_message.html")
     return HTMLResponse(content=template.render(context_dict))
 
 

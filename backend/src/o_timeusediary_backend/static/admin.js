@@ -240,4 +240,88 @@
         // Mark as drawn so e2e tests can reliably detect completion
         canvas.dataset.drawn = 'true';
     };
+
+    /**
+     * The server-wide message, shown as a dismissible banner on every admin page.
+     *
+     * Deliberately client-side: one fetch and one DOM node keep this out of the
+     * seven template contexts and out of the base template, and a banner is
+     * never worth turning a broken request into a page error.
+     *
+     * "I read it" is a fact about this browser, so the dismissal lives in
+     * localStorage, keyed by the message's opaque key. The key changes when the
+     * text or the switch changes, which is how an edited maintenance window
+     * reaches someone who dismissed the previous one.
+     */
+    const DISMISSED_MESSAGES_KEY = 'trac.adminDismissedMessages.v1';
+
+    function dismissedMessageKeys() {
+        try {
+            const raw = window.localStorage.getItem(DISMISSED_MESSAGES_KEY);
+            const parsed = raw ? JSON.parse(raw) : [];
+            return Array.isArray(parsed) ? parsed.filter((key) => typeof key === 'string') : [];
+        } catch (error) {
+            return [];
+        }
+    }
+
+    function rememberDismissedMessage(key) {
+        try {
+            const keys = dismissedMessageKeys();
+            if (!keys.includes(key)) {
+                keys.push(key);
+            }
+            // The list is a dismissal ledger, not a log: keep it short.
+            window.localStorage.setItem(
+                DISMISSED_MESSAGES_KEY,
+                JSON.stringify(keys.slice(-20))
+            );
+        } catch (error) {
+            // Private mode or a full quota: the banner reappears next time.
+        }
+    }
+
+    async function showAdminMessageBanner() {
+        const container = document.querySelector('.container');
+        if (!container || typeof window.adminFetch !== 'function') {
+            return;
+        }
+
+        let payload = null;
+        try {
+            payload = await window.adminFetch('/api/admin/messages');
+        } catch (error) {
+            return;
+        }
+
+        const message = payload && payload.server;
+        if (!message || !message.text || dismissedMessageKeys().includes(message.key)) {
+            return;
+        }
+
+        const banner = document.createElement('div');
+        banner.className = 'admin-message-banner';
+        banner.setAttribute('role', 'status');
+
+        const text = document.createElement('p');
+        text.className = 'admin-message-banner-text';
+        text.textContent = message.text;
+
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'admin-message-banner-close';
+        close.setAttribute('aria-label', 'Dismiss message');
+        close.textContent = '\u00d7';
+        close.addEventListener('click', () => {
+            rememberDismissedMessage(message.key);
+            banner.remove();
+        });
+
+        banner.append(text, close);
+        container.insertBefore(banner, container.firstChild);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        void showAdminMessageBanner();
+    });
 })();

@@ -9,6 +9,7 @@
  */
 import { config } from './config.js';
 import { createApi, listListedStudies } from './data/api.js';
+import { loadMessages } from './data/messages.js';
 import { createSignalSender, createSignals } from './data/signals.js';
 import { reportClientInfo } from './data/clientInfo.js';
 import { createTranslator, loadLocaleWithFallback } from './data/i18n.js';
@@ -25,7 +26,8 @@ import { createPanelHost } from './ui/panelHost.js';
 import { createRouter } from './ui/router.js';
 import { createStageMachine } from './ui/stageMachine.js';
 import { createLanguageSwitch } from './ui/languageSwitch.js';
-import { loadFirstStage } from './ui/boot.js';
+import { createMessageBanners } from './ui/messageBanner.js';
+import { startSession } from './ui/startup.js';
 import { createReviewFlow } from './ui/reviewFlow.js';
 import { readShell } from './ui/shell.js';
 import { createShortcuts } from './ui/shortcuts.js';
@@ -57,6 +59,12 @@ export function mount({ root, params }) {
   /** @type {(key: string, values?: Record<string, string | number>) => string} */
   const t = (key, values) => translator.t(key, values);
   const tCount = /** @type {(k: string, n: number) => string} */ ((k, n) => translator.tCount(k, n));
+  // Banners belong to every page (entry included); a language change re-fetches.
+  const messageBanners = createMessageBanners({
+    host: root,
+    t,
+    load: (language) => loadMessages(config.apiBaseUrl, { studyName, language }),
+  });
 
   const handles = readShell(root);
   const {
@@ -173,6 +181,7 @@ export function mount({ root, params }) {
     setDocumentLanguage: (language) => {
       document.documentElement.lang = language;
     },
+    onLanguageChanged: (language) => void messageBanners.refresh(language),
     loadDiary: async () => {
       await actions?.load();
     },
@@ -255,27 +264,17 @@ export function mount({ root, params }) {
   const unsubscribe = store.subscribe(screen.render);
   panels.create();
 
-  void (async () => {
-    try {
-      await languageSwitch.setLanguage(language);
-    } catch (error) {
-      console.error('[i18n] falling back to the markup text:', error);
-    }
-    // One question, one answer: the server says which stage this participant is
-    // in, and the stage machine routes to it (D37). The same answer says which
-    // language the study speaks (D40).
-    await loadFirstStage({
-      api,
-      store,
-      stageMachine,
-      t,
-      listStudies: (language) => listListedStudies(config.apiBaseUrl, language),
-      onLoaded: async (session) => {
-        reportClientInfo(api, session);
-        await languageSwitch.adoptStudyLanguage(session, identity.language);
-      },
-    });
-  })();
+  void startSession({
+    language,
+    languageSwitch,
+    api,
+    store,
+    stageMachine,
+    t,
+    identity,
+    reportClientInfo,
+    listStudies: (language) => listListedStudies(config.apiBaseUrl, language),
+  });
 
   return {
     destroy() {

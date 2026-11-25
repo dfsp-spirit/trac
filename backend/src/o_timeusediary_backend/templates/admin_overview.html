@@ -37,6 +37,54 @@
             </div>
         </div>
 
+        {% if is_super_admin %}
+        <!-- Server message (super admins only): one banner for the deployment. -->
+        <div class="card message-editor" data-message-form="server">
+            <h2>Server message</h2>
+            <p class="hint">
+                One optional banner for this deployment: maintenance windows, outages, anything
+                participants or scientists should read before they start. Leave a language empty
+                to fall back to another one you filled in. Readers who dismiss the banner see it
+                again once the text or the switch changes.
+            </p>
+
+            <label class="message-switch">
+                <input type="checkbox" data-message-active
+                       {% if server_message and server_message.is_active %}checked{% endif %}>
+                Show this message
+            </label>
+
+            <div class="message-audiences">
+                <span class="message-audiences-label">Audience</span>
+                <label>
+                    <input type="checkbox" data-message-audience="participants"
+                           {% if not server_message or server_message.audience in ('participants', 'both') %}checked{% endif %}>
+                    Study participants
+                </label>
+                <label>
+                    <input type="checkbox" data-message-audience="admins"
+                           {% if server_message and server_message.audience in ('admins', 'both') %}checked{% endif %}>
+                    Scientists in this admin panel
+                </label>
+            </div>
+
+            <div class="message-languages">
+                {% for language in server_message_languages %}
+                <label class="message-language">
+                    <span class="message-language-label">{{ language }}</span>
+                    <textarea rows="3" data-message-language="{{ language }}"
+                              placeholder="Message in {{ language }} (optional)">{% if server_message %}{{ (server_message.text or {}).get(language, '') }}{% endif %}</textarea>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="message-actions">
+                <button type="button" class="btn-primary" id="messageSaveBtn">Save message</button>
+                <span class="status" id="messageStatus" role="status" aria-live="polite"></span>
+            </div>
+        </div>
+        {% endif %}
+
         {% if server_completion_progress %}
         <!-- Server-wide completion (super admins only) -->
         <div class="study-section">
@@ -309,6 +357,7 @@
 {% endblock %}
 
 {% block scripts %}
+    <script src="{{ request.scope.root_path }}/static/admin_messages.js"></script>
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
         const deleteStudyModal = document.getElementById('deleteStudyModal');

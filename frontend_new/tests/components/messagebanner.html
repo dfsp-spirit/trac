@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: banner messages</title>
+    <!-- The banner's own styles; tokens/base carry the custom properties it
+         uses and the page's typography. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/messageBanner.css" />
+  </head>
+  <body>
+    <div class="t-app" id="app">
+      <header class="t-topbar" id="topbar"><p>top bar</p></header>
+    </div>
+    <!--
+      Both banners, with the dismissal state driven by the query string so a
+      test can start from "already dismissed":
+        ?dismissed=srv-1        the server banner is gone
+        ?dismissed=srv-1&dismissed=study-1
+        ?studyOff               the study has no message
+    -->
+    <script type="module">
+      import { renderMessageBanners } from '/src/js/ui/messageBanner.js';
+
+      const params = new URLSearchParams(window.location.search);
+      const dismissedKeys = new Set(params.getAll('dismissed'));
+      const dismissed = {
+        has: (key) => dismissedKeys.has(key),
+        remember: (key) => dismissedKeys.add(key),
+      };
+      const t = (key) =>
+        ({ 'diary.message.dismiss': 'Dismiss this message' })[key] ?? key;
+
+      const messages = {
+        server: { text: 'Maintenance tonight\n22:00-23:00', key: 'srv-1' },
+        study: params.has('studyOff')
+          ? null
+          : { text: 'No diary tomorrow', key: 'study-1' },
+      };
+
+      window.__banners = { messages, dismissed, t };
+      renderMessageBanners(document.getElementById('app'), { messages, dismissed, t });
+    </script>
+  </body>
+</html>

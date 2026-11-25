@@ -618,3 +618,63 @@ class UxEvent(SQLModel, table=True):
     props: Optional[Dict[str, Any]] = Field(
         default=None, sa_column=Column(JSON(none_as_null=True), nullable=True)
     )
+
+
+class ServerMessage(SQLModel, table=True):
+    """The single server-wide banner message (see ``messages.py``).
+
+    Exactly one row exists, and its primary key is fixed, so "one server
+    message" is a property of the schema rather than a convention: there is no
+    second id to insert. ``audience`` decides who sees it - study participants,
+    scientists in the admin panel, or both.
+
+    ``text`` is an optional ``{language: text}`` map: an admin may translate the
+    message or write only one language, and readers fall back.
+    """
+
+    __tablename__ = "server_message"
+
+    id: int = Field(
+        default=1,
+        sa_column=Column(Integer, primary_key=True, autoincrement=False),
+    )
+    text: Dict[str, str] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    audience: str = Field(default="participants", sa_type=String(16))
+    is_active: bool = Field(default=False)
+    # Bumped whenever the content or a switch changes. Readers dismiss a banner
+    # by its key (`messages.message_key`), so an edit or a fresh activation has
+    # to produce a new key or nobody would see the message again.
+    revision: int = Field(default=0)
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class StudyMessage(SQLModel, table=True):
+    """The single banner message of one study, shown to its participants.
+
+    One row per study (unique ``study_id``), switched on and off manually. Like
+    the server message it carries an optional ``{language: text}`` map.
+    """
+
+    __tablename__ = "study_messages"
+    __table_args__ = (UniqueConstraint("study_id", name="uq_study_messages_study"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    study_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("studies.id", ondelete="CASCADE"), nullable=False
+        )
+    )
+    text: Dict[str, str] = Field(
+        default_factory=dict, sa_column=Column(JSON, nullable=False)
+    )
+    is_active: bool = Field(default=False)
+    revision: int = Field(default=0)
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

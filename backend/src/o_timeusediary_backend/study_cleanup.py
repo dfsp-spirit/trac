@@ -18,6 +18,7 @@ from .models import (
     StudyAvailableTimeline,
     StudyExternalTask,
     StudyExternalTaskAssignment,
+    StudyMessage,
     StudyParticipant,
     Timeline,
 )
@@ -88,6 +89,8 @@ def delete_study_data(session: Session, study_name_short: str) -> bool:
     session.exec(
         delete(StudyExternalTask).where(StudyExternalTask.study_id == study.id)
     )
+    # The message is the study's own banner; deleting the study deletes it too.
+    session.exec(delete(StudyMessage).where(StudyMessage.study_id == study.id))
     session.exec(delete(Timeline).where(Timeline.study_id == study.id))
     session.exec(delete(DayLabel).where(DayLabel.study_id == study.id))
     session.exec(delete(Study).where(Study.id == study.id))

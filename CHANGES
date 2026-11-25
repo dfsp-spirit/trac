@@ -4,6 +4,7 @@ TRAC MPIAE Changes
 Current WIP
 ------------
 
+- NEW: banner messages, one per scope and switched on and off manually: a super admin writes one server-wide message (admin overview, audience: study participants and/or scientists in the admin panel) and a study owner writes one message per study (new **Message** page in the study nav). Participants see them as dismissible banners in the rewrite's participant client; a dismissal is remembered per browser and the banner returns once the text or the switch changes. Optional per-language texts, no scheduling and no severity levels on purpose
 - NEW: per-study setting `num_recent_activities_shown` (integer, default `5`, `0` allowed) sets how many "Used recently" shortcuts the rewrite's activity panel shows above the catalogue; `0` hides the section entirely and gives the catalogue the room. It travels in the diary payload, survives the runtime-config export/import roundtrip and is documented in `README_CREATE_STUDY.md`
 - NEW: `tud studies delete <name_short> [--dry-run] [--yes]` deletes a study and all of its data from the command line. It shares the cascade-deletion code with `DELETE /api/admin/studies/{name_short}`, refuses to run without confirmation unless `--yes` is passed, and can report the affected rows with `--dry-run`-
 - CHG: replace b/w component that shows filled/open time slots with colored version that also uses several rows if needed (from preview screen)

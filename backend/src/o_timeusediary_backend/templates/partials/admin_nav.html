@@ -1,5 +1,5 @@
 {# Shared admin navigation. Call from a page with the active page id:
-   admin_nav('overview'|'participants'|'file-validation'|'ux-signals'|'tools'|'study'|'texts', study)
+   admin_nav('overview'|'participants'|'file-validation'|'ux-signals'|'tools'|'study'|'texts'|'message', study)
    Pass `study` to add the per-study second row, which keeps the same study one
    click away on every page that knows which study is open. #}
 {% macro admin_nav(active, study=None) -%}
@@ -22,6 +22,8 @@
        href="{{ request.scope.root_path }}/admin/study/{{ study.name_short|urlencode }}">Study Details</a>
     <a class="admin-nav-link{% if active == 'texts' %} active{% endif %}"
        href="{{ request.scope.root_path }}/admin/study/{{ study.name_short|urlencode }}/texts">Texts</a>
+    <a class="admin-nav-link{% if active == 'message' %} active{% endif %}"
+       href="{{ request.scope.root_path }}/admin/study/{{ study.name_short|urlencode }}/message">Message</a>
     <a class="admin-nav-link{% if active == 'participants' %} active{% endif %}"
        href="{{ request.scope.root_path }}/admin/participant-management?study_name_short={{ study.name_short|urlencode }}">Participants</a>
     <a class="admin-nav-link{% if active == 'ux-signals' %} active{% endif %}"

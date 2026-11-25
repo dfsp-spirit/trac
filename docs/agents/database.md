@@ -65,3 +65,16 @@
   `db downgrade`. The Alembic CLI cannot be used directly either, because
   `alembic.ini` ships no URL - the URL is injected from `TUD_DATABASE_URL` in
   `database._alembic_config()`.
+
+## Banner messages (migration 0022)
+- `server_message` holds the single server-wide banner and has **no
+  autoincrement**: `id` is fixed at 1, so "one server message" is enforced by the
+  primary key (a unique index on a nullable column would not). Never insert a
+  second row; `messages.get_server_message` uses `session.get(..., 1)`.
+- `study_messages` is one row per study (unique `study_id`, `ON DELETE CASCADE`
+  in the schema). `study_cleanup.delete_study_data` deletes it explicitly as
+  well, so SQLite test runs without FK enforcement behave the same.
+- Both tables are **additive** and belong in `TABLES_ADDED_AFTER_0003` in
+  `tests/migrations/test_forward_only.py`; the pre-Alembic adoption test drops
+  them to simulate an old database before stamping.
+

@@ -4,7 +4,12 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { checkTree, layerOf, SIZE_CAPS } from '../../tools/check-architecture.mjs';
+import {
+  checkTree,
+  DEVICE_STORAGE_ALLOWLIST,
+  layerOf,
+  SIZE_CAPS,
+} from '../../tools/check-architecture.mjs';
 
 const REPO_FRONTEND_NEW = fileURLToPath(new URL('../..', import.meta.url));
 
@@ -115,6 +120,19 @@ test('device storage is reported anywhere in js', () => {
       'src/js/data/api.js': "sessionStorage.getItem('x');\nindexedDB.open('db');\n",
     },
     (violations) => assert.deepEqual(rules(violations), ['no-device-storage', 'no-device-storage', 'no-device-storage'])
+  );
+});
+
+test('only the dismissal module may touch device storage', () => {
+  assert.deepEqual([...DEVICE_STORAGE_ALLOWLIST], ['src/js/ui/dismissedMessages.js']);
+
+  withTree(
+    { 'src/js/ui/dismissedMessages.js': "const store = window.localStorage;\n" },
+    (violations) => assert.deepEqual(rules(violations), [])
+  );
+  withTree(
+    { 'src/js/ui/other.js': "window.localStorage.setItem('x', '1');\n" },
+    (violations) => assert.deepEqual(rules(violations), ['no-device-storage'])
   );
 });
 

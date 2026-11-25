@@ -36,6 +36,7 @@ import { applyTranslations } from './i18n-dom.js';
  *   setTranslator: (translator: Translator) => void,
  *   setDocumentLanguage: (language: string) => void,
  *   loadDiary?: () => Promise<void>,
+ *   onLanguageChanged?: (language: string) => void,
  * }} deps
  */
 export function createLanguageSwitch({
@@ -48,6 +49,7 @@ export function createLanguageSwitch({
   setTranslator,
   setDocumentLanguage,
   loadDiary,
+  onLanguageChanged,
 }) {
   /**
    * @param {string} next
@@ -62,6 +64,8 @@ export function createLanguageSwitch({
     applyTranslations(document, translator);
     store.set({ language: loaded.language });
     chrome.syncLanguage(loaded.language);
+    // Text the server resolved for the previous language (banner messages).
+    onLanguageChanged?.(loaded.language);
 
     // During boot nothing is on screen yet, and `show()` renders the payload it
     // has just fetched in this language.

@@ -212,3 +212,36 @@ longer protocol - can close it from the menu:
   for a skipper.
 - **Old app:** still skips by redirect (`completion_status=skipped`) and records
   nothing. That goes away with the cutover; do not add a second code path.
+
+## Banner messages (issue #153)
+
+Two messages exist, each with exactly one row and each switched on/off manually
+(`is_active` is the whole "schedule"; there is no start/end time):
+
+- **server message** - `server_message`, a singleton row (`id = 1`, no
+  autoincrement). Audience is `participants`, `admins` or `both`.
+- **study message** - `study_messages`, one row per study (unique `study_id`),
+  read by that study's participants.
+
+`messages.py` owns the rules; do not read the tables directly from a route:
+`resolve` (`localized_message_text`), `message_key` (the opaque dismissal key),
+`active_*` (the `is_active` + audience filter) and the upserts that bump
+`revision` only when something actually changed. An active message with no text
+is rejected (400).
+
+- `GET /api/messages?study_name_short=&lang=` - unauthenticated participant
+  payload `{server: {text, key} | null, study: ...}`. Unknown study = no study
+  message, not a 404: a banner is never worth an error page. It also serves the
+  entry page, where no study is known.
+- `GET /api/admin/messages` - the server message for audience `admins`; read by
+  `admin.js`, which injects the dismissible banner on every admin page.
+- `GET|PUT /api/admin/messages/server` - `require_super_admin`.
+- `GET|PUT /api/admin/studies/{name}/message` - study-scoped automatically
+  through `_STUDY_SCOPED_PATH_PATTERNS`; super admins pass everywhere. Last
+  write wins (one field, no revision conflict).
+
+The admin UI is the `Message` page per study (`admin_message.html`) and a card on
+the overview for super admins; both are plain `<textarea data-message-language>`
+markup driven by `static/admin_messages.js`. Texts are rendered as plain text
+(`white-space: pre-line`), never as HTML.
+

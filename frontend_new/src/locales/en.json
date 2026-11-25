@@ -216,6 +216,9 @@
     "accessStudy": "Access study '{{study}}'"
   },
   "diary": {
+    "message": {
+      "dismiss": "Dismiss this message"
+    },
     "shell": {
       "menu": "Menu",
       "appName": "Time diary",
