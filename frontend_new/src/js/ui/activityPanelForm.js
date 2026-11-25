@@ -8,6 +8,7 @@
  */
 import { toTimedActivity } from '../domain/diary.js';
 import { formatClock } from '../domain/time.js';
+import { timingFor } from '../domain/timing.js';
 import { newUuid } from '../domain/uuid.js';
 import { renderActivityForm } from './activityForm.js';
 import { createEntrySlot } from './entrySlot.js';
@@ -78,7 +79,10 @@ export function createFormController(deps) {
   /** The timeline this write belongs to; sent with every create (D1). */
   /** @type {string | null} */
   let timelineKey = null;
-  const entrySlot = createEntrySlot({ getCurrentDay, getAnchorMinutes });
+  // The study's time grid follows the diary, so the entry slot and the form
+  // read it at the moment the form opens.
+  const getTiming = () => timingFor(getDiary());
+  const entrySlot = createEntrySlot({ getCurrentDay, getAnchorMinutes, getTiming });
 
   /** @param {import('../domain/diary.js').ApiActivity | null} activity */
   function renderFoot(activity) {
@@ -247,6 +251,7 @@ export function createFormController(deps) {
         maxOverlap: diary.timeline.max_overlap,
         mode: activity ? 'edit' : 'create',
         activity,
+        timing: timingFor(diary),
       });
       // Enter saves (D31). Two reasons it is spelled out rather than left to the
       // browser: there is no submit button to be the default action, so implicit

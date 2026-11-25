@@ -35,6 +35,9 @@
 }
 
 .t-daystrip__seg--pending {
+  /* A minimum-length row must stay visible even at a 5-minute step (1 px on a
+     320 px phone); the bar is the form's "where this goes" cue. */
+  min-width: 2px;
   background-color: var(--ink);
   /* The entry being worked on breathes from black down to light grey, so "this
      bar is mine" does not have to be read off the fields below. base.css

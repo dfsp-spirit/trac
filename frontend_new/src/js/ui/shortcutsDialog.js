@@ -29,7 +29,7 @@ const ROWS = [
   { keys: ['n'], label: 'diary.shortcuts.new' },
   { keys: ['/'], label: 'diary.shortcuts.search' },
   { keys: ['Esc'], label: 'diary.shortcuts.escape' },
-  { keys: ['↑', '↓'], label: 'diary.shortcuts.nudge' },
+  { keys: ['↑', '↓'], label: 'diary.shortcuts.nudgeStep' },
   { keys: ['Shift + ↑', 'Shift + ↓'], label: 'diary.shortcuts.nudgeEnd' },
   { keys: ['Enter'], label: 'diary.shortcuts.confirm' },
   { keys: ['?'], label: 'diary.shortcuts.list' },

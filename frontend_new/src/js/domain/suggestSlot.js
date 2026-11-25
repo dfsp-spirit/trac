@@ -30,9 +30,6 @@ import {
 } from './time.js';
 import { absoluteEnd, absoluteStart } from './validation.js';
 
-/** A slot shorter than one step cannot be saved, so it is not offered. */
-export const MIN_SLOT_MINUTES = STEP_MINUTES;
-
 /**
  * @typedef {{ dayIndex: number, startMinutes: number, endMinutes: number }} SlotRecord
  * @typedef {{ startMinutes: number, endMinutes: number }} Slot
@@ -47,8 +44,11 @@ export const MIN_SLOT_MINUTES = STEP_MINUTES;
  *   records?: SlotRecord[],
  *   durationMinutes?: number,
  *   step?: number,
+ *   minDurationMinutes?: number,
  * }} input `anchorMinutes` is where the participant is looking, on the same
  *   day-relative axis. `records` are the entries already on the diary.
+ *   `minDurationMinutes` is the study's shortest activity: a slot shorter than
+ *   that cannot be saved, so it is not offered.
  * @returns {Slot}
  */
 export function suggestSlot({
@@ -57,18 +57,20 @@ export function suggestSlot({
   records = [],
   durationMinutes = DEFAULT_DURATION_MINUTES,
   step = STEP_MINUTES,
+  minDurationMinutes = step,
 }) {
+  const minSlot = Math.max(step, minDurationMinutes);
   const busy = busyIntervals(records, dayIndex);
   const anchor = snapMinutes(anchorMinutes, {
     step,
     min: 0,
-    // The last start of the day, so a late anchor still has room for one step.
-    max: MINUTES_PER_DAY - MIN_SLOT_MINUTES,
+    // The last start of the day, so a late anchor still has room for a minimum entry.
+    max: MINUTES_PER_DAY - minSlot,
     mode: 'ceil',
   });
 
-  for (let start = anchor; start + MIN_SLOT_MINUTES <= MINUTES_PER_DAY; start += step) {
-    const slotEnd = start + MIN_SLOT_MINUTES;
+  for (let start = anchor; start + minSlot <= MINUTES_PER_DAY; start += step) {
+    const slotEnd = start + minSlot;
     // A record can begin inside the step (an anchor dragged off the grid), so
     // test the whole slot, not just its first minute.
     const blocked = busy.some(
@@ -78,16 +80,20 @@ export function suggestSlot({
 
     const next = busy.find((interval) => interval.start > start);
     const freeEnd = next ? next.start : MINUTES_PER_DAY;
+    // Whole steps only: an end off the study's grid would be refused by the
+    // same validation that accepts this slot. At least one minimum-length slot.
+    const wanted = Math.min(start + durationMinutes, freeEnd);
+    const end = start + Math.max(minSlot, Math.floor((wanted - start) / step) * step);
     return {
       startMinutes: start,
-      endMinutes: Math.min(start + durationMinutes, freeEnd),
+      endMinutes: Math.min(end, MINUTES_PER_DAY),
     };
   }
 
   // The day is full. Offering nothing would strand the participant, so keep the
   // anchor and let the form say what saving would overlap.
-  const fallback = Math.min(anchor, MINUTES_PER_DAY - MIN_SLOT_MINUTES);
-  return { startMinutes: fallback, endMinutes: fallback + MIN_SLOT_MINUTES };
+  const fallback = Math.min(anchor, MINUTES_PER_DAY - minSlot);
+  return { startMinutes: fallback, endMinutes: fallback + minSlot };
 }
 
 /**

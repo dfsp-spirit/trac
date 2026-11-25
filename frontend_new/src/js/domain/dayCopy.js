@@ -117,6 +117,8 @@ function codedRecord(activity, dayStartMinutes) {
  * @returns {CopyTarget[]}
  */
 export function planCopy({ diary, sourceIndex, targetIndexes, maxOverlap = 2 }) {
+  // Conflicts are reported on the study's own grid (see domain/timing.js).
+  const step = diary?.study?.time_step_minutes || STEP_MINUTES;
   const dayStartMinutes = diary.study.day_start_minutes || 0;
   const dayCount = diary.days.length;
   const lastIndex = dayCount - 1;
@@ -166,7 +168,7 @@ export function planCopy({ diary, sourceIndex, targetIndexes, maxOverlap = 2 }) 
         candidate,
         existing: [...remaining, ...planned],
         maxOverlap,
-        step: STEP_MINUTES,
+        step,
       });
       if (!violation.ok) {
         refusal = violation;

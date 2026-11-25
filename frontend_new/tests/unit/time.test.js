@@ -89,3 +89,15 @@ test('resolveRangeEnd uses the study day start for the clock conversion', () => 
   // is the next one relative to a start at 20:00.
   assert.equal(resolveRangeEnd(1200, 2 * 60, { dayStartMinutes: 240 }), 1320);
 });
+
+test('snapMinutes honours a 5-minute grid', () => {
+  assert.equal(snapMinutes(377, { step: 5 }), 375);
+  assert.equal(snapMinutes(378, { step: 5 }), 380);
+});
+
+test('resolveRangeEnd enforces the study minimum, not the grid', () => {
+  // 06:15-06:17 is only two minutes; the end is pushed to the minimum length.
+  assert.equal(resolveRangeEnd(375, 377, { minDurationMinutes: 10 }), 385);
+  // A comfortable range is kept as typed.
+  assert.equal(resolveRangeEnd(375, 390, { minDurationMinutes: 10 }), 390);
+});

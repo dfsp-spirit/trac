@@ -154,6 +154,7 @@ from .utils import (
     utc_now,
 )
 from . import stages
+from .timing import validate_timing_settings
 from .api_deps.diary_access import study_availability
 from .api_deps.participant_identity import (
     require_valid_display_name,
@@ -3284,6 +3285,10 @@ class ImportStudiesConfigStudy(BaseModel):
     day_start_minutes: int = 0
     # "Used recently" shortcuts above the catalogue (D28). 0 hides the section.
     num_recent_activities_shown: int = Field(default=5, ge=0)
+    # The study's time grid (see timing.py). Same rules as in the config file,
+    # so a runtime-config export imports back unchanged.
+    time_step_minutes: int = 10
+    min_duration_minutes: int = 10
     inactivity_timeout_minutes: int = 0
     inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
@@ -3298,6 +3303,16 @@ class ImportStudiesConfigStudy(BaseModel):
         if v < 0 or v > 1439:
             raise ValueError(f"day_start_minutes must be between 0 and 1439, got {v}")
         return v
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> "ImportStudiesConfigStudy":
+        try:
+            validate_timing_settings(
+                self.time_step_minutes, self.min_duration_minutes
+            )
+        except ValueError as exc:
+            raise ValueError(f"Study '{self.name_short}': {exc}") from exc
+        return self
 
     @model_validator(mode="after")
     def validate_day_groups(self) -> "ImportStudiesConfigStudy":
@@ -4395,6 +4410,8 @@ def _create_study_from_import_payload(
         data_collection_end=study_payload.data_collection_end,
         day_start_minutes=study_payload.day_start_minutes,
         num_recent_activities_shown=study_payload.num_recent_activities_shown,
+        time_step_minutes=study_payload.time_step_minutes,
+        min_duration_minutes=study_payload.min_duration_minutes,
         inactivity_timeout_minutes=study_payload.inactivity_timeout_minutes,
         inactivity_timeout_stress_time_left=study_payload.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
@@ -5468,6 +5485,8 @@ async def export_runtime_studies_config(
                 # them silently changes the restored study.
                 "day_start_minutes": study.day_start_minutes,
                 "num_recent_activities_shown": study.num_recent_activities_shown,
+                "time_step_minutes": study.time_step_minutes,
+                "min_duration_minutes": study.min_duration_minutes,
                 "inactivity_timeout_minutes": study.inactivity_timeout_minutes,
                 "inactivity_timeout_stress_time_left": (
                     study.inactivity_timeout_stress_time_left

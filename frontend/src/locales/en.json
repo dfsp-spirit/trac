@@ -292,6 +292,7 @@
       "search": "Search the activity list",
       "escape": "Back, or clear the search",
       "nudge": "Move the selected activity by 10 minutes",
+      "nudgeStep": "Move the selected activity one time step",
       "nudgeEnd": "Change the end of the selected activity",
       "confirm": "Save the activity",
       "delete": "Delete the activity that is selected",
@@ -455,6 +456,14 @@
       "notOnStep": {
         "title": "Check the times",
         "text": "Times go in 10-minute steps."
+      },
+      "notOnStepGrid": {
+        "title": "Check the times",
+        "text": "Times go in {{step}}-minute steps."
+      },
+      "tooShort": {
+        "title": "Too short",
+        "text": "An activity must last at least {{minutes}} minutes."
       },
       "startOutOfRange": {
         "title": "Check the times",

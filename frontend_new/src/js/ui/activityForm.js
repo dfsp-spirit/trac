@@ -6,7 +6,7 @@
  * uses the same domain functions the rest of the app uses, so an overlap the form
  * accepts is not refused by the server for a different reason.
  */
-import { STEP_MINUTES } from '../domain/time.js';
+import { timingFor } from '../domain/timing.js';
 import { validateActivity } from '../domain/validation.js';
 import { dayLabel } from '../domain/diary.js';
 import { el } from './dom.js';
@@ -30,10 +30,17 @@ import { createTimeRange } from './timeRange.js';
  *   maxOverlap: number,
  *   mode: 'create' | 'edit',
  *   activity?: import('../domain/diary.js').ApiActivity | null,
- * }} view
+ *   timing?: { step: number, minDuration: number, defaultDuration: number },
+ * }} view `timing` is the study's time grid (`domain/timing.js`). Without it
+ *   the historical 10-minute grid / 10-minute minimum applies.
  */
 export function renderActivityForm(host, view) {
   const { entry, days, language, t, prefill, existing, dayStartMinutes, maxOverlap, mode } = view;
+  const timing = view.timing || timingFor(null);
+  // A stored row is never invalidated by a later setting change: its own times
+  // may still be saved even if today's grid or minimum would refuse them.
+  const initialStart = view.activity ? view.activity.start_minutes : prefill.startMinutes;
+  const initialEnd = view.activity ? view.activity.end_minutes : prefill.endMinutes;
   const lastIndex = days.length - 1;
   const current = view.activity || null;
 
@@ -113,6 +120,10 @@ export function renderActivityForm(host, view) {
     startMinutes: current ? current.start_minutes : prefill.startMinutes,
     endMinutes: current ? current.end_minutes : prefill.endMinutes,
     onCommit: () => refreshDerived(),
+    step: timing.step,
+    minDurationMinutes: timing.minDuration,
+    defaultDurationMinutes: timing.defaultDuration,
+    preserveInitialRange: mode === 'edit',
   });
 
   // Where the selected range lands on its day, against what is already there.
@@ -166,7 +177,7 @@ export function renderActivityForm(host, view) {
   if (mode === 'edit') daysFieldset.hidden = true;
 
   const multiDay = createMultiDayHint({
-    t, days, language, existing, dayStartMinutes, maxOverlap,
+    t, days, language, existing, dayStartMinutes, maxOverlap, step: timing.step,
     getSelection: () => ({
       ...timeRange.selection(),
       activityCode: childSelect && childSelect.value ? Number(childSelect.value) : entry.code,
@@ -251,7 +262,14 @@ export function renderActivityForm(host, view) {
       dayCount: days.length,
       maxOverlap,
       ignoreId: current ? current.client_uuid : null,
-      step: STEP_MINUTES,
+      step: timing.step,
+      minDurationMinutes: timing.minDuration,
+      timesUnchanged:
+        mode === 'edit' &&
+        current !== null &&
+        dayIndex === current.day_label_index &&
+        start === initialStart &&
+        end === initialEnd,
     });
     if (!result.ok) return result;
 

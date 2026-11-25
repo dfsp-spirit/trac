@@ -9,7 +9,7 @@
  */
 import { toTimedActivity } from '../domain/diary.js';
 import { nudgeRange } from '../domain/nudge.js';
-import { STEP_MINUTES } from '../domain/time.js';
+import { timingFor } from '../domain/timing.js';
 import { validateActivity } from '../domain/validation.js';
 import { describeError } from './messages.js';
 
@@ -53,8 +53,16 @@ export function createNudgeController({ getDiary, isLocked, onUpdate, t, toast, 
     if (!activity) return;
 
     const dayStart = diary.study.day_start_minutes || 0;
+    const timing = timingFor(diary);
+    // `delta` is a number of steps (the shortcuts send ±1), so one keypress
+    // moves by the study's grid - 10 minutes for a study that kept the default.
+    const deltaMinutes = delta * timing.step;
     const current = toTimedActivity(activity, dayStart);
-    const next = nudgeRange(current, { mode, delta });
+    const next = nudgeRange(current, {
+      mode,
+      delta: deltaMinutes,
+      minDurationMinutes: timing.minDuration,
+    });
     // Nothing legal in that direction: the block has reached the end of its day
     // or its minimum length. Silent, because a toast per keypress would be noise.
     if (!next) return;
@@ -68,7 +76,8 @@ export function createNudgeController({ getDiary, isLocked, onUpdate, t, toast, 
       dayCount: diary.days.length,
       maxOverlap: diary.timeline.max_overlap,
       ignoreId: activity.client_uuid,
-      step: STEP_MINUTES,
+      step: timing.step,
+      minDurationMinutes: timing.minDuration,
     });
 
     if (!result.ok) {
@@ -107,7 +116,7 @@ export function createNudgeController({ getDiary, isLocked, onUpdate, t, toast, 
    * costs one request per round-trip instead of one per repeat.
    *
    * @param {'move' | 'resize'} mode
-   * @param {number} delta Signed minutes.
+   * @param {number} delta Signed number of time steps.
    * @returns {boolean} Whether the key belonged to a block (so the caller keeps it).
    */
   function nudge(mode, delta) {

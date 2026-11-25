@@ -292,6 +292,7 @@
       "search": "Die Aktivitätenliste durchsuchen",
       "escape": "Zurück oder Suche leeren",
       "nudge": "Gewählte Aktivität um 10 Minuten verschieben",
+      "nudgeStep": "Die ausgewählte Aktivität um einen Zeitschritt verschieben",
       "nudgeEnd": "Ende der gewählten Aktivität ändern",
       "confirm": "Aktivität speichern",
       "delete": "Die gewählte Aktivität löschen",
@@ -455,6 +456,14 @@
       "notOnStep": {
         "title": "Zeiten prüfen",
         "text": "Zeiten gehen in 10-Minuten-Schritten."
+      },
+      "notOnStepGrid": {
+        "title": "Zeiten prüfen",
+        "text": "Zeiten gehen in {{step}}-Minuten-Schritten."
+      },
+      "tooShort": {
+        "title": "Zu kurz",
+        "text": "Eine Aktivität muss mindestens {{minutes}} Minuten dauern."
       },
       "startOutOfRange": {
         "title": "Zeiten prüfen",

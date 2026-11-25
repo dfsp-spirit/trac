@@ -14,6 +14,7 @@
  * old 08:00 default feel arbitrary.
  */
 import { anchorAfterSave, suggestSlot } from '../domain/suggestSlot.js';
+import { timingFor } from '../domain/timing.js';
 
 /**
  * @typedef {{ dayIndex: number, startMinutes: number, endMinutes: number }} Slot
@@ -29,9 +30,11 @@ import { anchorAfterSave, suggestSlot } from '../domain/suggestSlot.js';
  * @param {{
  *   getCurrentDay: () => number,
  *   getAnchorMinutes: (dayIndex: number) => number,
- * }} deps
+ *   getTiming?: () => { step: number, minDuration: number, defaultDuration: number },
+ * }} deps `getTiming` is the study's time grid; without it the historical
+ *   10-minute grid applies.
  */
-export function createEntrySlot({ getCurrentDay, getAnchorMinutes }) {
+export function createEntrySlot({ getCurrentDay, getAnchorMinutes, getTiming }) {
   /**
    * @type {{
    *   dayIndex: number,
@@ -76,9 +79,17 @@ export function createEntrySlot({ getCurrentDay, getAnchorMinutes }) {
         };
       }
       const anchorMinutes = claimed?.anchorMinutes ?? getAnchorMinutes(dayIndex);
+      const timing = getTiming ? getTiming() : timingFor(null);
       return {
         dayIndex,
-        ...suggestSlot({ anchorMinutes, dayIndex, records }),
+        ...suggestSlot({
+          anchorMinutes,
+          dayIndex,
+          records,
+          step: timing.step,
+          minDurationMinutes: timing.minDuration,
+          durationMinutes: timing.defaultDuration,
+        }),
       };
     },
 

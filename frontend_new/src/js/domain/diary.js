@@ -33,7 +33,12 @@ import { layoutDay, mergeIntervals } from './geometry.js';
 /**
  * @typedef {Object} ApiDiary
  * @property {number} schema_version
- * @property {{ name_short: string, name: string, default_language: string, day_start_minutes: number, num_recent_activities_shown: number, submitted_at: string | null }} study
+ * @property {{
+ *   name_short: string, name: string, default_language: string,
+ *   day_start_minutes: number, num_recent_activities_shown: number,
+ *   time_step_minutes?: number, min_duration_minutes?: number,
+ *   submitted_at: string | null,
+ * }} study
  * @property {{ key: string, display_name?: string, min_coverage: number | null, max_overlap: number }} timeline
  * @property {Array<{ index: number, name: string, display_name: string, display_names: Record<string, string>, has_data: boolean, coverage_minutes: number, meets_requirement: boolean }>} days
  * @property {Array<{ key: string, names: Record<string, string>, day_indexes: number[] }>} day_groups

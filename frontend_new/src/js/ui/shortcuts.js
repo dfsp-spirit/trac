@@ -6,7 +6,6 @@
  * Everything this needs from the diary arrives as an action, so the wiring stays
  * in main.js and this module never reads the store.
  */
-import { STEP_MINUTES } from '../domain/time.js';
 import { bindKeyboard } from './keyboard.js';
 import { createShortcutsDialog } from './shortcutsDialog.js';
 
@@ -56,10 +55,11 @@ export function createShortcuts({
       new: actions.newActivity,
       search: actions.search,
       escape: actions.escape,
-      moveEarlier: () => actions.nudge?.('move', -STEP_MINUTES),
-      moveLater: () => actions.nudge?.('move', STEP_MINUTES),
-      endEarlier: () => actions.nudge?.('resize', -STEP_MINUTES),
-      endLater: () => actions.nudge?.('resize', STEP_MINUTES),
+      // One study time step per press; the nudge controller knows the step.
+      moveEarlier: () => actions.nudge?.('move', -1),
+      moveLater: () => actions.nudge?.('move', 1),
+      endEarlier: () => actions.nudge?.('resize', -1),
+      endLater: () => actions.nudge?.('resize', 1),
       help: () => dialog.open(),
     },
   });

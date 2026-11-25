@@ -50,6 +50,8 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "day_start_minutes"),
     ("studies", "day_groups"),
     ("studies", "num_recent_activities_shown"),
+    ("studies", "time_step_minutes"),
+    ("studies", "min_duration_minutes"),
     ("day_labels", "display_names"),
     ("study_participants", "study_submitted_at"),
     ("study_participants", "display_name"),

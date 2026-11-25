@@ -283,3 +283,60 @@ test('the overlap error names the day and minute of the conflict', () => {
   assert.equal(result.meta?.dayIndex, 1);
   assert.equal(result.meta?.minutesSinceDayStart, 60);
 });
+
+// ── The study's time grid (see domain/timing.js) ───────────────────────────
+test('a 5-minute grid accepts quarter hours', () => {
+  assert.deepEqual(
+    validateTimeRange({ startMinutes: 375, endMinutes: 385 }, { step: 5, minDurationMinutes: 10 }),
+    { ok: true }
+  );
+});
+
+test('a range shorter than the minimum is refused with the minimum in the message', () => {
+  const result = validateTimeRange(
+    { startMinutes: 375, endMinutes: 380 },
+    { step: 5, minDurationMinutes: 10 }
+  );
+  assert.equal(result.code, Codes.TOO_SHORT);
+  assert.deepEqual(result.meta, { minutes: 10 });
+});
+
+test('an off-grid time is refused on a 5-minute grid', () => {
+  const result = validateTimeRange(
+    { startMinutes: 377, endMinutes: 390 },
+    { step: 5, minDurationMinutes: 10 }
+  );
+  assert.equal(result.code, Codes.NOT_ON_STEP);
+});
+
+test('unchanged times are saved even when today\'s grid or minimum would refuse them', () => {
+  // A study raised its step to 15 after this 10-minute row was stored.
+  const range = { startMinutes: 480, endMinutes: 490 };
+  assert.equal(validateTimeRange(range, { step: 15, minDurationMinutes: 15 }).code, Codes.TOO_SHORT);
+  assert.deepEqual(
+    validateTimeRange(range, { step: 15, minDurationMinutes: 15, timesUnchanged: true }),
+    { ok: true }
+  );
+});
+
+test('validateActivity and planMultiDayCreate carry the timing through', () => {
+  const candidate = rec({ startMinutes: 375, endMinutes: 380 });
+  const single = validateActivity({
+    candidate,
+    existing: [],
+    dayCount: 7,
+    step: 5,
+    minDurationMinutes: 10,
+  });
+  assert.equal(single.code, Codes.TOO_SHORT);
+
+  const plan = planMultiDayCreate({
+    candidate,
+    targets: [1],
+    existing: [],
+    dayCount: 7,
+    step: 5,
+    minDurationMinutes: 10,
+  });
+  assert.deepEqual(plan.map((target) => target.code), [Codes.TOO_SHORT, Codes.TOO_SHORT]);
+});

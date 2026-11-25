@@ -103,11 +103,18 @@ export function parseClock(value) {
  *
  * @param {number} start Day-relative start minute.
  * @param {number} endClock Clock minutes (0..1439) from the end field.
- * @param {{ dayStartMinutes?: number, isLastDay?: boolean }} [options]
+ * @param {{ dayStartMinutes?: number, isLastDay?: boolean, minDurationMinutes?: number }} [options]
+ *   `minDurationMinutes` is the study's shortest activity (defaults to one
+ *   step), so typing the same clock as the start cannot produce a zero-length
+ *   range.
  * @returns {number} Day-relative end minute.
  */
 export function resolveRangeEnd(start, endClock, options = {}) {
-  const { dayStartMinutes = 0, isLastDay = false } = options;
+  const {
+    dayStartMinutes = 0,
+    isLastDay = false,
+    minDurationMinutes = STEP_MINUTES,
+  } = options;
   const max = isLastDay ? MINUTES_PER_DAY : start + MINUTES_PER_DAY;
   let candidate = toDayRelative(endClock, dayStartMinutes);
   // A clock that is not after the start belongs to the next day. Equality is the
@@ -115,7 +122,7 @@ export function resolveRangeEnd(start, endClock, options = {}) {
   // "24 h" - the alternative, silently shrinking it to the minimum, would ignore
   // what the participant typed.
   if (candidate <= start) candidate += MINUTES_PER_DAY;
-  return clampMinutes(candidate, start + STEP_MINUTES, max);
+  return clampMinutes(candidate, start + minDurationMinutes, max);
 }
 
 /**

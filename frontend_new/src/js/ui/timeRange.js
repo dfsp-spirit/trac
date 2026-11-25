@@ -34,8 +34,14 @@ import { durationText, field, timeInput } from './formFields.js';
  *   startMinutes: number,
  *   endMinutes: number,
  *   onCommit: () => void,
+ *   step?: number,
+ *   minDurationMinutes?: number,
+ *   defaultDurationMinutes?: number,
+ *   preserveInitialRange?: boolean,
  * }} deps `onCommit` runs after every committed start/end/day change, so the
  *   form can refresh what is derived from the selection (chips, hints).
+ *   `step`, `minDurationMinutes` and `defaultDurationMinutes` are the study's
+ *   time grid (`domain/timing.js`).
  */
 export function createTimeRange({
   t,
@@ -45,11 +51,15 @@ export function createTimeRange({
   startMinutes,
   endMinutes,
   onCommit,
+  step = STEP_MINUTES,
+  minDurationMinutes = step,
+  defaultDurationMinutes = DEFAULT_DURATION_MINUTES,
+  preserveInitialRange = false,
 }) {
-  const startInput = timeInput();
+  const startInput = timeInput(step);
   startInput.value = formatClock(startMinutes, dayStartMinutes);
 
-  const endInput = timeInput();
+  const endInput = timeInput(step);
 
   const row = el('div', 't-time-range__row');
   row.append(
@@ -72,8 +82,19 @@ export function createTimeRange({
   const endHint = el('p', 't-hint');
   endHint.hidden = true;
 
-  /** Last committed selection; the inputs are normalized to it on change. */
-  const state = { dayIndex, start: startMinutes, end: endMinutes };
+  /**
+   * Last committed selection; the inputs are normalized to it on change.
+   * `preserve` keeps a stored row exactly as it is until the participant
+   * changes something: a row saved under an older grid or a longer minimum must
+   * survive being opened, or the exemption from the step/minimum rules would be
+   * pointless (the form would rewrite the times on load).
+   */
+  const state = {
+    dayIndex,
+    start: startMinutes,
+    end: endMinutes,
+    preserve: preserveInitialRange,
+  };
 
   /**
    * @param {number} start Day-relative start minute.
@@ -94,6 +115,19 @@ export function createTimeRange({
   }
 
   /**
+   * The last start the day allows. On the last day an entry cannot run past
+   * midnight, so the start has to leave room for the study's minimum; earlier
+   * days may cross into the next day and only stop at one step before the end.
+   *
+   * @returns {number}
+   */
+  function maxStartMinute() {
+    return state.dayIndex === lastIndex
+      ? MINUTES_PER_DAY - minDurationMinutes
+      : MINUTES_PER_DAY - step;
+  }
+
+  /**
    * Recompute the end for the current start/day, write both fields back and
    * report the new selection.
    *
@@ -101,20 +135,22 @@ export function createTimeRange({
    *   reachable, or null for the default duration.
    */
   function commit(keep) {
+    state.preserve = false;
     const clock = parseClock(startInput.value);
     const start = clock === null
       ? state.start
       : snapMinutes(toDayRelative(clock, dayStartMinutes), {
+          step,
           min: 0,
-          max: MINUTES_PER_DAY - STEP_MINUTES,
+          max: maxStartMinute(),
         });
 
     const isLast = state.dayIndex === lastIndex;
     const max = isLast ? MINUTES_PER_DAY : start + MINUTES_PER_DAY;
-    const wanted = keep == null ? start + DEFAULT_DURATION_MINUTES : keep;
+    const wanted = keep == null ? start + defaultDurationMinutes : keep;
     const end = snapMinutes(
-      wanted > start ? wanted : start + DEFAULT_DURATION_MINUTES,
-      { min: start + STEP_MINUTES, max }
+      wanted > start ? wanted : start + defaultDurationMinutes,
+      { step, min: start + minDurationMinutes, max }
     );
 
     state.start = start;
@@ -138,6 +174,7 @@ export function createTimeRange({
     const end = resolveRangeEnd(start, endClock, {
       dayStartMinutes,
       isLastDay: state.dayIndex === lastIndex,
+      minDurationMinutes,
     });
     renderSummary(start, end);
   }
@@ -151,13 +188,19 @@ export function createTimeRange({
         : resolveRangeEnd(state.start, endClock, {
             dayStartMinutes,
             isLastDay: state.dayIndex === lastIndex,
+            minDurationMinutes,
           })
     );
   });
   startInput.addEventListener('input', preview);
   endInput.addEventListener('input', preview);
 
-  commit(endMinutes);
+  endInput.value = formatClock(endMinutes, dayStartMinutes);
+  if (state.preserve) {
+    renderSummary(state.start, state.end);
+  } else {
+    commit(endMinutes);
+  }
 
   return {
     row,
@@ -184,18 +227,21 @@ export function createTimeRange({
     },
     /** @returns {{ start: number, end: number } | null} null for an incomplete field. */
     read() {
+      if (state.preserve) return { start: state.start, end: state.end };
       const startClock = parseClock(startInput.value);
       const endClock = parseClock(endInput.value);
       if (startClock === null || endClock === null) return null;
       const start = snapMinutes(toDayRelative(startClock, dayStartMinutes), {
+        step,
         min: 0,
-        max: MINUTES_PER_DAY - STEP_MINUTES,
+        max: maxStartMinute(),
       });
       return {
         start,
         end: resolveRangeEnd(start, endClock, {
           dayStartMinutes,
           isLastDay: state.dayIndex === lastIndex,
+          minDurationMinutes,
         }),
       };
     },

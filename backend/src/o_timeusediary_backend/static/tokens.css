@@ -47,7 +47,8 @@
 
   /* Timeline scale. One hour is --hour-row; one minute therefore --minute,
      which is what the machine-supplied --start-min/--dur-min/--at-min values
-     are multiplied with (D24: 10-minute steps, set in domain/geometry.js). */
+     are multiplied with (D24). The time grid itself is per study
+     (`domain/timing.js`: time_step_minutes / min_duration_minutes). */
   --hour-row: 64px;
   --minute: calc(var(--hour-row) / 60);
   --gutter-time: 64px;

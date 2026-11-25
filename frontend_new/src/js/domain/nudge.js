@@ -15,16 +15,21 @@ import { MINUTES_PER_DAY, STEP_MINUTES } from './time.js';
 
 /**
  * @param {Range} range
- * @param {{ mode: 'move' | 'resize', delta: number }} change Signed delta in minutes.
+ * @param {{ mode: 'move' | 'resize', delta: number, minDurationMinutes?: number }} change
+ *   `delta` is signed minutes; `minDurationMinutes` is the study's shortest
+ *   activity (defaults to one step).
  * @returns {Range | null} The nudged range, or null when the edge of the day or
  *   the minimum duration leaves no room in that direction.
  */
-export function nudgeRange({ startMinutes, endMinutes }, { mode, delta }) {
+export function nudgeRange(
+  { startMinutes, endMinutes },
+  { mode, delta, minDurationMinutes = STEP_MINUTES }
+) {
   if (mode === 'resize') {
     const end = endMinutes + delta;
-    // A record is always at least one step long. Shrinking past that does
-    // nothing instead of snapping to a length nobody asked for.
-    if (end - startMinutes < STEP_MINUTES) return null;
+    // A record is always at least the study's minimum length. Shrinking past
+    // that does nothing instead of snapping to a length nobody asked for.
+    if (end - startMinutes < minDurationMinutes) return null;
     return { startMinutes, endMinutes: end };
   }
 

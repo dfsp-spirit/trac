@@ -12,7 +12,8 @@ import { dayLabelList } from '../domain/diary.js';
 export const codes = {
   'time.end_not_after_start': 'diary.error.endBeforeStart',
   'time.too_long': 'diary.error.tooLong',
-  'time.not_on_step': 'diary.error.notOnStep',
+  'time.not_on_step': 'diary.error.notOnStepGrid',
+  'time.too_short': 'diary.error.tooShort',
   'time.start_out_of_range': 'diary.error.startOutOfRange',
   'overlap.limit_reached': 'diary.error.overlap',
   'activity.duplicate': 'diary.error.duplicate',

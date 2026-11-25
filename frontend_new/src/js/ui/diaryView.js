@@ -9,7 +9,7 @@
  * `onDayInView`, and the caller decides what to do with it.
  */
 import { progress } from '../domain/diary.js';
-import { STEP_MINUTES } from '../domain/time.js';
+import { timingFor } from '../domain/timing.js';
 import { icon } from './dom.js';
 import { renderDiaryNotice } from './diaryNotice.js';
 import { renderDayNav, watchDayInView } from './dayNav.js';
@@ -52,6 +52,8 @@ export function createDiaryView({
 }) {
   /** @type {HTMLElement[]} */
   let sections = [];
+  /** @type {import('../domain/diary.js').ApiDiary | null} */
+  let lastDiary = null;
   /** @type {boolean | null} */
   let ctaReady = null;
   /** @type {null | (() => void)} */
@@ -71,6 +73,7 @@ export function createDiaryView({
    * }} view
    */
   function render({ diary, language, revision, currentDay, locked }) {
+    lastDiary = diary;
     const upToDate =
       timelineHost.childElementCount > 0 &&
       timelineHost.dataset.language === language &&
@@ -144,7 +147,8 @@ export function createDiaryView({
      * @param {number} dayIndex
      * @returns {number}
      */
-    minutesAtTop: (dayIndex) => minutesAtViewportTop(sections[dayIndex], root, STEP_MINUTES),
+    minutesAtTop: (dayIndex) =>
+      minutesAtViewportTop(sections[dayIndex], root, timingFor(lastDiary).step),
 
     destroy() {
       stopSpy?.();

@@ -21,6 +21,7 @@ from .activities_config import (
     get_activity_codes_set,
     get_all_activity_codes,
 )
+from ..timing import validate_timing_settings
 from ..formats import (
     STUDIES_CONFIG_SCHEMA_VERSION,
     UnsupportedSchemaVersionError,
@@ -616,6 +617,23 @@ class CfgFileStudy(BaseModel):
             "shows above the catalogue. 0 hides the section entirely."
         ),
     )
+    time_step_minutes: int = Field(
+        default=10,
+        description=(
+            "Smallest editable time step, in minutes: one of 5, 10, 15, 20, 30, "
+            "60. The step must divide 1440 so midnight stays on the grid. 5 "
+            "matches the quarter hours people actually type; 10 is the "
+            "historical default."
+        ),
+    )
+    min_duration_minutes: int = Field(
+        default=10,
+        description=(
+            "Shortest activity, in minutes. Must be a multiple of "
+            "time_step_minutes; it keeps blocks large enough to see and tap "
+            "when the step is fine."
+        ),
+    )
     inactivity_timeout_minutes: int = Field(
         default=0,
         description="Minutes of user inactivity before session timeout. Set to 0 to disable.",
@@ -768,6 +786,16 @@ class CfgFileStudy(BaseModel):
         self,
     ) -> Dict[str, Dict[str, List[CfgFileLoggedActivity]]]:
         return self.activities_logged_by_userid
+
+    @model_validator(mode="after")
+    def validate_timing(self) -> "CfgFileStudy":
+        try:
+            validate_timing_settings(
+                self.time_step_minutes, self.min_duration_minutes
+            )
+        except ValueError as exc:
+            raise ValueError(f"Study '{self.name_short}': {exc}") from exc
+        return self
 
     @model_validator(mode="after")
     def validate_name_short(self) -> "CfgFileStudy":

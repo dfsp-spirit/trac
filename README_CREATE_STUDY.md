@@ -460,6 +460,8 @@ Rules worth knowing:
 | Field | Type | Required | Description |
 |---|---|---|---|
 | `num_recent_activities_shown` | integer | No | How many "Used recently" shortcuts the activity panel shows above the catalogue. Set to `0` to hide the section entirely and give the catalogue the room. Must be `0` or greater. Default: `5`. |
+| `time_step_minutes` | integer | No | The smallest time step participants can enter: `5`, `10`, `15`, `20`, `30` or `60`. It is what the native time picker offers, so `5` lets people type `06:15` without it snapping to `06:10`; `10` is the historical grid. The step must divide the day, otherwise midnight would be off the grid. Default: `10`. Do not raise it after data collection has started: entries stored on the old, finer grid can still be opened and saved, but not moved. |
+| `min_duration_minutes` | integer | No | The shortest activity, in minutes. Must be a multiple of `time_step_minutes` and at least as large as it. This is what keeps blocks large enough to see and tap when the step is fine: a study on a 5-minute grid with a 10-minute minimum behaves exactly like the old 10-minute grid, but accepts 06:15. Default: `10`. |
 
 #### Data Collection Window
 

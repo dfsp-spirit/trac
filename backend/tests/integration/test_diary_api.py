@@ -62,6 +62,8 @@ async def _create_study(
     config: dict | None = None,
     day_groups: list[dict] | None = None,
     num_recent_activities_shown: int | None = None,
+    time_step_minutes: int | None = None,
+    min_duration_minutes: int | None = None,
 ) -> str:
     study_name_short = f"it_diary_{uuid.uuid4().hex[:8]}"
     payload = {
@@ -94,6 +96,16 @@ async def _create_study(
                 **(
                     {"num_recent_activities_shown": num_recent_activities_shown}
                     if num_recent_activities_shown is not None
+                    else {}
+                ),
+                **(
+                    {"time_step_minutes": time_step_minutes}
+                    if time_step_minutes is not None
+                    else {}
+                ),
+                **(
+                    {"min_duration_minutes": min_duration_minutes}
+                    if min_duration_minutes is not None
                     else {}
                 ),
             }
@@ -197,6 +209,9 @@ async def test_empty_diary_lists_the_days_and_nothing_else():
     assert diary["timeline"]["max_overlap"] == 2
     assert diary["study"]["submitted_at"] is None
     assert diary["study"]["num_recent_activities_shown"] == 5
+    # The historical grid, so a study that says nothing behaves as before.
+    assert diary["study"]["time_step_minutes"] == 10
+    assert diary["study"]["min_duration_minutes"] == 10
 
 
 @pytest.mark.asyncio
@@ -212,6 +227,24 @@ async def test_diary_payload_carries_the_recent_activity_limit():
         diary = await _diary(client, study, participant)
 
     assert diary["study"]["num_recent_activities_shown"] == 0
+
+
+@pytest.mark.asyncio
+async def test_diary_payload_carries_the_time_grid():
+    """The step (what the picker offers) and the minimum (what keeps blocks tappable).
+
+    5 with a 10-minute minimum is the combination the setting exists for: typed
+    quarter hours survive, entries stay large enough to use.
+    """
+    participant = f"p_{uuid.uuid4().hex[:6]}"
+    async with httpx.AsyncClient() as client:
+        study = await _create_study(
+            client, time_step_minutes=5, min_duration_minutes=10
+        )
+        diary = await _diary(client, study, participant)
+
+    assert diary["study"]["time_step_minutes"] == 5
+    assert diary["study"]["min_duration_minutes"] == 10
 
 
 @pytest.mark.asyncio

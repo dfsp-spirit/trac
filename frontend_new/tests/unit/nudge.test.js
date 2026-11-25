@@ -52,3 +52,15 @@ test('the end may still reach past midnight, like the form allows', () => {
   });
 });
 
+
+test('a resize stops at the study minimum instead of at one step', () => {
+  const tenMinutes = { startMinutes: 480, endMinutes: 490 };
+  assert.equal(
+    nudgeRange(tenMinutes, { mode: 'resize', delta: -5, minDurationMinutes: 10 }),
+    null
+  );
+  assert.deepEqual(
+    nudgeRange(tenMinutes, { mode: 'resize', delta: 5, minDurationMinutes: 10 }),
+    { startMinutes: 480, endMinutes: 495 }
+  );
+});

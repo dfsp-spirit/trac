@@ -40,15 +40,17 @@ export function field(text, id, control) {
 /**
  * A 24-hour time field. The browser supplies the picker: a segmented, typeable
  * field on desktop and the OS dial/wheel on phones, so the form no longer owns a
- * 144-entry list. `step` matches the diary grid; the form snaps a value that
- * lands between steps before it is used.
+ * 144-entry list. `step` is the study's grid (`domain/timing.js`); the form
+ * snaps a value that lands between steps before it is used, and the attribute
+ * makes Chromium/Firefox offer exactly those values.
  *
+ * @param {number} [step]
  * @returns {HTMLInputElement}
  */
-export function timeInput() {
+export function timeInput(step = STEP_MINUTES) {
   const input = el('input', 't-input t-time');
   input.type = 'time';
-  input.step = String(STEP_MINUTES * 60);
+  input.step = String(step * 60);
   return input;
 }
 

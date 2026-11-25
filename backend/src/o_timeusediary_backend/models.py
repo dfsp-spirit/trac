@@ -89,6 +89,11 @@ class Study(SQLModel, table=True):
     # above the catalogue. Purely presentational: 0 hides the section, which is
     # what a study with a crowded catalogue sets to give the list the room.
     num_recent_activities_shown: int = Field(default=5)
+    # The study's time grid (see timing.py): the step times are entered in, and
+    # the shortest activity. The participant client enforces both; the backend
+    # stores the minutes it is sent.
+    time_step_minutes: int = Field(default=10)
+    min_duration_minutes: int = Field(default=10)
     # Inactivity timeout configuration
     inactivity_timeout_minutes: int = Field(default=0)
     inactivity_timeout_stress_time_left: int = Field(default=5)

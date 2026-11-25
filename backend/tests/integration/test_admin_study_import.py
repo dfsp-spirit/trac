@@ -1094,3 +1094,89 @@ async def test_admin_import_rejects_an_invalid_name_short():
         for result in data["results"]
         for error in result.get("errors", [])
     )
+
+
+def _minimal_study_payload(study_name_short: str, **overrides) -> dict:
+    return {
+        "mode": "create_only",
+        "transaction_mode": "all_or_nothing",
+        "studies": [
+            {
+                "name": f"Timing study {study_name_short}",
+                "name_short": study_name_short,
+                "description": "Integration test - time grid settings",
+                "day_labels": [
+                    {
+                        "name": "monday",
+                        "display_order": 0,
+                        "display_names": {"en": "Monday"},
+                    }
+                ],
+                "study_participant_ids": [],
+                "allow_unlisted_participants": True,
+                "default_language": "en",
+                "supported_languages": ["en"],
+                "activities_json_data": {"en": _load_activities_template()},
+                "data_collection_start": "2024-01-01T00:00:00Z",
+                "data_collection_end": "2028-12-31T23:59:59Z",
+                **overrides,
+            }
+        ],
+    }
+
+
+@pytest.mark.asyncio
+async def test_admin_import_accepts_and_exports_the_time_grid(
+    created_studies_for_cleanup,
+):
+    """The step and the minimum survive import -> runtime export unchanged."""
+    study_name_short = f"it_timing_{uuid.uuid4().hex[:8]}"
+    created_studies_for_cleanup.append(study_name_short)
+
+    payload = _minimal_study_payload(
+        study_name_short, time_step_minutes=5, min_duration_minutes=10
+    )
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        imported = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+        assert imported.status_code == 200, imported.text
+        assert imported.json()["summary"]["created"] == 1, imported.text
+
+        exported = await client.get(
+            f"{BASE_URL}/api/admin/export/studies-runtime-config", auth=ADMIN_AUTH
+        )
+        assert exported.status_code == 200, exported.text
+        studies = exported.json()["studies_config"]["studies"]
+        study = next(
+            item for item in studies if item["name_short"] == study_name_short
+        )
+
+    assert study["time_step_minutes"] == 5
+    assert study["min_duration_minutes"] == 10
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "timing",
+    [
+        {"time_step_minutes": 25},  # does not divide the day
+        {"time_step_minutes": 7},  # not a multiple of five
+        {"time_step_minutes": 15, "min_duration_minutes": 10},  # minimum off the grid
+        {"time_step_minutes": 10, "min_duration_minutes": 5},  # minimum below the step
+    ],
+)
+async def test_admin_import_rejects_an_impossible_time_grid(timing):
+    study_name_short = f"it_badtiming_{uuid.uuid4().hex[:8]}"
+    payload = _minimal_study_payload(study_name_short, **timing)
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(
+            f"{BASE_URL}/api/admin/studies/import-config",
+            json=payload,
+            auth=ADMIN_AUTH,
+        )
+
+    assert response.status_code == 422, response.text

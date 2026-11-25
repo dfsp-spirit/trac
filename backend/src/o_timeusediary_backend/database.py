@@ -711,6 +711,22 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         )
                         study_updated = True
                     if (
+                        existing_study.time_step_minutes
+                        != study_config.time_step_minutes
+                    ):
+                        existing_study.time_step_minutes = (
+                            study_config.time_step_minutes
+                        )
+                        study_updated = True
+                    if (
+                        existing_study.min_duration_minutes
+                        != study_config.min_duration_minutes
+                    ):
+                        existing_study.min_duration_minutes = (
+                            study_config.min_duration_minutes
+                        )
+                        study_updated = True
+                    if (
                         existing_study.is_listed_publicly
                         != study_config.is_listed_publicly
                     ):
@@ -932,6 +948,8 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     require_diary_before_external_tasks=study_config.require_diary_before_external_tasks,
                     default_language=study_config.default_language,
                     num_recent_activities_shown=study_config.num_recent_activities_shown,
+                    time_step_minutes=study_config.time_step_minutes,
+                    min_duration_minutes=study_config.min_duration_minutes,
                     day_groups=(
                         [group.model_dump() for group in study_config.day_groups]
                         or None

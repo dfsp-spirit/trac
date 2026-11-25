@@ -58,11 +58,13 @@ export function previewText(t, plan, days, language) {
  *   dayStartMinutes: number,
  *   maxOverlap: number,
  *   getSelection: () => { dayIndex: number, start: number, end: number, activityCode: string | number, checkedDays: number[] },
+ *   step?: number,
  * }} deps `getSelection` reads the live selects and the ticked chips, because the
- *   answer changes with the range, not only with the days.
+ *   answer changes with the range, not only with the days. `step` is the study's
+ *   time grid (conflict probing only).
  */
 export function createMultiDayHint(deps) {
-  const { t, days, language, existing, dayStartMinutes, maxOverlap, getSelection } = deps;
+  const { t, days, language, existing, dayStartMinutes, maxOverlap, getSelection, step = STEP_MINUTES } = deps;
 
   const element = el('p', 't-hint');
   element.hidden = true;
@@ -86,7 +88,7 @@ export function createMultiDayHint(deps) {
       dayCount: days.length,
       existing,
       maxOverlap,
-      step: STEP_MINUTES,
+      step,
     });
 
     const text = previewText(t, plan, days, language);

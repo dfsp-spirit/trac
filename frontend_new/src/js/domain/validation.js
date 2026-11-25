@@ -13,6 +13,7 @@ export const Codes = Object.freeze({
   END_NOT_AFTER_START: 'time.end_not_after_start',
   START_OUT_OF_RANGE: 'time.start_out_of_range',
   TOO_LONG: 'time.too_long',
+  TOO_SHORT: 'time.too_short',
   NOT_ON_STEP: 'time.not_on_step',
   OVERLAP_LIMIT: 'overlap.limit_reached',
   DUPLICATE: 'activity.duplicate',
@@ -58,11 +59,21 @@ export function absoluteEnd(record) {
 
 /**
  * @param {{ startMinutes: number, endMinutes: number }} range
- * @param {{ step?: number }} [options]
+ * @param {{
+ *   step?: number,
+ *   minDurationMinutes?: number,
+ *   timesUnchanged?: boolean,
+ * }} [options] `timesUnchanged` skips the grid and minimum checks: a stored row
+ *   that is shorter than today's minimum (or off today's grid, after a study
+ *   changed its step) must still be saveable without retyping its times.
  * @returns {Result}
  */
 export function validateTimeRange(range, options = {}) {
-  const { step = STEP_MINUTES } = options;
+  const {
+    step = STEP_MINUTES,
+    minDurationMinutes = step,
+    timesUnchanged = false,
+  } = options;
   const { startMinutes, endMinutes } = range;
 
   if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
@@ -76,6 +87,10 @@ export function validateTimeRange(range, options = {}) {
   }
   if (endMinutes - startMinutes > MAX_DURATION_MINUTES) {
     return { ok: false, code: Codes.TOO_LONG, meta: { durationMinutes: endMinutes - startMinutes } };
+  }
+  if (timesUnchanged) return { ok: true };
+  if (endMinutes - startMinutes < minDurationMinutes) {
+    return { ok: false, code: Codes.TOO_SHORT, meta: { minutes: minDurationMinutes } };
   }
   if (startMinutes % step !== 0 || endMinutes % step !== 0) {
     return { ok: false, code: Codes.NOT_ON_STEP, meta: { step } };
@@ -173,13 +188,24 @@ export function isDuplicate(input) {
  *   maxOverlap?: number,
  *   ignoreId?: string | null,
  *   step?: number,
+ *   minDurationMinutes?: number,
+ *   timesUnchanged?: boolean,
  * }} input
  * @returns {Result}
  */
 export function validateActivity(input) {
-  const { candidate, existing, dayCount, maxOverlap = DEFAULT_MAX_OVERLAP, ignoreId = null, step } = input;
+  const {
+    candidate,
+    existing,
+    dayCount,
+    maxOverlap = DEFAULT_MAX_OVERLAP,
+    ignoreId = null,
+    step,
+    minDurationMinutes,
+    timesUnchanged = false,
+  } = input;
 
-  const range = validateTimeRange(candidate, { step });
+  const range = validateTimeRange(candidate, { step, minDurationMinutes, timesUnchanged });
   if (!range.ok) return range;
 
   if (!Number.isInteger(candidate.dayIndex) || candidate.dayIndex < 0 || candidate.dayIndex >= dayCount) {
@@ -220,11 +246,23 @@ export function validateActivity(input) {
  *   maxOverlap?: number,
  *   ignoreId?: string | null,
  *   step?: number,
+ *   minDurationMinutes?: number,
+ *   timesUnchanged?: boolean,
  * }} input
  * @returns {MultiDayTarget[]}
  */
 export function planMultiDayCreate(input) {
-  const { candidate, targets, dayCount, existing, maxOverlap = DEFAULT_MAX_OVERLAP, ignoreId = null, step } = input;
+  const {
+    candidate,
+    targets,
+    dayCount,
+    existing,
+    maxOverlap = DEFAULT_MAX_OVERLAP,
+    ignoreId = null,
+    step,
+    minDurationMinutes,
+    timesUnchanged = false,
+  } = input;
 
   const unique = [...new Set([candidate.dayIndex, ...targets])]
     .filter((dayIndex) => Number.isInteger(dayIndex))
@@ -244,6 +282,8 @@ export function planMultiDayCreate(input) {
       maxOverlap,
       ignoreId,
       step,
+      minDurationMinutes,
+      timesUnchanged,
     });
     if (result.ok) {
       planned.push(target);

@@ -22,6 +22,8 @@
         custom_parent  the parent itself is a custom input, no children
         child          a sub-activity code to preselect (the search/shortcut path)
         edit           render in edit mode for the stored row given by `activity`
+        step / min     the study's time grid (default 10 / =step)
+        stored_start / stored_end  the stored row's times in edit mode
     -->
     <script type="module">
       import { createTranslator } from '/src/js/data/i18n.js';
@@ -85,6 +87,8 @@
       const customParent = params.get('custom_parent') === '1';
       const childCode = Number(params.get('child') || 0);
       const editing = params.get('edit') === '1';
+      const step = Number(params.get('step') || 10);
+      const minDuration = Number(params.get('min') || step);
 
       const entry = customParent ? byCode(1199) : byCode(1166);
       const activity = editing
@@ -97,8 +101,8 @@
             color: entry.color,
             parent_activity_code: childCode ? entry.code : entry.code,
             frequency_key: null,
-            start_minutes: 480,
-            end_minutes: 600,
+            start_minutes: Number(params.get('stored_start') || 480),
+            end_minutes: Number(params.get('stored_end') || 600),
           }
         : null;
 
@@ -119,6 +123,11 @@
         maxOverlap: 2,
         mode: editing ? 'edit' : 'create',
         activity,
+        timing: {
+          step,
+          minDuration,
+          defaultDuration: Math.max(minDuration, Math.ceil(60 / step) * step),
+        },
       });
 
       window.__read = () => form.read();

@@ -209,3 +209,27 @@ test('the slot reports the day the next entry would land on', () => {
   slot.claim({ dayIndex: 6, startMinutes: 0, endMinutes: 60 });
   assert.equal(slot.dayIndex, 6);
 });
+
+// ── The study's time grid ──────────────────────────────────────────────────
+test('a 5-minute grid suggests whole steps with a 10-minute minimum', () => {
+  const slot = suggestSlot({
+    anchorMinutes: 603,
+    step: 5,
+    minDurationMinutes: 10,
+    durationMinutes: 60,
+  });
+  assert.deepEqual(slot, { startMinutes: 605, endMinutes: 665 });
+});
+
+test('a free block shorter than the minimum is skipped, not offered', () => {
+  // 10:00-10:07 is free, then busy; with a 10-minute minimum the suggestion
+  // moves past the busy entry.
+  const slot = suggestSlot({
+    anchorMinutes: 600,
+    records: [record(607, 700)],
+    step: 5,
+    minDurationMinutes: 10,
+    durationMinutes: 60,
+  });
+  assert.equal(slot.startMinutes, 700);
+});
