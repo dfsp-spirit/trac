@@ -310,11 +310,17 @@
   reports on (D28), but it sits one gap *left* of the panel's column instead of in
   it. Inside the column it covered the footer, and the only part that takes a
   click is the Undo button - so reaching "Speichern und weitere" through the toast
-  could undo the entry just saved. The box still never takes clicks
-  (`pointer-events: none` in `layout.css`); only its own controls (`Undo`, the
-  close ×) opt back in. Below 1200px the panel is a dialog in the top layer, so
-  the toast cannot cover it - while the panel is open the toast is painted
-  underneath it, which is why a delete closes the panel (`deleteWithUndo`).
+  could undo the entry just saved. Below 1200px the panel is a dialog in the top
+  layer, so the toast cannot cover it - while the panel is open the toast is
+  painted underneath it, which is why a delete closes the panel
+  (`deleteWithUndo`).
+- **A receipt never takes the pointer, at any width** (`components.css`:
+  `pointer-events: none` on the region's children, `auto` only on
+  `.t-toast__action` / `.t-toast__close`). This is the same rule as the placement
+  above, one layer down: the phone band sits exactly where the participant taps
+  next (a timeline entry, a day heading), and when the box took clicks a tap there
+  reached the toast - or its Undo, which reverses the action the toast confirms.
+  A toast that covers something must never also own the click.
 - The toast is dismissible before its 6 s run out. The close control is icon-only
   on purpose: a text label ("Schließen" / "Dismiss") took width from the message
   and wrapped it onto a third line. `ui/toast.js` always appends it; an
@@ -325,6 +331,20 @@
 - `activity-lifecycle.spec.js` ("the save toast does not swallow the next save")
   clicks the next save with a 3 s timeout, so a regression cannot hide behind
   the toast timing out.
+
+### The classic client (`frontend/`) has the same rule
+- Its toast was the worst case of the same bug: `pointer-events: auto` while
+  shown plus `z-index: 10000` over the activity menu (`3000`). The menu is clamped
+  into the viewport, so deleting several entries in a row put the next menu
+  exactly under the receipt from the previous delete - the last item ("Delete")
+  was hidden, and a tap meant for it hit **Undo**, re-adding the entry just
+  removed. Measured at 390×844: 43 of 44 px of the Delete item covered.
+- Fixed the same way as the rewrite: the box keeps `pointer-events: none` while
+  shown (only `.toast-action` opts in), `.activity-context-menu` paints above the
+  toast (`10001`), and `showMenu()` calls the new `window.hideToast()` so the
+  receipt of the previous action is gone before the next one starts.
+  `frontend/tests/unit/toast_layering.test.js` guards all three from source - it
+  runs without the stack, because nothing else loads the real stylesheet.
 
 ## Day names
 - Study day labels arrive per language (`days[].display_names`) and every screen

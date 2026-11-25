@@ -17,6 +17,9 @@ import {
 import { DEBUG_MODE, shouldShowTimelineTabs } from './constants.js';
 
 // Toast notification system
+/** Dismisses the toast currently on screen, if any (see `hideToast`). */
+let dismissCurrentToast = null;
+
 /**
  * Transient notification. `action` optionally adds a button (label + onClick),
  * which is how deleting an activity offers an undo.
@@ -40,6 +43,7 @@ function showToast(message, type = 'info', duration = 3000, action = null) {
     clearTimeout(removalTimer);
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
+    if (dismissCurrentToast === dismissToast) dismissCurrentToast = null;
   };
 
   if (action && typeof action.onClick === 'function') {
@@ -70,10 +74,26 @@ function showToast(message, type = 'info', duration = 3000, action = null) {
 
   // Remove after duration
   removalTimer = setTimeout(dismissToast, duration);
+
+  dismissCurrentToast = dismissToast;
 }
 
 // Make showToast globally available for debugging and accessibility
 window.showToast = showToast;
+
+/**
+ * Drop the toast on screen now, without waiting for its timer.
+ *
+ * The receipt belongs to the action just taken. Once the participant starts the
+ * next one - opening an activity's long-press/context menu - it has done its
+ * job, and leaving it up means it floats over the menu they are aiming at.
+ * Mirrors the rewrite, which hides the save receipt when the next form opens.
+ */
+function hideToast() {
+  if (typeof dismissCurrentToast === 'function') dismissCurrentToast();
+}
+
+window.hideToast = hideToast;
 
 // ---------------------------------------------------------------------------
 // Autosave status chip
