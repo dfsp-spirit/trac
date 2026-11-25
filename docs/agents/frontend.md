@@ -82,6 +82,24 @@
   "2 Std. 30 Min.". `endInput`'s `aria-describedby` points at that line. The last
   day keeps its hint that activities end by midnight.
 
+## Catalogue categories (`ui/activityList.js`)
+- The catalogue is a flat list of activity rows grouped by the study's own
+  category names, with no accordions (D29/D30): every activity stays one scroll
+  away.
+- **The category header is a section bar, not a caption.** Ink text (not
+  `--ink-muted`), weight 700 at the unchanged 0.875rem, a 3px bar on the start
+  edge (`inset` shadow) and a rule under the line; sticky at the top of the
+  panel body, so the current category stays visible while its rows scroll. The
+  bar/rule/contrast is what makes the groups readable next to 30+ rows that each
+  carry a strong colour swatch - do not reintroduce size as the hierarchy.
+- The row count sits on the right while browsing and is `aria-hidden` (the list
+  itself carries that fact for assistive tech). It is **omitted while
+  searching**: a hit count would read as the size of the category.
+- Vertical budget: the header keeps the line box the old caption had (one line,
+  two for the longest German names at 380px) plus one 8px gap between groups;
+  `tests/components/activitylist.spec.js` pins the height, the sticky offset
+  and the count rules.
+
 ## Custom input (free text) in the activity form
 - `is_custom_input` is a property of a catalogue **row**, and a sub-activity is a
   row. The pilot study's "Sport in Innenräumen (z.B. Schwimmen, Kurse)" is a

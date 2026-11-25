@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: activity list (category sections)</title>
+    <!-- The catalogue's own styles plus the panel frame that scrolls them. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+    <link rel="stylesheet" href="/src/styles/panel.css" />
+  </head>
+  <body>
+    <!-- Desktop panel column width (380px) with a fixed height, so the sticky
+         section headers can be scrolled and measured like in the app. -->
+    <div id="panel" style="width: 380px; height: 360px; display: flex; flex-direction: column; border: 1px solid #d4d4d4;">
+      <div class="t-activity-panel__body" data-slot="content"></div>
+    </div>
+    <!--
+      Query parameters:
+        q   a search query (groups then show matches, not category sizes)
+    -->
+    <script type="module">
+      import { createTranslator } from '/src/js/data/i18n.js';
+      import { flattenCatalogue } from '/src/js/ui/activitySearch.js';
+      import { renderActivityList } from '/src/js/ui/activityList.js';
+
+      const messages = await (await fetch('/src/locales/en.json')).json();
+      const { t } = createTranslator(messages);
+
+      // The pilot's category names, including its longest one.
+      const catalogue = {
+        general: { version: '1' },
+        timeline: {
+          primary: {
+            min_coverage: 1440,
+            max_overlap: 2,
+            categories: [
+              {
+                name: '1. General activities & daily life',
+                activities: [
+                  { code: 1101, name: 'Sleeping', color: '#A8D8EA' },
+                  { code: 1102, name: 'Resting', examples: 'Lunch break', color: '#B0E0E6' },
+                  { code: 1104, name: 'Activities of daily living', color: '#87CEEB' },
+                ],
+              },
+              {
+                name: '5. Social, leisure, hobbies (non-digital)',
+                activities: [
+                  { code: 1130, name: 'Talking with others', color: '#FFD9A0' },
+                  { code: 1131, name: 'Hobbies', color: '#FFC0CB' },
+                ],
+              },
+              {
+                name: '6. Digital media',
+                activities: [{ code: 1140, name: 'Watching TV', color: '#C0C0FF' }],
+              },
+            ],
+          },
+        },
+      };
+
+      const { entries } = flattenCatalogue(catalogue);
+      const query = new URLSearchParams(window.location.search).get('q') || '';
+      const count = renderActivityList(
+        document.querySelector('[data-slot="content"]'),
+        { entries, query, t, onChoose: () => {} }
+      );
+
+      window.__list = { count, entries };
+      window.__done = true;
+    </script>
+  </body>
+</html>

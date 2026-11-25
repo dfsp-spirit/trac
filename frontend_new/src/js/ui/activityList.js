@@ -90,11 +90,25 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
    * @param {import('./activitySearch.js').SearchHit[]} rows
    * @param {'recent' | 'catalogue'} groupKind Marked in the DOM so a shortcut row
    *   above the catalogue is never confused with the catalogue itself.
+   * @param {number | null} [count] Rows in the whole category, shown while
+   *   browsing. While searching it would be the number of matches, not the
+   *   size of the category, so it is left out.
    */
-  function group(heading, rows, groupKind) {
+  function group(heading, rows, groupKind, count = null) {
     const section = el('section', 't-activity-group');
     section.dataset.group = groupKind;
-    section.append(el('h3', null, heading));
+
+    const title = el('h3');
+    title.append(el('span', 't-activity-group__name', heading));
+    if (count != null) {
+      const badge = el('span', 't-activity-group__count', String(count));
+      // The list already has that many items; the number is a glance, not a fact
+      // for a screen reader to read out after every category name.
+      badge.setAttribute('aria-hidden', 'true');
+      title.append(badge);
+    }
+    section.append(title);
+
     const list = el('ul', 't-activity-list');
     for (const hit of rows) list.append(row(hit, groupKind));
     section.append(list);
@@ -124,7 +138,12 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
       'recent'
     );
   }
-  for (const [category, rows] of groupHits(hits)) group(category, rows, 'catalogue');
+  // Browsing: every catalogue row is a hit, so a category's hit count is its
+  // size. Searching: hits are matches, so no count is shown.
+  const browsing = !String(query || '').trim();
+  for (const [category, rows] of groupHits(hits)) {
+    group(category, rows, 'catalogue', browsing ? rows.length : null);
+  }
 
   host.replaceChildren(fragment);
   return hits.length;
