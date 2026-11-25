@@ -7,6 +7,7 @@ Current WIP
 - NEW: `tud studies delete <name_short> [--dry-run] [--yes]` deletes a study and all of its data from the command line. It shares the cascade-deletion code with `DELETE /api/admin/studies/{name_short}`, refuses to run without confirmation unless `--yes` is passed, and can report the affected rows with `--dry-run`-
 - CHG: replace b/w component that shows filled/open time slots with colored version that also uses several rows if needed (from preview screen)
 - FIX: the save confirmation no longer sits on top of the activity panel's save buttons on desktop (it is anchored beside the panel's column instead of in it), can be closed before its six seconds run out (× next to Undo), and is dismissed as soon as the next entry's form opens
+- FIX: a deletion's confirmation can no longer swallow the next deletion. In the classic client the receipt floated over the activity context menu (clamped into the viewport, so exactly where the next menu opens), hid its last item and turned a tap on "Delete" into a tap on "Undo", re-adding the entry just removed; the menu now paints above the toast, the toast box takes no clicks (only its own Undo/close do), and opening the menu drops the previous receipt. The rewrite already kept its delete receipt clear of the panel, and now also lets taps through the toast's band on phones
 
 
 Version 0.28.0 -- Improve admin interface, fixes

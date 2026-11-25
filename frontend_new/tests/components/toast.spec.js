@@ -31,6 +31,29 @@ async function showAdded(page, withUndo = true) {
   }, withUndo);
 }
 
+/**
+ * What a tap in the middle of the message reaches.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @returns {Promise<{ tag: string, id: string, className: string, insideToast: boolean } | null>}
+ */
+async function hitTestMessageArea(page) {
+  return page.evaluate(() => {
+    const text = document.querySelector('.t-toast__text').getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      text.left + text.width / 2,
+      text.top + text.height / 2
+    );
+    if (!hit) return null;
+    return {
+      tag: hit.tagName,
+      id: hit.id,
+      className: String(hit.className),
+      insideToast: Boolean(hit.closest('#toast-region')),
+    };
+  });
+}
+
 const region = (page) => page.locator('#toast-region');
 const toast = (page) => page.locator('.t-toast');
 
@@ -124,6 +147,18 @@ test.describe('desktop: stays out of the panel’s way', () => {
     expect(toastBox.y).toBeGreaterThan(viewport.height / 2);
   });
 
+  test('a tap on the receipt reaches what is under it', async ({ page }) => {
+    await open(page);
+    await showAdded(page);
+
+    // Same rule as on a phone: the receipt is a glance, never a surface. The
+    // box takes no clicks at any width - only Undo and the close × do - so what
+    // is under it stays reachable.
+    const hit = await hitTestMessageArea(page);
+    expect(hit).not.toBeNull();
+    expect(hit.insideToast).toBe(false);
+  });
+
   test('the next save is clickable while the toast is up', async ({ page }) => {
     await open(page);
     await showAdded(page);
@@ -159,5 +194,34 @@ test.describe('phone: full-width band above the add button', () => {
 
     // --fab (56) + its bottom inset (16) + 12: the toast floats above the FAB.
     expect(Math.round(667 - (box.y + box.height))).toBe(84);
+  });
+
+  test('a tap on the receipt reaches what is under it, not the receipt', async ({
+    page,
+  }) => {
+    await open(page);
+    await showAdded(page);
+
+    // The band sits where the participant taps next: an entry of the timeline, or
+    // the add button's neighbourhood. The message area must let the click through
+    // - while it did not, a tap aimed at a day or an entry hit the toast, and the
+    // only part of it that takes clicks is Undo, so deleting several entries in a
+    // row could re-add the one just deleted.
+    const hit = await hitTestMessageArea(page);
+    expect(hit).not.toBeNull();
+    expect(hit.id).toBe('under-toast');
+
+    // The toast's own controls keep their clicks.
+    const undo = page.locator('.t-toast__action');
+    const box = await undo.boundingBox();
+    expect(box).not.toBeNull();
+    const undoHit = await page.evaluate(
+      ([x, y]) => {
+        const hit = document.elementFromPoint(x, y);
+        return hit ? hit.className : null;
+      },
+      [box.x + box.width / 2, box.y + box.height / 2]
+    );
+    expect(undoHit).toContain('t-toast__action');
   });
 });

@@ -42,6 +42,17 @@
       </div>
     </div>
 
+    <!-- Something tappable under the receipt. On a phone the toast is a
+         full-width band above the add button, and the timeline behind it is
+         still what the participant is aiming at. -->
+    <button
+      id="under-toast"
+      type="button"
+      style="position: fixed; inset-inline: 16px; bottom: 84px; height: 56px; z-index: 1"
+    >
+      unter dem Toast
+    </button>
+
     <!-- Same markup as index.html: the live region exists before the message. -->
     <div class="t-toast-region" id="toast-region" role="status" aria-live="polite"></div>
 

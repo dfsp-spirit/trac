@@ -1395,6 +1395,12 @@ function initActivityContextMenu() {
     const menu = ensureMenu();
     targetBlock = activityBlock;
 
+    // The receipt from the previous delete belongs to that delete. Keeping it
+    // would float it over this menu (clamped into the viewport, so near the
+    // bottom it lands on the same spot), and deleting several entries in a row
+    // is exactly when it would be in the way.
+    if (typeof window.hideToast === 'function') window.hideToast();
+
     menu.style.display = 'block';
 
     const menuRect = menu.getBoundingClientRect();

@@ -3314,12 +3314,15 @@ body.carrying-activity .modal-close {
 .toast.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
-  pointer-events: auto;
 }
 
 /* Optional action inside a toast (currently only "Undo" after a delete). The
-   toast re-enables pointer events while shown, but the button keeps them for
-   itself so it stays tappable during the fade-out. */
+   toast itself keeps `pointer-events: none` while shown, so a click goes to
+   whatever is under it and only this button takes the pointer - the same rule
+   the rewrite applies. Without it, a receipt from the delete a moment ago sat
+   exactly over the next activity's long-press menu and a tap meant for "Delete"
+   pressed its "Undo" button instead, re-adding the entry that had just been
+   removed. */
 .toast-action {
   pointer-events: auto;
   margin-left: 12px;
@@ -3431,7 +3434,12 @@ body.carrying-activity .modal-close {
   border: 1px solid var(--border-color);
   border-radius: 6px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
-  z-index: 3000;
+  /* Above `.toast` (10000): the menu is the active interaction and is clamped
+     into the viewport, so near the bottom it lands exactly where the receipt
+     from the previous action floats. It used to be painted under it, which hid
+     its last item ("Delete", the one a participant deleting several entries
+     aims at). */
+  z-index: 10001;
   padding: 4px;
 }
 
