@@ -46,7 +46,10 @@ function el(tag, className, text) {
  *   onFinished?: (intent?: 'close' | 'another' | 'deleted') => void,
  *   getCurrentDay: () => number,
  *   getAnchorMinutes: (dayIndex: number) => number,
- *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
+ *   toast: {
+ *     show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void,
+ *     hide: () => void,
+ *   },
  *   signals?: {
  *     track: (name: string, props?: Record<string, any>) => void,
  *     trackSearch: (query: string, hits: number) => void,

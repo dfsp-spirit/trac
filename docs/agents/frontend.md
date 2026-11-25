@@ -319,9 +319,9 @@
   on purpose: a text label ("Schließen" / "Dismiss") took width from the message
   and wrapped it onto a third line. `ui/toast.js` always appends it; an
   action-less toast (an error line) is dismissible too.
-- `ui/activityPanel.js` hides the toast when the *next* entry's form opens: the
-  receipt belongs to the entry just saved, and on desktop it would otherwise still
-  be on screen while the next save is configured.
+- `ui/activityPanelForm.js` hides the toast when the *next* entry's form opens
+  (`show()`): the receipt belongs to the entry just saved, and on desktop it would
+  otherwise still be on screen while the next save is configured.
 - `activity-lifecycle.spec.js` ("the save toast does not swallow the next save")
   clicks the next save with a 3 s timeout, so a regression cannot hide behind
   the toast timing out.

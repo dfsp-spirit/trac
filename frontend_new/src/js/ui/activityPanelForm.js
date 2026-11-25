@@ -40,7 +40,10 @@ function el(tag, className, text) {
  *   onCreate: (body: { items: any[] }) => Promise<any>,
  *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
  *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
- *   toast: { show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void },
+ *   toast: {
+ *     show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void,
+ *     hide: () => void,
+ *   },
  *   onDone: (intent?: 'close' | 'another' | 'deleted') => void,
  *   onRefused?: (refusal: { stage: 'activity_save' | 'multi_day', codes: string[] }) => void,
  *   getCurrentDay: () => number,
@@ -208,6 +211,10 @@ export function createFormController(deps) {
      * @param {string | null} [text] Already-typed text, from a custom shortcut.
      */
     show(entry, activity = null, child = null, text = null) {
+      // The toast is the receipt for the entry just saved. Once the next entry
+      // starts it has done its job - and on desktop it would otherwise still be
+      // on screen while the next save is configured.
+      toast.hide();
       editing = activity;
       timelineKey = activity?.timeline_key || entry.timelineKey || null;
       foot.hidden = false;
