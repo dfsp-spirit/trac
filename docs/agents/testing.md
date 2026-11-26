@@ -9,7 +9,9 @@
 - Frontend E2E tests (`frontend/tests/e2e/`) validate complete participant flows against nginx,
   the API and a seeded database.
 - Admin E2E tests (`frontend/tests/e2e/admin/`) validate the backend's Jinja admin portal. They run
-  as the `admin-chromium` Playwright project, once per CI run.
+  as the `admin-chromium` Playwright project, once per CI run. `admin_runtime_settings.spec.js`
+  covers the locked runtime-settings form, the consent-text activation gate and the time-grid
+  confirmation.
 
 ## Guard Specs (cheap, non-flow checks)
 - `deployment.spec.js` proves the app is served, reaches the API, routes to the stage the server
