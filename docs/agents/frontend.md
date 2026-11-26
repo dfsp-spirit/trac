@@ -494,7 +494,7 @@
   `validateActivity` receives `timesUnchanged` so the grid and minimum checks are
   skipped for an unchanged range (e.g. a 10-minute entry after a study moved to
   a 15-minute grid). Without that, raising a setting would lock old data.
-- The error texts are step-aware (`diary.error.notOnStepGrid`, `{{step}}`) and
+- The error texts are step-aware (`diary.error.notOnStepGrid`, {% raw %}`{{step}}`{% endraw %}) and
   the nudge shortcut moves one study step (`diary.shortcuts.nudgeStep`); the old
   client keeps its own fixed-10 keys.
 
