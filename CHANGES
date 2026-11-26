@@ -1,6 +1,11 @@
 TRAC MPIAE Changes
 ===================
 
+
+Current WIP
+------------
+
+
 v0.29.0 -- Last version containing the old frontend, many improvements
 ------------------------------------------------------------------------
 - NEW: per-activity `custom_input_question` for activities with `is_custom_input: true`: the free-text form asks the activity's own question ("What is your job?" for "Paid work") instead of the generic localized label. The question lives in the per-language activities file, so no i18n map is needed; an omitted question keeps the existing default, and the parser rejects a question on a row that collects no text. The pilot study's `pilot_mpiae_01_open` uses it for paid work in all three languages
