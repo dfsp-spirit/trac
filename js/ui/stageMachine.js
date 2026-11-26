@@ -1,0 +1,273 @@
+// @ts-check
+/**
+ * The stage machine (D37): one place that turns "the server says the participant
+ * is in stage X" into "this view is on screen and the URL says so".
+ *
+ * It owns the shell's visibility - the diary chrome (day navigation, progress,
+ * submit, the add button, the three columns) belongs to the diary stage only - so
+ * a consent page is not framed by controls that cannot do anything.
+ *
+ * It does not own the diary: when the stage is `diary` it calls back and lets the
+ * diary mount itself once, because the diary has its own data, render loop and
+ * save state.
+ */
+import { ROUTE_DIARY, ROUTE_TASKS, routeForStage } from '../domain/router.js';
+import { button } from './dom.js';
+import { renderPage } from './page.js';
+import { renderConsent } from './views/consent.js';
+import { renderInstructions } from './views/instructions.js';
+import { renderThanks } from './views/thanks.js';
+import { renderTasks } from './views/tasks.js';
+import { renderUnavailable } from './views/unavailable.js';
+import { renderStudyList } from './views/studyList.js';
+
+/**
+ * @param {{
+ *   router: ReturnType<typeof import('./router.js').createRouter>,
+ *   host: HTMLElement,
+ *   diaryChrome: HTMLElement[],
+ *   t: (key: string, params?: Record<string, string | number>) => string,
+ *   api: {
+ *     getStudyConfig: (language: string) => Promise<any>,
+ *     giveConsent: (given: boolean) => Promise<{ stage: string }>,
+ *     completeInstructions: () => Promise<{ stage: string }>,
+ *   } | null,
+ *   getLanguage: () => string,
+ *   onEnterDiary: () => void,
+ *   onSession?: (session: any) => void,
+ * }} deps
+ */
+export function createStageMachine({
+  router,
+  host,
+  diaryChrome,
+  t,
+  api,
+  getLanguage,
+  onEnterDiary,
+  onSession,
+}) {
+  /** @type {any} */
+  let session = null;
+  /** @type {string | null} */
+  let shownRoute = null;
+  let diaryMounted = false;
+  let locked = false;
+  let lastRefreshAt = 0;
+
+  /**
+   * Move focus to the new page's heading. Replacing the content drops the
+   * previously focused control, so without this a keyboard or screen-reader user
+   * lands on <body> and hears nothing about the page they just entered.
+   */
+  function focusPage() {
+    const title = host.querySelector('.t-page__title');
+    if (title instanceof HTMLElement) {
+      title.tabIndex = -1;
+      title.focus();
+    }
+  }
+
+  function requireApi() {
+    if (!api) throw new Error('no participant');
+    return api;
+  }
+
+  /** @param {HTMLElement} node @param {boolean} show */
+  function showChrome(node, show) {
+    if (show) node.removeAttribute('hidden');
+    else node.hidden = true;
+  }
+
+  /** The diary's own visibility rule: its chrome is hidden by the stage, and by
+   *  a submitted diary. */
+  function applyChrome() {
+    const diary = shownRoute === ROUTE_DIARY;
+    for (const node of diaryChrome) showChrome(node, diary && !locked);
+  }
+
+  /** @param {string} stage */
+  function applyStage(stage) {
+    if (session) session.stage = stage;
+    const route = router.settle(stage);
+    render(route);
+  }
+
+  /**
+   * Ask the server for the participant's state again and render it.
+   *
+   * Used after a mutation: the stage alone is not enough to render the next page
+   * (`done_reason` decides whether the thank-you text is "completed" or "you
+   * declined"), and re-asking keeps one source of truth instead of patching the
+   * cached payload from several responses.
+   */
+  async function refresh() {
+    lastRefreshAt = Date.now();
+    session = await requireApi().getStudyConfig(getLanguage());
+    onSession?.(session);
+    applyStage(session.stage);
+  }
+
+  /** @param {string} route */
+  function render(route) {
+    shownRoute = route;
+    const diary = route === ROUTE_DIARY;
+    applyChrome();
+    host.hidden = diary;
+    if (diary) {
+      if (!diaryMounted) {
+        diaryMounted = true;
+        onEnterDiary();
+      }
+      return;
+    }
+    if (!session) return;
+    if (route === 'consent') {
+      renderConsent(host, {
+        session,
+        t,
+        onDecide: async (given) => {
+          await requireApi().giveConsent(given);
+          await refresh();
+        },
+      });
+    } else if (route === 'instructions') {
+      renderInstructions(host, {
+        session,
+        t,
+        onComplete: async () => {
+          await requireApi().completeInstructions();
+          await refresh();
+        },
+      });
+    } else if (route === 'tasks') {
+      renderTasks(host, {
+        session,
+        t,
+        onRefresh: refresh,
+      });
+    } else if (route === 'thanks') {
+      renderThanks(host, { session, t, returnUrl: router.returnUrl() });
+    } else {
+      renderUnavailable(host, { session, t });
+    }
+    focusPage();
+  }
+
+  let incompatibleShown = false;
+
+  // Coming back from an external task means coming back to this tab: the
+  // provider confirmed on its side and what this page shows is stale. Only the
+  // tasks stage re-asks, and at most once a second - `focus` also fires for
+  // reasons that have nothing to do with a provider (a dialog closing, the
+  // window regaining focus) and must not become a request storm. Before the
+  // first render `shownRoute` is null, so the browser's own start-up focus
+  // cannot race the initial load.
+  function refreshOnReturn() {
+    if (shownRoute !== ROUTE_TASKS) return;
+    if (Date.now() - lastRefreshAt < 1000) return;
+    void refresh();
+  }
+  const onVisibility = () => {
+    if (!document.hidden) refreshOnReturn();
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('focus', refreshOnReturn);
+
+  /**
+   * Show a plain message instead of any stage: no participant in the URL, a
+   * stage that could not be loaded, a page that cannot exist.
+   *
+   * @param {string} message
+   * @param {{ title?: string, retry?: boolean }} [options] `retry: false` for
+   *   the cases where reloading cannot help (a missing invitation link).
+   */
+  function failPage(message, { title = t('diary.stage.failedTitle'), retry = true } = {}) {
+    for (const node of diaryChrome) node.hidden = true;
+    shownRoute = null;
+    host.hidden = false;
+    renderPage(host, {
+      title,
+      lead: message,
+      actions: retry
+        ? [button('secondary', t('diary.stage.retry'), () => window.location.reload())]
+        : [],
+    });
+    focusPage();
+  }
+
+  return {
+    /** @param {any} loaded The study-config payload, which carries `stage`. */
+    show(loaded) {
+      session = loaded;
+      onSession?.(session);
+      const requested = router.requested();
+      // A deep link is honoured only when it names the stage the server reports,
+      // so a hand-typed URL can never reveal a page that is not the participant's.
+      const route = requested && requested === routeForStage(loaded.stage) ? requested : null;
+      if (route) {
+        router.go(route);
+        render(route);
+        return;
+      }
+      applyStage(loaded.stage);
+    },
+
+    /** @param {any} updated */
+    update(updated) {
+      session = updated;
+      onSession?.(session);
+      applyStage(updated.stage);
+    },
+
+    /** @param {string} stage Move to another stage without asking the server. */
+    applyStage,
+
+    fail: failPage,
+
+    /**
+     * The entry page: the URL names no study, so there is no participant and no
+     * stage - only the studies a visitor may join without an invitation.
+     *
+     * @param {Array<{ name_short: string, name?: string | null, description?: string | null }>} studies
+     */
+    entry(studies) {
+      for (const node of diaryChrome) node.hidden = true;
+      shownRoute = null;
+      host.hidden = false;
+      renderStudyList(host, { studies, language: getLanguage(), t });
+      focusPage();
+    },
+
+    /**
+     * A study this app must not show (`multiTimelinePolicy: 'error'`, D1).
+     *
+     * Shown once: the store keeps the error, so every later render would ask
+     * again and re-render the same page.
+     */
+    incompatible() {
+      if (incompatibleShown) return;
+      incompatibleShown = true;
+      failPage(t('diary.stage.incompatibleText'), {
+        title: t('diary.stage.incompatibleTitle'),
+        retry: false,
+      });
+    },
+
+    /** @param {boolean} isLocked Whether the diary has been submitted. */
+    setLocked(isLocked) {
+      locked = isLocked;
+      applyChrome();
+    },
+
+    /** Ask the server again; used when the URL changes from outside the app. */
+    refresh,
+
+    currentRoute: () => shownRoute,
+
+    destroy() {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', refreshOnReturn);
+    },
+  };
+}

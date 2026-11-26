@@ -1,0 +1,82 @@
+// @ts-check
+/**
+ * Machine code -> translation key. The backend and the domain both report stable
+ * codes, never prose, so there is exactly one place that knows which message a
+ * participant sees.
+ */
+import { dayLabelList } from '../domain/diary.js';
+
+/** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
+
+/** @type {Record<string, string>} */
+export const codes = {
+  'time.end_not_after_start': 'diary.error.endBeforeStart',
+  'time.too_long': 'diary.error.tooLong',
+  'time.not_on_step': 'diary.error.notOnStepGrid',
+  'time.too_short': 'diary.error.tooShort',
+  'time.start_out_of_range': 'diary.error.startOutOfRange',
+  'overlap.limit_reached': 'diary.error.overlap',
+  'activity.duplicate': 'diary.error.duplicate',
+  'day.ends_at_midnight': 'diary.error.lastMidnight',
+  'day.out_of_range': 'diary.error.dayRange',
+  'day.copy_source_empty': 'diary.error.copySourceEmpty',
+  'form.chooseOption': 'diary.error.needsOption',
+  'form.needsText': 'diary.error.needsText',
+  'study_already_submitted': 'diary.error.submitted',
+  study_unavailable: 'diary.error.unavailable',
+};
+
+/**
+ * @param {string | null | undefined} code
+ * @returns {string} Translation key prefix; callers append `.title` / `.text`.
+ */
+export function keyFor(code) {
+  return (code && codes[code]) || 'diary.error.generic';
+}
+
+/**
+ * Turn a machine code into the two strings a notice shows.
+ *
+ * @param {(key: string, params?: Record<string, string | number>) => string} t
+ * @param {string | null | undefined} code
+ * @param {Record<string, unknown>} [meta]
+ * @returns {{ title: string, text: string }}
+ */
+export function describeError(t, code, meta = {}) {
+  const key = keyFor(code);
+  return {
+    title: t(`${key}.title`),
+    text: t(`${key}.text`, /** @type {Record<string, string | number>} */ (meta)),
+  };
+}
+
+/**
+ * "Not added: Di, Sa (this time is full)" for the days a multi-day save dropped.
+ *
+ * Grouped by reason so one line can carry both "already there" and "full" and
+ * still name every day; the toast used to print a single anonymous reason, which
+ * left the participant diffing the timeline to find out which days to redo.
+ *
+ * @param {Translator} t
+ * @param {Array<{ day_label_index?: number, code?: string }>} skipped
+ * @param {Array<{ index: number, name: string, displayName?: string | null, displayNames?: Record<string, string>, display_name?: string | null, display_names?: Record<string, string> }>} days
+ * @param {string} language
+ * @param {string} [prefixKey] The sentence the details belong to. A copy refuses
+ *   targets for the same reasons an add does, but "Not copied" is not "Not
+ *   added", so the caller may name the action.
+ * @returns {string}
+ */
+export function describeSkipped(t, skipped, days, language, prefixKey = 'diary.toast.skipped') {
+  /** @type {Map<string, number[]>} */
+  const byReason = new Map();
+  for (const item of skipped) {
+    const { title } = describeError(t, item.code, item);
+    byReason.set(title, [...(byReason.get(title) || []), Number(item.day_label_index)]);
+  }
+  const details = [...byReason]
+    .map(([reason, indexes]) =>
+      t('diary.toast.skippedItem', { days: dayLabelList(indexes, days, language), reason })
+    )
+    .join(', ');
+  return t(prefixKey, { details });
+}
