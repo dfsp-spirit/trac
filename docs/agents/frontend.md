@@ -3,7 +3,7 @@
 ## Tech Stack & Architecture
 - Pure JavaScript frontend. No React, Vite, Webpack, or runtime bundling toolchain in delivery.
 - Static HTML/CSS/JS served by the deployment stack.
-- Timeline UI supports one or more timelines with 10-minute blocks over 24h.
+- Timeline UI supports one timeline over 24h; the time grid is per study (`time_step_minutes`, default 10) instead of a fixed 10-minute step.
 
 ## Configuration & Integration
 - Primary frontend settings file: `frontend/src/settings/tud_settings.js`.
@@ -65,8 +65,12 @@
   which day the end belongs to: a clock that is not after the start is the next
   day. Equality is a deliberate 24-hour entry (a whole day), which the duration
   line shows as such.
-- `step` is the 10-minute grid; a typed value that lands between steps is snapped
-  on commit (`snapMinutes`), and `validateActivity` would refuse it otherwise.
+- `step` is the study's grid (`domain/timing.js`, from `diary.study`): a typed
+  value that lands between steps is snapped on commit (`snapMinutes`), and
+  `validateActivity` would refuse it otherwise. The minimum length is a second
+  setting (`min_duration_minutes`), so a 5-minute grid can still keep 10-minute
+  blocks. Both are only configuration: the backend stores whatever minutes it is
+  sent, and the client is what enforces them.
 - 24-hour display is our own text (timeline, duration, review). The picker itself
   follows the **browser UI language**, so a device whose browser runs in English
   renders AM/PM; there is no attribute that forces 24h on a native time field.
@@ -77,6 +81,24 @@
   `nowrap`, so a cross-midnight entry wraps *between* them and never inside
   "2 Std. 30 Min.". `endInput`'s `aria-describedby` points at that line. The last
   day keeps its hint that activities end by midnight.
+
+## Catalogue categories (`ui/activityList.js`)
+- The catalogue is a flat list of activity rows grouped by the study's own
+  category names, with no accordions (D29/D30): every activity stays one scroll
+  away.
+- **The category header is a section bar, not a caption.** Ink text (not
+  `--ink-muted`), weight 700 at the unchanged 0.875rem, a 3px bar on the start
+  edge (`inset` shadow) and a rule under the line; sticky at the top of the
+  panel body, so the current category stays visible while its rows scroll. The
+  bar/rule/contrast is what makes the groups readable next to 30+ rows that each
+  carry a strong colour swatch - do not reintroduce size as the hierarchy.
+- The row count sits on the right while browsing and is `aria-hidden` (the list
+  itself carries that fact for assistive tech). It is **omitted while
+  searching**: a hit count would read as the size of the category.
+- Vertical budget: the header keeps the line box the old caption had (one line,
+  two for the longest German names at 380px) plus one 8px gap between groups;
+  `tests/components/activitylist.spec.js` pins the height, the sticky offset
+  and the count rules.
 
 ## Custom input (free text) in the activity form
 - `is_custom_input` is a property of a catalogue **row**, and a sub-activity is a
@@ -99,9 +121,19 @@
 - How many shortcuts the row shows is the study's `num_recent_activities_shown`
   (default 5), delivered in the diary payload under `study`; `0` hides the
   section entirely. The client never hard-codes the number.
+- `custom_input_question` (optional, per row) replaces the field's label:
+  "Paid work" asks "What is your job?", a gaming child asks "Which game?".
+  `flattenCatalogue()` carries it as `children[].customInputQuestion` /
+  `customInputQuestion`, and `createCustomField()` sets the label from the
+  *currently selected* row in `sync()`, falling back to `diary.form.what` when
+  the row names none. It is a label, not a placeholder: the prompt stays visible
+  while typing and is the input's accessible name. The backend rejects the field
+  on a row without `is_custom_input`, so the config cannot promise text the form
+  never asks for.
 - `activityform.spec.js` mounts the form with a custom sub-activity and pins
-  visibility, the composed name, the refusal without text, the search prefill and
-  the edit round-trip.
+  visibility, the composed name, the refusal without text, the search prefill,
+  the edit round-trip, and that the label follows the chosen row (own question,
+  fallback, hidden for a plain row).
 
 ## Surroundings block in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
@@ -173,8 +205,9 @@
   is around the range.
 - **Percentages, not cells.** Measured on the real surfaces: 288 px for a whole
   day on the narrowest phone (320 px viewport, full-screen dialog), 347 px in the
-  desktop panel column, 361 px on a 393 px phone. A 10-minute step is therefore
-  **2 px**. A segment is positioned as `start / 1440 * 100%`, so a boundary stays
+  desktop panel column, 361 px on a 393 px phone. The shortest entry (the
+  study's `min_duration_minutes`, 10 by default) is therefore **2 px** - the
+  *step* may be 5, but it cannot produce anything shorter than the minimum. A segment is positioned as `start / 1440 * 100%`, so a boundary stays
   exact at any width and the component costs one node per activity instead of 144
   cells. Never add a gap between slots: at 2 px a 1 px gutter would be half a
   slot.
@@ -182,8 +215,9 @@
   timeline does, so a day with two overlapping entries grows a second row and the
   two views cannot disagree about what overlaps. `maxRows` exists only for a
   caller that cannot afford growth; the form passes nothing (dynamic).
-- **The pending range is a row, not an outline.** A 10-minute range is 2 px wide,
-  so a 1.5 px outline around it would be wider than the range. Its own 4 px row in
+- **The pending range is a row, not an outline.** A minimum-length range is
+  2 px wide (and `min-width: 2px` keeps it visible at a 5-minute step), so a
+  1.5 px outline around it would be wider than the range. Its own 4 px row in
   `--ink` is unambiguous at any length and cannot claim an activity colour. The bar
   breathes between `--ink` and `--surface-300` (2 s, `ease-in-out`, alternate) so
   "this one is yours" needs no reading. The range is the full grey ramp on
@@ -444,4 +478,23 @@
   load through the language switch (`onLanguageChanged`), so the server resolves
   the text in the language that is actually on screen. `main.js` is at its size
   cap - that is why the load sequence lives in `startup.js`.
+
+## The study's time grid
+- `study.time_step_minutes` (allowed: 5, 10, 15, 20, 30, 60 - multiples of five
+  that divide 1440, so midnight stays on the grid) is how precisely a time can be
+  typed. 5 is what makes the quarter hours a native picker offers survive; 10 is
+  the historical grid.
+- `study.min_duration_minutes` (multiple of the step) is the shortest entry. It
+  is what keeps a block large enough to see and tap when the step is fine. With
+  step 5 / minimum 10 the smallest block is today's 10-minute block.
+- One module resolves both: `domain/timing.js#timingFor(diary)`. Nothing else
+  may import `STEP_MINUTES` for a decision - it is only the fallback default.
+- **A stored row is never invalidated by a settings change**: `timeRange` keeps
+  an edit's times exactly as stored until the participant changes one, and
+  `validateActivity` receives `timesUnchanged` so the grid and minimum checks are
+  skipped for an unchanged range (e.g. a 10-minute entry after a study moved to
+  a 15-minute grid). Without that, raising a setting would lock old data.
+- The error texts are step-aware (`diary.error.notOnStepGrid`, {% raw %}`{{step}}`{% endraw %}) and
+  the nudge shortcut moves one study step (`diary.shortcuts.nudgeStep`); the old
+  client keeps its own fixed-10 keys.
 

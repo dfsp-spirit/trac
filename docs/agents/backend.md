@@ -245,3 +245,19 @@ the overview for super admins; both are plain `<textarea data-message-language>`
 markup driven by `static/admin_messages.js`. Texts are rendered as plain text
 (`white-space: pre-line`), never as HTML.
 
+## The study's time grid (`time_step_minutes`, `min_duration_minutes`)
+- Both live on `Study` (migration `0023_add_time_grid`), are part of
+  `studies_config.json`, the admin import payload and the runtime-config export,
+  and travel in the daily diary payload (`diary.study.*`) next to
+  `day_start_minutes`.
+- The rules are in `timing.py`: the step is one of 5/10/15/20/30/60 (multiples
+  of five that divide 1440, so a midnight end stays on the grid) and the minimum
+  must be a multiple of the step. The config parser and the admin import model
+  both call `validate_timing_settings`, so the two entry points cannot accept
+  different grids.
+- **The backend does not validate data against them.** It stores the integer
+  minutes a client sends (it always has; there is no server-side rounding or
+  step check). The participant client enforces the grid and the minimum, and the
+  only reason it can do that safely is the client-side exemption for unchanged
+  times (see `docs/agents/frontend.md`).
+

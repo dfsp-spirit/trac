@@ -292,6 +292,7 @@
       "search": "Sök i aktivitetslistan",
       "escape": "Tillbaka, eller rensa sökningen",
       "nudge": "Flytta den valda aktiviteten 10 minuter",
+      "nudgeStep": "Flytta den valda aktiviteten ett tidssteg",
       "nudgeEnd": "Ändra slutet på den valda aktiviteten",
       "confirm": "Spara aktiviteten",
       "delete": "Ta bort den valda aktiviteten",
@@ -455,6 +456,14 @@
       "notOnStep": {
         "title": "Kontrollera tiderna",
         "text": "Tiderna går i 10-minuterssteg."
+      },
+      "notOnStepGrid": {
+        "title": "Kontrollera tiderna",
+        "text": "Tiderna går i {{step}}-minuterssteg."
+      },
+      "tooShort": {
+        "title": "För kort",
+        "text": "En aktivitet måste vara minst {{minutes}} minuter."
       },
       "startOutOfRange": {
         "title": "Kontrollera tiderna",
