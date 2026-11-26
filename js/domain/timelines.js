@@ -3,13 +3,13 @@
  * What the app does with a study that still defines more than one timeline.
  *
  * One timeline per study is the model (D1): the primary/secondary split is gone
- * from the participant UI, and the backend files every write on the timeline the
- * diary resolved to. Studies that still carry a second timeline ("things done in
- * parallel") are in transition, so the deployment names the policy in
- * `config.js` until they are converted:
+ * from the participant UI, every shipped study is single-timeline, and the
+ * backend files every write on the timeline the diary resolved to. An imported
+ * legacy config may still carry a second timeline, so the deployment names the
+ * policy in `config.js`:
  *
- *  * `ignore` - offer and read only the resolved timeline. The default, because
- *    it is what the app will do once multi-timeline support is dropped.
+ *  * `ignore` - offer and read only the resolved timeline. The default, and what
+ *    every shipped study needs.
  *  * `merge`  - one picker for every timeline, with the timeline-independent
  *    settings taken from the first timeline (not the last, which used to win and
  *    silently reset `min_coverage` to the secondary's 0).
