@@ -1,9 +1,8 @@
 TRAC MPIAE Changes
 ===================
 
-Current WIP
-------------
-
+v0.29.0 -- Last version containing the old frontend, many improvements
+------------------------------------------------------------------------
 - NEW: per-activity `custom_input_question` for activities with `is_custom_input: true`: the free-text form asks the activity's own question ("What is your job?" for "Paid work") instead of the generic localized label. The question lives in the per-language activities file, so no i18n map is needed; an omitted question keeps the existing default, and the parser rejects a question on a row that collects no text. The pilot study's `pilot_mpiae_01_open` uses it for paid work in all three languages
 - NEW: the participant rewrite's catalogue reads as sections: category headings are ink-coloured section bars (weight 700 at the unchanged 14px, accent bar on the start edge, rule under the line) with the category's row count on the right, instead of muted captions between coloured rows. The header keeps the caption's line box; the only added height is an 8px gap between categories, and the count is hidden while searching
 - NEW: per-study time grid: `time_step_minutes` (5, 10, 15, 20, 30 or 60) sets how precisely a time can be typed, so a native time picker's `06:15` is no longer snapped to `06:10`, and `min_duration_minutes` (a multiple of the step) keeps entries large enough to see and tap. Defaults are the historical 10/10, and a stored entry keeps its times until the participant changes them, so raising either setting never locks existing data. Rewrite only; the backend stores the minutes it is sent, as before
