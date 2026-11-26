@@ -206,7 +206,7 @@ Notes on the fields:
   later, which in general should be avoided). Colours and other presentation metadata are not on the row - they live in the study's activity definitions (section 6).
 * `frequency` is the frequency answer for activities that ask for one
   (empty string when not applicable). E.g., "monthly".
-* `timeline_name` is the track (`primary`, `secondary`, ...) and
+* `timeline_name` is the timeline key (`primary` for current studies) and
   `timeline_mode` is always `single-choice` and can be ignored.
 
 ### Paging (when you want *everything*, not a specific participant)
@@ -286,8 +286,7 @@ Shortened real response from our dev installation:
         // ... 5 more days
       ],
       "timelines": [
-        { "name": "primary",   "display_name": "Huvudaktivitet",     "mode": "single-choice", "min_coverage": 10 },
-        { "name": "secondary", "display_name": "Sekundär Aktivitet", "mode": "single-choice", "min_coverage": null }
+        { "name": "primary", "display_name": "Huvudaktivitet", "mode": "single-choice", "min_coverage": 10 }
       ],
       "activity_configs": [
         { "language": "de", "content_hash": "28d7fd3a...", "activities_json_data": { "general": {...}, "timeline": {...} } },

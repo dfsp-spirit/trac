@@ -187,7 +187,7 @@ export const config = {
   supportedLanguages: ['de', 'en', 'sv'],
   defaultLanguage: 'de',
 
-  // Temporary, for studies whose activities config still defines a second
+  // Safety net for an imported legacy config that still defines a second
   // timeline: 'ignore' | 'merge' | 'error'.
   multiTimelinePolicy: 'ignore',
 

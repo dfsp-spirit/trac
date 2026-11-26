@@ -1033,8 +1033,7 @@ daily timelines.  The top-level structure is:
 {
   "general": { ... },
   "timeline": {
-    "primary": { ... },
-    "secondary": { ... }
+    "primary": { ... }
   }
 }
 ```
@@ -1053,13 +1052,13 @@ The `general` section provides metadata about the activities definition:
 | `instructions` | boolean | Whether the frontend should show activity instructions. |
 | `fallbackToCSV` | boolean | Whether the frontend should fall back to CSV export. |
 
-#### Timelines
+#### Timeline
 
-The `timeline` object contains one or more named timelines.  The typical setup
-has `"primary"` (the main activity) and optionally `"secondary"` (a secondary
-activity done simultaneously, e.g., listening to music while commuting).
+The `timeline` object contains the study's timeline. Define it as `"primary"`.
+The participant app shows one timeline per study; a legacy config that still
+carries a second timeline is served with only the resolved one.
 
-Each timeline has:
+The timeline has:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
@@ -1199,8 +1198,8 @@ the parent — is the row whose text is stored.
 ### Full Example Activities File
 
 Below is a minimal but technically valid activities file that demonstrates all
-four activity types, with one primary timeline and one optional secondary
-timeline.  You can use this as a starting template for your own study.
+four activity types on a single `primary` timeline. You can use this as a
+starting template for your own study.
 
 ```json
 {
@@ -1321,33 +1320,6 @@ timeline.  You can use this as a starting template for your own study.
               "code": 998,
               "label": "unspecified",
               "color": "#C0C0C0",
-              "childItems": []
-            }
-          ]
-        }
-      ]
-    },
-    "secondary": {
-      "name": "Secondary Activity",
-      "description": "Were you doing anything else at the same time?",
-      "mode": "single-choice",
-      "min_coverage": 0,
-      "categories": [
-        {
-          "name": "Media & Entertainment",
-          "activities": [
-            {
-              "name": "Listening to Audio",
-              "code": 400,
-              "label": "listening to audio",
-              "color": "#FFE4B5",
-              "childItems": []
-            },
-            {
-              "name": "Social Media",
-              "code": 401,
-              "label": "social media",
-              "color": "#FFD700",
               "childItems": []
             }
           ]

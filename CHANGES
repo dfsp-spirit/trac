@@ -8,6 +8,8 @@ Current WIP
 - CHG: drop the API endpoints only the old frontend used - the whole-day writer and reader (`day_labels/{day}/activities`, `activities?day_label_index`), whole-day copy (`day_labels/{target}/copy-from/{source}`), participant submit (`participants/{pid}/submit`), cross-user templates (`/api/template-activities`) and the legacy open-study list (`/api/active_open_study_names`). The incremental diary API is the only writer
 - CHG: one frontend URL on the backend: `TUD_FRONTEND_NEW_URL` and the dual "classic"/"new UI" join and external-task return links are gone; all admin links and callback templates point at `TUD_FRONTEND_URL` with `study`/`pid`
 - CHG: locale files and the tutorial/reminder pages now live only in `frontend/src`; the `sync:locales` step is gone. The `template_user` and `custom_page_title` invitation parameters are no longer supported
+- CHG: every shipped study is single-timeline. The `secondary` timeline and its `2xxx` codes are removed from all activities files, the dedicated `newui_14_two_timelines` fixture and its E2E spec are gone, and the study-creation docs describe one `primary` timeline. `multiTimelinePolicy` remains only as a safety net for imported legacy configs
+- DEV: delete the outdated implementation plans (`frontend/plan/`, `dev_tools/copy_days_plan/`, `dev_tools/plans/`, `dev_tools/todo_mobile.md`); they described the retired app and the pre-cutover state
 
 
 v0.29.0 -- Last version containing the old frontend, many improvements
@@ -264,7 +266,7 @@ Version 0.24.0 -- Mobile improvements, backup endpoints, many fixes
   adjust a duration, but nothing on the block said so, and participants asked for
   a visible marker in the style of an Excel fill handle. The grips are decoration
   (`pointer-events: none`), so the resize zones and cursors are unchanged; they
-  are not shown on the phone layout (deferred, see `dev_tools/todo_mobile.md`).
+  are not shown on the phone layout (deferred).
 - FIX: on a phone a swipe that starts on an activity block scrolls the day again.
   `touch-action: none` on `.activity-block` turned the block surface - about 75 %
   of the timeline width - into a scroll dead zone, reported as "the scrolling

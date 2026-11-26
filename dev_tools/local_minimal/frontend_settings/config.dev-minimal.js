@@ -10,6 +10,8 @@ export const config = {
   supportedLanguages: ['de', 'en', 'sv'],
   defaultLanguage: 'de',
 
+  // Safety net for an imported legacy config that still defines a second
+  // timeline: 'ignore' shows only the resolved timeline.
   multiTimelinePolicy: 'ignore',
 
   studyName: null,

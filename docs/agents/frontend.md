@@ -14,9 +14,9 @@
 - The single settings file is `frontend/src/js/config.js`, copied per
   environment from `dev_tools/*/frontend_settings/config.*.js`. It carries
   `apiBaseUrl`, the relative `localesUrl`, the supported languages and
-  `multiTimelinePolicy` (`ignore` | `merge` | `error`, default `ignore`) - the
-  deployment's answer to a study whose activities config still defines two
-  timelines. The app otherwise assumes one timeline per study: it reads
+  `multiTimelinePolicy` (`ignore` | `merge` | `error`, default `ignore`) - a
+  safety net for an imported legacy config that still defines two timelines.
+  Every shipped study is single-timeline: the app reads
   `GET …/diary?timelines=resolved` and sends `timeline_key` with every create.
 - Backend API is typically mounted under `/api` (or deployment-specific
   prefixes).
