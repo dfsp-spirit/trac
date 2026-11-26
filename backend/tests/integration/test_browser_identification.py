@@ -140,33 +140,27 @@ async def _submit_one_activity(
     client: httpx.AsyncClient, study_name_short: str, participant_id: str
 ) -> None:
     """Give a participant a single activity so the activities export is non-empty."""
-    study_config_response = await client.get(
-        f"{BASE_URL}/api/studies/{study_name_short}/study-config"
-    )
-    assert study_config_response.status_code == 200
-    day_label_name = study_config_response.json()["day_labels"][0]["name"]
-
     template = await _get_first_activity_selection(client, study_name_short)
-    activity_item = {
-        "timeline_key": template["timeline_key"],
-        "activity": template["activity_name"],
-        "category": template["category_name"],
-        "start_minutes": 0,
-        "end_minutes": 30,
-        "mode": template["timeline_mode"],
-    }
-    if template["timeline_mode"] == "single-choice":
-        activity_item["code"] = template["activity_code"]
-    else:
-        activity_item["codes"] = [template["activity_code"]]
 
     submit_response = await client.post(
         f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}"
-        f"/day_labels/{day_label_name}/activities",
-        json={"activities": [activity_item]},
+        f"/activities",
+        json={
+            "items": [
+                {
+                    "timeline_key": template["timeline_key"],
+                    "activity_code": template["activity_code"],
+                    "activity_name": template["activity_name"],
+                    "category": template["category_name"],
+                    "start_minutes": 0,
+                    "end_minutes": 30,
+                    "day_label_indexes": [0],
+                }
+            ]
+        },
     )
     assert (
-        submit_response.status_code == 200
+        submit_response.status_code == 201
     ), f"Activity submit failed: {submit_response.status_code} {submit_response.text}"
 
 

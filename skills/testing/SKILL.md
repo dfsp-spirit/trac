@@ -17,6 +17,7 @@ Use this skill to decide and run the correct TRAC test suite for a requested cha
 2. Prefer repository test entry scripts from project root:
    - `./test_backend_unit.sh`
    - `./test_backend_integration.sh`
+   - `./test_frontend.sh`
    - `./test_e2e.sh`
 3. Integration tests are self-contained: `./test_backend_integration.sh` prepares its own disposable database (a throwaway container when the dev role may not `CREATE DATABASE`), starts a backend for it and removes both afterwards. Do not point them at the development database.
 4. E2E tests need the dev stack running first — start it against the test database with `./run_dev_nginx_both.bash --test-db` (a plain `./run_dev_nginx_both.bash` uses the development database and leaves test studies behind).

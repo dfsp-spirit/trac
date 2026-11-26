@@ -146,29 +146,27 @@ async def test_admin_delete_all_participant_data_keeps_study_operational(
         assert activities_config_response.status_code == 200
         selection = _first_activity_selection(activities_config_response.json())
 
-        activity_item = {
-            "timeline_key": selection["timeline_key"],
-            "activity": selection["activity_name"],
-            "category": selection["category_name"],
-            "start_minutes": 0,
-            "end_minutes": 10,
-            "mode": selection["timeline_mode"],
-        }
-        if selection["timeline_mode"] == "single-choice":
-            activity_item["code"] = selection["activity_code"]
-        else:
-            activity_item["codes"] = [selection["activity_code"]]
-
         submit_response = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/monday/activities",
-            json={"activities": [activity_item]},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={
+                "items": [
+                    {
+                        "timeline_key": selection["timeline_key"],
+                        "activity_code": selection["activity_code"],
+                        "activity_name": selection["activity_name"],
+                        "category": selection["category_name"],
+                        "start_minutes": 0,
+                        "end_minutes": 10,
+                        "day_label_indexes": [0],
+                    }
+                ]
+            },
         )
-        assert submit_response.status_code == 200
+        assert submit_response.status_code == 201
 
         # Sanity: activities are present before deletion.
         before_response = await client.get(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-            params={"day_label_index": 0},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
         )
         assert before_response.status_code == 200
         assert before_response.json()["activities"]
@@ -187,8 +185,7 @@ async def test_admin_delete_all_participant_data_keeps_study_operational(
 
         # --- Participant association is gone (closed study -> no longer authorized) ---
         after_response = await client.get(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-            params={"day_label_index": 0},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
         )
         assert after_response.status_code == 403
 

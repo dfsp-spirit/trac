@@ -215,17 +215,12 @@ async def test_participant_urls_with_an_invalid_pid_are_rejected():
         diary_response = await client.get(
             f"{BASE_URL}/api/studies/default/participants/bad%20id/diary"
         )
-        legacy_response = await client.get(
-            f"{BASE_URL}/api/studies/default/participants/bad%20id/activities"
-        )
         valid_response = await client.get(
             f"{BASE_URL}/api/studies/default/participants/it_valid_pid/diary"
         )
 
     assert diary_response.status_code == 400
     assert "letters, digits" in diary_response.json()["detail"]
-    assert legacy_response.status_code == 400
-    assert "letters, digits" in legacy_response.json()["detail"]
     # A well-formed id still reaches the normal flow.
     assert valid_response.status_code == 200, valid_response.text
 

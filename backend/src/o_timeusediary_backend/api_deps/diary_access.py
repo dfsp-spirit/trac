@@ -4,9 +4,7 @@ One dependency per concern, so every write endpoint gets the same answer to the
 same questions: does the study exist, is it collecting right now, is this
 participant allowed, and has the diary already been submitted?
 
-The old whole-day endpoint keeps its own inline copy of these checks until it is
-deleted at cutover (D25); that path is deliberately frozen, while this module is
-where the rules live for everything new.
+This module is the one place where those rules live.
 """
 
 from __future__ import annotations

@@ -875,10 +875,9 @@ async def test_participant_table_shows_progress_state_and_join_links():
             assert "In progress" in body
             # Fresh participant: no day of the study is complete yet.
             assert "0 of " in body
-            # Both frontends are reachable as this participant.
+            # The participant's join link is reachable.
             assert f"pid={participant_id}" in body
             assert settings.frontend_url in body
-            assert settings.frontend_new_url in body
         finally:
             await client.delete(
                 f"{BASE_URL}/api/admin/studies/{study_name_short}"

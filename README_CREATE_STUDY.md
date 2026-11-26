@@ -72,7 +72,7 @@ deployment instructions.
 4. Give participants their invitation links:
 
    ```text
-   https://your.domain.example.com/report/index.html?study_name=<name_short>&pid=<participant_id>
+   https://your.domain.example.com/report/index.html?study=<name_short>&pid=<participant_id>
    ```
 
 ---
@@ -130,7 +130,7 @@ authoring metadata and says nothing about the schema.
   study. Great to limit access to a set of participants with specific requirements on demographics, that you recruited/ filtered in an exernal tool.
 
 Being open does not put a study on the entry page. The participant frontend
-(`frontend_new/`) shows a list of studies to visitors who arrive without a study
+(`frontend/`) shows a list of studies to visitors who arrive without a study
 in the URL; that list contains only studies that opt in with
 `is_listed_publicly: true` (default `false`). Listing an invite-only study is
 rejected at import time, because nobody could join it from there.
@@ -489,8 +489,8 @@ Rules worth knowing:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `footer_links` | `[object]` | No | Array of study-specific footer links. Each link has `title` (localized map) and `target_url` (string). A `target_url` on this server (e.g. `pages/study-info.html`) opens in a dialog over the page the participant is on; anything external opens in a new tab. There is no per-link "new tab" flag. |
-| `hide_server_wide_links` | boolean | No | If `true`, hides the server-wide legal links (imprint/privacy) from the footer for this study. DIsplaying these is legally required in some countries, so check legislation before removing these. (Server-wide links are configured in the frontend in the `tud_settings.json` file.) Default: `false`. |
+| `footer_links` | `[object]` | No | Array of study-specific footer links. Each link has `title` (localized map) and `target_url` (string). A target on this server opens in the same tab; anything external opens in a new tab. There is no per-link "new tab" flag. |
+| `hide_server_wide_links` | boolean | No | If `true`, hides the server-wide legal links (imprint/privacy) from the footer for this study. DIsplaying these is legally required in some countries, so check legislation before removing these. (Server-wide links are configured on the backend with `TUD_IMPRINT_URL` and `TUD_PRIVACY_URL`.) Default: `false`. |
 
 #### Browser Identification
 
@@ -657,18 +657,25 @@ In both cases:
 
 1. The backend substitutes placeholders in `outbound_url` per participant and
    returns the expanded URLs in the study-config API response.
-2. The frontend `pages/tasks.html` handles the flow.  When an external provider
+2. The participant frontend handles the flow.  When an external provider
    redirects participants back, it should send these query parameters:
+   - `study`: the study short name.
+   - `pid`: the participant identifier.
    - `callback_task_key`: the `task_key` of the task being confirmed.
    - `callback_token`: the token assigned to this participant for that task.
+   - `hmac`: the signature, when the task uses signed callbacks.
 
    Example return URL:
 
    ```text
-   https://your.domain.example.com/report/pages/tasks.html?study_name=default&pid=bernd&callback_task_key=payment_info&callback_token=pay-bernd-123434214
+   https://your.domain.example.com/report/index.html?study=default&pid=bernd&callback_task_key=payment_info&callback_token=pay-bernd-123434214#/tasks
    ```
 
-3. On page load, `pages/tasks.html` POSTs a confirmation to:
+   The `#/tasks` fragment is a convenience: the app asks the server for the
+   participant's stage and lands on the tasks page anyway, so a provider that
+   drops everything after `#` still returns the participant to the right place.
+
+3. On load the app POSTs a confirmation to:
 
    `POST /api/studies/{study_name}/participants/{participant_id}/external-tasks/confirm`
 
@@ -728,22 +735,20 @@ signature before accepting the callback.
 ### Participant Invitation Links
 
 TRAC identifies participants primarily through the `pid` URL parameter together
-with the target study in `study_name`.  A minimal invitation link:
+with the target study in `study`.  A minimal invitation link:
 
 ```text
-https://your.domain.example.com/report/index.html?study_name=default&pid=PARTICIPANT_ID
+https://your.domain.example.com/report/index.html?study=default&pid=PARTICIPANT_ID
 ```
 
 All invitation URL parameters:
 
 | Parameter | Required | Description |
 |---|---|---|
-| `study_name` | Yes | The study short name (`name_short` in `studies_config.json`). |
+| `study` | Yes | The study short name (`name_short` in `studies_config.json`). |
 | `pid` | Yes¹ | The participant identifier. For invite-only studies this must match a pre-assigned participant; for an open study an ID that does not exist yet creates a participant record. It must follow the participant ID format (ASCII letters, digits, `_`, `-`; at most 100 characters). |
 | `lang` | No | Language override as an ISO 639-1 two-letter code (e.g., `en`, `de`, `sv`). |
-| `template_user` | No | Participant ID of another user whose timeline entries should be copied as a starting point. |
-| `return_url` | No | A fully URL-encoded absolute URL to which the participant is redirected after completing the study (shown as a link on the thank-you page). |
-| `custom_page_title` | No | Arbitrary text displayed next to the day label on all diary pages (e.g., `&custom_page_title=for%20Child%20A`). This is a frontend-only convenience feature — the value is never sent to or stored in the backend. |
+| `return_url` | No | A fully URL-encoded absolute URL to which the participant is offered to return after completing the study. |
 
 ¹ `pid` is required for invite-only studies.  For open studies
 (`allow_unlisted_participants: true`) a missing `pid` is replaced with a
@@ -753,19 +758,13 @@ Examples:
 
 ```text
 # Select study and participant
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d
+https://your.domain.example.com/report/index.html?study=default&pid=c303282d
 
 # Also force the language shown in the frontend
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&lang=sv
-
-# Use another participant as a template for first-time initialization
-https://your.domain.example.com/report/index.html?study_name=study1&pid=c303282d&template_user=a5sf35gh
+https://your.domain.example.com/report/index.html?study=default&pid=c303282d&lang=sv
 
 # Return to an external system after completion
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123
-
-# Add a custom page title to remind the participant which child they are reporting for
-https://your.domain.example.com/report/index.html?study_name=default&pid=c303282d&custom_page_title=for%20Child%20A
+https://your.domain.example.com/report/index.html?study=default&pid=c303282d&return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123
 ```
 
 #### Downloading invitation links for a whole study
@@ -780,10 +779,8 @@ and exactly two columns:
 | `pid` | The participant identifier. |
 | `invitation_link` | A ready-to-send link for that participant. |
 
-Links point into the rewritten frontend (`TUD_FRONTEND_NEW_URL`, for example
-`.../index.html?study=<name_short>&pid=<pid>`). Add `frontend=legacy` as a query
-parameter on `/api/admin/studies/<name_short>/export-invitation-links?format=csv`
-to get links for the classic client instead.
+Links point into the participant frontend (`TUD_FRONTEND_URL`, for example
+`.../index.html?study=<name_short>&pid=<pid>`).
 
 Because a `pid` link is what grants a participant access to a closed study, the
 file is generated on demand, marked non-cacheable, and the download is written to
@@ -842,10 +839,9 @@ of) the server-wide legal links:
 ]
 ```
 
-Point `target_url` at a page on this server (`pages/…`) to have it shown in a
-dialog instead of a new tab - that keeps the participant on the diary page they
-are working on, which matters on phones, where even a new tab looks like leaving
-the study.
+A `target_url` on this server opens in the same tab; an external URL opens in a
+new tab and says so in its accessible name. Use the study's own `title` map to
+label the link in each language.
 
 Set `hide_server_wide_links: true` to hide the server-wide imprint and privacy
 links for this study.
@@ -1055,7 +1051,6 @@ The `general` section provides metadata about the activities definition:
 | `author` | string | Author name. |
 | `language` | string | 2-letter language code this file is written for. |
 | `instructions` | boolean | Whether the frontend should show activity instructions. |
-| `primary_redirect_url` | string | URL to redirect to after completion (usually `"pages/thank-you.html"`). |
 | `fallbackToCSV` | boolean | Whether the frontend should fall back to CSV export. |
 
 #### Timelines
@@ -1216,7 +1211,6 @@ timeline.  You can use this as a starting template for your own study.
     "author": "Your Name",
     "language": "en",
     "instructions": true,
-    "primary_redirect_url": "pages/thank-you.html",
     "fallbackToCSV": true
   },
   "timeline": {

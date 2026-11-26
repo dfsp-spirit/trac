@@ -42,7 +42,7 @@ services:
       - "3000:3000"
     volumes:
       - ./frontend/src:/usr/share/nginx/html/report:ro
-      - ./dev_tools/docker/frontend_settings/tud_settings.dev-docker.js:/usr/share/nginx/html/report/settings/tud_settings.js:ro
+      - ./dev_tools/docker/frontend_settings/config.dev-docker.js:/usr/share/nginx/html/report/js/config.js:ro
       - ./dev_tools/docker/webserver_config/dev.docker.nginx.conf:/etc/nginx/conf.d/default.conf:ro
 
   e2e:

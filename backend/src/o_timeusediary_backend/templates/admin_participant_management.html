@@ -155,9 +155,8 @@
                             {% endif %}
                         </td>
                         <td class="nowrap">
-                            <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer" title="Open this study in the old frontend as this participant">Join</a>
                             &middot;
-                            <a href="{{ participant.study_join_url_new }}" target="_blank" rel="noopener noreferrer" title="Open this study in the new frontend as this participant">new UI</a>
+                            <a href="{{ participant.study_join_url }}" target="_blank" rel="noopener noreferrer" title="Open this study in the frontend as this participant">Join</a>
                         </td>
                         {% for key in selected_study_external_task_keys %}
                         <td>{{ participant.tokens.get(key, '-') }}</td>

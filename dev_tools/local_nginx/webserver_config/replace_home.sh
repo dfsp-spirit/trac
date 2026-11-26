@@ -19,7 +19,7 @@
 if [ $# -lt 4 ] || [ $# -gt 5 ]; then
     echo "Error: Please provide input and output file paths, frontend and backend repository paths, and optionally a replacement path"
     echo "Usage: ./replace_home.sh /path/to/input/nginx.conf /path/to/output/nginx.conf frontend_repo_path backend_repo_path [custom_home_path]"
-    echo "  - frontend_repo_path must be the path to a checkout of the o-timeusediary frontend git repository, to replace FRONTEND_REPO_PATH placeholder in the template"
+    echo "  - frontend_repo_path must be the path to the frontend checkout, to replace FRONTENDREPOPATH in the template"
     echo "  - backend_repo_path must be the path to a checkout of the o-timeusediary backend git repository, to replace BACKEND_REPO_PATH placeholder in the template"
     echo "  - If custom_home_path is provided, USERHOME will be replaced with that path"
     echo "  - If no custom_home_path is provided, USERHOME will be replaced with \$HOME ($HOME)"
@@ -84,13 +84,6 @@ fi
 
 # Perform the replacement and write to output file
 sed "s|USERHOME|$REPLACEMENT_PATH|g" "$INPUT_FILE" > "$OUTPUT_FILE"
-
-# NEWFRONTENDREPOPATH first: it ends in FRONTENDREPOPATH, so the reverse order
-# would leave a stray 'NEW' glued to the substituted path.
-# It is the rewrite that lives next to the old app in the same checkout, so no
-# extra argument is needed and the template stays readable.
-NEW_FRONTEND_REPO_PATH="$(cd "$(dirname "$FRONTEND_REPO_PATH")" && pwd)/frontend_new"
-sed -i "s|NEWFRONTENDREPOPATH|$NEW_FRONTEND_REPO_PATH|g" "$OUTPUT_FILE"
 
 # Replace the placeholder 'FRONTENDREPOPATH' with the actual frontend repository path in the output file
 sed -i "s|FRONTENDREPOPATH|$FRONTEND_REPO_PATH|g" "$OUTPUT_FILE"

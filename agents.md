@@ -11,10 +11,10 @@ While we use postgres as DBMS, we strive not to tie our app to this DBMS.
 
 ### 1. Frontend Agent
 - **Domain**: UI, Client State, Interaction Logic, and Localizations.
-- **Key Files**: `frontend/src/` (HTML, JS, CSS)
+- **Key Files**: `frontend/src/` (HTML, ES modules, CSS)
 - **Operational Skill**: [Frontend Skill](skills/frontend/SKILL.md)
 - **Documentation**: [Frontend Agent Documentation](docs/agents/frontend.md)
-- **Scope**: Manages the pure JavaScript frontend. Handles day switches, timeline drawing, client configuration (`tud_settings.js`), language files (`frontend/src/locales/`), and browser interaction.
+- **Scope**: Manages the participant-facing ES-module app. Handles the stage machine, diary timeline, client configuration (`frontend/src/js/config.js`), language files (`frontend/src/locales/`), and browser interaction.
 
 ### 2. Backend Agent
 - **Domain**: REST API, Admin Portal, Security, and Configuration.

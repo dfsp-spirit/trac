@@ -53,7 +53,7 @@ consecutiveness:
 * Both participant frontends iterate the day list generically: `dayNav` renders
   "Tag *n* von *N*", the timeline renders one section per day, the day-chip grid is
   `auto-fit`, the review list and the admin tables use `days.length` / `total_days`.
-* No participant-facing code derives a calendar date. `frontend_new/src/js/domain/dates.js`
+* No participant-facing code derives a calendar date. `frontend/src/js/domain/dates.js`
   only formats the study's collection window.
 
 Item 2's *display* half also already works: a localized day label is what the day
@@ -75,13 +75,13 @@ record that started the day before:
 | 2 | `backend/src/o_timeusediary_backend/api_diary.py:212` `_absolute_interval()` | `display_order * 1440` axis for overlap checks | twin days share a false time axis |
 | 3 | `backend/src/o_timeusediary_backend/api_diary.py:757` | `day.ends_at_midnight` on the last day only | "last" is no longer the temporally last |
 | 4 | `backend/src/o_timeusediary_backend/api_diary.py:91` | `end_minutes: le=2880` | allows the tail at all |
-| 5 | `frontend_new/src/js/domain/validation.js:47` | client overlap axis | mirrors #2 |
-| 6 | `frontend_new/src/js/domain/validation.js:188` | last-day rule | mirrors #3 |
-| 7 | `frontend_new/src/js/domain/geometry.js:81` | `continuesAfter` / `continuesBefore` segments | draws a tail on another child's day |
-| 8 | `frontend_new/src/js/ui/timeline.js:83` | `↓` marker, continuation styling, a11y text | points at the wrong day |
-| 9 | `frontend_new/src/js/ui/timeRange.js:82` | end ≤ start ⇒ next day; "(nächster Tag)" | the affordance itself |
-| 10 | `frontend_new/src/js/domain/neighbours.js:141` | weekday-named neighbour ("ab Dienstag 00:00") | names the **other child's** day |
-| 11 | `frontend_new/src/js/domain/review.js:99` / `ui/reviewList.js` | `nextDay` flag per row | same |
+| 5 | `frontend/src/js/domain/validation.js:47` | client overlap axis | mirrors #2 |
+| 6 | `frontend/src/js/domain/validation.js:188` | last-day rule | mirrors #3 |
+| 7 | `frontend/src/js/domain/geometry.js:81` | `continuesAfter` / `continuesBefore` segments | draws a tail on another child's day |
+| 8 | `frontend/src/js/ui/timeline.js:83` | `↓` marker, continuation styling, a11y text | points at the wrong day |
+| 9 | `frontend/src/js/ui/timeRange.js:82` | end ≤ start ⇒ next day; "(nächster Tag)" | the affordance itself |
+| 10 | `frontend/src/js/domain/neighbours.js:141` | weekday-named neighbour ("ab Dienstag 00:00") | names the **other child's** day |
+| 11 | `frontend/src/js/domain/review.js:99` / `ui/reviewList.js` | `nextDay` flag per row | same |
 | 12 | `backend/src/o_timeusediary_backend/api.py:8123` | **published export columns** `start/end_minutes_since_diary_start` = `display_order × 1440` | axis becomes meaningless |
 | 13 | `frontend/src/js/script.js:4283` | old frontend drag/resize next-day logic | a second implementation |
 
@@ -91,12 +91,10 @@ consecutiveness, not an incidental side rule.**
 
 ### 4.2 Two traps
 
-* **The old frontend is still live.** `/report` (old) and `/report-new` (rewrite)
-  are served side by side; the dev configs say "`/report-new/` today, `/report/`
-  after the cutover". The old app has its **own** save endpoint
-  (`backend/src/o_timeusediary_backend/api.py:1518`) whose payload accepts
-  `end_minutes` unbounded. A global backend rule would break every existing
-  cross-midnight study in the old app.
+* **The old frontend is gone.** This note was written while `/report` (old) and
+  `/report-new` (rewrite) were served side by side; the cutover has since removed
+  the old app and its unbounded whole-day save endpoint. Only the incremental
+  diary API remains.
 * **Existing rows.** Any `activity` with `end_minutes > 1440` becomes invalid.
   Needs a data check plus a `CHECK` constraint in an Alembic migration.
 
@@ -106,12 +104,12 @@ consecutiveness, not an incidental side rule.**
 |---|---|---|---|
 | **1a. Global rule** | Cross-midnight forbidden everywhere; rewrite and old app both changed | 4–6 d (rewrite + backend) + 2–3 d (old frontend) | breaks old-frontend studies until both ship |
 | **1b. Per-study flag** (recommended if this ships before the cutover) | `Study.allow_cross_midnight` (default `true`); twin studies set it false. Backend rejects tails when false; coverage skips the tail mapping; frontend hides the next-day affordances; export omits the `*_since_diary_start` columns for those studies | 5–7 d + 0.5 d flag plumbing (model, migration, import, admin toggle) | a second branch in validation and coverage to keep tested |
-| **1c. Rewrite only** | Change only `frontend_new`, leave the old app and its endpoint alone | 4–6 d | backend still accepts tails; the rewrite would have to ignore them — not honest, not recommended |
+| **1c. Frontend only** | Change only `frontend`, leave the old app and its endpoint alone | 4–6 d | backend still accepts tails; the rewrite would have to ignore them — not honest, not recommended |
 | **1d. Nothing** | Keep consecutive days, forbid nothing | 0 | the twin scenario cannot be modelled |
 
 Effort includes the ~21 cross-midnight tests (8 rewrite unit, 5 rewrite e2e,
 3 backend unit, 2 backend integration), doc updates (decisions **D5**, **D6**,
-**D21** in `frontend_new/plan/PLAN_frontend_new.md`, `docs/agents/frontend.md`,
+**D21** in `frontend/plan/PLAN_frontend_new.md`, `docs/agents/frontend.md`,
 `README_CREATE_STUDY.md`, export docs) and the data migration.
 
 ### 4.4 Effort summary, item 1
@@ -136,7 +134,7 @@ Effort includes the ~21 cross-midnight tests (8 rewrite unit, 5 rewrite e2e,
 | Work | Days |
 |---|---|
 | Config authoring (14 day labels instead of 7) | ~0 |
-| Fix the day-chip abbreviation: `frontend_new/src/js/ui/formFields.js:80` uses `label.slice(0, 2)`, so both twins render "Mo" | 0.5–1 (needs a real short label: config field + parser + payload + i18n) |
+| Fix the day-chip abbreviation: `frontend/src/js/ui/formFields.js:80` uses `label.slice(0, 2)`, so both twins render "Mo" | 0.5–1 (needs a real short label: config field + parser + payload + i18n) |
 | Add `day_display_name` to the activities export (readable column; the admin previews already show it) | 0.5 |
 | **Total** | **1–2 d** |
 
@@ -260,10 +258,10 @@ Do not start with C or D.
   validation requires only `^[a-z0-9_]+$`, unique name, unique `display_order >= 0`.
 * `backend/src/o_timeusediary_backend/coverage.py:86` — the tail→next-label mapping
   is the only place that turns day order into time order on the server.
-* `frontend_new/src/js/domain/{validation,geometry,neighbours,review}.js` — the
+* `frontend/src/js/domain/{validation,geometry,neighbours,review}.js` — the
   client mirror of the same assumption; `absoluteStart`/`absoluteEnd` are the only
   `dayIndex * MINUTES_PER_DAY` sites in the rewrite.
 * `frontend/src/js/script.js:4283` — the old frontend keeps its own copy.
-* `frontend_new/plan/PLAN_frontend_new.md` — decisions **D5** (one record may cross
+* `frontend/plan/PLAN_frontend_new.md` — decisions **D5** (one record may cross
   midnight), **D6** (attribution + tail coverage), **D21** (explicit cross-midnight)
   are the documented assumptions this plan would reverse.

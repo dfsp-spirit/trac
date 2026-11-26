@@ -1,0 +1,846 @@
+# Plan: new participant frontend (diary view)
+
+Status: **implemented and live at `/report/`**. The old app has been removed. Started 2026-10-22 as
+a discussion summary; the decisions in sections 2-8 are the binding record, and section 9 is the
+operator's view (how to run it, fixtures, what is left). References to the old app in this document
+describe the state when the decisions were made.
+
+Scope as written: **only the participant data-entry page** (the diary/timeline view). The admin
+portal, the participant text pages (consent, instructions, thank-you, timeout) and the backend
+API surface were to stay as they are, except where this plan says otherwise - it later did say
+otherwise (D37 stage machine, D39 `unavailable` reasons, D40 stage pages), and those sections win.
+
+Why we are doing this: the diary view grew into one interlocking module that is no longer
+understandable, and the mobile experience has a demonstrated failure — participants did not
+discover the optional second timeline and left it empty without intending to. The fix is a
+new, small, component-structured implementation of the entry page, not a rewrite of the app.
+
+---
+
+## 1. What stays
+
+- **Day labels stay abstract** (`monday`, `typical_weekday`, …), ordered by `display_order`.
+  No calendar dates, no waves, no multiple diaries, no per-diary receipts.
+- **One submission per participant per study** (`StudyParticipant.study_submitted_at`).
+- **`min_coverage` is enforced at submit**, not while editing.
+- **Save after every interaction** to the server (no device-only storage, no offline queue).
+- Study configuration, activity catalogues, i18n (en, de, sv — see D34), idle timeout, consent and
+  instructions flow, external tasks, exports, admin portal and its tests.
+
+## 2. Decisions
+
+### Entry surface
+
+| # | Decision |
+| --- | --- |
+| D1 | **One timeline per study.** The `primary`/`secondary` split disappears from the participant UI and the catalogue: no tabs, no switch button, no "what may I log as secondary". One `timelines` row per study is kept, so admin and exports are unaffected. The app reads `GET /diary?timelines=resolved` (only the timeline the server resolved, including its coverage and its requirement) and sends `timeline_key` on every create, which the server checks against that timeline's codes. A study that still defines two timelines is handled per deployment by `multiTimelinePolicy` in `js/config.js`: `ignore` (default, the behaviour the app will keep), `merge` (one picker for both, study-wide settings from the **first** timeline - the last one used to win and reset `min_coverage` to the secondary's 0) or `error` (refuse the study). The key is deleted when multi-timeline support goes. |
+| D2 | **Concurrency is overlap, not a second lane group.** Up to N activities may occupy the same minute on the one timeline; display lanes are computed, the data has no lane. N is configurable; Q1 answered **2** and that is the model default (`max_overlap`). |
+| D3 | **Vertical timeline, continuous across the study's days.** Day sections with headings and anchors; prev/next buttons and a day rail jump (never a mode switch); scroll-spy label ("Day 2 of 7 · Tuesday"); `PageUp`/`PageDown` move one day. A `daysToRender` value in state (`7` = continuous, `1` = paged) keeps the alternative available as a one-line change. |
+| D4 | **The reporting day starts at 00:00** (see Q2 for the 04:00 alternative). |
+| D5 | **An activity may start on one day and end on the next, as one record** (end shown as `07:00 (+1)`). No splitting into two entries. |
+| D6 | **Attribution:** a record belongs to the day it **starts**. **Coverage** is computed per day by clipping intervals to the day window, including the tail of activities that started the previous day. |
+| D7 | **Entry always goes through a form dialog** (day, start, end, option/note), prefilled from the tapped time. No drag or resize required. Gap taps open the dialog with that range prefilled. "Used recently" (5) shortcut. Without a tap the form starts on the day in view, at the minute under the top bar, for one hour - shortened to the next free block (`domain/suggestSlot.js`). "Save and add another" keeps the day and chains from `last end`, clamped by the same rule. |
+| D8 | **Duplicate rejection:** same activity code + same start + same end is refused server-side (relevant because desktop palette placement creates a block on click). |
+| D9 | **Undo, not confirmation.** Deleting or clearing offers an undo toast; the only confirm step is submission. |
+| D10 | **Review list before submit**, reachable also from the menu: days in order, activities as text time ranges, per-day coverage, *Edit* links back to the day, then a confirm step. Implemented as the always-visible *Submit* button in the header, so there is no separate menu entry for it. |
+| D11 | **Colour comes only from the study config** (`activity.color`). The app chrome stays neutral and the app adds no colour of its own. No dark mode. No colour design or colour testing in this project. The block picks black or white label ink by luminance, and falls back to a neutral fill when a study defines no colour. |
+
+### Desktop
+
+| # | Decision |
+| --- | --- |
+| D12 | **Three columns at ≥1200 px**: [1] days + coverage + submit, [2] timeline, [3] activity palette with search. **Single column below 1200 px** (palette becomes a bottom sheet, days pager in the header). **No 2-column tier** — it would squeeze the timeline and the palette and add a third layout to test. |
+| D13 | **No graphical overview strip.** A 24 h bar in a 640 px column is ~4 px per 10 minutes, i.e. unreadable. The "how complete is my week" view is the day rail (coverage bar + minutes + state per day) plus the review list. |
+| D14 | **No drag and drop, anywhere.** Adjusting a block is the form: day, start and end are selects, which is precise and works on every device. A focused block can also be nudged with `↑`/`↓` (move one step) and `Shift+↑`/`Shift+↓` (change the end) - a small keyboard extra for the people who look for one, not a headline feature, and nothing else in the app is shaped around it. Decided 2026-10-30: desktop-only dragging buys almost nothing here and the old app's drag engine is where its worst bugs lived (`touch-action` breaking phone scrolling, scroll-vs-drag ambiguity, resize bands, a separate mobile "move" path); creation stays a click on a labelled gap or an activity (D7). |
+
+### Stack
+
+| # | Decision |
+| --- | --- |
+| D15 | **No React, no UI library.** Vanilla ES2022 modules, same static delivery. JSDoc + `tsc --noEmit`; a small store (~50 lines), `h()` hyperscript and a keyed list helper (~80 lines together), a pure geometry module, a ~500-line internal kit (Button, Field, Sheet, List, Toast, Timeline), native controls, existing i18n loader. |
+| D16 | **No globals.** No `window.timelineManager`/`window.selectedActivity`; one-way flow: DOM event → action → new state → render. Desktop-only enhancers live in one module loaded for fine pointers only; no `isMobile` branches inside renderers. |
+
+### Backend and data
+
+| # | Decision |
+| --- | --- |
+| D17 | **Row identity:** `client_uuid`, `group_id` (activities created together), `catalogue_version`, `updated_at` on `activities`. |
+| D18 | **Incremental endpoints** replace the whole-day delete+insert save: create (single or batch with `targets[]`), update, delete, delete-by-group, copy. Submit stays as it is. |
+| D19 | **Multi-day add/copy is explicit**: explicit selection → explicit target days, merged into the target (never "replace the day"), per-target result (`added`, `skipped: slot_full`, `skipped: invalid day`), one `group_id` so one undo reverses it. |
+| D20 | **Coverage = interval union, clipped to the day window.** One server-side helper used by submit validation, save responses, admin progress and the frontend rail; mirrored client-side and unit-tested. |
+| D21 | **Cross-midnight is explicit:** store `duration_minutes` (or a validated `end_minutes`) with a constraint, instead of the current implicit `end > 1440` convention. Dialog validates end > start and a sane maximum (24 h). |
+| D22 | **One `timelines` row per study.** Exports and admin queries are unchanged apart from additive columns; the second catalogue (codes `2xxx`) is deleted, since no real data exists (test fixtures only). |
+
+---
+
+
+### Success criteria
+
+- New diary code ≈ 2–3k lines + CSS, no globals, no drag engine, one renderer, one add/edit
+  component, one save path (today: ~14k lines across `script.js`, `ui.js`, `styles.css`).
+- Every checklist item covered by a unit or e2e test.
+- Save-after-every-interaction still true, with per-row calls, visible save state and undo.
+- Multi-day copy is one action, one undo, with per-target failure reasons.
+- Admin portal and its tests unchanged.
+
+### Cheap to reverse
+
+- `daysToRender` (`7` continuous / `1` paged) — one value in state.
+- `dayStartHour` (default `0`) — one constant in geometry and coverage.
+
+---
+
+## 6. Explicitly out of scope
+
+Calendar dates, waves, multiple diaries, per-diary receipts, offline/PWA storage,
+admin portal redesign, dark mode, colour design or colour testing, a 2-column layout tier,
+a graphical overview strip, drag/resize at launch, React or any UI library, changes to the
+study import format beyond dropping the second timeline.
+
+---
+
+
+### D27 — Additions to the backend list (section 5, step 1)
+
+- `client_uuid` is for **idempotency** as much as undo: save-per-interaction plus retries
+  duplicates rows without it. Unique per (study, participant).
+- Duplicate rejection (D8) must be a DB constraint, not only a check.
+- `CHECK (end_minutes > start_minutes AND end_minutes - start_minutes <= 1440)` for D21.
+- `Timeline.max_overlap` (default 2, PI answer to Q1) next to `min_coverage`.
+- One `coverage.py`: union + clipping is currently summed in three places — submit validation,
+  admin progress and the "days meeting min coverage" helper — and `_get_completed_day_indices`
+  ("has any data") guards copy-overwrite.
+- `GET …/participants/{id}/diary`: the continuous view needs the whole diary in one request.
+
+### D29 — Desktop column 3: one panel whose content swaps
+
+The catalogue is roughly 61 codes and six screens tall, so nothing may be placed below it. Column 3
+is therefore a single fixed-height panel (`100dvh - topbar`) with a sticky head, one scrollable
+content region and a sticky foot:
+
+- **Default content on desktop is the catalogue**, always present, with a pinned search field,
+  sticky category headings and *Used recently* on top. No "Add activity" reveal; the floating
+  button stays hidden on desktop as it is now.
+- **Selecting an activity replaces the content region with the form.** Never stacked, never
+  appended. `←` returns to the list and restores the search query and scroll offset, which is
+  what makes `←` usable at all with this many rows.
+- **The head names the target explicitly** ("Add activity · Tue 20 Oct, 14:00 – 15:00"). The panel
+  is non-modal and column 2 keeps scrolling while it is open, so the day in view is *not* the
+  target: the `Day` select is authoritative, and the head states it.
+- **The head's second line carries the day context and coverage** — for the day in view when
+  browsing the catalogue, for the target day when the form is open ("6 h 45 min · requirement met",
+  or "1 h 20 min to go"). This is where the external reviewer's point A lands; it replaces the
+  prototype's explanatory copy and removes the need for a separate instructions block.
+- **The foot stays sticky** (Add to timeline / Save changes / Delete), so the primary action remains
+  visible even when the form's lower fields scroll. Worst case at 768 px viewport height: content
+  region 568 px, form ≈ 400–590 px.
+- **"Save and add another" is dialog-only.** The button exists because a modal covers the timeline
+  after a save, so the participant cannot tap the next range; it is hidden from 1200 px up
+  (`[data-slot="save-another"]`), next to the close button that is hidden for the same reason. On
+  the docked column both save buttons returned to the catalogue and differed only in the prefill
+  they left behind, which the participant could not see - and the next gap is one click away in
+  the column beside it.
+- **Consequence for the write path:** a palette click never creates a block. It opens the form
+  prefilled with the time at the top of the viewport, and D8's duplicate rule applies to form
+  submits only. One create path, one undo path.
+
+
+### D30 — Activity search in the panel head
+
+The catalogue is ~61 codes in the pilot study, so search is not optional, and it is not a "nice to
+have later" item: both the desktop panel and mobile step 1 need it.
+
+- **Placement:** a search field in the fixed part of the panel head, directly under the title row,
+  so it never scrolls out of view. Hidden (not disabled) in the form state, restored on `←` with
+  the previous query and the previous scroll offset.
+- **Matching:** localized activity name, option/parent labels, example/hint text and category name,
+  from the backend `activities-config` payload — not a hardcoded list. Case- and accent-insensitive
+  (NFKD + diacritic stripping) because German and Swedish both carry diacritics (ä/ö/ü/ß, å/ä/ö)
+  while English does not; word-start matches rank before inner-substring matches.
+- **Result rendering:** matching activities stay grouped under their category headings; categories
+  with no match are hidden, not left as empty headings. *Used recently* is shown only while the
+  query is empty. A live region announces the result count; no match reads "No activity matches
+  …, try Other activity".
+- **Keys:** `Enter` selects the first result, `Esc` clears the query, then returns focus to the list.
+- **Implementation constraint:** filtering must replace only the result list, never the input node —
+  re-rendering the head on every keystroke loses focus mid-word. 61 items need no debounce.
+
+### D31 — Keyboard model: ship it, confined, but no onboarding screen
+
+Single-key shortcuts are a WCAG 2.1.4 problem if they are global, and that constraint also answers
+the "how do we teach it" question:
+
+- Allowed keys: `PageUp`/`PageDown` = previous/next day, `n` = new activity, `/` = focus search,
+  `Esc` = close panel / clear search, `Enter` = confirm, `?` = shortcut list. `↑`/`↓` and
+  `Shift+↑`/`Shift+↓` nudge a focused block by one step (D14). There is **no** `Delete` shortcut:
+  deleting is the form's delete button, and a timeline-level Delete would need a selection model.
+- **Single-character shortcuts are active only while focus is inside the diary region** (timeline or
+  panel), never globally, and never while a text field has focus. This satisfies 2.1.4 without
+  remapping.
+- **Teaching surface:** one menu entry, *Keyboard shortcuts*, opens a compact list and contains the
+  on/off switch for participants who don't want them. No separate page, no screenshots, no
+  onboarding step. Controls that have shortcuts carry `aria-keyshortcuts`.
+- Desktop only (`pointer: fine`); nothing here is reachable on touch.
+
+Built in `src/js/ui/keyboard.js` (rules, pure) + `ui/shortcuts.js` (binding + menu entry) +
+`ui/shortcutsDialog.js` (the list and the switch). Three findings from building it:
+
+- **Paging is not a single-key shortcut**, so `PageUp`/`PageDown` work outside the diary region;
+  they are suppressed only inside a control that pages its own content (`<select>`, `<textarea>`).
+  Confinement applies to `n`, `/` and `?` (and to the nudge arrows, which need a block focused).
+- **The switch remembers for the session only.** D33 forbids device storage and there is no
+  participant profile to hang a preference on yet; a server-side preference is a later decision.
+- **Enter had to be spelled out.** The form has no submit button, so implicit submission reloaded
+  the diary, and a `<select>` never fires it. `Enter` now saves (except in a textarea), which is
+  what the list promises.
+
+### D32 — Review is a modal
+
+Review keeps the prototype's presentation: a centred modal, max-width ~720 px, sticky head and foot,
+focus trapped, one scroll region, days in order with *Edit* links back to the day, then the confirm
+step.
+
+### D33 — Component architecture: separate, testable components instead of a god module
+
+This is the failure the rewrite exists to fix. The current diary is ~31k lines of JS
+(`js/script.js` alone is 7.5k) over ~3.8k lines of global CSS, and the prototype shows the same
+shape at small scale: one 830-line IIFE with module-scope `diaries`, `entries`, `viewing` and `view`,
+and renderers that reach into the document by id. **We port the prototype's algorithms, never its
+structure.**
+
+Layout and dependency direction (arrows point at the allowed import direction):
+
+```
+src/
+  index.html
+  styles/  tokens.css   base.css   layout.css          (shell + grid only)
+  js/
+    domain/    pure: geometry, coverage, days, validation, formatting
+    data/      api client, study config, i18n loader
+    state/     store, actions, selectors
+    ui/<component>/<component>.js + <component>.css
+    main.js    composition root
+```
+
+```
+main ──▶ ui ──▶ domain
+  │       ▲
+  ├──▶ state ──▶ domain
+  └──▶ data ──▶ domain
+```
+
+Rules. Each is checkable, and the ones marked *(CI)* are enforced, not requested:
+
+1. **One-way dependencies.** `domain` imports nothing from the app. `ui` and `state` may import
+   `domain`, never `data`. Only `main.js` imports `data` **and** `state` *and* `ui`. No cycles. *(CI)*
+2. **No globals.** No assignment to `window.*` or `globalThis.*`. Module-level mutable state exists
+   only in `state/store.js`; configuration is passed in through `config.js`, not read off `window`. *(CI)*
+3. **One-way data flow.** DOM event → action → store → subscriber re-render. A component never calls
+   the API and never mutates state; persistence lives in `state/` actions and `data/`.
+4. **Component contract.** Each component exports `mount(root, props, emit) → { update, destroy }`,
+   plus pure `render…` helpers. A component may only touch the DOM inside the root it was given;
+   `document.querySelector` outside that root is forbidden, and `main.js` resolves each root once.
+5. **CSS ownership.** One stylesheet per component, `t-<component>` block prefix (`t-timeline__event`).
+   No selector may reach into another component's classes, no id selectors, no `!important` (the
+   single global `[hidden]` rule excepted), no colour literals — tokens only. Inline styles are
+   allowed only for CSS custom properties set from data (`--start`, `--dur`, `--lane`, `--fill`),
+   as the prototype already does. *(CI)*
+6. **Explicit, minimal state.** One object with named fields; derived values live in selectors, never
+   in the store; UI state is limited to what must survive a re-render (panel mode, search query,
+   target day/time, focus target).
+7. **Size caps:** 300 lines per JS file, 150 per CSS file, one component per file. This is the rule
+   that actually prevents a new `script.js`. *(CI)*
+8. **Test layer per boundary.** `domain` and `state` are unit-tested with `node --test` and no DOM —
+   every rule in D20/overlap-limit/duplicate/last-day/coverage is a domain unit test, not an e2e.
+   Each component gets a mount test on a fixture page (the pages in `tests/components/`, run by
+   `playwright.components.config.js`).
+   End-to-end specs cover flows only.
+9. **Enforcement:** `tools/check-architecture.mjs` (Node, no new dependencies) fails CI on rules
+   1, 2, 5 and 7, and `tsc --noEmit` over JSDoc keeps the contracts honest (D15).
+10. **Naming:** components are named for the domain noun — TopBar, MenuDrawer, DayRail, Timeline,
+    DaySection, ActivityEvent, GapSlot, NowLine, ActivityPanel, ActivitySearch, AddActivityForm,
+    ReviewDialog, ToastHost — so the file tree is the map of the UI.
+
+The composition root (`main.js`) is the only file allowed to know about everything, and it carries
+the same 300-line cap, so "wiring" can never become the new god module.
+
+### D34 — UI languages: English, German, Swedish only
+
+i18n stays; the locale set shrinks to `en`, `de`, `sv`. `es`, `fi`, `fr` and `pl` are dropped from
+now on — in the old frontend, in the new one and in anything imported from a study config.
+
+What this does *not* change: one JSON file per language, `data-i18n` attributes, the selector driven
+by the study's `supported_languages`, and switching language without a reload. Only the set of files
+gets smaller, and no component may hardcode a user-visible string.
+
+What has to move with the decision:
+
+- **Delete** `frontend/src/locales/{es,fi,fr,pl}.json`. `locales_consistency.test.js` and
+  `locale_values.test.js` discover files by directory listing, so the guards keep working unchanged;
+  only their `LANGUAGE_NEUTRAL_VALUES` entries that existed for es/fr ("No", "Error", "Code",
+  "Description") become dead and should be cleaned out.
+- **Trim** the day-label `display_names` maps in `frontend/src/settings/studies_config.json`: they
+  still carry `es`, `fi`, `fr`, `pl` although `supported_languages` is already `["en","sv","de"]` /
+  `["en","sv"]`.
+- **Backend:** nothing is allow-listed today — `supported_languages` comes from the study and is
+  validated against the activity blobs and the day-label `display_names` (`api.py:3053-3151`). Add a
+  single module-level constant of UI-supported languages and reject anything else at study import,
+  so a future config cannot reintroduce a locale the app can no longer render. Same constant serves
+  the export/validation error messages.
+- **New frontend:** new keys go to `en`, `de`, `sv` only. This is where the effort saved actually
+  lands: the ported prototype copy is English-only and has to be translated twice, not six times.
+- **Docs:** section 1 and the cutover step in section 5 now name the three languages instead of
+  "7 locales".
+
+### D35 — Locale keys: `diary.*` namespaces in the shared files, no version prefix
+
+The new UI adds its strings to the existing `frontend/src/locales/{en,de,sv}.json`, under a
+`diary.*` root with one subtree per component, and never reuses an old diary key.
+
+Rationale, in the numbers: the three files hold 166 leaf keys today, 84 of them diary-surface
+(`messages` 41, `modals` 25, `buttons` 13, `errors` 3, `banner` 2); the other 82 belong to consent,
+instructions, tasks, open studies, thank-you, timeout, `common`, footer, maintenance and idle
+timeout — pages this rewrite does not touch.
+
+- **No version prefix** (`v2.`, `new.`, `beta.`). It encodes a transient fact into a permanent
+  artefact: at cutover the keys are either renamed across three files, the markup and the code, or
+  the prefix stays forever. It also says nothing about ownership.
+- **Namespace by component**, mirroring D33: `diary.timeline.*`, `diary.dayRail.*`,
+  `diary.activityPanel.*`, `diary.activitySearch.*`, `diary.addActivity.*`, `diary.review.*`,
+  `diary.submit.*`, `diary.toast.*`. The set is deletable in one sweep at cutover, and it makes the
+  rule below enforceable.
+- **Shared files, not forked ones.** The new diary page still needs shell strings (footer links,
+  language label, maintenance banner, idle timeout). A forked file would either duplicate them
+  (drift, and `locales_consistency.test.js` only compares within one directory) or force the loader
+  to merge two files.
+- **Reuse shell keys freely, never reuse diary keys.** `common.*`, `footer.*`, `maintenance.*`,
+  `idleTimeout.*` stay shared. Old diary keys (`messages.*`, `modals.*`, `buttons.*`, `errors.*`,
+  `banner.*`) are not referenced by the new UI, because the copy is being rewritten (D28–D31) and
+  because they are scheduled for deletion.
+- **Allowed references rule:** the new frontend may use `diary.*` plus the shell allowlist above.
+  Anything else is a bug — it would tie the new UI to keys that disappear at cutover.
+- **Plain text only.** No `data-i18n-html` in the new UI; split a string into title and body instead
+  of embedding markup, so `locale_values.test.js` has nothing to police.
+- **Counts use `{{count}}` with `_one` / `_other`** and a small `tCount(key, n)` helper. The
+  prototype concatenates (`'… for ' + n + ' days'`), which does not survive German or Swedish word
+  order; en/de/sv need exactly two plural forms, so no CLDR machinery is involved.
+- **Enforcement:** `page_i18n_keys.test.js` scans a fixed root (`frontend/src/`); it needs a second
+  instance for `frontend/src`, or the directory parameterised, otherwise the new UI's key
+  references are unguarded. Add a test for the allowed-reference rule in the same pass.
+- **At cutover** the 84 old diary keys are deleted together with the old `index.html`/`script.js`,
+  verified by a single grep for `data-i18n=` and `t(`.
+
+### D36 — Publication seam: build C now, defer A/B/D, keep three hooks
+
+Priority is shipping the new frontend. Generality is a later concern, so only the work that is
+cheap now and expensive later is done now. Estimates are one developer on this codebase.
+
+| Item | Now | If deferred | Verdict |
+| --- | --- | --- | --- |
+| **C.** Host-agnostic `mount()`: components take `scrollRoot` / `portalRoot`, never write `document.documentElement`, never listen on `window` | 0.5–1 day | 5–10 days (retrofit scroll/portal in every component, re-verify sticky/scroll-spy, add contained layout mode) | **do now** |
+| **A.** `trac.study/v1` + `trac.diary/v1` documents, JSON Schema, `tud studies validate` | 6–9 days | 8–12 days | defer |
+| **B.** `SubmitSink` port + webhook + outbox/retry + delivery state in admin | 6–9 days | 7–10 days | defer |
+| **D.** Standalone URL contract + `postMessage` lifecycle + iframe embedding | 3–4 days | 3–4 days (stays cheap because of C) | defer |
+
+A+B+D ≈ 15–22 days, i.e. +30–40 % on top of the 8–12 week plan, with no value for our own studies.
+
+**Three hooks (<1.5 days total), so deferring is a delay and not a bet:**
+
+1. `schema_version: "1"` in the whole-diary GET and in the study payload (D27). Promoting either to
+   a published document later is then additive instead of a breaking change.
+2. One backend function owns "a diary was submitted" (`deliver_submission(study, participant,
+   payload)`); today it only writes `study_submitted_at`. A webhook sink later is a second call
+   inside it, not a redesign of the submit endpoint.
+3. C's two parameters. Free while writing a component, a rewrite afterwards.
+
+**Cost of the mandatory core (D33):** rules that cost nothing (naming, one component per file,
+size caps, import direction, CSS prefix, no globals), rules that cost a little (per-component CSS
+and its enforcement), and rules that cost real time: fixture-page component tests ~1–2 days of
+infrastructure, `check-architecture.mjs` ~1 day. Total ~2–3 days, about 4 % of the plan — and both
+are kept, because an unchecked size cap is a comment and an unverified "isolated component" is a
+claim.
+
+**Deferral triggers, so "later" does not become "never":**
+
+- **A** — when a partner wants to import a study, or a second installation must share definitions.
+- **B** — when a study's data must land in REDCap/JATOS/a warehouse; then via the webhook receiver,
+  not a storage driver.
+- **D** — when a survey platform wants to embed the diary; the deliverable is the URL contract plus
+  `postMessage`, not a JS widget.
+
+Explicitly rejected for v1: a storage-driver abstraction (REDCap/JATOS have different write models:
+bulk record overwrite and one result blob), offline sync, a plugin system, and in-page JS-widget
+embedding (would require a contained layout mode; an iframe reaches the same platforms for a
+fraction of the cost).
+
+---
+
+## 8. Decisions after the build started
+
+### D37 — Navigation is a stage machine, not a set of redirects
+
+The old frontend decides "where does this participant belong now?" in five places: ~25
+`location.href` assignments across `script.js`, `consent.html`, `instructions.js`, `tasks.html` and
+`ui.js`, a whitelist of page names (`getSafeRedirectUrl('instructions.html')`), path sniffing
+(`isInstructionsPagePath()`), a `completion_status` flag copied through the query string so one page
+can tell the next what it decided, and a second copy of the same facts in `CURRENT_STUDY_CACHE`
+(`localStorage`). Each page re-derives the rules on load, so a stale cache produces a wrong redirect.
+The root cause is one thing: **progress was carried in the URL and the decisions were made in the
+browser.**
+
+A participant has exactly one stage:
+
+| Stage | When |
+| --- | --- |
+| `unavailable` | study paused, closed, or outside its collection window |
+| `consent` | study requires consent and it has not been given |
+| `instructions` | instructions required and not completed |
+| `tasks` | external tasks pending, or the diary is done and `require_diary_before_external_tasks` is satisfied |
+| `done` | submitted (or otherwise finished); thank-you, nothing editable |
+| `diary` | everything else |
+
+- **The server computes it**, in one function, from what it already knows (`require_consent`,
+  `consent_given`, `instructions_completed`, `study_submitted_at`, pending external tasks,
+  `ensure_study_is_currently_available`). One test per row of that table. The client renders; it does
+  not decide.
+- **Every mutation returns the next stage** in its response body. Consent → `instructions`,
+  instructions complete → `diary`, submit → `done` or `tasks`. No reload to learn what happened, no
+  flag in the URL.
+- **The URL carries identity only** — `study`, `pid`, `lang` — never progress. That rule alone
+  removes `completion_status` and the page-name whitelist.
+- **The client router maps URL → view, and the only redirect is a guard**: on load it asks for the
+  stage and, if the URL names a different one, `router.replace(stageRoute(stage))`. One function, one
+  redirect.
+- **Route style: hash (`#/consent`) for now**, behind a `domain/router.js` seam so path routes
+  (`/consent` + `try_files $uri /index.html` + `<base>`) are a change in one file later. The app is
+  served from at least three places with different path prefixes (dev nginx, CI, the GH-Pages demo),
+  the assets in `index.html` are relative, and none of that has to be solved before the pilot.
+- **Returning from an external task** re-asks for the stage on `visibilitychange`/focus instead of
+  trusting a cached flag.
+- `CURRENT_STUDY_CACHE` is replaced by the store, re-derived from one endpoint on load — which also
+  keeps D33's no-device-storage rule intact.
+
+Not adopted: server-side 302 chains (that is the current design), per-route guard logic duplicated in
+JS, and any router dependency. `hashchange`/`popstate` plus a parse function is ~100 lines.
+
+**Built.** Three refinements to the sketch above, all of them simplifications found while building it:
+
+- **No separate `GET /session`.** `GET …/study-config` already returns the participant's consent,
+  instruction and submission state plus every study text the views need, so it gained `stage` and
+  `done_reason` instead of a second endpoint duplicating 90 % of its payload. Consent,
+  instructions-complete and both submit endpoints answer with the next stage.
+- **`done` carries a reason** (`completed` or `noconsent`), because the thank-you text differs. A
+  declined consent wins over `unavailable`: telling someone "try later" would invite them back to a
+  decision they already made.
+- **After any step the client re-asks.** The stage alone is not enough to render the next page
+  (`done_reason` decides the text), so `ui/stageMachine.js` refetches once per transition rather than
+  patching its cached payload from several responses.
+- **A provider's return is redeemed in the boot sequence, not by a view.** The first `study-config`
+  was answered before the confirmation existed, so `ui/boot.js` redeems the callback parameters
+  (`ui/externalTaskReturn.js`) and asks again - otherwise a participant would be shown the task they
+  just finished, with a "check again" button that could never learn anything. The spent token is
+  dropped from the address bar afterwards. On top of that, the tasks stage re-asks on
+  `visibilitychange`/focus (once a second at most), which covers a provider that opened in a new tab.
+- **A locked task is locked in the payload.** The level rule and the diary gate stay in
+  `_build_participant_external_task_unlock_map` / `_is_external_tasks_locked_by_diary_requirement`;
+  the client renders `locked_reason` and never derives a link from a level it computed itself.
+
+**Deployment (the rewrite is served next to the old app, not instead of it).** `frontend/src` is
+mounted at `/report/` with the API at `/tud_backend/`; this is now the only participant app. Each
+environment has one nginx config, and the settings file `js/config.js` is copied into the served
+tree. The app reads `apiBaseUrl` and `localesUrl` from `js/config.js` and works under any host or
+path prefix.
+
+### D38 — Consent is a one-way latch
+
+Once recorded, `consent_given` does not go back to false inside this application. Withdrawal happens
+through other means, outside the app, so the consent stage is a latch and not a state that can be
+re-entered by the participant. This is what makes the `consent` row of the D37 table a simple
+one-shot check rather than a review screen.
+
+
+
+### Open, deferred: idle timeout that tears down the session
+
+Stakeholders asked for the idle timeout to *"prevent other family members from continuing in an open
+browser session"*. The old implementation pursued that by `location.replace`ing to `timeout.html` with
+the participant id stripped from the URL, which is a URL trick standing in for a session, and it costs
+a real feature (a participant returning to their own open browser is locked out).
+
+Recorded, not built. Priority Z: it is a request to make the app work worse on purpose for a threat
+this application does not really face (writing someone else's time-use diary is not an attack worth
+mounting), and it must not be paid for out of the pilot budget. If it is ever built, the honest form
+is a server-side session token with an expiry — not URL manipulation — and the participant's own
+return is then the thing that must keep working.
+
+What the new frontend does instead, and what D37 already gives us: the stage is re-verified from the
+server on every load, so a stale tab cannot act on stale permissions. A blank-screen "continue"
+overlay is all the idle behaviour we ship until a decision is made.
+
+
+---
+
+## 9. Working on the rewrite today
+
+Sections 1-8 are the decision record and are binding. This section is the operator's view: what
+exists, how to run it, which fixtures exist, and what is left. It replaces the former
+`how_to_continue.md` - one doc instead of two, because both answered "what is true now" and they had
+started to disagree.
+
+The app is the only participant frontend:
+
+| Path | Serves |
+| --- | --- |
+| `/report/` | the frontend (`frontend/src`) |
+| `/tud_backend/` | the API |
+
+### 9.1 What works end to end
+
+- **Diary**: continuous multi-day timeline, lanes, gaps, day rail, day navigation, activity panel with
+  pinned search, add/edit/delete with undo, multi-day create, coverage against `min_coverage`.
+  Search also matches **sub-activities** by their own name: a matching child becomes its own row
+  (child name as the title, parent as the hint) and opens the form with that child preselected, so
+  "Joggen" finds "Joggen: Draußen alleine" in one click instead of the parent plus a second choice.
+- **"Used recently"** (D28): the four most recently touched activities, folded from the diary the
+  client already holds (`recentEntries()` in `ui/activitySearch.js`), shown above the categories and
+  only while the search box is empty. No endpoint, no device storage.
+- **Review + submit** (D32): two-step modal, per-day state, *Edit* back to a day, locked and read-only
+  after submission, survives reload.
+- **Stage machine** (D37): `unavailable | consent | instructions | diary | tasks | done`, computed
+  server-side in `backend/src/o_timeusediary_backend/stages.py`, plus `done_reason`
+  (`completed` / `noconsent`). Views in `src/js/ui/views/`, router in `src/js/{domain,ui}/router.js`,
+  one guard redirect, hash routes, URL carries identity only.
+- **Stage pages** (D40): one `Page` component, one `h1` each, study Markdown demoted under the page
+  heading, reason-aware `unavailable` copy, a real failure page with *Try again*. The structural half
+  of D40 (one `h1`, the eyebrow, the heading offset) is a component test; WCAG A/AA is a committed
+  axe gate over every surface, running clean (9.6b).
+- **Keyboard** (D31): `PageUp/PageDown`, `n`, `/`, `Esc`, `Enter`, `?`, confined to the diary region,
+  with the list and its session-scoped switch under the menu. A **focused** block can also be nudged
+  with `↑`/`↓` and `Shift+↑`/`Shift+↓` (D14); adjusting is otherwise the form, and there is no
+  `Delete` shortcut because deleting is the form's button.
+- **Menu pages** (study information, data protection, contact): `ui/legalLinks.js` turns the study
+  config into links, `ui/shellChrome.js` renders them and owns the language select, both re-rendered
+  when the language changes. Phones get them **only** in the menu (a footer under a week-long timeline
+  is a misclick target), desktop (>=1200px) gets a small footer *and* the menu. The footer shows only
+  the deployment's legal pair (`TUD_IMPRINT_URL`, `TUD_PRIVACY_URL`, sent in study-config as
+  `imprint_url`/`privacy_url`); the menu adds the study's own `footer_links` and respects
+  `hide_server_wide_links`.
+- **i18n**: `diary.*` keys in en/de/sv only (D34/D35), markdown rendering for study text. The UI
+  language follows `?lang`, then the browser, then the study's `selected_language`; the menu offers
+  only the study's `supported_languages`, and no language entry at all when that is a single language.
+  Switching language re-fetches what it has to: the session (the study's own texts) and, on the diary,
+  the diary itself (day and catalogue names). Re-rendering the cached payload would leave the chrome in
+  one language and the study text in another, which is the failure D40 was written about.
+- **No help page** (Q9): there is no separate help/documentation page and nothing links to one. The
+  old app's *How do I use this?* modal - which loaded the study's instructions in `?embed=1` while
+  the participant was mid-diary - has no equivalent: the instructions text is rendered on the
+  `instructions` stage only, so it cannot be re-read once the diary is open. Open question (9.7).
+- **Skip the diary**: `POST /diary/skip` is offered only when the study sets `allow_skip_timeuse`
+  (default **false**), writes `DONE_SKIPPED`, and does *not* satisfy `require_diary_before_external_tasks`.
+- **Deployment**: two nginx locations, one settings file per app, no duplicated scripts.
+
+### 9.2 Layers (the map)
+
+```
+src/js/
+  config.js        deployment config (replaced per environment at deploy time)
+  main.js          composition root, 295 lines, cap 300
+  data/            api.js (only network), i18n.js (locales + translator), clientInfo.js
+  domain/          time, geometry, validation, diary, color, review, markdown, router,
+                   dates, language, nudge, skip, clientInfo, participantId, uuid  (pure)
+  state/           store.js (one state object + the initial state), diary.js (the only writers)
+  ui/              components; page.js/notice.js are the stage-page frame, reviewFlow.js the
+                   review-then-submit seam, panelController.js the panel, shellChrome.js the menu,
+                   skipDialog.js the skip confirmation, languageSwitch.js the language switch,
+                   views/ the stage pages
+  styles/          tokens, base, components (kit), page, topbar, layout (shell), stage, panel, dialogs
+tools/check-architecture.mjs   enforces D33: import direction, no globals, no device storage,
+                               no network outside data/, CSS rules, file size caps
+```
+
+### 9.3 Gates
+
+| Command | Needs | Result now |
+| --- | --- | --- |
+| `sh test_frontend.sh` | nothing (Node 24, `npm ci` in `frontend/`) | unit tests + architecture + typecheck |
+| `sh test_backend_unit.sh` | nothing | 292 tests |
+| `sh test_backend_integration.sh` | postgres (own throwaway database/container), nothing running beforehand | 179 tests |
+| `sh test_backend_migrations.sh` | docker, or `TUD_MIGRATION_TEST_DATABASE_URL` | 18 tests |
+| `sh test_e2e.sh` | `./run_dev_nginx_both.bash --test-db` running | the participant suite across five browser legs plus the admin portal leg |
+| `cd frontend && npm run test:components` | nothing but a static server (`python3`, started by the runner) | component mount tests (chromium) |
+| `cd frontend && npm run test:e2e` | the same nginx stack, plus `backend/.env` for the two specs that read stored data back through the admin API | the participant suite (five browser legs) |
+
+### 9.4 Fresh machine: getting to a green run
+
+```sh
+# 1. Backend settings and schema (the API does no bootstrap of its own)
+cp dev_tools/local_nginx/backend_settings/.env.dev-nginx backend/.env   # or write your own
+cd backend && uv sync --frozen
+uv run tud db upgrade
+uv run tud studies import --config studies_config.json --config studies_config_new.json
+uv run uvicorn o_timeusediary_backend.api:app --host 127.0.0.1 --port 8000   # keep running
+```
+
+```sh
+# 2a. Quick look at the rewrite without nginx (serves the repo root, so the
+#     repo-default config.js resolves its locale path)
+python3 -m http.server 8765 --bind 127.0.0.1
+#   http://127.0.0.1:8765/frontend/src/index.html?study=<study>&pid=<participant>
+
+# 2b. The real deployment shape (what CI does)
+./run_dev_nginx_both.bash --test-db
+#   http://localhost:3000/report/       the frontend
+```
+
+**Traps that cost time:**
+
+- **A stale uvicorn silently keeps serving old code.** If the port is in use, the new process dies and
+  you debug code that is not running. Check `ps -eo pid,args | grep [u]vicorn` and kill by PID.
+- **`run_dev_nginx_both.bash` overwrites a tracked file**: it copies the dev-nginx settings over
+  `frontend/src/js/config.js` and restores it on a clean exit - a killed run leaves it modified. If a
+  diff shows up there, restore it with `git checkout --`.
+- **`nginx` needs a writable prefix**: `-p /tmp/` and `client_body_temp_path` (already in the
+  template). Run `nginx -t -c /tmp/nginx.conf -p /tmp/` first - an unsubstituted `$VARIABLE` is the
+  usual failure.
+- **CORS is mandatory** for browser-driven checks: `TUD_ALLOWED_ORIGINS` must name the origin you
+  load the app from, or nearly every request fails.
+- **Study import** rejects languages whose activities JSON is missing, and per-participant task tokens
+  require a closed study (`study_participant_ids` set); open studies need `open_pool` tokens.
+- **Pre-commit hooks** run ruff/ruff-format/prettier. `ruff-format` reformats *the whole staged file*,
+  so touching an old file can pull in unrelated whitespace changes - acceptable, but expect it.
+
+### 9.5 Fixture studies
+
+`backend/studies_config_new.json` + `backend/activities_newui_main.json` hold the study the rewrite is
+piloted on (`pilot_mpiae_01_open`: open enrolment, no fixed participant ids, single-timeline
+catalogue). The fixture studies live in the same file, all closed (fixed participant ids) and all
+pointing at `activities_newui_main.json`, so a spec can start from a known stage:
+
+| `name_short` | lands in | ids | note |
+| --- | --- | --- | --- |
+| `pilot_mpiae_01_open` | `consent` | any (`open`) | the real pilot study, open enrolment |
+| `newui_02_paused` | `unavailable` (`paused`) | `paused_01` | `is_paused`; the page says the study is paused |
+| `newui_03_ended` | `unavailable` (`ended`) | `ended_01` | window over; the page names the end date |
+| `newui_04_not_started` | `unavailable` (`not_started`) | `notstarted_01` | window opens in 2030; the page names the start date |
+| `newui_05_instructions` | `instructions` | `instructions_01/02` | `require_consent: false` + instructions text |
+| `newui_06_diary` | `diary` | `diary_01/02` | no consent, no instructions; the one used by the activity specs |
+| `newui_07_consent` | `consent` | `consent_01/02` | consent only, no instructions |
+| `newui_08_prefilled` | `diary` | `ready_01` 7/7 days complete, `ready_02` 2 partial days, `ready_03` empty | review, coverage, incomplete-submit |
+| `newui_09_tasks` | `diary` | `tasks_01`–`tasks_04` 7/7 days complete | one callback task (`fixture_survey`, tokens `fixture-token-tasks-0N`) |
+| `newui_10_walkthrough` | `consent` | `walk_01/02` | consent **and** instructions, so the full stage walk is possible |
+| `newui_11_skip` | `diary` | `skip_01/02` | `allow_skip_timeuse` **and** `require_diary_before_external_tasks`, so the skip dialog has to say the task stays locked (D41). `skip_02` is only read; `skip_01` is the one that gets skipped |
+| `newui_12_language` | `consent` | `lang_01/02` | the only **multi-language** study (`de` + `en`), with own texts and `footer_links` in both. `lang_01` is read-only; `lang_02` consents once to reach the diary |
+| `newui_13_clientinfo` | `diary` | `client_01/02` | the only study with `save_browser_identification`, so the participant export has the `client_*` block |
+| `newui_14_two_timelines` | `diary` | `two_01` | the only study whose activities config still defines **two** timelines (`primary` 11xx, `secondary` 21xx, own catalogue inline as `activities_json_data`), so `multiTimelinePolicy` and the single-timeline read have a fixture |
+| `newui_15_task_levels` | `diary` | `levels_01` 7/7 days complete | two callback tasks in two levels (`fixture_first` level 1, `fixture_second` level 2) and `require_diary_before_external_tasks`, so both gates can be seen: nothing opens before the diary is submitted, and level 2 opens only once level 1 is confirmed |
+
+The three `unavailable` fixtures only reach the page because the rewrite asks for
+`GET …/study-config?include_unavailable=true` (D39). Without the flag the endpoint answers 403 - that
+is the old frontend's signal - and the client would show its generic failure text instead of the
+reason.
+
+`max_overlap` is a study column with a model default of 2 (`models.py`) and none of the fixtures
+overrides it, so two parallel activities per moment are allowed.
+
+Two guard tests protect config keys that look unused in the rewrite:
+`backend/tests/unit/test_studies_config.py` requires `allow_skip_timeuse` to be explicit in every
+study, and `test_activities_config.py` requires `general.app_name` in every activities file that
+`studies_config.json` references (`activities_newui_main.json` is rewrite-only and has none, because
+the rewrite uses its own i18n title). The old app renders `app_name` as the tab title and footer, and
+one commit dropped it from 13 files, which broke six CI E2E tests.
+
+**A config cannot express a submitted participant.** `study_submitted_at` is participant state, so
+`done` is one API call away from a prefilled fixture:
+`POST /api/studies/{study}/participants/ready_01/diary/submit` → `done` (`completed`), the same call
+for `tasks_01` → `tasks` → confirm with the token → `done`, and `POST …/skip_01/diary/skip` → `done`
+(`skipped`). Seeds and `study_participant_ids` apply when the study is **created**, so reseeding
+means deleting the study and re-importing it. The fixtures expect a fresh database (as CI has) or a
+manual reset:
+
+```sh
+for study in newui_08_prefilled newui_09_tasks newui_10_walkthrough newui_11_skip newui_12_language; do
+  curl -u "$TUD_API_ADMIN_USERNAME:$TUD_API_ADMIN_PASSWORD" -X DELETE \
+    "http://localhost:3000/tud_backend/api/admin/studies/$study"
+done
+cd backend && uv run tud studies import --config studies_config.json --config studies_config_new.json
+```
+
+### 9.6 Committed Playwright specs for the rewrite (D33 rule 8)
+
+The rewrite has its **own** runners and CI jobs:
+
+| Runner | What it runs | Needs |
+| --- | --- | --- |
+| `frontend/playwright.config.js` | `tests/e2e/` - flows | nginx + API + seeded database |
+| `frontend/playwright.components.config.js` | `tests/components/` - one mounted view per fixture page | a static file server (`python3`, started by the runner) |
+
+Both live in `.github/workflows/frontend_e2e.yml` as separate jobs (`e2e` and
+`component-mount-tests`), so a broken view fails in seconds with the view's name instead of after the
+whole stack has booted, and the e2e legs do not pay for tests that cannot differ between browsers.
+
+The e2e suite runs **five** browser legs, one CI job each with its own throwaway database: `chromium`,
+`firefox`, `webkit`, `mobile-safari` (iPhone SE, 320px) and `mobile-chrome` (Pixel 5, 393px). The phone
+legs are not decoration - below 1200px the activity panel is a modal dialog instead of the third
+column, which is a different code path. 29 tests × 5 legs = 145 executions; the arrow-key nudge is
+skipped on the phone legs, the accessibility scans run on two legs, and a local run against one
+database reaches the one-way specs only once (see below) - so CI executes 268 and a full local matrix
+executes 247.
+
+| Spec | Tests | Pins |
+| --- | --- | --- |
+| `deployment.spec.js` | 3 | the locale files are served where the rewrite expects them, and the app loads, routes to the stage the backend reports - once for the diary (which owns the shell) and once for a page-frame stage. Both use rewrite fixtures, not a participant from `studies_config.json` |
+| `activity-lifecycle.spec.js` | 3 | create → edit → reload → delete + undo, "add another" keeping the phone panel open while the desktop footer hides it (both legs assert the outcome they can have), and the plain-http LAN case (`crypto.randomUUID()` missing → `domain/uuid.js` falls back to `getRandomValues`) |
+| `two-timelines.spec.js` | 3 | the second timeline is invisible: the picker offers `primary`'s codes only, a `secondary` row seeded through the API is not rendered, and a create lands on `primary` - the row the server stores says `timeline_key: "primary"` |
+| `activity-multiday-gap.spec.js` | 2 | copying one entry onto a second day, and opening the form from a clicked gap |
+| `activity-nudge.spec.js` | 4 | arrow keys: move, `Shift`-resize, focus kept on the block after the save, a burst of presses that must not be lost or reordered, nothing without a focused block, and a refused nudge |
+| `activity-search.spec.js` | 7 | a matching **sub-activity** is its own row (title = child, hint = parent) and one click opens the form with it preselected - saved as `activity_code 1171` under `parent_activity_code 1166`; the query survives *back*, the search box keeps focus while the list is replaced, no match says so, clearing restores the categories, and "Used recently" appears once something is logged and only while browsing |
+| `menu.spec.js` | 4 | no language entry for a single-language study, the drawer's open/Escape/backdrop behaviour, and that a study which does not allow skipping has no entry |
+| `review-modal.spec.js` | 2 | complete/incomplete day states, *Edit* back to a day, the confirmation step |
+| `skip-diary.spec.js` | 3 | the entry, the dialog's copy (including "the remaining task stays locked"), the note field following the reason, cancel changing nothing, and the one-way skip landing on `done`/`skipped` with its own closing text |
+| `stage-walk.spec.js` | 2 | deep-link guard plus consent → instructions → diary → submit → thanks |
+| `submit-readonly.spec.js` | 1 | the locked, read-only state after submission |
+| `day-strip.spec.js` | 2 | the strip under the day select paints what the day holds, moves with the two time fields, gains a row for parallel entries, and repaints for the day picked in the dropdown |
+| `tasks-stage.spec.js` | 1 | submit → the tasks page, the launch link carrying the participant's token, "check again" not inventing a confirmation, and the callback moving the participant on |
+| `external-task-return.spec.js` | 1 | the provider's return: the callback parameters confirm the task on load (no "check again" needed), the spent token leaves the address bar, and the `return_url` from the invitation becomes the closing page's way back |
+| `task-levels.spec.js` | 1 | the diary gate hides the tasks entirely, level 2 renders as locked with its reason while level 1 is owed, and only both confirmations together reach the thank-you page |
+| `touch-targets.spec.js` | 1 | the seven day chips stay ≥44px and on screen at the narrowest phone width |
+| `unavailable-stages.spec.js` | 4 | `paused` / `ended` / `not_started` each render their own copy and date, the generic sentence never stands in for a known reason, and no diary chrome is offered |
+| `client-identification.spec.js` | 2 | the device blob reaches the database (read back through the admin participant export) for a study that collects it, and leaves no `client_*` block for one that does not |
+| `coverage.spec.js` | 2 | the progress note and the rail count a day only at `min_coverage` (1440 in the rewrite's catalogue), and the note agrees with the review dialog's open/complete markers |
+| `failure-page.spec.js` | 2 | a URL without an invitation says so and offers no reload, and a failed `study-config` explains itself and recovers on *Try again* |
+| `language.spec.js` | 5 | a single-language study beats an English browser, `?lang` beats the study, the menu offers exactly the study's languages, and picking one re-fetches the study text, the footer links *and* the diary's day names |
+| `shortcuts.spec.js` | 5 | `PageUp`/`PageDown` move the day, `/` is confined to the diary and dead while typing (WCAG 2.1.4), `n` opens the add form for the day in view, `?` lists the shortcuts and `Esc` closes them, and a phone with no fine pointer gets none of it |
+
+**Writes and the fixtures.** The specs that write (`activity-lifecycle`, `activity-multiday-gap`,
+`activity-nudge`, `activity-search`, `coverage`) clear their activities through the public diary API
+first, so repeated local runs start from the same state. Four specs close something for good: `submit-readonly.spec.js` submits
+`newui_08_prefilled/ready_01`, `stage-walk.spec.js` submits `newui_10_walkthrough/walk_01`,
+`tasks-stage.spec.js` submits `newui_09_tasks/tasks_01`, `external-task-return.spec.js` submits and
+confirms `newui_09_tasks/tasks_04`, `task-levels.spec.js` submits and confirms
+`newui_15_task_levels/levels_01`, `skip-diary.spec.js` skips `newui_11_skip/skip_01`, and
+`language.spec.js` consents as `newui_12_language/lang_02`. They guard on the stored state and skip with a reset message (see 9.5), which
+means **a local run of the whole matrix consumes them in the first leg** - CI is unaffected because
+every leg starts from its own database.
+
+That is also why `newui_11_skip` has two participants: `skip_02` is only ever read, so the dialog and
+the note field are still exercised on the legs that run after the fixture has been consumed. Use a
+read-only twin whenever a spec exists to look at something, and spend the mutating participant only on
+the one test that has to mutate.
+
+Five real bugs were found only by driving the browser, which is the argument for this list: `Esc`
+stopped closing the review modal once the shortcut handler ran, `Enter` in the activity form reloaded
+the page, the stage guard compared its cached route instead of the URL (a same-page hash change stayed
+on `#/diary` while the consent page was shown), switching language re-rendered the cached payload so
+German chrome sat around English study text, and a skip or a submit applied the returned stage to
+the **cached** session - so the tasks page rendered a dead "Open" link and a skipper was thanked with
+the *completed* text. The last one is the reason `reviewFlow.js` and the skip wiring now call
+`stageMachine.refresh()` instead of `applyStage(result.stage)`.
+
+### 9.6a Component mount tests
+
+`tests/components/` holds one fixture page per view plus the spec that drives it. Each page loads the
+app's real modules and the shipped `de.json`, so the assertions use the strings a participant sees, and
+a branch the seeded studies cannot express (no `unavailable_reason`, a `not_started` study with no
+start date, a thank-you page with no closing text, a rejected consent) is one query parameter away.
+
+| Fixture | Spec | Pins |
+| --- | --- | --- |
+| `page.html` | `page.spec.js` | the frame: eyebrow, exactly one `h1`, optional lead/actions/mark, and study Markdown demoted so a `#` becomes an `h2` |
+| `unavailable.html` | `unavailable.spec.js` | the three reasons, plus both fallbacks: no reason at all, and a "say when" reason with no date (never a sentence with a hole in it) |
+| `thanks.html` | `thanks.spec.js` | completed / declined / skipped, a skipper whose study has no skipped text, no closing text at all, the `return_url` way back (and none without one, or after declining) |
+| `daystrip.html` | `daystrip.spec.js` | the day strip's arithmetic: a segment's start/width as a share of 1440 minutes, dynamic rows for parallel entries, the pending row (and its absence), a range clipped at midnight, and an unparseable activity colour falling back to the neutral bar |
+| `tasks.html` | `tasks.spec.js` | open task is a link, confirmed task is a checkmark, a level-locked and a diary-locked task show their reason and no link, hint disappears with the description, and "check again" disables itself while in flight and re-enables after a failure |
+| `consent.html`, `instructions.html` | `consent-instructions.spec.js` | both answers reported as booleans, the failure notice with re-enabled buttons, and the heading fallback |
+
+Add a fixture page for a new view rather than a `page.evaluate()` blob: a real page is what the rule
+asks for, and it keeps the mount honest about scripts, modules and relative URLs.
+
+### 9.6b The accessibility gate
+
+`tests/e2e/a11y.spec.js` runs axe-core (`@axe-core/playwright`) against **every surface a participant
+can be looking at**, WCAG 2.0 / 2.1 / 2.2 level A + AA:
+
+| Scans | |
+| --- | --- |
+| pages | `unavailable`, `consent`, `instructions`, the failure page, the diary (with a filled day), `tasks`, `thanks` |
+| open dialogs | the drawer menu, the activity panel's form step, the review dialog, the skip dialog, the shortcut list |
+
+Decisions worth knowing:
+
+- **It runs in the e2e suite, not on the component fixtures.** Those pages load no stylesheet, so
+  anything about colour, visibility or "is this text rendered" would be a guess.
+- **Two legs only** - `chromium` (three columns, panel as a column) and `mobile-chrome` (393px, panel
+  as a modal) - because axe's rules are DOM/ARIA-based and do not vary by engine, and five legs would
+  cost five times as much for the same findings. The other three skip with that reason printed.
+- **`best-practice` rules are outside the gate.** The one that would fire is `region` (the floating
+  add button and the toast region sit outside a landmark), which is a structural decision about a
+  fixed-position control, not a conformance failure.
+- **`a11y-allowlist.js` exists but is empty.** A finding is tolerated only through an entry that names
+  a reason and a node count, and the helper still fails when a rule exceeds its node count - so an old
+  entry cannot absorb new breakage. It prints what it tolerated on every run. Prefer fixing: the two
+  findings below were fixed rather than listed.
+
+
+### 9.7 What is left
+
+1. **Idle timeout** - recorded, not built, priority Z (see section 8). Stakeholders must decide first;
+   the honest form is a server-side expiring session token, not URL manipulation, and the
+   participant's own return must keep working.
+2. **Re-reading the instructions during the diary** - the `instructions` stage is the only place the
+   study text appears, so someone who has started filling days cannot look it up again. The old app had
+   a modal for exactly that. A menu entry that opens the same text in the existing dialog would close
+   the gap; it is a product decision, not a technical one.
+3. **New studies that suit the rewrite.** Until cutover, studies for `/report/` are added to
+   `studies_config*.json` with a **single-timeline** catalogue. Two open points:
+   - *Legacy two-timeline files.* `flattenCatalogue` (`src/js/ui/activitySearch.js`) iterates every key
+     under `timeline`, so pointing the rewrite at a file with `primary` + `secondary` would list the
+     same names twice (each file duplicates 8-10 activity names, the same activity under `1220` in
+     `primary` and `2220` in `secondary`). Latent today: every study in `studies_config.json` uses such
+     a file but is served by the old app, and the pilot uses `activities_newui_main.json` (single
+     timeline). Settle it before pointing the rewrite at a legacy study: either the client honours the
+     server-resolved timeline (`diary.timeline.key`) or the server returns one merged timeline.
+   - *Displaying a two-timeline study in one.* Only worth considering as a fallback, bounded by
+     `max_overlap` (2 unless a study sets it), and no study has more than two timelines, so it gets
+     confusing quickly.
+4. **Cutover (done).** The old frontend and its whole-day save/read/copy endpoints are removed, the
+   app is served at `/report/`, the admin-only E2E specs were migrated, and the participant suite runs
+   from `frontend/`. Remaining follow-up: convert the legacy two-timeline study configs and delete the
+   `2xxx` codes (Q6/Q7), so `multiTimelinePolicy` can go away; `day_start_minutes: 240` is now
+   ordinary configuration.
+5. **The e2e coverage that is still missing.** The diary, its panel, every stage page and the WCAG
+   A/AA gate are covered now; these are not:
+   - *Day labels after a language switch* are only covered for a study that already reaches the
+     diary (`language.spec.js` spends `lang_02` consenting to get there). A multi-language study that
+     starts in the diary would make that test read-only.
+   - *The consent and instructions failure paths* are component tests only: the e2e suite never makes
+     a decision request fail, because that needs a routed 500 in the middle of a one-way stage.
+6. **An intermittent hang when adding an activity on a phone leg.** Two specs hit it:
+   `activity-multiday-gap.spec.js` "prefills the form from the clicked gap" and
+   `coverage.spec.js` "counts a day only when min_coverage is met", both 40s timeouts, both on
+   `mobile-chrome` (393px), both at the **third** consecutive add of the test. The snapshot always
+   shows the same thing: the entries added before it are on the timeline, `#fab` is focused (so the
+   click landed), and `#dialog-host` never opened - `helpers.openPanel` waits for a dialog that
+   `panelController.openAt` did not show.
+   Both specs pass when run alone (3/3 and 8/8) and when driven by a script at the same viewport, so
+   it is neither width-specific nor deterministic. The suspicion is `dialogHost.showModal()` being
+   skipped or throwing because the dialog is still in a transitional state after the previous save's
+   re-render; nothing guards that call with a try/catch, so a throw would be an uncaught page error
+   and the dialog would simply not appear. Not chased further (it is pre-existing, and CI retries
+   twice per leg), but it is the one red in a full local matrix run and the next person to see it
+   should capture the page error rather than the timeout.
+
+### 9.8 Rules that are easy to break (the checks will fail)
+
+- `frontend` may not import `frontend` (and vice versa) - the locale files are the only shared
+  artefact.
+- No globals, no `document.documentElement` outside `main.js` (`<html lang>`), no
+  `localStorage`/`indexedDB`, no `fetch` outside `js/data/`.
+- File caps: 300 lines JS, 150 CSS (`components.css` excepted). Hitting the cap has been a reliable
+  signal that something belongs in its own module - `main.js` was split three times this way
+  (`diaryView`, `panelController`, `stageMachine`/`boot`).
+- CSS: tokens only, no colour literals, no id selectors, no `!important` (except `base.css`).
+- Locale keys: `diary.*` plus a small shell allowlist; values are plain text; `_one`/`_other` for
+  plurals. `tests/unit/page_i18n_keys.test.js` enforces all of it across de/en/sv.
+- A new surface (page, dialog, sheet) needs an entry in `tests/e2e/a11y.spec.js`. Hand-written
+  `aria-label`s are the usual way Label in Name breaks: let the content be the name unless the label
+  says something the content cannot.

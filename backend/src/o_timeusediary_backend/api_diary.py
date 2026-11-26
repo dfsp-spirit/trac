@@ -14,7 +14,7 @@ One row per activity, addressed by ``client_uuid``, instead of the old
 * **Reads return coverage per day**, computed by the same helper the submit gate
   uses, so the day rail cannot disagree with what submission will check.
 
-The old whole-day endpoint stays untouched until cutover (D25).
+There is no whole-day snapshot writer any more (D25).
 """
 
 from __future__ import annotations
@@ -582,8 +582,8 @@ def submit_diary(
     call returns the first timestamp instead of an error, which makes a retry
     after a lost response harmless.
 
-    Lives under ``/diary`` rather than on the participant root, so it cannot
-    collide with the old ``POST .../submit`` that stays until cutover (D25).
+    Lives under ``/diary`` rather than on the participant root, so it does not
+    collide with the other participant routes.
     """
     study = context.study
     participant = context.study_participant

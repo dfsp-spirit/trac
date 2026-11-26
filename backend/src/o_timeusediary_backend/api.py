@@ -30,7 +30,6 @@ from typing import (
     Mapping,
     Optional,
     Sequence,
-    Set,
     Tuple,
     Union,
 )
@@ -98,7 +97,6 @@ from .models import (
 )
 from .database import (
     get_session,
-    get_timelines_for_study,
     ensure_external_task_assignments,
 )
 from .study_cleanup import delete_study_data
@@ -106,11 +104,6 @@ from pathlib import Path
 import hashlib
 import html
 import hmac as hmac_lib
-from .api_deps.activities import get_study_activity_codes
-from .api_deps.frequency import (
-    allowed_frequency_keys_by_code,
-    frequency_key_errors,
-)
 from .api_deps.diary_access import ensure_study_is_currently_available
 from .api_diary import router as diary_router
 from .api_messages import router as messages_router
@@ -148,7 +141,6 @@ from .api_deps.admin_auth import (
     verify_admin,
 )
 from .utils import (
-    get_time_for_minutes_from_midnight,
     localized_study_text,
     substitute_study_text_placeholders,
     utc_now,
@@ -507,40 +499,18 @@ def _build_external_task_expected_return_url_template(
     *,
     hmac_secret_reference: Optional[str] = None,
 ) -> str:
-    frontend_url = settings.frontend_url
-    encoded_study = quote(study_name_short, safe="")
-    encoded_task = quote(task_key, safe="")
-    base_url = (
-        f"{frontend_url}/pages/tasks.html"
-        f"?study_name={encoded_study}"
-        "&pid={participant_id}"
-        f"&callback_task_key={encoded_task}"
-        "&callback_token={assigned_token}"
-    )
-    if hmac_secret_reference:
-        base_url += "&hmac={hmac_signature}"
-    return base_url
+    """Return URL template the provider sends the participant back with.
 
-
-def _build_external_task_expected_return_url_template_new(
-    study_name_short: str,
-    task_key: str,
-    *,
-    hmac_secret_reference: Optional[str] = None,
-) -> str:
-    """The same return contract, pointed at the rewritten frontend.
-
-    The rewrite reads identity from `study`/`pid` (D37) and has no
-    `pages/tasks.html`, so neither the classic page nor the `study_name`
-    parameter applies here. The `#/tasks` fragment is a courtesy, not a
-    requirement: the client asks the server for the stage and settles on the
-    tasks page anyway, so a provider that drops everything after `#` still sends
-    the participant to the right place.
+    Identity travels as `study`/`pid`, which is what the participant frontend
+    reads. The `#/tasks` fragment is a courtesy, not a requirement: the client
+    asks the server for the stage and settles on the tasks page anyway, so a
+    provider that drops everything after `#` still returns the participant to
+    the right place.
     """
     encoded_study = quote(study_name_short, safe="")
     encoded_task = quote(task_key, safe="")
     url = (
-        f"{settings.frontend_new_url}/index.html"
+        f"{settings.frontend_url}/index.html"
         f"?study={encoded_study}"
         "&pid={participant_id}"
         f"&callback_task_key={encoded_task}"
@@ -551,30 +521,19 @@ def _build_external_task_expected_return_url_template_new(
     return f"{url}#/tasks"
 
 
-def _build_frontend_study_join_url(study_name_short: str, participant_id: str) -> str:
-    frontend_url = settings.frontend_url
-    query = urlencode(
-        {
-            "pid": participant_id,
-            "study_name": study_name_short,
-        }
-    )
-    return f"{frontend_url}/index.html?{query}"
-
-
-def _build_frontend_new_study_join_url(
+def _build_frontend_study_join_url(
     study_name_short: str, participant_id: Optional[str] = None
 ) -> str:
-    """Build a link into the rewritten frontend (`frontend_new`).
+    """Build a link into the participant frontend for a study.
 
-    The rewrite reads `study` and `pid` from the query string. Without a `pid`
-    the participant is joining an open study, and the rewrite generates an id on
-    load, so a plain `?study=...` link can be shared.
+    The app reads `study` and `pid` from the query string. Without a `pid` the
+    participant is joining an open study, and the app generates an id on load,
+    so a plain `?study=...` link can be shared.
     """
     query_values = {"study": study_name_short}
     if participant_id:
         query_values["pid"] = participant_id
-    return f"{settings.frontend_new_url}/index.html?{urlencode(query_values)}"
+    return f"{settings.frontend_url}/index.html?{urlencode(query_values)}"
 
 
 def _get_study_blob_languages(session: Session, study_id: int) -> List[str]:
@@ -1577,535 +1536,6 @@ def get_study_activities_config(
         )
 
 
-class ActivitySubmitItem(BaseModel):
-    timeline_key: str
-    activity: str  # For reference/debugging and to compute activity path
-    category: str  # For reference/debugging and to compute activity path
-    code: Optional[int] = None  # For single-choice only
-    codes: Optional[List[int]] = (
-        None  # For multiple-choice only: several codes for several activities that were done in parallel
-    )
-    parent_activity_name: Optional[str] = (
-        None  # only set if this is a child activity, ignore if these is no parent_activity_code (in that case it is identical to activity, and this is NOT a child activity. frontend should be fixed not to send it then.)
-    )
-    parent_activity_code: Optional[int] = None  # only set if this is a child activity
-    original_selection: Optional[str] = (
-        None  # only set if this is a custom text input, it then shows the prompt text like "Other sport, please specify".
-    )
-    start_minutes: int
-    end_minutes: int
-    mode: str  # "single-choice" or "multiple-choice",
-    color: Optional[str] = None  # e.g., "#FF0000", used in frontend for display
-    frequency_key: Optional[str] = None
-
-    @model_validator(mode="after")
-    def validate_code_or_codes(self):
-        code_provided = self.code is not None
-        codes_provided = self.codes is not None and len(self.codes) > 0
-
-        if code_provided and codes_provided:
-            raise ValueError('Only one of "code" or "codes" should be provided')
-        if not code_provided and not codes_provided:
-            raise ValueError('Either "code" or "codes" must be provided')
-
-        # Additional validation based on mode
-        if self.mode == "single-choice" and not code_provided:
-            raise ValueError('"code" must be provided for single-choice mode')
-        if self.mode == "multiple-choice" and not codes_provided:
-            raise ValueError('"codes" must be provided for multiple-choice mode')
-
-        if self.frequency_key is not None:
-            self.frequency_key = self.frequency_key.strip()
-            if not self.frequency_key:
-                raise ValueError(
-                    '"frequency_key" must be a non-empty string when provided'
-                )
-
-        return self
-
-
-class ActivitiesSubmitRequest(BaseModel):
-    activities: List[ActivitySubmitItem]
-
-
-def compute_activity_path(activity_item: ActivitySubmitItem) -> str:
-    """Compute the activity path for frontend display based on the activity item details.
-    @return A string representing the activity path, e.g. "timeline:Morning > category:Sport > parent:Running > activity:Running (outdoor) > custom_input_prompt:Other sport, please specify". The path includes timeline, category, parent activity (if applicable), the actual activity, and custom input prompt (if applicable).
-    """
-    parts = []
-
-    # Always include timeline
-    parts.append(f"timeline:{activity_item.timeline_key}")
-
-    # Include category if present and not empty
-    if (
-        activity_item.category
-        and activity_item.category.strip()
-        and activity_item.category != " "
-    ):
-        parts.append(f"category:{activity_item.category}")
-
-    # Include parent if different from activity (true hierarchy)
-    if (
-        activity_item.parent_activity_code
-        and activity_item.parent_activity_name
-        and activity_item.parent_activity_name != activity_item.activity
-    ):
-        parts.append(f"parent:{activity_item.parent_activity_name}")
-
-    if (
-        activity_item.original_selection
-        and activity_item.original_selection.strip()
-        and activity_item.original_selection != activity_item.activity
-    ):
-        parts.append(f"custom_input_prompt:{activity_item.original_selection}")
-
-    # Always include the actual activity
-    parts.append(f"activity:{activity_item.activity}")
-
-    return " > ".join(parts)
-
-
-def _build_allowed_frequency_keys_by_code(
-    activities_config: ActivitiesConfig,
-) -> Dict[int, Set[str]]:
-    """Map activity code to allowed frequency keys from activities config.
-
-    The rule itself lives in api_deps/frequency.py so the incremental diary API
-    applies the same one.
-    """
-    return allowed_frequency_keys_by_code(activities_config)
-
-
-def _validate_frequency_key_for_codes(
-    activity_item: ActivitySubmitItem,
-    candidate_codes: List[int],
-    allowed_frequency_keys_by_code: Dict[int, Set[str]],
-) -> List[Dict[str, object]]:
-    """Return validation errors for a submitted frequency_key against activity codes."""
-    return frequency_key_errors(
-        frequency_key=activity_item.frequency_key,
-        candidate_codes=candidate_codes,
-        allowed_by_code=allowed_frequency_keys_by_code,
-        timeline_key=activity_item.timeline_key,
-        activity_name=activity_item.activity,
-    )
-
-
-@app.post(
-    "/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities"
-)
-def submit_activities(
-    study_name_short: str,
-    participant_id: str,
-    day_label_name: str,
-    activities_data: ActivitiesSubmitRequest,
-    session: Session = Depends(get_session),
-):
-    """
-    Submit activities for a specific day label in a study.
-    Handles both single-choice and multiple-choice timelines.
-    Rejects entire submission if any activity code is invalid (frontend-backend config mismatch).
-    If activities already exist for this user-study-day_label combination, they are deleted first.
-
-    @param study_name_short The short name of the study.
-    @param participant_id The participant ID submitting the activities.
-    @param day_label_name The day label these activities belong to.
-    @param activities_data The submitted activities payload.
-    @param session Database session dependency.
-    @returns A JSON response indicating success and submission metadata.
-    """
-    require_valid_participant_id(participant_id)
-    # Validate study exists
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
-
-    now = _coerce_utc_aware(utc_now())
-    collection_start = _coerce_utc_aware(study.data_collection_start)
-    collection_end = _coerce_utc_aware(study.data_collection_end)
-
-    if now < collection_start:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Study '{study.name_short}' has not started yet. "
-            f"Data collection starts on {study.data_collection_start.isoformat()}.",
-        )
-
-    if now > collection_end:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Study '{study.name_short}' has ended. "
-            f"Data collection ended on {study.data_collection_end.isoformat()}.",
-        )
-
-    if study.is_paused:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Study '{study.name_short}' is currently paused.",
-        )
-
-    # Get all valid activity codes for this study
-    try:
-        valid_codes = get_study_activity_codes(study_name_short, session)
-    except HTTPException as e:
-        # Re-raise the HTTP exception
-        raise e
-    except Exception as e:
-        logger.error(f"Error loading activity codes for study {study_name_short}: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Could not load activity configuration for validation",
-        )
-
-    try:
-        activities_config, _source, _selected_language = (
-            get_study_activities_config_model(
-                session=session,
-                study=study,
-                lang=None,
-            )
-        )
-        allowed_frequency_keys_by_code = _build_allowed_frequency_keys_by_code(
-            activities_config
-        )
-    except Exception as e:
-        logger.error(
-            "Error loading activities config for frequency validation in study %s: %s",
-            study_name_short,
-            e,
-        )
-        raise HTTPException(
-            status_code=500,
-            detail="Could not load activity configuration for frequency validation",
-        )
-
-    # Validate/Create participant based on study settings
-    if not study.allow_unlisted_participants:
-        # Study restricts participants - check if they're in the allowed list
-        study_participant = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-        if not study_participant:
-            logger.info(
-                f"Unauthorized participant '{participant_id}' attempted to submit to study '{study_name_short}'"
-            )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Participant '{participant_id}' not authorized for this study",
-            )
-    else:
-        # Study allows unlisted participants - ensure the participant is linked
-        # to the study (for tracking)
-        study_participant = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-
-        if not study_participant:
-            study_participant = StudyParticipant(
-                study_id=study.id, participant_id=participant_id
-            )
-            session.add(study_participant)
-
-    # Reject edits once the study has been submitted. The frontend redirects
-    # submitted participants to the thank-you page, but that is a UX
-    # convenience only - this endpoint is the actual guarantee that a
-    # submitted diary is immutable.
-    if study_participant.study_submitted_at is not None:
-        logger.info(
-            "Rejected activity submission for participant '%s' in study '%s': "
-            "already submitted at %s",
-            participant_id,
-            study_name_short,
-            study_participant.study_submitted_at.isoformat(),
-        )
-        raise HTTPException(
-            status_code=403,
-            detail=f"Study '{study_name_short}' has already been submitted and can no longer be edited.",
-        )
-
-    # Validate day label exists for this study
-    day_label = session.exec(
-        select(DayLabel).where(
-            DayLabel.study_id == study.id, DayLabel.name == day_label_name
-        )
-    ).first()
-    if not day_label:
-        logger.info(
-            f"Day label '{day_label_name}' not found for study '{study_name_short}'"
-        )
-        raise HTTPException(
-            status_code=404,
-            detail=f"Day label '{day_label_name}' not found for study '{study_name_short}'",
-        )
-
-    # Get all timelines for this study to validate timeline keys
-    study_timelines = session.exec(
-        select(Timeline).where(Timeline.study_id == study.id)
-    ).all()
-    timeline_map = {timeline.name: timeline for timeline in study_timelines}
-
-    created_activities = []
-    invalid_codes = []
-    invalid_frequency_keys = []
-
-    # PHASE 1: Validate all activity codes before creating any records
-    for activity_item in activities_data.activities:
-        # Validate timeline exists
-        timeline = timeline_map.get(activity_item.timeline_key)
-        if not timeline:
-            logger.info(
-                f"Unknown timeline '{activity_item.timeline_key}' for study '{study_name_short}'"
-            )
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unknown timeline '{activity_item.timeline_key}' for study '{study_name_short}'",
-            )
-
-        # Handle single-choice activity
-        if activity_item.mode == "single-choice":
-            if not activity_item.code:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Single-choice activity missing 'code' for timeline '{activity_item.timeline_key}'",
-                )
-
-            # Validate the activity code
-            if activity_item.code not in valid_codes:
-                invalid_codes.append(
-                    {
-                        "code": activity_item.code,
-                        "timeline": activity_item.timeline_key,
-                        "activity_name": activity_item.activity,
-                        "type": "single-choice",
-                    }
-                )
-            else:
-                invalid_frequency_keys.extend(
-                    _validate_frequency_key_for_codes(
-                        activity_item=activity_item,
-                        candidate_codes=[activity_item.code],
-                        allowed_frequency_keys_by_code=allowed_frequency_keys_by_code,
-                    )
-                )
-
-        # Handle multiple-choice activity
-        elif activity_item.mode == "multiple-choice":
-            if not activity_item.codes:
-                logger.info(
-                    f"Multiple-choice activity missing 'codes' for timeline '{activity_item.timeline_key}'"
-                )
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Multiple-choice activity missing 'codes' for timeline '{activity_item.timeline_key}'",
-                )
-
-            # Validate all codes in this multiple-choice activity
-            for code in activity_item.codes:
-                if code not in valid_codes:
-                    invalid_codes.append(
-                        {
-                            "code": code,
-                            "timeline": activity_item.timeline_key,
-                            "activity_name": activity_item.activity,
-                            "type": "multiple-choice",
-                        }
-                    )
-
-            valid_codes_for_frequency = [
-                code for code in activity_item.codes if code in valid_codes
-            ]
-            if valid_codes_for_frequency:
-                invalid_frequency_keys.extend(
-                    _validate_frequency_key_for_codes(
-                        activity_item=activity_item,
-                        candidate_codes=valid_codes_for_frequency,
-                        allowed_frequency_keys_by_code=allowed_frequency_keys_by_code,
-                    )
-                )
-
-        else:
-            logger.info(
-                f"Unknown activity mode '{activity_item.mode}' for study '{study_name_short}'"
-            )
-            raise HTTPException(
-                status_code=400, detail=f"Unknown activity mode '{activity_item.mode}'"
-            )
-
-    # REJECT ENTIRE SUBMISSION IF ANY INVALID CODE - FATAL CONFIG MISMATCH
-    if invalid_codes:
-        logger.error(
-            f"FATAL CONFIG MISMATCH: Invalid activity codes detected for study '{study_name_short}'. "
-            f"Frontend-backend configuration mismatch! Invalid codes: {invalid_codes}"
-        )
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "FATAL: Invalid activity codes detected. Frontend and backend configuration mismatch!",
-                "error_type": "configuration_mismatch",
-                "invalid_codes": invalid_codes,
-                "total_invalid": len(invalid_codes),
-                "suggestion": "Check that the activities.json file used by frontend matches the backend configuration at: "
-                + study.activities_json_url,
-            },
-        )
-
-    if invalid_frequency_keys:
-        logger.error(
-            "Invalid frequency_key values detected for study '%s': %s",
-            study_name_short,
-            invalid_frequency_keys,
-        )
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Invalid frequency_key submitted for one or more activities.",
-                "error_type": "invalid_frequency_key",
-                "invalid_frequency_keys": invalid_frequency_keys,
-                "total_invalid": len(invalid_frequency_keys),
-                "suggestion": "Use one of the configured frequency option keys for the selected activity code.",
-            },
-        )
-
-    # NOTE: min_coverage is deliberately not enforced while saving (Copy Days
-    # feature). Saving is always allowed; the submit-study endpoint enforces
-    # completion as the final gate, using coverage.py - the same helper the
-    # admin progress view uses.
-
-    # Slot uniqueness is a database constraint (D8). Checking it here as well
-    # turns what would be an IntegrityError into a clear 4xx for the snapshot
-    # writer, which is the only writer that could still send a duplicate.
-    seen_slots: Set[Tuple[int, int, int]] = set()
-    for activity_item in activities_data.activities:
-        codes = (
-            [activity_item.code]
-            if activity_item.mode == "single-choice"
-            else (activity_item.codes or [])
-        )
-        for code in codes:
-            slot = (code, activity_item.start_minutes, activity_item.end_minutes)
-            if slot in seen_slots:
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        "code": "activity.duplicate",
-                        "message": "The same activity was submitted twice for the same time.",
-                        "activity_code": code,
-                        "start_minutes": activity_item.start_minutes,
-                        "end_minutes": activity_item.end_minutes,
-                    },
-                )
-            seen_slots.add(slot)
-
-    # PHASE 2: Check if activities already exist for this user-study-day_label
-    # Counted, not loaded: the rows themselves are replaced wholesale below, so
-    # materialising N ORM objects only to delete them is wasted work.
-    existing_count = session.exec(
-        select(func.count())
-        .select_from(Activity)
-        .where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-            Activity.day_label_id == day_label.id,
-        )
-    ).one()
-    operation = "updated" if existing_count > 0 else "created"
-
-    # Delete existing activities if any (this implements the "edit/replace" logic)
-    if existing_count > 0:
-        logger.info(
-            f"Deleting {existing_count} existing activities for participant '{participant_id}', "
-            f"study '{study_name_short}', day label '{day_label_name}' before inserting new ones"
-        )
-
-        # One statement, not one DELETE per row: every save rewrites the whole day
-        # (snapshot semantics), and that is exactly what autosave will do often -
-        # see dev_tools/todo_mobile.md, slices 0/2. The row count is the hot path.
-        session.exec(
-            delete(Activity).where(
-                Activity.study_id == study.id,
-                Activity.participant_id == participant_id,
-                Activity.day_label_id == day_label.id,
-            )
-        )
-
-        # Flush to execute deletes before inserts
-        session.flush()
-
-    # PHASE 3: Create all new activities (all codes are valid)
-    for activity_item in activities_data.activities:
-        timeline = timeline_map[activity_item.timeline_key]
-
-        if activity_item.mode == "single-choice":
-            activity = Activity(
-                study_id=study.id,
-                participant_id=participant_id,
-                day_label_id=day_label.id,
-                timeline_id=timeline.id,
-                activity_code=activity_item.code,
-                start_minutes=activity_item.start_minutes,
-                end_minutes=activity_item.end_minutes,
-                activity_name=activity_item.activity,
-                activity_path_frontend=compute_activity_path(activity_item),
-                color=activity_item.color,
-                category=activity_item.category,
-                frequency_key=activity_item.frequency_key,
-                parent_activity_code=activity_item.parent_activity_code,
-            )
-            session.add(activity)
-            created_activities.append(activity)
-
-        elif activity_item.mode == "multiple-choice":
-            for code in activity_item.codes:
-                activity = Activity(
-                    study_id=study.id,
-                    participant_id=participant_id,
-                    day_label_id=day_label.id,
-                    timeline_id=timeline.id,
-                    activity_code=code,
-                    start_minutes=activity_item.start_minutes,
-                    end_minutes=activity_item.end_minutes,
-                    activity_name=activity_item.activity,
-                    activity_path_frontend=compute_activity_path(activity_item),
-                    color=activity_item.color,
-                    category=activity_item.category,
-                    frequency_key=activity_item.frequency_key,
-                    parent_activity_code=activity_item.parent_activity_code,
-                )
-                session.add(activity)
-                created_activities.append(activity)
-
-    # Commit all changes (deletes and inserts)
-    session.commit()
-
-    # Deliberately no session.refresh() loop here: it emitted one SELECT per
-    # inserted row and the response only reports counts. Rows are re-created on
-    # every save anyway, so nothing downstream can rely on a stable id.
-    created_count = len(created_activities)
-
-    return {
-        "message": f"Successfully {operation} {created_count} activities",
-        "study": study_name_short,
-        "participant": participant_id,
-        "day_label": day_label_name,
-        "activity_count": created_count,
-        "previous_activities_deleted": existing_count,
-        "operation": operation,
-        "validation": "All activity codes validated against study configuration",
-        "config_source": study.activities_json_url,
-    }
-
-
 def _build_server_completion_progress(
     completion_rows: Sequence[Tuple[datetime, Optional[datetime]]],
     *,
@@ -2684,13 +2114,6 @@ async def admin_study_detail(
                         external_task
                     ),
                 ),
-                "expected_return_url_new": _build_external_task_expected_return_url_template_new(
-                    study.name_short,
-                    external_task.task_key,
-                    hmac_secret_reference=_get_hmac_secret_reference_from_task(
-                        external_task
-                    ),
-                ),
                 "confirmation_type": external_task.confirmation_type,
                 "task_level": external_task.task_level,
                 "assignment_count": len(assignment_rows),
@@ -2762,14 +2185,9 @@ async def admin_study_detail(
     # --- Description text ---
     description_text = _resolve_description(study)
 
-    # --- Open join URLs ---
+    # --- Open join URL ---
     frontend_open_join_url = (
-        f"{settings.frontend_url}/index.html?{urlencode({'study_name': study.name_short})}"
-        if study.allow_unlisted_participants
-        else None
-    )
-    frontend_new_open_join_url = (
-        _build_frontend_new_study_join_url(study.name_short)
+        _build_frontend_study_join_url(study.name_short)
         if study.allow_unlisted_participants
         else None
     )
@@ -2914,7 +2332,6 @@ async def admin_study_detail(
         "is_actively_collecting": study_is_currently_collecting,
         "require_consent": bool(study.require_consent),
         "frontend_open_join_url": frontend_open_join_url,
-        "frontend_new_open_join_url": frontend_new_open_join_url,
         "completion_progress": completion_progress,
         "study_owner_usernames": list(study.owner_usernames or []),
         "scientist_names": sorted(settings.scientist_names),
@@ -5963,9 +5380,6 @@ async def admin_participant_management(
                     "study_join_url": _build_frontend_study_join_url(
                         selected_study.name_short, participant_id
                     ),
-                    "study_join_url_new": _build_frontend_new_study_join_url(
-                        selected_study.name_short, participant_id
-                    ),
                     "tokens": assignments_by_participant.get(participant_id, {})
                     if assignments_by_participant
                     else {},
@@ -6750,13 +6164,6 @@ async def export_tokens(
 )
 async def export_participant_invitation_links(
     study_name_short: str,
-    frontend: str = Query(
-        "new",
-        description=(
-            "Participant frontend the links point to: 'new' for the rewrite "
-            "(default) or 'legacy' for the classic client."
-        ),
-    ),
     format: ExportFormat = Query(
         "csv", description="Delimited-text format: 'csv' or 'tsv'"
     ),
@@ -6774,19 +6181,11 @@ async def export_participant_invitation_links(
     tokens belong to different exports with a different audience.
 
     @param study_name_short Short name of the study to export.
-    @param frontend Which participant frontend the links point to.
     @param format Delimited-text format, `csv` (default) or `tsv`.
     @param current_admin Authenticated admin username from Basic Auth dependency.
     @param session Database session dependency.
     @returns A download with columns `pid` and `invitation_link`.
     """
-    normalized_frontend = (frontend or "new").strip().lower()
-    if normalized_frontend not in {"new", "legacy"}:
-        raise HTTPException(
-            status_code=400,
-            detail="Unsupported frontend. Allowed values: new, legacy",
-        )
-
     study = session.exec(
         select(Study).where(Study.name_short == study_name_short)
     ).first()
@@ -6801,11 +6200,7 @@ async def export_participant_invitation_links(
         .order_by(StudyParticipant.participant_id)
     ).all()
 
-    build_invitation_link = (
-        _build_frontend_new_study_join_url
-        if normalized_frontend == "new"
-        else _build_frontend_study_join_url
-    )
+    build_invitation_link = _build_frontend_study_join_url
 
     # Written explicitly instead of via export_csv(), which sorts column names
     # and would put the link before the pid.
@@ -6820,8 +6215,7 @@ async def export_participant_invitation_links(
     audit_admin_action(
         current_admin,
         f"exported participant invitation links {format.upper()} for study "
-        f"'{study_name_short}' (frontend={normalized_frontend}, "
-        f"{len(participants)} participants)",
+        f"'{study_name_short}' ({len(participants)} participants)",
     )
 
     return tabular_export(
@@ -10028,743 +9422,6 @@ def timelines_to_json(timelines: List[Timeline]) -> List[dict]:
     ]
 
 
-@app.post(
-    "/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/copy-from/{source_day_label_name}"
-)
-def copy_day_activities(
-    study_name_short: str,
-    participant_id: str,
-    day_label_name: str,
-    source_day_label_name: str,
-    session: Session = Depends(get_session),
-):
-    """Copy all activities from one day to another for a participant within a study.
-
-    If the target day already has activities they are deleted first (overwrite).
-    The source day must have activities. All activities are copied with new
-    database IDs — the copy is a separate, independent set of rows.
-
-    Like the day-save endpoint, this write is refused once the participant has
-    submitted the study. ``study_submitted_at`` is the promise that a submitted
-    diary is immutable, and this endpoint rewrites a whole day, so without the
-    guard a copy would silently overwrite data a researcher may already have
-    exported.
-    """
-    require_valid_participant_id(participant_id)
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
-
-    # Selected as a scalar so the guard costs one column read, not an ORM load.
-    submitted_at = session.exec(
-        select(StudyParticipant.study_submitted_at).where(
-            StudyParticipant.study_id == study.id,
-            StudyParticipant.participant_id == participant_id,
-        )
-    ).first()
-    if submitted_at is not None:
-        logger.info(
-            "Rejected day copy for participant '%s' in study '%s': "
-            "already submitted at %s",
-            participant_id,
-            study_name_short,
-            submitted_at.isoformat(),
-        )
-        raise HTTPException(
-            status_code=403,
-            detail=f"Study '{study_name_short}' has already been submitted and can no longer be edited.",
-        )
-
-    target_label = session.exec(
-        select(DayLabel).where(
-            DayLabel.study_id == study.id, DayLabel.name == day_label_name
-        )
-    ).first()
-    if not target_label:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Target day label '{day_label_name}' not found for study '{study_name_short}'",
-        )
-
-    source_label = session.exec(
-        select(DayLabel).where(
-            DayLabel.study_id == study.id, DayLabel.name == source_day_label_name
-        )
-    ).first()
-    if not source_label:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Source day label '{source_day_label_name}' not found for study '{study_name_short}'",
-        )
-
-    if source_label.id == target_label.id:
-        raise HTTPException(
-            status_code=400,
-            detail="Source and target day must be different",
-        )
-
-    target_existing = session.exec(
-        select(Activity).where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-            Activity.day_label_id == target_label.id,
-        )
-    ).all()
-
-    is_overwrite = len(target_existing) > 0
-    if is_overwrite:
-        for existing in target_existing:
-            session.delete(existing)
-        session.flush()
-
-    source_activities = session.exec(
-        select(Activity).where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-            Activity.day_label_id == source_label.id,
-        )
-    ).all()
-
-    if not source_activities:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Source day '{source_day_label_name}' has no activities to copy",
-        )
-
-    copied_count = 0
-    for src in source_activities:
-        activity = Activity(
-            study_id=study.id,
-            participant_id=participant_id,
-            day_label_id=target_label.id,
-            timeline_id=src.timeline_id,
-            activity_code=src.activity_code,
-            start_minutes=src.start_minutes,
-            end_minutes=src.end_minutes,
-            activity_name=src.activity_name,
-            activity_path_frontend=src.activity_path_frontend,
-            color=src.color,
-            category=src.category,
-            frequency_key=src.frequency_key,
-            parent_activity_code=src.parent_activity_code,
-        )
-        session.add(activity)
-        copied_count += 1
-
-    session.commit()
-
-    logger.info(
-        "Participant '%s' %s %d activities from '%s' to '%s' in study '%s'",
-        participant_id,
-        "overwrote with" if is_overwrite else "copied",
-        copied_count,
-        source_day_label_name,
-        day_label_name,
-        study_name_short,
-    )
-
-    return {
-        "copied_count": copied_count,
-        "source_day": source_day_label_name,
-        "target_day": day_label_name,
-        "overwrite": is_overwrite,
-    }
-
-
-@app.post("/api/studies/{study_name_short}/participants/{participant_id}/submit")
-def submit_study(
-    study_name_short: str,
-    participant_id: str,
-    session: Session = Depends(get_session),
-):
-    """Mark a participant's study as submitted.
-
-    Sets ``study_submitted_at`` on the participant's study record.  Requires
-    that all study days meet their timeline min_coverage requirements.
-
-    Idempotent: if already submitted, returns the existing timestamp.
-
-    Once submitted the frontend redirects the participant to the thank-you
-    page and prevents further diary access.
-    """
-    require_valid_participant_id(participant_id)
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
-
-    study_participant = session.exec(
-        select(StudyParticipant).where(
-            StudyParticipant.study_id == study.id,
-            StudyParticipant.participant_id == participant_id,
-        )
-    ).first()
-    if not study_participant:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Participant '{participant_id}' not found in study '{study_name_short}'",
-        )
-
-    # Idempotent: return existing timestamp if already submitted
-    if study_participant.study_submitted_at is not None:
-        logger.info(
-            "Participant '%s' already submitted study '%s' at %s",
-            participant_id,
-            study_name_short,
-            study_participant.study_submitted_at.isoformat(),
-        )
-        return {
-            "study_submitted_at": study_participant.study_submitted_at.isoformat(),
-            "already_submitted": True,
-            "stage": stages.stage_for_participant(session, study, participant_id).stage,
-        }
-
-    # Verify all days meet min_coverage
-    day_labels = session.exec(
-        select(DayLabel).where(DayLabel.study_id == study.id)
-    ).all()
-    study_days_count = len(day_labels)
-    days_meeting = _get_days_meeting_min_coverage(session, study, participant_id)
-
-    if len(days_meeting) < study_days_count:
-        all_indices = set(range(study_days_count))
-        incomplete = sorted(all_indices - days_meeting)
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "message": "Cannot submit study: not all days meet min_coverage.",
-                "error_type": "incomplete_days",
-                "incomplete_day_indices": incomplete,
-                "days_meeting_coverage": len(days_meeting),
-                "total_days": study_days_count,
-            },
-        )
-
-    # All good — record submission
-    now = utc_now()
-    study_participant.study_submitted_at = now
-    session.add(study_participant)
-    session.commit()
-
-    logger.info(
-        "Participant '%s' submitted study '%s' at %s",
-        participant_id,
-        study_name_short,
-        now.isoformat(),
-    )
-
-    return {
-        "study_submitted_at": now.isoformat(),
-        "already_submitted": False,
-        # `tasks` when external tasks are still owed, otherwise `done` (D37).
-        "stage": stages.stage_for_participant(session, study, participant_id).stage,
-    }
-
-
-@app.get("/api/studies/{study_name_short}/participants/{participant_id}/activities")
-def get_participant_day_activities(
-    study_name_short: str,
-    participant_id: str,
-    day_label_name: Optional[str] = Query(
-        None,
-        description="Day label name (e.g., 'monday'). Either this or day_label_index must be provided",
-    ),
-    day_label_index: Optional[int] = Query(
-        None,
-        description="Day label display order/index. Either this or day_label_name must be provided",
-    ),
-    template_from_day_index: Optional[int] = Query(
-        None,
-        description="Optional: Day index to use as template source. Defaults to previous day (current_day_index - 1)",
-    ),
-    session: Session = Depends(get_session),
-):
-    """
-    Get all activities for a specific participant and day in a study.
-    This endpoint is for participants to retrieve their own data for editing.
-    Returns activities across all timelines for the specified day.
-
-    Either day_label_name or day_label_index must be provided to identify the target day.
-
-    @param study_name_short Short name of the study.
-    @param participant_id ID of the participant.
-    @param day_label_name (Optional) Day-label name for activity retrieval.
-    @param day_label_index (Optional) Day-label index/display order for activity retrieval.
-    @param template_from_day_index (Optional) Source day index for template activities.
-    @param session Database session dependency.
-    @returns A JSON response containing activities, timeline metadata, and optional template activities.
-
-    Optionally include activities from a previous day as a template:
-    - If template_from_day_index is not provided, defaults to previous day (current_day_index - 1)
-    - If template_from_day_index is provided, uses that specific day as template source
-    - Returns empty template if specified source day doesn't exist or has no activities
-    """
-    require_valid_participant_id(participant_id)
-    # Validate that at least one identifier is provided
-    if day_label_name is None and day_label_index is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Either day_label_name or day_label_index must be provided",
-        )
-
-    # Validate study exists
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
-
-    # Check if participant is authorized for this study
-    if not study.allow_unlisted_participants:
-        # Study restricts participants - check if they're in the allowed list
-        study_participant = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-        if not study_participant:
-            logger.info(
-                f"Unauthorized participant '{participant_id}' attempted to access data from study '{study_name_short}'"
-            )
-            raise HTTPException(
-                status_code=403,
-                detail=f"Participant '{participant_id}' not authorized for this study",
-            )
-    # Find the target day label
-    day_label = None
-    if day_label_name is not None:
-        # Find by name
-        day_label = session.exec(
-            select(DayLabel).where(
-                DayLabel.study_id == study.id, DayLabel.name == day_label_name
-            )
-        ).first()
-        if not day_label:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Day label '{day_label_name}' not found for study '{study_name_short}'",
-            )
-    else:
-        # Find by index
-        day_label = session.exec(
-            select(DayLabel).where(
-                DayLabel.study_id == study.id, DayLabel.display_order == day_label_index
-            )
-        ).first()
-        if not day_label:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Day label with index '{day_label_index}' not found for study '{study_name_short}'",
-            )
-
-    study_timelines: List[Timeline] = get_timelines_for_study(study.id)
-    study_timelines_json = timelines_to_json(study_timelines)
-    study_timelines_names = [t.name for t in study_timelines]
-
-    # Get all activities for this participant and day label
-    activities = session.exec(
-        select(Activity, Timeline)
-        .join(Timeline, Activity.timeline_id == Timeline.id)
-        .where(
-            Activity.study_id == study.id,
-            Activity.participant_id == participant_id,
-            Activity.day_label_id == day_label.id,
-        )
-        .order_by(Activity.start_minutes, Activity.timeline_id)
-    ).all()
-
-    # Use shared helper to determine which days the participant has submitted
-    completed_day_indices = _get_completed_day_indices(session, study, participant_id)
-    day_indices_with_data = sorted(completed_day_indices)
-
-    # Days that are complete *according to min coverage* (every timeline with a
-    # min_coverage requirement is covered).  This is what the frontend uses to
-    # gate the "Finish Study" submit button and to mark complete days.
-    day_indices_meet_min_coverage = sorted(
-        _get_days_meeting_min_coverage(session, study, participant_id)
-    )
-
-    # Structure the response in a frontend-friendly format
-    response_activities = []
-    for activity, timeline in activities:
-        start_time: str = get_time_for_minutes_from_midnight(
-            activity.start_minutes
-        ).isoformat()  # something like "08:30:00"
-        end_time = get_time_for_minutes_from_midnight(activity.end_minutes).isoformat()
-        response_activities.append(
-            {
-                # Activity data
-                "timeline_key": timeline.name,
-                "timeline_display_name": timeline.display_name,
-                "timeline_mode": timeline.mode,
-                "activity": activity.activity_name,
-                "activity_code": activity.activity_code,
-                "frequency_key": activity.frequency_key,
-                "color": activity.color,
-                "parent_activity_code": activity.parent_activity_code,
-                "activity_path_frontend": activity.activity_path_frontend,
-                "start_minutes": activity.start_minutes,
-                "end_minutes": activity.end_minutes,
-                "start_time": start_time,
-                "end_time": end_time,
-                "duration": activity.end_minutes - activity.start_minutes,
-                "category": activity.category,
-                # Metadata
-                "created_at": activity.created_at.isoformat(),
-                "activity_id_backend": activity.id,
-            }
-        )
-
-    # ========== Get template activities ==========
-    template_activities = []
-    has_template = False
-    template_source_day_label = None
-    template_source_day_index = None
-
-    # Determine which day to use as template source
-    target_template_index = None
-    if template_from_day_index is not None:
-        # Use explicitly specified day index
-        target_template_index = template_from_day_index
-    else:
-        # Default to previous day
-        target_template_index = day_label.display_order - 1
-
-    # Check if template source day exists
-    if target_template_index >= 0:  # Only look for template if index is valid (>= 0)
-        template_source_day_label = session.exec(
-            select(DayLabel).where(
-                DayLabel.study_id == study.id,
-                DayLabel.display_order == target_template_index,
-            )
-        ).first()
-
-        if template_source_day_label:
-            # Get activities for the template source day for this participant
-            template_source_activities = session.exec(
-                select(Activity, Timeline)
-                .join(Timeline, Activity.timeline_id == Timeline.id)
-                .where(
-                    Activity.study_id == study.id,
-                    Activity.participant_id == participant_id,
-                    Activity.day_label_id == template_source_day_label.id,
-                )
-                .order_by(Activity.start_minutes, Activity.timeline_id)
-            ).all()
-
-            if template_source_activities:
-                has_template = True
-                template_source_day_index = template_source_day_label.display_order
-
-                for activity, timeline in template_source_activities:
-                    start_time: str = get_time_for_minutes_from_midnight(
-                        activity.start_minutes
-                    ).isoformat()  # something like "08:30:00"
-                    end_time = get_time_for_minutes_from_midnight(
-                        activity.end_minutes
-                    ).isoformat()
-                    template_activities.append(
-                        {
-                            # Activity data
-                            "timeline_key": timeline.name,
-                            "timeline_display_name": timeline.display_name,
-                            "timeline_mode": timeline.mode,
-                            "activity": activity.activity_name,
-                            "activity_code": activity.activity_code,
-                            "frequency_key": activity.frequency_key,
-                            "color": activity.color,
-                            "parent_activity_code": activity.parent_activity_code,
-                            "activity_path_frontend": activity.activity_path_frontend,
-                            "start_minutes": activity.start_minutes,
-                            "end_minutes": activity.end_minutes,
-                            "start_time": start_time,
-                            "end_time": end_time,
-                            "duration": activity.end_minutes - activity.start_minutes,
-                            "category": activity.category,
-                            # Metadata
-                            "created_at": activity.created_at.isoformat(),
-                            "activity_id_backend": None,  # No ID yet, since this is just a template and not an actual saved activity for the current day.
-                            # Template source information
-                            "is_template_from_previous_day": True,
-                            "template_source_day_label": template_source_day_label.name,
-                            "template_source_day_index": template_source_day_label.display_order,
-                        }
-                    )
-
-    print(
-        f"Returning activities for participant '{participant_id}', study '{study_name_short}', "
-        f"day label '{day_label.name}' (index: {day_label.display_order}): {len(response_activities)} activities, "
-        f"has_template: {has_template}"
-    )
-
-    # Determine meta-data on the study, including the number of days
-    study_days = session.exec(
-        select(DayLabel).where(DayLabel.study_id == study.id)
-    ).all()
-    study_days_count = len(study_days)
-
-    return {
-        "study": study_name_short,
-        "study_days_count": study_days_count,
-        "day_indices_with_data": day_indices_with_data,
-        "day_indices_meet_min_coverage": day_indices_meet_min_coverage,
-        "participant": participant_id,
-        "day_label": day_label.name,
-        "day_label_id": day_label.id,
-        "day_label_index": day_label.display_order,
-        "day_display_name": day_label.display_name,
-        "timelines_in_study": study_timelines_json,
-        "total_activities": len(response_activities),
-        "total_timelines": len(study_timelines_names),
-        "total_timelines_with_activities": len(
-            set([a["timeline_key"] for a in response_activities])
-        ),
-        "activities": response_activities,
-        # Template information
-        "has_template": has_template,
-        "template_source_day_label": template_source_day_label.name
-        if template_source_day_label
-        else None,
-        "template_source_day_index": template_source_day_index,
-        "template_activities": template_activities if has_template else [],
-    }
-
-
-@app.post("/api/template-activities")
-def copy_cross_user_template_activities(
-    study: str = Query(..., description="Study short name"),
-    source_user: str = Query(
-        ..., description="Participant ID to copy template activities from"
-    ),
-    target_user: str = Query(
-        ..., description="Participant ID to copy template activities to"
-    ),
-    session: Session = Depends(get_session),
-):
-    """
-    Copy all activities from source_user to target_user for a study, writing them directly into
-    the database.  Days for which target_user already has activities are skipped, making the
-    operation idempotent.  For open studies the target participant record and study association
-    are created automatically on first call.
-
-    Validation rules:
-    - `study` must exist
-    - `source_user` must exist as participant
-    - If study is closed (`allow_unlisted_participants=False`), `target_user` must already be
-      assigned to the study
-
-    @param study Study short name.
-    @param source_user Source participant ID.
-    @param target_user Target participant ID.
-    @param session Database session dependency.
-    @returns Summary of copied and skipped days/activities.
-    """
-    require_valid_participant_id(source_user, source="source participant id")
-    require_valid_participant_id(target_user, source="target participant id")
-    from collections import defaultdict
-
-    # Validate study exists
-    study_obj = session.exec(select(Study).where(Study.name_short == study)).first()
-    if not study_obj:
-        raise HTTPException(status_code=404, detail=f"Study '{study}' not found")
-
-    # The source must participate in this study. An id that only exists in
-    # another study is an unrelated participant and has no data to copy.
-    source_association = session.exec(
-        select(StudyParticipant).where(
-            StudyParticipant.study_id == study_obj.id,
-            StudyParticipant.participant_id == source_user,
-        )
-    ).first()
-    if not source_association:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Source participant '{source_user}' not found in study '{study}'",
-        )
-
-    target_association = session.exec(
-        select(StudyParticipant).where(
-            StudyParticipant.study_id == study_obj.id,
-            StudyParticipant.participant_id == target_user,
-        )
-    ).first()
-    if not target_association:
-        if not study_obj.allow_unlisted_participants:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Target participant '{target_user}' is not authorized for closed study '{study}'",
-            )
-        target_association = StudyParticipant(
-            study_id=study_obj.id, participant_id=target_user
-        )
-        session.add(target_association)
-        session.flush()
-
-    # Fetch all source activities
-    source_activities = session.exec(
-        select(Activity)
-        .where(
-            Activity.study_id == study_obj.id,
-            Activity.participant_id == source_user,
-        )
-        .order_by(Activity.day_label_id, Activity.start_minutes, Activity.timeline_id)
-    ).all()
-
-    # Find which day_label_ids target_user already has activities for → skip those
-    target_day_label_ids_with_data: set = set(
-        session.exec(
-            select(Activity.day_label_id).where(
-                Activity.study_id == study_obj.id,
-                Activity.participant_id == target_user,
-            )
-        ).all()
-    )
-
-    # Group source activities by day_label_id
-    source_by_day: dict = defaultdict(list)
-    for activity in source_activities:
-        source_by_day[activity.day_label_id].append(activity)
-
-    source_day_label_ids = set(source_by_day.keys())
-    days_to_copy = source_day_label_ids - target_day_label_ids_with_data
-    days_to_skip = source_day_label_ids & target_day_label_ids_with_data
-
-    # Insert copied activities for each day that has no existing target data
-    total_activities_copied = 0
-    for day_label_id in days_to_copy:
-        for src in source_by_day[day_label_id]:
-            new_activity = Activity(
-                study_id=study_obj.id,
-                participant_id=target_user,
-                day_label_id=src.day_label_id,
-                timeline_id=src.timeline_id,
-                activity_code=src.activity_code,
-                start_minutes=src.start_minutes,
-                end_minutes=src.end_minutes,
-                activity_name=src.activity_name,
-                activity_path_frontend=src.activity_path_frontend,
-                color=src.color,
-                category=src.category,
-                frequency_key=src.frequency_key,
-                parent_activity_code=src.parent_activity_code,
-            )
-            session.add(new_activity)
-            total_activities_copied += 1
-
-    session.commit()
-
-    # Resolve display_order indices for the response
-    copied_day_indices: list = []
-    skipped_day_indices: list = []
-    all_relevant_ids = days_to_copy | days_to_skip
-    if all_relevant_ids:
-        day_labels = session.exec(
-            select(DayLabel).where(
-                DayLabel.study_id == study_obj.id, DayLabel.id.in_(all_relevant_ids)
-            )
-        ).all()
-        order_map = {dl.id: int(dl.display_order) for dl in day_labels}
-        copied_day_indices = sorted(
-            order_map[d] for d in days_to_copy if d in order_map
-        )
-        skipped_day_indices = sorted(
-            order_map[d] for d in days_to_skip if d in order_map
-        )
-
-    logger.info(
-        "Copied cross-user template activities: study='%s', source='%s', target='%s', "
-        "copied_days=%d, skipped_days=%d, total_activities=%d",
-        study,
-        source_user,
-        target_user,
-        len(days_to_copy),
-        len(days_to_skip),
-        total_activities_copied,
-    )
-
-    return {
-        "study": study,
-        "source_user": source_user,
-        "target_user": target_user,
-        "copied_days_count": len(days_to_copy),
-        "skipped_days_count": len(days_to_skip),
-        "total_activities_copied": total_activities_copied,
-        "copied_day_indices": copied_day_indices,
-        "skipped_day_indices": skipped_day_indices,
-    }
-
-
-class ActiveOpenStudyResponse(BaseModel):
-    name_short: str
-    name: Optional[str] = None
-    description: Optional[Union[str, Dict[str, str]]] = None
-
-
-@app.get("/api/active_open_study_names", response_model=List[ActiveOpenStudyResponse])
-async def get_active_open_study_names(session: Session = Depends(get_session)):
-    """
-    Public endpoint (no authentication required) that returns a list of all studies
-    that:
-    1. Have allow_unlisted_participants set to True
-    2. Are currently active (current date is between data_collection_start and data_collection_end)
-
-    Each study object includes name_short, name, and description fields.
-    Returns empty list if no studies match criteria.
-
-    @param session Database session dependency.
-    @returns A JSON list of currently active open studies with `name_short`, `name`, and `description`.
-    """
-    try:
-        # Get current UTC time
-        now = utc_now()
-
-        # Query for studies that match both criteria
-        studies = session.exec(
-            select(Study)
-            .where(
-                Study.allow_unlisted_participants,
-                Study.data_collection_start <= now,
-                Study.data_collection_end >= now,
-            )
-            .order_by(Study.name_short)  # Optional: order alphabetically
-        ).all()
-
-        # Create response objects with the required fields.
-        # Resolve localized description dicts to a plain string using the
-        # study's default_language so the frontend always receives a string.
-        study_responses = []
-        for study in studies:
-            desc = _resolve_description(study)
-            study_responses.append(
-                ActiveOpenStudyResponse(
-                    name_short=study.name_short,
-                    name=study.name,
-                    description=desc,
-                )
-            )
-
-        logger.info(f"Found {len(study_responses)} active open studies")
-
-        return study_responses
-
-    except Exception as e:
-        logger.error(f"Error fetching active open study names: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Internal server error while fetching study information",
-        )
-
-
 class PublicStudyResponse(BaseModel):
     name_short: str
     name: Optional[str] = None
@@ -10951,8 +9608,8 @@ def get_study_config(
         False,
         description=(
             "Return the configuration even when the study is not collecting right now, "
-            "with stage='unavailable' and unavailable_reason set (D39). Off by default "
-            "because the old frontend reads the 403 as its 'study unavailable' signal."
+            "with stage='unavailable' and unavailable_reason set (D39). Off by default, "
+            "so a plain request still gets a 403 when the study is not collecting."
         ),
     ),
     session: Session = Depends(get_session),
@@ -10986,8 +9643,8 @@ def get_study_config(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    # The old frontend needs the 403; the rewrite needs the payload so it can say
-    # *why* the study is closed (D39). Writes are refused either way.
+    # The participant app asks for the payload so it can say *why* the study is
+    # closed (D39). Writes are refused either way.
     if not include_unavailable:
         _ensure_study_is_currently_available(study)
 
@@ -11950,7 +10607,7 @@ def submit_ux_events(
     ``save_ux_events`` flag is off, and the event names and properties are
     filtered against the fixed catalogue in :mod:`ux_events`.
 
-    Consent is honoured by the client (see the rewrite's D38 rule: no capture
+    Consent is honoured by the client (see D38: no capture
     from someone who has not consented), because this endpoint has no
     participant to check - that is the price of keeping the rows unlinked.
     """

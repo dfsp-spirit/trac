@@ -535,7 +535,7 @@ async def test_a_submitted_diary_is_read_only():
         )
         client_uuid = created.json()["activities"][0]["client_uuid"]
 
-        submit = await client.post(_url(study, participant, "/submit"))
+        submit = await client.post(_url(study, participant, "/diary/submit"))
         assert submit.status_code == 200, submit.text
 
         blocked = await client.post(
@@ -558,58 +558,6 @@ async def test_a_submitted_diary_is_read_only():
     # Reading still works, and says so.
     assert diary["study"]["submitted_at"] is not None
     assert len(diary["activities"]) == 3
-
-
-@pytest.mark.asyncio
-async def test_the_old_whole_day_endpoint_still_writes_rows_the_diary_reads():
-    participant = f"p_{uuid.uuid4().hex[:6]}"
-    async with httpx.AsyncClient() as client:
-        study = await _create_study(client)
-        legacy = await client.post(
-            _url(study, participant, "/day_labels/monday/activities"),
-            json={
-                "activities": [
-                    {
-                        "timeline_key": "primary",
-                        "activity": "Activity 100",
-                        "category": "General",
-                        "code": 100,
-                        "start_minutes": 480,
-                        "end_minutes": 600,
-                        "mode": "single-choice",
-                    }
-                ]
-            },
-        )
-        assert legacy.status_code == 200, legacy.text
-        diary = await _diary(client, study, participant)
-
-    assert len(diary["activities"]) == 1
-    assert diary["activities"][0]["client_uuid"], "old rows get an identity too"
-    assert diary["days"][0]["coverage_minutes"] == 120
-
-
-@pytest.mark.asyncio
-async def test_the_old_endpoint_rejects_a_duplicate_submission_clearly():
-    participant = f"p_{uuid.uuid4().hex[:6]}"
-    item = {
-        "timeline_key": "primary",
-        "activity": "Activity 100",
-        "category": "General",
-        "code": 100,
-        "start_minutes": 480,
-        "end_minutes": 600,
-        "mode": "single-choice",
-    }
-    async with httpx.AsyncClient() as client:
-        study = await _create_study(client)
-        response = await client.post(
-            _url(study, participant, "/day_labels/monday/activities"),
-            json={"activities": [item, dict(item)]},
-        )
-
-    assert response.status_code == 409
-    assert response.json()["detail"]["code"] == "activity.duplicate"
 
 
 @pytest.mark.asyncio

@@ -1,0 +1,214 @@
+/**
+ * Shared setup for the diary specs.
+ *
+ * The fixture studies are seeded by the import, but their activities persist
+ * between runs. Clearing through the public diary API keeps local runs
+ * repeatable without reaching into the database.
+ */
+import { expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+export const BASE_URL =
+  process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3000/report/';
+export const ORIGIN = new URL(BASE_URL).origin;
+export const STUDY = 'newui_06_diary';
+
+/**
+ * The catalogue list without the "Used recently" shortcut row above it: once the
+ * participant has logged something, the same activity code can appear twice.
+ */
+export const CATALOGUE = '.t-activity-group[data-group="catalogue"]';
+
+/**
+ * Open the activity panel where it needs opening.
+ *
+ * Below 1200px the panel is a modal dialog that starts closed and is reached
+ * through the floating button; above it, the panel is the third column and is
+ * already on screen. Every phone-width spec needs this, so it lives here rather
+ * than in each spec.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+export async function openPanel(page) {
+  const fab = page.locator('#fab');
+  if (!(await fab.isVisible())) return;
+  const dialog = page.locator('#dialog-host');
+  if (await dialog.evaluate((el) => el.hasAttribute('open'))) return;
+  await fab.click();
+  await dialog.waitFor({ state: 'visible' });
+}
+
+/**
+ * Pick an activity from the catalogue (never from the shortcut row).
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number | string} code
+ */
+export async function chooseActivity(page, code) {
+  await openPanel(page);
+  return page.locator(`${CATALOGUE} .t-activity[data-activity-code="${code}"]`).click();
+}
+
+/** True for a project that emulates a phone (see playwright.config.js). */
+export function isPhone(testInfo) {
+  return testInfo.project.name.startsWith('mobile-');
+}
+
+/** @param {string} [study] */
+export function participantsUrl(study = STUDY) {
+  return `${ORIGIN}/tud_backend/api/studies/${study}/participants`;
+}
+
+/**
+ * Basic-auth credentials for the admin endpoints.
+ *
+ * Only used by specs that have to read stored data back - what the participant
+ * sees cannot prove that the server received it. The values come from
+ * `backend/.env`, which both the dev script and the CI job write before the
+ * tests run, so a spec never carries a credential of its own.
+ *
+ * @returns {{ username: string, password: string }}
+ */
+export function adminAuth() {
+  if (process.env.TUD_API_ADMIN_USERNAME && process.env.TUD_API_ADMIN_PASSWORD) {
+    return {
+      username: process.env.TUD_API_ADMIN_USERNAME,
+      password: process.env.TUD_API_ADMIN_PASSWORD,
+    };
+  }
+  const envFile = fileURLToPath(new URL('../../../backend/.env', import.meta.url));
+  const contents = readFileSync(envFile, 'utf8');
+  /** @param {string} key */
+  const read = (key) => {
+    const match = contents.match(new RegExp(`^${key}=(.*)$`, 'm'));
+    if (!match) throw new Error(`${key} is not set in ${envFile}`);
+    return match[1].trim().replace(/^['"]|['"]$/g, '');
+  };
+  return {
+    username: read('TUD_API_ADMIN_USERNAME'),
+    password: read('TUD_API_ADMIN_PASSWORD'),
+  };
+}
+
+/**
+ * The stage payload the app itself reads, so a spec can assert on the server's
+ * view of the stage instead of guessing it from the screen.
+ *
+ * @param {string} pid
+ * @param {string} [study]
+ * @param {string} [language]
+ */
+export function studyConfigUrl(pid, study = STUDY, language = 'de') {
+  return (
+    `${ORIGIN}/tud_backend/api/studies/${study}/study-config` +
+    `?participant_id=${pid}&lang=${language}`
+  );
+}
+
+/**
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} pid
+ * @param {string} [study]
+ */
+export async function clearActivities(request, pid, study = STUDY) {
+  const base = participantsUrl(study);
+  const response = await request.get(`${base}/${pid}/diary`);
+  expect(response.ok(), `loading diary for ${pid}`).toBeTruthy();
+  const diary = await response.json();
+  for (const activity of diary.activities) {
+    const deleted = await request.delete(
+      `${base}/${pid}/activities/${encodeURIComponent(activity.client_uuid)}`
+    );
+    expect(deleted.ok(), `deleting ${activity.client_uuid}`).toBeTruthy();
+  }
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} pid
+ * @param {string} [study]
+ */
+export async function openDiary(page, pid, study = STUDY) {
+  await page.goto(`${BASE_URL}?study=${study}&pid=${pid}`);
+  await expect.poll(() => page.evaluate(() => window.location.hash)).toBe('#/diary');
+  await expect(page.locator('#days .t-timeline-day')).toHaveCount(7);
+}
+
+/**
+ * Day-relative minutes -> the "HH:MM" value of a time field.
+ *
+ * Every fixture study starts its day at midnight (`day_start_minutes: 0`), so
+ * day-relative minutes and the clock coincide here.
+ *
+ * @param {number} minutes
+ * @returns {string}
+ */
+export function clockValue(minutes) {
+  const total = ((minutes % 1440) + 1440) % 1440;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+/**
+ * The inverse of {@link clockValue}, for assertions on a field's value.
+ *
+ * @param {string} value "HH:MM"
+ * @returns {number}
+ */
+export function clockToMinutes(value) {
+  const [hours, minutes] = String(value).split(':').map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Fill one of the form's native time fields.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {'#form-start' | '#form-end'} selector
+ * @param {number} minutes Day-relative, as the old `<select>` values were.
+ */
+export async function setTime(page, selector, minutes) {
+  await page.locator(selector).fill(clockValue(minutes));
+}
+
+/**
+ * Add one activity through the catalogue and the form.
+ *
+ * The form's day follows the timeline in view, so a spec that means a specific
+ * day names it: Playwright scrolls an element into view before clicking it, and
+ * that scroll moves the view (and with it the suggested day) between steps.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {number} code Activity code from the fixture's catalogue.
+ * @param {{ start: number, end: number, day?: number }} range Day-relative
+ *   minutes, and the day when the spec cares which one.
+ */
+export async function addActivity(page, code, { start, end, day }) {
+  await chooseActivity(page, code);
+  if (day != null) await page.locator('#form-day').selectOption(String(day));
+  await setTime(page, '#form-start', start);
+  await setTime(page, '#form-end', end);
+  await page.locator('[data-slot="actions"] .t-btn--primary').click();
+  // The write is in flight now, and the panel swaps back to the catalogue when
+  // it lands (on a phone that also closes the dialog). Waiting for the form to
+  // disappear keeps the next step from racing that swap: `openPanel` would see
+  // the dialog still open, skip opening it, and then wait for a list that has
+  // just been hidden.
+  await expect(page.locator('#form-start')).toHaveCount(0);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {{ start: number, end: number, day?: number }} range
+ */
+export async function addSchlafen(page, range) {
+  await addActivity(page, 1101, range);
+}
+
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {number} dayIndex
+ */
+export function dayEvents(page, dayIndex) {
+  return page.locator(`#days .t-timeline-day[data-day-index="${dayIndex}"] .t-event`);
+}

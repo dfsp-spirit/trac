@@ -46,27 +46,20 @@ database role may not `CREATE DATABASE`, create it once with an administrator ac
 
 
 
-### Two frontends, one script set
+### One frontend
 
-The frontend rewrite lives in `frontend_new/` and is served **next to** the old app, not instead of
-it, so a study can be piloted on the new UI while every other study keeps using the old one:
+The participant frontend lives in `frontend/` and is served at `/report/`:
 
 | Path | Serves |
 | --- | --- |
-| `http://localhost:3000/report/` | the old app (`frontend/src`) |
-| `http://localhost:3000/report-new/` | the rewrite (`frontend_new/src`) |
-| `http://localhost:3000/locales/` | the shared locale files (`frontend/src/locales`, D35) |
-| `http://localhost:3000/tud_backend/` | the API, proxied (unchanged) |
+| `http://localhost:3000/report/` | the frontend (`frontend/src`) |
+| `http://localhost:3000/tud_backend/` | the API, proxied |
 
-There is deliberately **no second set of scripts**. `run_dev_nginx_both.bash`, `test_e2e.sh` and the
-GitHub workflows keep working as they are; each environment has one nginx config with both locations
-and one settings file per app:
+Each environment has one nginx config and one settings file:
 
-- old app: `frontend_settings/tud_settings*.js` → `frontend/src/settings/tud_settings.js`
-- rewrite: `frontend_settings/config.new*.js` → `frontend_new/src/js/config.js`
+- `frontend_settings/config.dev-nginx.js` → `frontend/src/js/config.js`
 
-Both are plain static files copied into the served tree (no build step). The rewrite's
-`apiBaseUrl` is `/tud_backend/api` and its `localesUrl` is `/locales`, so it does not care which
-host or path prefix it is mounted under.
-
-Cutover is deleting the old `location /report/` block and the old settings copy — not a new script.
+It is a plain static file copied into the served tree (no build step). The
+frontend's `apiBaseUrl` is `/tud_backend/api` and its `localesUrl` is relative
+to `config.js`, so it does not care which host or path prefix it is mounted
+under.

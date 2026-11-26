@@ -1,11 +1,11 @@
 """Where a participant belongs right now (D37).
 
-The old frontend answered this question in five places. The diary script, the
-consent page, the instructions page, the tasks page and the idle-timeout module
-each decided where to send the participant, carried the decision in the URL as
-``completion_status``, and kept a second copy of the facts in ``localStorage``, so
-pages disagreed after a stale cache and a rule change meant finding every
-``location.href``.
+Before the stage machine, the client answered this question in five places. The
+diary script, the consent page, the instructions page, the tasks page and the
+idle-timeout module each decided where to send the participant, carried the
+decision in the URL as ``completion_status``, and kept a second copy of the facts
+in ``localStorage``, so pages disagreed after a stale cache and a rule change
+meant finding every ``location.href``.
 
 Here the answer is computed once:
 

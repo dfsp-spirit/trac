@@ -92,7 +92,7 @@ We recommend to also run the E2E tests, see next section.
 
 You can now connect to [http://localhost:3000](http://localhost:3000) to access nginx. The default nginx page will show details on how to access the frontend, admin interface, and API. If you did not change the default configuration, the URLs are:
 
-* frontend for default study: [/report/index.html](http://localhost:3000/report/index.html)
+* frontend: [/report/index.html](http://localhost:3000/report/index.html)
 * backend (requires admin credentials from your backend/.env file): [/tud_backend/admin](http://localhost:3000/tud_backend/admin)
 * API: [/tud_backend/api](http://localhost:3000/tud_backend/api)
 * API docs: [/tud_backend/docs](http://localhost:3000/tud_backend/docs)
@@ -103,13 +103,13 @@ You can now connect to [http://localhost:3000](http://localhost:3000) to access 
 machine's address on your wifi instead (`ip -br -4 addr show` shows it; on this
 box it is `192.168.178.47`):
 
-    http://192.168.178.47:3000/report/index.html?study_name=default&lang=de
+    http://192.168.178.47:3000/report/index.html?study=default&lang=de
 
 That works as it is, for four reasons:
 
 * The dev nginx `listen 3000;` has no host part, so it accepts connections on
   every interface, not just loopback.
-* The API is reached **same-origin**: `tud_settings.dev-nginx.js` uses the
+* The API is reached **same-origin**: `config.dev-nginx.js` uses the
   relative base `/tud_backend/api`, so the page talks to whichever host it was
   loaded from and nginx proxies `/tud_backend/` to `127.0.0.1:8000`. (An
   absolute `http://localhost:8000/...` would point the phone at itself.) The
@@ -132,9 +132,9 @@ no edits at all. If the detection picks the wrong interface, override it:
 TUD_DEV_LAN_IP=10.0.0.5 ./run_dev_nginx_both.bash
 ```
 
-Note that `frontend/src/settings/tud_settings.js` and `backend/.env` are copies
-of the files in `dev_tools/local_nginx/`: `run_dev_nginx_both.bash` overwrites
-them on every start, so edit the sources there, not the copies. Everything that
+Note that `frontend/src/js/config.js` and `backend/.env` are copies of the files
+in `dev_tools/local_nginx/`: `run_dev_nginx_both.bash` overwrites them on every
+start, so edit the sources there, not the copies. Everything that
 is *not* host-specific - the frontend settings, the nginx template - stays
 committed and unchanged across networks, so a second configuration directory is
 not needed.
@@ -144,7 +144,7 @@ a phone would see it (relative URLs, real host names, no localhost shortcut):
 
 ```bash
 cd frontend/
-PLAYWRIGHT_BASE_URL=http://192.168.178.47:3000/report/ npx playwright test --project=chromium tests/e2e/mobile_context_bar.spec.js
+PLAYWRIGHT_BASE_URL=http://192.168.178.47:3000/report/ npx playwright test --project=chromium tests/e2e/menu.spec.js
 ```
 
 The page answering on port 80 is **not** TRAC. The nginx package installs a
@@ -188,7 +188,7 @@ Now that you have all local test dependencies, you can run tests directly from y
 - Integration tests bring their own disposable database (see below): `./test_backend_integration.sh`
 - Migration tests run the real Alembic migrations on a throwaway database (drops it again) or on `TUD_MIGRATION_TEST_DATABASE_URL`: `./test_backend_migrations.sh`
 - E2E tests require frontend and backend to be running, started against the test database: `./test_e2e.sh`
-- The rewrite's own E2E suite has a separate runner and needs the same stack: `cd frontend_new && npm run test:e2e`
+- Frontend unit tests, architecture check and type check need no services: `./test_frontend.sh`
 
 ##### One-time setup: the test database
 
@@ -251,20 +251,13 @@ database instead of the development one:
 `./test_e2e.sh` warns if the running stack uses a database whose name does not
 contain `test`.
 
-If you want to run E2E tests, install Node.js and Playwright once:
+If you want to run E2E tests, install Node.js and Playwright once. The runner
+covers Chromium, Firefox, WebKit and two phone projects:
 
 ```bash
 cd frontend/
-npm install
-npx playwright install --with-deps chromium firefox webkit
-```
-
-The rewrite (`frontend_new/`) has its own Playwright runner, chromium-only for now:
-
-```bash
-cd frontend_new/
 npm ci
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium firefox webkit
 ```
 
 Note: If you get errors on `npm install`, e.g. about unsupported engine, the most likely reason is an outdated `npm` installation. We highly recommend to install [nvm](https://github.com/nvm-sh/nvm), then run `nvm install node` to get the latest stable node/npm version.
@@ -353,8 +346,7 @@ The E2E test command uses the `e2e` service in `docker-compose.dev.yml`, which i
 
 * record changes in `CHANGES` file
 * bump version of backend in `backend/src/o_timeusediary_backend/__init__.py`
-* bump version of frontend in `frontend/src/js/constants.js`
-* bump version of frontend_new in `frontend_new/src/js/domain/appInfo.js`
+* bump version of frontend in `frontend/src/js/domain/appInfo.js`
 * create commit with the mentioned changes, with a commit message like 'Bump version to and log changes for v0.x.y'
 * manually run the GitHub Actions workflow `TUD Backend Integration Tests (DBMS Matrix, Manual)` and confirm postgres, mariadb, and mssql jobs pass
 * tag the commit with the new version_ `git tag v0.x.y <hash>`

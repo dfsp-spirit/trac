@@ -159,25 +159,25 @@ async def test_submitted_participant_can_be_found_and_extracted():
             # Fill in and submit the single day.
             save_resp = await client.post(
                 f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}"
-                f"/day_labels/monday/activities",
+                f"/activities",
                 json={
-                    "activities": [
+                    "items": [
                         {
                             "timeline_key": "primary",
-                            "activity": "Activity 100",
+                            "activity_code": 100,
+                            "activity_name": "Activity 100",
                             "category": "General",
                             "start_minutes": 0,
                             "end_minutes": 10,
-                            "mode": "single-choice",
-                            "code": 100,
+                            "day_label_indexes": [0],
                         }
                     ]
                 },
             )
-            assert save_resp.status_code == 200, save_resp.text
+            assert save_resp.status_code == 201, save_resp.text
 
             submit_resp = await client.post(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/submit",
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary/submit",
             )
             assert submit_resp.status_code == 200, submit_resp.text
 
@@ -268,22 +268,22 @@ async def test_activities_paging_walks_every_participant_once():
             for participant_id in participant_ids:
                 save_resp = await client.post(
                     f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}"
-                    f"/day_labels/monday/activities",
+                    f"/activities",
                     json={
-                        "activities": [
+                        "items": [
                             {
                                 "timeline_key": "primary",
-                                "activity": "Activity 100",
+                                "activity_code": 100,
+                                "activity_name": "Activity 100",
                                 "category": "General",
                                 "start_minutes": 0,
                                 "end_minutes": 10,
-                                "mode": "single-choice",
-                                "code": 100,
+                                "day_label_indexes": [0],
                             }
                         ]
                     },
                 )
-                assert save_resp.status_code == 200, save_resp.text
+                assert save_resp.status_code == 201, save_resp.text
 
             seen: list = []
             cursor = None

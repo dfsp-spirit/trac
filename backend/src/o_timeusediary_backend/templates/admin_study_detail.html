@@ -105,9 +105,6 @@
                         <a href="{{ frontend_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn">
                             Join as new user
                         </a>
-                        <a href="{{ frontend_new_open_join_url }}" target="_blank" rel="noopener noreferrer" class="page-btn">
-                            Join as new user (new UI)
-                        </a>
                         {% endif %}
                     </div>
                     {% if frontend_open_join_url %}
@@ -143,8 +140,7 @@
                             <p><strong>Assigned tokens:</strong> {{ external_task.assignment_count }}</p>
                             {% endif %}
                             <p><strong>URL:</strong> <a href="{{ external_task.url }}" target="_blank" rel="noopener noreferrer">{{ external_task.url }}</a></p>
-                            <p><strong>Expected Return URL (rewritten frontend):</strong> <span class="activity-path">{{ external_task.expected_return_url_new }}</span></p>
-                            <p><strong>Expected Return URL (classic frontend):</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
+                            <p><strong>Expected Return URL:</strong> <span class="activity-path">{{ external_task.expected_return_url }}</span></p>
                             {% if external_task.description %}
                             <p><strong>Description:</strong> {{ external_task.description }}</p>
                             {% endif %}

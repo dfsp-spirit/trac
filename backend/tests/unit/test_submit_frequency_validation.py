@@ -1,9 +1,6 @@
-import pytest
-
-from o_timeusediary_backend.api import (
-    ActivitySubmitItem,
-    _build_allowed_frequency_keys_by_code,
-    _validate_frequency_key_for_codes,
+from o_timeusediary_backend.api_deps.frequency import (
+    allowed_frequency_keys_by_code,
+    frequency_key_errors,
 )
 from o_timeusediary_backend.parsers.activities_config import ActivitiesConfig
 
@@ -39,58 +36,40 @@ def _activities_payload_with_frequency() -> dict:
     }
 
 
-def test_build_allowed_frequency_keys_by_code_extracts_expected_sets():
+def test_allowed_frequency_keys_by_code_extracts_expected_sets():
     config = ActivitiesConfig(**_activities_payload_with_frequency())
 
-    allowed = _build_allowed_frequency_keys_by_code(config)
+    allowed = allowed_frequency_keys_by_code(config)
 
     assert allowed[100] == {"bi_weekly", "monthly"}
     assert allowed[200] == set()
 
 
-def test_validate_frequency_key_for_codes_allows_matching_key():
+def test_frequency_key_errors_allows_matching_key():
     config = ActivitiesConfig(**_activities_payload_with_frequency())
-    allowed = _build_allowed_frequency_keys_by_code(config)
+    allowed = allowed_frequency_keys_by_code(config)
 
-    activity_item = ActivitySubmitItem(
-        timeline_key="primary",
-        activity="Sleep",
-        category="Main",
-        code=100,
-        start_minutes=0,
-        end_minutes=10,
-        mode="single-choice",
+    errors = frequency_key_errors(
         frequency_key="monthly",
-    )
-
-    errors = _validate_frequency_key_for_codes(
-        activity_item=activity_item,
         candidate_codes=[100],
-        allowed_frequency_keys_by_code=allowed,
+        allowed_by_code=allowed,
+        timeline_key="primary",
+        activity_name="Sleep",
     )
 
     assert errors == []
 
 
-def test_validate_frequency_key_for_codes_rejects_unknown_key():
+def test_frequency_key_errors_rejects_unknown_key():
     config = ActivitiesConfig(**_activities_payload_with_frequency())
-    allowed = _build_allowed_frequency_keys_by_code(config)
+    allowed = allowed_frequency_keys_by_code(config)
 
-    activity_item = ActivitySubmitItem(
-        timeline_key="primary",
-        activity="Sleep",
-        category="Main",
-        code=100,
-        start_minutes=0,
-        end_minutes=10,
-        mode="single-choice",
+    errors = frequency_key_errors(
         frequency_key="weekly",
-    )
-
-    errors = _validate_frequency_key_for_codes(
-        activity_item=activity_item,
         candidate_codes=[100],
-        allowed_frequency_keys_by_code=allowed,
+        allowed_by_code=allowed,
+        timeline_key="primary",
+        activity_name="Sleep",
     )
 
     assert len(errors) == 1
@@ -98,40 +77,30 @@ def test_validate_frequency_key_for_codes_rejects_unknown_key():
     assert errors[0]["allowed_frequency_keys"] == ["bi_weekly", "monthly"]
 
 
-def test_validate_frequency_key_for_codes_rejects_when_activity_has_no_frequency_options():
+def test_frequency_key_errors_rejects_when_activity_has_no_frequency_options():
     config = ActivitiesConfig(**_activities_payload_with_frequency())
-    allowed = _build_allowed_frequency_keys_by_code(config)
+    allowed = allowed_frequency_keys_by_code(config)
 
-    activity_item = ActivitySubmitItem(
-        timeline_key="primary",
-        activity="Work",
-        category="Main",
-        code=200,
-        start_minutes=0,
-        end_minutes=10,
-        mode="single-choice",
+    errors = frequency_key_errors(
         frequency_key="monthly",
-    )
-
-    errors = _validate_frequency_key_for_codes(
-        activity_item=activity_item,
         candidate_codes=[200],
-        allowed_frequency_keys_by_code=allowed,
+        allowed_by_code=allowed,
+        timeline_key="primary",
+        activity_name="Work",
     )
 
     assert len(errors) == 1
     assert errors[0]["reason"] == "no_frequency_options_for_activity"
 
 
-def test_activity_submit_item_rejects_blank_frequency_key():
-    with pytest.raises(ValueError, match="frequency_key"):
-        ActivitySubmitItem(
-            timeline_key="primary",
-            activity="Sleep",
-            category="Main",
-            code=100,
-            start_minutes=0,
-            end_minutes=10,
-            mode="single-choice",
-            frequency_key="   ",
-        )
+def test_frequency_key_errors_ignores_absent_key():
+    config = ActivitiesConfig(**_activities_payload_with_frequency())
+    allowed = allowed_frequency_keys_by_code(config)
+
+    errors = frequency_key_errors(
+        frequency_key=None,
+        candidate_codes=[100],
+        allowed_by_code=allowed,
+    )
+
+    assert errors == []

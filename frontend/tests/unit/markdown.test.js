@@ -1,37 +1,58 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { renderInlineMarkdown, renderMarkdown } from '../../src/js/markdown.js';
+import { renderMarkdown } from '../../src/js/domain/markdown.js';
 
-// renderInlineMarkdown() is used for the instructions page <h1> study title
-// (study_text_instructions_title). Unlike renderMarkdown() it must NOT wrap the
-// text in a block element, or the title would end up as a <p>/<h1> inside the
-// existing <h1>.
+// Study texts arrive as Markdown from the study config and are rendered into the
+// consent, instructions and thank-you pages (D37). Everything here is a rule the
+// pages rely on, so a change in the renderer fails here before it reaches a
+// participant.
 
-test('renders inline markdown without a block wrapper', () => {
-  assert.equal(renderInlineMarkdown('Hello world'), 'Hello world');
-  assert.equal(renderInlineMarkdown('**Bold** and *italic*'), '<strong>Bold</strong> and <em>italic</em>');
+test('empty or missing input renders as nothing', () => {
+  assert.equal(renderMarkdown(''), '');
+  assert.equal(renderMarkdown(null), '');
+  assert.equal(renderMarkdown(undefined), '');
 });
 
-test('renders links and escapes html', () => {
-  assert.equal(
-    renderInlineMarkdown('[Study info](https://example.com/info)'),
-    '<a href="https://example.com/info" target="_blank" rel="noopener noreferrer">Study info</a>'
-  );
-  assert.equal(renderInlineMarkdown('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+test('a single newline inside a paragraph is a line break, not a space', () => {
+  assert.equal(renderMarkdown('one\ntwo'), '<p>one<br>two</p>');
 });
 
-test('trims surrounding whitespace and handles missing input', () => {
-  assert.equal(renderInlineMarkdown('  Welcome!  '), 'Welcome!');
-  assert.equal(renderInlineMarkdown(undefined), '');
-  assert.equal(renderInlineMarkdown(null), '');
-});
-
-// renderMarkdown() renders study text blocks (consent, instructions, thank-you).
-
-test('block markdown: paragraphs, headings and lists', () => {
+test('a blank line starts a new paragraph', () => {
   assert.equal(renderMarkdown('one\n\ntwo'), '<p>one</p><p>two</p>');
-  assert.equal(renderMarkdown('## Title'), '<h2>Title</h2>');
+});
+
+test('contact blocks keep their lines (the pilot consent text)', () => {
+  const markdown = [
+    '**Person A (Studienkoordinatorin)**',
+    'Max-Planck-Institut für empirische Ästhetik',
+    'Grüneburgweg 14',
+    '60322 Frankfurt am Main',
+    'ana@example.org',
+  ].join('\n');
+  assert.equal(
+    renderMarkdown(markdown),
+    '<p><strong>Person A (Studienkoordinatorin)</strong><br>Max-Planck-Institut für empirische Ästhetik<br>Grüneburgweg 14<br>60322 Frankfurt am Main<br>ana@example.org</p>'
+  );
+});
+
+test('headings of every level are emitted as written', () => {
+  for (const level of [1, 2, 3, 4, 5, 6]) {
+    assert.equal(renderMarkdown(`${'#'.repeat(level)} Title`), `<h${level}>Title</h${level}>`);
+  }
+});
+
+test('unordered and ordered lists, including a switch between them', () => {
+  assert.equal(renderMarkdown('- a\n- b'), '<ul><li>a</li><li>b</li></ul>');
   assert.equal(renderMarkdown('1. a\n2. b'), '<ol><li>a</li><li>b</li></ol>');
+  assert.equal(
+    renderMarkdown('- a\n1. b'),
+    '<ul><li>a</li></ul><ol><li>b</li></ol>'
+  );
+});
+
+test('text after a list is a paragraph again', () => {
+  assert.equal(renderMarkdown('- a\nplain'), '<ul><li>a</li></ul><p>plain</p>');
+  assert.equal(renderMarkdown('- a\n\nplain'), '<ul><li>a</li></ul><p>plain</p>');
 });
 
 test('a blank line between items does not restart the list', () => {
@@ -42,7 +63,66 @@ test('a blank line between items does not restart the list', () => {
   assert.equal(renderMarkdown('- a\n\n- b'), '<ul><li>a</li><li>b</li></ul>');
 });
 
-test('an ordered list keeps its start number and a paragraph after a list stays a paragraph', () => {
+test('an ordered list keeps the number it starts with', () => {
   assert.equal(renderMarkdown('3. a\n\n4. b'), '<ol start="3"><li>a</li><li>b</li></ol>');
-  assert.equal(renderMarkdown('- a\n\nplain'), '<ul><li>a</li></ul><p>plain</p>');
+});
+
+test('bold and italic, also inside a list item', () => {
+  assert.equal(renderMarkdown('**b** and *i*'), '<p><strong>b</strong> and <em>i</em></p>');
+  assert.equal(renderMarkdown('- **b**'), '<ul><li><strong>b</strong></li></ul>');
+});
+
+test('http(s) links open in a new tab without a referrer', () => {
+  assert.equal(
+    renderMarkdown('[Privacy](https://example.org/privacy)'),
+    '<p><a href="https://example.org/privacy" target="_blank" rel="noopener noreferrer">Privacy</a></p>'
+  );
+});
+
+test('only http(s) targets become links', () => {
+  const html = renderMarkdown('[x](javascript:alert(1))');
+  assert.ok(!html.includes('<a '), html);
+  assert.ok(html.includes('javascript:alert(1)'), html);
+});
+
+test('input is escaped before any markup is produced', () => {
+  const html = renderMarkdown('<script>alert("x")</script>');
+  assert.equal(html, '<p>&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;</p>');
+});
+
+test('CRLF input behaves like LF input', () => {
+  assert.equal(renderMarkdown('one\r\ntwo'), '<p>one<br>two</p>');
+});
+
+test('a heading keeps inline emphasis', () => {
+  assert.equal(renderMarkdown('## **Bold** title'), '<h2><strong>Bold</strong> title</h2>');
+});
+
+test('headingOffset demotes study headings below the page h1 (D40)', () => {
+  assert.equal(renderMarkdown('# Title', { headingOffset: 1 }), '<h2>Title</h2>');
+  // Whatever level the author started at, the first heading sits one below the page.
+  assert.equal(renderMarkdown('## Title', { headingOffset: 1 }), '<h2>Title</h2>');
+  assert.equal(renderMarkdown('###### Title', { headingOffset: 1 }), '<h2>Title</h2>');
+});
+
+test('headingOffset never produces an illegal heading level', () => {
+  assert.equal(renderMarkdown('# Title', { headingOffset: 4 }), '<h5>Title</h5>');
+  assert.equal(renderMarkdown('# Title', { headingOffset: 40 }), '<h6>Title</h6>');
+  assert.equal(renderMarkdown('# Title', { headingOffset: -2 }), '<h1>Title</h1>');
+});
+
+test('with an offset, study headings never skip a level (D40)', () => {
+  const instructions = '# Anleitung\n\nText.\n\n#### Hinweis\n\nMehr Text.';
+  assert.equal(
+    renderMarkdown(instructions, { headingOffset: 1 }),
+    '<h2>Anleitung</h2><p>Text.</p><h3>Hinweis</h3><p>Mehr Text.</p>'
+  );
+});
+
+test('a study text may still nest deeper one level at a time', () => {
+  const nested = '# A\n\n## B\n\n### C\n\n#### D';
+  assert.equal(
+    renderMarkdown(nested, { headingOffset: 1 }),
+    '<h2>A</h2><h3>B</h3><h4>C</h4><h5>D</h5>'
+  );
 });

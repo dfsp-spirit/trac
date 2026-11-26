@@ -2,7 +2,7 @@
  * Shared styles for the admin pages (templates/admin_*.html).
  *
  * Every admin page extends admin_base.html, which links tokens.css and then
- * this file. tokens.css is generated from frontend_new/src/styles/tokens.css
+ * this file. tokens.css is generated from frontend/src/styles/tokens.css
  * (`npm run sync:admin-tokens`), so both user interfaces share one brand layer:
  * colour, type, spacing, radii, shadows and focus. Do not add page-specific
  * <style> blocks: put the rules here and gate them with a class that only that

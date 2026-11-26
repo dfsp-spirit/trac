@@ -1,162 +1,222 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Deliberately NOT data-i18n. applyTranslations() rewrites the text of every
-         element carrying that attribute, <title> included, and ui.js (activities
-         modal) plus maintenance.js run it again *after* the diary is built - so a
-         data-i18n title gets reset and the tab no longer shows the study name.
-         The study's own name is set by applyPageTitle() in js/script.js; "Time Use
-         Diary" below is only the fallback for the moment before the config
-         arrives. -->
-    <title>Time Use Diary</title>
-
-    <!-- Favicons -->
-    <link rel="shortcut icon" href="favicon/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="192x192" href="favicon/android-chrome-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="favicon/android-chrome-512x512.png">
-    <link rel="stylesheet" href="styles/fontawesome/all.min.css">
-    <link rel="stylesheet" href="styles/styles.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>Time Diary</title>
+  <!-- Favicons: the same icon set as the admin panel and the classic client. -->
+  <link rel="shortcut icon" href="favicon/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon/android-chrome-192x192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon/android-chrome-512x512.png">
+  <link rel="stylesheet" href="styles/tokens.css">
+  <link rel="stylesheet" href="styles/base.css">
+  <link rel="stylesheet" href="styles/components.css">
+  <link rel="stylesheet" href="styles/messageBanner.css">
+  <link rel="stylesheet" href="styles/daystrip.css">
+  <link rel="stylesheet" href="styles/coverage.css">
+  <link rel="stylesheet" href="styles/page.css">
+  <link rel="stylesheet" href="styles/topbar.css">
+  <link rel="stylesheet" href="styles/panel.css">
+  <link rel="stylesheet" href="styles/dialogs.css">
+  <link rel="stylesheet" href="styles/stage.css">
+  <link rel="stylesheet" href="styles/entry.css">
+  <link rel="stylesheet" href="styles/layout.css">
+  <link rel="stylesheet" href="styles/rail.css">
 </head>
 <body>
-    <div id="instructionBanner" class="instruction-banner">
-        <div class="banner-content">
-            <!-- One string per layout: desktop selects from the inline activity
-                 list, a phone reaches the picker through the + button - and the
-                 verbs differ ("click" vs "tap"). styles.css shows one of them. -->
-            <span class="banner-text">
-                <span class="banner-text-mobile" data-i18n="banner.instructionsMobile">Instructions: tap the + button in the bottom right corner to choose an activity, then tap the timeline to place it. Drag its edges to extend it. To delete an activity, long-press it and choose Delete.</span>
-                <span class="banner-text-desktop" data-i18n="banner.instructionsDesktop">Instructions: select an activity below, then click the timeline to place it. Drag its edges to extend it. To delete an activity, right-click it and choose Delete.</span>
-            </span>
-            <button class="banner-close" type="button" data-i18n-aria-label="buttons.close" aria-label="Close">&times;</button>
-        </div>
-    </div>
-    <main id="mainContent">
-    <div class="header-section">
-        <div class="controls" style="padding-top: 4px; padding-left: 4px; padding-bottom: 4px; padding-right: 4px;">
+<div class="t-app" id="app">
 
-        <!-- The buttons sit in their own group so the autosave status chip can
-             hang beside them without taking part in the row's centring. Inline,
-             the chip re-centred the whole row and pushed the buttons sideways on
-             every save state change (measured: Submit Study moved 86 px). -->
-        <div class="controls-group">
-
-        <!-- Cycles through the study's timelines, at every width. The label
-             always names the timeline this button switches to, so it doubles as
-             the hint that more than one timeline exists - on narrow viewports
-             only the active timeline is rendered, and this button is the only
-             way to the others. Never disabled: it has to work both ways. -->
-        <button class="btn switch-timeline-btn" id="switchTimelineBtn" data-is-active="false" hidden>
-            <i class="fas fa-right-left" aria-hidden="true"></i>
-            <span id="switchTimelineLabel" data-i18n="buttons.switchTimeline">Switch timeline</span>
+  <header class="t-topbar" id="topbar">
+    <div class="t-topbar__inner">
+      <div class="t-topbar__row">
+        <button class="t-icon-btn" type="button" id="menu-open"
+                aria-label="Menu" data-i18n-aria-label="diary.shell.menu">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
-
-        <button class="btn clear-timeline-btn" id="clearTimelineBtn" data-is-active="false" disabled>
-            <i class="fas fa-trash-alt" aria-hidden="true"></i>
-            <span data-i18n="buttons.clearTimeline">Clear timeline</span>
+        <div class="t-topbar__title">
+          <p class="t-topbar__name" id="app-title" data-i18n="diary.shell.appName">Time diary</p>
+          <!-- Whose diary this is, from the study's participant roster. Empty
+               and hidden unless the study stores display names. -->
+          <p class="t-topbar__for" id="for-whom" hidden></p>
+        </div>
+        <!-- The progress line opens the review. The visible text stays its
+             accessible name (the summary is what matters); the hidden sentence
+             says what activating it does. -->
+        <button class="t-topbar__note" type="button" id="progress-note" hidden
+                aria-describedby="progress-note-action"></button>
+        <span class="t-vh" id="progress-note-action" data-i18n="diary.review.open">Review the week</span>
+        <!-- Opens the review, not the submission: the lock belongs to the last
+             step inside it, so the label and the icon say "check". -->
+        <button class="t-btn t-btn--secondary t-btn--sm" type="button" id="submit-btn" hidden>
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><path d="M12 9.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/></svg>
+          <span>Review</span>
         </button>
+      </div>
 
-        <button class="btn submit-study-btn" id="submitStudyBtn" data-is-active="false" disabled
-                data-i18n-title="messages.submitStudyIncompleteHint" title="Complete all days before submitting">
-            <i class="fas fa-check-double" aria-hidden="true"></i>
-            <span data-i18n="buttons.submitStudy">Submit Study</span>
-        </button>
-
-        <!-- Overflow menu, at every width. It holds the two actions that should
-             not compete with the day's own controls: Skip time reporting (a last
-             resort) and the language picker. Each item proxies .click() to the
-             real control, which keeps one implementation of every action. -->
-        <button class="btn more-menu-btn" id="moreMenuBtn" type="button"
-                aria-haspopup="true" aria-expanded="false" aria-controls="moreMenu"
-                data-i18n-aria-label="buttons.moreActions" aria-label="More actions">
-            <i class="fas fa-ellipsis-vertical" aria-hidden="true"></i>
-        </button>
+      <nav class="t-daynav" aria-label="Day" data-i18n-aria-label="diary.shell.dayNav">
+        <a class="t-icon-btn" id="day-prev" href="#" aria-keyshortcuts="PageUp"
+           aria-label="Previous day" data-i18n-aria-label="diary.shell.previousDay">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </a>
+        <div class="t-daynav__label">
+          <p class="t-daynav__day" id="day-label"></p>
+          <p class="t-daynav__meta" id="day-meta"></p>
         </div>
-        </div>
-
-        <div class="timeline-header">
-            <h1 class="timeline-title">Primary Activity</h1>
-            <p class="timeline-description"></p>
-        </div>
+        <a class="t-icon-btn" id="day-next" href="#" aria-keyshortcuts="PageDown"
+           aria-label="Next day" data-i18n-aria-label="diary.shell.nextDay">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        </a>
+      </nav>
     </div>
+  </header>
 
-    <div class="timeline-canvas">
-        <div class="timelines-wrapper">
-            <div class="past-initialized-timelines-wrapper"></div>
-            <div class="last-initialized-timeline-wrapper"></div>
-        </div>
-        <div class="gradient-bar"></div>
-    </div>
+  <!-- Consent, instructions, tasks, thank-you and unavailable render here;
+       the diary columns below belong to the diary stage only (D37). -->
+  <main class="t-stage" id="stage-host" hidden></main>
 
-    <div class="activities-container" id="activitiesContainer">
-        <div class="activities-accordion"></div>
-    </div>
+  <div class="t-shell">
+    <!-- Column 1 (desktop): days, coverage and submission state (D28). -->
+    <aside class="t-rail" aria-labelledby="rail-title">
+      <h2 class="t-rail__title" id="rail-title" data-i18n="diary.shell.days">Days</h2>
+      <ol class="t-rail__list" id="rail-list"></ol>
+      <!-- Always present, inert while no day has entries: a button that appears
+           out of nowhere is harder to find than one that explains itself. -->
+      <button class="t-btn t-btn--ghost t-btn--block t-rail__copy" type="button" id="copy-days"
+              data-i18n="diary.copy.open">Copy days…</button>
+      <!-- Why the button is inert. Persistent rather than a toast: the rail has
+           room, nothing below it moves, and the clue is there before the click. -->
+      <p class="t-hint t-rail__copy-hint" id="copy-days-hint" data-i18n="diary.copy.nothingToCopy"
+         hidden>There is nothing to copy yet.</p>
+    </aside>
+
+    <!-- Column 2: the continuous timeline. Day sections are rendered here. -->
+    <main class="t-timeline" id="timeline">
+      <h1 class="t-vh" data-i18n="diary.shell.appName">Time diary</h1>
+      <div id="timeline-notices"></div>
+      <div id="days" class="t-timeline__days"></div>
     </main>
 
-    <!-- Debug overlay element -->
-    <div id="debugOverlay" class="debugOverlay"></div>
+    <!-- Column 3 (desktop): the panel host. Filled from the template below. -->
+    <section class="t-activity-panel" id="panel-host"></section>
+  </div>
 
-    <!-- Load i18n (internationalization) module -->
-    <script src="js/i18n.js" type="module"></script>
+  <!-- Desktop only (≥1200px, see layout.css): the deployment's legal pages stay
+       reachable without opening the menu, which is where desktop visitors look
+       for them. Phones deliberately get no footer - under a week-long timeline it
+       would be a misclick target - and use the menu instead. Filled by
+       ui/legalLinks.js; empty studies render nothing. -->
+  <footer class="t-footer" id="footer" hidden>
+    <ul class="t-footer__links" id="footer-links"></ul>
+  </footer>
 
-    <!-- Load Bowser and other scripts -->
-    <script src="assets/bowser/bundled.js"></script>
-    <script src="assets/interactjs/interact.min.js"></script>
-    <!-- Browser/device identification (global `UAParser`), used by js/client_info.js -->
-    <script src="assets/ua-parser-js/ua-parser.min.js"></script>
-    <script src="settings/tud_settings.js"></script>
-    <script src="js/maintenance.js" type="module"></script>
-    <script src="js/study_config_manager.js" type="module"></script>
-    <script src="js/timeline_marker.js" type="module"></script>
-    <script src="js/timeline.js" type="module"></script>
-    <script src="js/utils.js" type="module"></script>
-    <script src="js/autoscroll.js" type="module"></script>
-    <script src="js/script.js" type="module"></script>
-    <!-- <script src="tests/timeline_test.js" type="module"></script> -->
-    <!-- <script type="module">
-        import { testTimelineMarkerPositioning } from './tests/timeline_test.js';
+  <button class="t-fab" type="button" id="fab" aria-keyshortcuts="n">
+    <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+    <span data-i18n="diary.shell.addActivity">Add activity</span>
+  </button>
 
-        // Run tests after page load
-        window.addEventListener('load', () => {
-            const testResult = testTimelineMarkerPositioning();
-            if (!testResult.success) {
-                console.error('Timeline marker positioning test failed:', testResult.errors);
-            } else {
-                console.log('Timeline marker positioning test passed');
-            }
-        });
-    </script> -->
+  <!-- Mobile host for the same activity panel: a modal dialog (D29). -->
+  <dialog class="t-modal t-activity-dialog" id="dialog-host"></dialog>
 
-    <!-- Attribute Tracker Script -->
-    <script src="js/attributeTracker.js"></script>
+  <div class="t-toast-region" id="toast-region" role="status" aria-live="polite"></div>
 
-    <!-- Footer row for optional actions. It starts hidden and stays hidden while
-         "Skip time reporting" lives in the ⋮ menu (ui.js updateFooterVisibility
-         keys off that button's computed display); it remains the container the
-         page's footer-height bookkeeping measures. -->
-    <div id="instructionsFooter" class="instructions-footer" hidden>
-        <div class="footer-actions-row">
-            <button class="btn skip-btn footer-skip-btn" id="skipReportingBtn" data-is-active="true">
-                <i class="fas fa-forward" aria-hidden="true"></i>
-                <span data-i18n="buttons.skipReporting">Skip time reporting</span>
-            </button>
+  <!-- A modal <dialog>, not a `popover` (ui/drawer.js): the attribute is younger
+       than iOS 17 and, where it is unknown, the drawer cannot be hidden at all.
+       The <nav> inside keeps the landmark a dialog does not provide. -->
+  <dialog id="menu" class="t-drawer" aria-labelledby="menu-title">
+    <nav aria-labelledby="menu-title">
+      <div class="t-drawer__head">
+        <h2 id="menu-title" data-i18n="diary.shell.menuTitle">Menu</h2>
+        <button class="t-icon-btn" type="button" id="menu-close"
+                aria-label="Close" data-i18n-aria-label="diary.shell.close">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <ul class="t-drawer__section" aria-label="Actions" data-i18n-aria-label="diary.shell.menuActions">
+        <li><button class="t-drawer__item" type="button" id="menu-shortcuts" aria-keyshortcuts="?"
+                    data-i18n="diary.shell.keyboardShortcuts">Keyboard shortcuts</button></li>
+        <!-- Reviewing needs the diary, which is why both of these are hidden
+             outside that stage (shellChrome.apply). -->
+        <li id="menu-review-item" hidden><button class="t-drawer__item" type="button" id="menu-review"
+                    data-i18n="diary.review.open">Review the week</button></li>
+        <!-- Copying needs a filled day, which only the diary has. -->
+        <li id="menu-copy-item" hidden><button class="t-drawer__item" type="button" id="menu-copy"
+                    data-i18n="diary.copy.open">Copy days…</button></li>
+        <!-- Skipping ends the study's diary part, so it is only offered when the
+             study asks for it (`allow_skip_timeuse`) and never on the phone-only
+             surface: the menu is the one place that needs it (D41). -->
+        <li id="menu-skip-item" hidden>
+          <button class="t-drawer__item" type="button" id="menu-skip"
+                  data-i18n="diary.skip.menuEntry">Skip the diary…</button>
+        </li>
+      </ul>
+      <!-- Pages the deployment and the study link to (imprint, data protection,
+           study information, contact). Filled by ui/legalLinks.js from the study
+           config; the whole block stays hidden when nothing is configured, and no
+           entry is rendered without a URL (D28: an entry that does nothing is
+           worse than no entry). Phones get these only here, never in a footer. -->
+      <div id="menu-pages-block" hidden>
+        <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
+        <ul id="menu-pages"></ul>
+      </div>
+      <!-- A study that ships one language has nothing to choose: the whole block
+           (separator included) appears only when the study offers more than one
+           (D40). Filled and unhidden by ui/shellChrome.js. -->
+      <div id="menu-language-block" hidden>
+        <hr>
+        <div class="t-drawer__section">
+          <label class="t-label" for="language-select" data-i18n="diary.shell.language">Language</label>
+          <select class="t-select t-select--text" id="language-select">
+            <option value="de" lang="de">Deutsch</option>
+            <option value="en" lang="en">English</option>
+            <option value="sv" lang="sv">Svenska</option>
+          </select>
         </div>
+      </div>
+    </nav>
+  </dialog>
+
+  <!-- One source of truth for the activity panel's markup, cloned into
+       #panel-host (desktop) or #dialog-host (mobile) by main.js. -->
+  <template id="activity-panel-tpl">
+    <div class="t-activity-panel__head" data-slot="head">
+      <div class="t-activity-panel__titlebar">
+        <button class="t-icon-btn" type="button" data-slot="back" hidden
+                aria-label="Back" data-i18n-aria-label="diary.shell.back">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <h2 data-slot="title" data-i18n="diary.shell.activities">Activities</h2>
+        <button class="t-icon-btn" type="button" data-slot="close"
+                aria-label="Close" data-i18n-aria-label="diary.shell.close">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p class="t-hint" data-slot="context" hidden></p>
+      <div class="t-search" data-slot="search">
+        <label class="t-search__field">
+          <span class="t-vh" data-i18n="diary.shell.searchActivities">Search activities</span>
+          <input class="t-input" type="search" autocomplete="off" aria-keyshortcuts="/"
+                 placeholder="Search activities" data-i18n-placeholder="diary.shell.searchActivities">
+        </label>
+        <button class="t-icon-btn" type="button" data-slot="search-clear" hidden
+                aria-label="Clear search" data-i18n-aria-label="diary.shell.clearSearch">
+          <svg class="t-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
     </div>
-    <!-- The footer is re-used by js/footer.js, which keeps this colour for the legal links.
-         #ccc on the page background was 1.53:1 (axe: color-contrast) - unreadable. -->
-    <div id="footer" style="padding: 20px; border-top: 1px solid #ddd; text-align: center; margin-top: 20px; font-size: small; color: #475569;">
-        <!-- Filled by applyPageTitle() (js/script.js) with the study's own name.
-             No data-i18n here for the same reason as <title> above. -->
-        <span id="footer_app_title">Time Use Diary</span>
-        <span id="footer_app_version" style="margin-left: 4px;"></span>
+    <div class="t-activity-panel__body" data-slot="content"></div>
+    <div class="t-activity-panel__foot" data-slot="actions" hidden></div>
+  </template>
+
+  <noscript>
+    <div class="t-notice t-notice--attention">
+      <div class="t-notice__body"><p data-i18n="diary.shell.noScript">This page needs JavaScript to show your diary.</p></div>
     </div>
-    <script src="js/footer.js"></script>
+  </noscript>
+</div>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

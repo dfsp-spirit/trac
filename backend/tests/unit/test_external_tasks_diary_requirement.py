@@ -82,11 +82,12 @@ def test_expected_return_url_template_fills_known_study_and_task(monkeypatch):
     )
 
     assert (
-        url == "https://frontend.example.org/report/pages/tasks.html"
-        "?study_name=adult_pilot_de"
+        url == "https://frontend.example.org/report/index.html"
+        "?study=adult_pilot_de"
         "&pid={participant_id}"
         "&callback_task_key=depression_survey"
         "&callback_token={assigned_token}"
+        "#/tasks"
     )
 
 
@@ -100,73 +101,32 @@ def test_build_frontend_study_join_url_builds_concrete_participant_link(monkeypa
 
     assert (
         url == "https://frontend.example.org/report/index.html"
-        "?pid=user+1"
-        "&study_name=adult+pilot%2Fde"
-    )
-
-
-def test_build_frontend_new_study_join_url_uses_rewrite_parameter_names(monkeypatch):
-    monkeypatch.setenv(
-        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
-    )
-
-    url = api._build_frontend_new_study_join_url(
-        study_name_short="adult pilot/de",
-        participant_id="user 1",
-    )
-
-    assert (
-        url == "https://frontend.example.org/report-new/index.html"
         "?study=adult+pilot%2Fde"
         "&pid=user+1"
     )
 
 
-def test_build_frontend_new_study_join_url_omits_pid_for_open_study_link(monkeypatch):
-    monkeypatch.setenv(
-        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
-    )
+def test_build_frontend_study_join_url_omits_pid_for_open_study_link(monkeypatch):
+    monkeypatch.setenv("TUD_FRONTEND_URL", "https://frontend.example.org/report/")
 
-    url = api._build_frontend_new_study_join_url(study_name_short="adult_pilot_de")
+    url = api._build_frontend_study_join_url(study_name_short="adult_pilot_de")
 
     assert (
-        url == "https://frontend.example.org/report-new/index.html?study=adult_pilot_de"
+        url == "https://frontend.example.org/report/index.html?study=adult_pilot_de"
     )
 
 
-def test_expected_return_url_template_new_points_at_the_rewrite(monkeypatch):
-    monkeypatch.setenv(
-        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
-    )
+def test_expected_return_url_template_carries_the_hmac_placeholder(monkeypatch):
+    monkeypatch.setenv("TUD_FRONTEND_URL", "https://frontend.example.org/report/")
 
-    url = api._build_external_task_expected_return_url_template_new(
-        study_name_short="adult_pilot_de",
-        task_key="depression_survey",
-    )
-
-    assert (
-        url == "https://frontend.example.org/report-new/index.html"
-        "?study=adult_pilot_de"
-        "&pid={participant_id}"
-        "&callback_task_key=depression_survey"
-        "&callback_token={assigned_token}"
-        "#/tasks"
-    )
-
-
-def test_expected_return_url_template_new_carries_the_hmac_placeholder(monkeypatch):
-    monkeypatch.setenv(
-        "TUD_FRONTEND_NEW_URL", "https://frontend.example.org/report-new/"
-    )
-
-    url = api._build_external_task_expected_return_url_template_new(
+    url = api._build_external_task_expected_return_url_template(
         study_name_short="adult pilot/de",
         task_key="payment",
         hmac_secret_reference="survey_hub_v1",
     )
 
     assert url.startswith(
-        "https://frontend.example.org/report-new/index.html?study=adult%20pilot%2Fde"
+        "https://frontend.example.org/report/index.html?study=adult%20pilot%2Fde"
     )
     assert url.endswith("&hmac={hmac_signature}#/tasks")
 

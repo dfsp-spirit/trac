@@ -57,39 +57,35 @@ async def prepared_submission_context():
         assert study_cfg_response.status_code == 200
         study_cfg = study_cfg_response.json()
         assert "day_labels" in study_cfg
-        day_label_name = study_cfg["day_labels"][0]["name"]
 
         selection = await _get_first_activity_selection(client, study_name_short)
 
         participant_id = f"it_{uuid.uuid4().hex[:8]}"
 
-        activity_item = {
-            "timeline_key": selection["timeline_key"],
-            "activity": selection["activity_name"],
-            "category": selection["category_name"],
-            "start_minutes": 0,
-            "end_minutes": 10,
-            "mode": selection["timeline_mode"],
-        }
-
-        if selection["timeline_mode"] == "single-choice":
-            activity_item["code"] = selection["activity_code"]
-        else:
-            activity_item["codes"] = [selection["activity_code"]]
-
-        submit_response = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-            json={"activities": [activity_item]},
+        create_response = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={
+                "items": [
+                    {
+                        "timeline_key": selection["timeline_key"],
+                        "activity_code": selection["activity_code"],
+                        "activity_name": selection["activity_name"],
+                        "category": selection["category_name"],
+                        "start_minutes": 0,
+                        "end_minutes": 10,
+                        "day_label_indexes": [0],
+                    }
+                ]
+            },
         )
-        assert submit_response.status_code == 200
-        submit_data = submit_response.json()
-        for key in ["message", "study", "participant", "day_label", "operation"]:
-            assert key in submit_data
+        assert create_response.status_code == 201
+        create_data = create_response.json()
+        for key in ["group_id", "created", "results", "activities"]:
+            assert key in create_data
 
     return {
         "study_name_short": study_name_short,
         "participant_id": participant_id,
-        "day_label_name": day_label_name,
     }
 
 
@@ -113,31 +109,28 @@ async def adult_pilot_de2_with_activity():
             params={"participant_id": participant_id},
         )
         assert study_cfg_resp.status_code == 200
-        study_cfg = study_cfg_resp.json()
-        day_label_name = study_cfg["day_labels"][0]["name"]
 
         selection = await _get_first_activity_selection(
             client, study_name_short, participant_id
         )
 
-        activity_item = {
-            "timeline_key": selection["timeline_key"],
-            "activity": selection["activity_name"],
-            "category": selection["category_name"],
-            "start_minutes": 0,
-            "end_minutes": 1440,
-            "mode": selection["timeline_mode"],
-        }
-        if selection["timeline_mode"] == "single-choice":
-            activity_item["code"] = selection["activity_code"]
-        else:
-            activity_item["codes"] = [selection["activity_code"]]
-
         submit_resp = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-            json={"activities": [activity_item]},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={
+                "items": [
+                    {
+                        "timeline_key": selection["timeline_key"],
+                        "activity_code": selection["activity_code"],
+                        "activity_name": selection["activity_name"],
+                        "category": selection["category_name"],
+                        "start_minutes": 0,
+                        "end_minutes": 1440,
+                        "day_label_indexes": [0],
+                    }
+                ]
+            },
         )
-        assert submit_resp.status_code == 200
+        assert submit_resp.status_code == 201
 
     return study_name_short
 
@@ -162,15 +155,6 @@ async def test_public_endpoints_are_available_with_expected_structure():
         assert docs_redirect_response.status_code in {302, 307}
         assert "location" in docs_redirect_response.headers
 
-        open_studies_response = await client.get(
-            f"{BASE_URL}/api/active_open_study_names"
-        )
-        assert open_studies_response.status_code == 200
-        open_studies_data = open_studies_response.json()
-        assert isinstance(open_studies_data, list)
-        if open_studies_data:
-            assert "name_short" in open_studies_data[0]
-
         favicon_response = await client.get(f"{BASE_URL}/favicon.ico")
         assert favicon_response.status_code in {200, 204}
 
@@ -181,7 +165,6 @@ async def test_study_and_participant_endpoints_are_available_with_expected_struc
 ):
     study_name_short = prepared_submission_context["study_name_short"]
     participant_id = prepared_submission_context["participant_id"]
-    day_label_name = prepared_submission_context["day_label_name"]
 
     async with httpx.AsyncClient() as client:
         study_cfg_response = await client.get(
@@ -237,19 +220,17 @@ async def test_study_and_participant_endpoints_are_available_with_expected_struc
         assert activities_cfg_lang_response.status_code == 200
 
         participant_activities_response = await client.get(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-            params={"day_label_name": day_label_name},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
         )
         assert participant_activities_response.status_code == 200
         participant_activities = participant_activities_response.json()
         for key in [
+            "schema_version",
             "study",
-            "participant",
-            "day_label",
-            "timelines_in_study",
+            "timeline",
+            "days",
+            "day_groups",
             "activities",
-            "has_template",
-            "template_activities",
         ]:
             assert key in participant_activities
 
@@ -522,8 +503,6 @@ async def test_admin_activities_export_end_times_are_wrapped_to_24h():
             params={"participant_id": participant_id},
         )
         assert study_cfg_resp.status_code == 200
-        study_cfg = study_cfg_resp.json()
-        day_label_name = study_cfg["day_labels"][0]["name"]
 
         selection = await _get_first_activity_selection(
             client, study_name_short, participant_id
@@ -539,29 +518,26 @@ async def test_admin_activities_export_end_times_are_wrapped_to_24h():
             {"start_minutes": 1380, "end_minutes": 1500, "expected_end_time": "01:00"},
         ]
 
-        # All activities must be submitted in a single request: the backend
-        # replaces all existing activities for a participant-day on submit.
-        activities = []
-        for case in cases:
-            activity_item = {
+        # One activity per day: the first case spans a whole day, so putting
+        # them on separate days keeps them from hitting the overlap limit.
+        items = [
+            {
                 "timeline_key": selection["timeline_key"],
-                "activity": selection["activity_name"],
+                "activity_code": selection["activity_code"],
+                "activity_name": selection["activity_name"],
                 "category": selection["category_name"],
                 "start_minutes": case["start_minutes"],
                 "end_minutes": case["end_minutes"],
-                "mode": selection["timeline_mode"],
+                "day_label_indexes": [day_index],
             }
-            if selection["timeline_mode"] == "single-choice":
-                activity_item["code"] = selection["activity_code"]
-            else:
-                activity_item["codes"] = [selection["activity_code"]]
-            activities.append(activity_item)
+            for day_index, case in enumerate(cases)
+        ]
 
         submit_resp = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-            json={"activities": activities},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={"items": items},
         )
-        assert submit_resp.status_code == 200, submit_resp.text
+        assert submit_resp.status_code == 201, submit_resp.text
 
         # Export and verify the wrapped times.
         export_resp = await client.get(
@@ -617,35 +593,36 @@ async def test_admin_activities_export_has_minutes_since_diary_start():
             client, study_name_short, participant_id
         )
 
-        def activity_item(start_minutes: int, end_minutes: int) -> dict:
-            item = {
+        def activity_item(
+            start_minutes: int, end_minutes: int, day_index: int
+        ) -> dict:
+            return {
                 "timeline_key": selection["timeline_key"],
-                "activity": selection["activity_name"],
+                "activity_code": selection["activity_code"],
+                "activity_name": selection["activity_name"],
                 "category": selection["category_name"],
                 "start_minutes": start_minutes,
                 "end_minutes": end_minutes,
-                "mode": selection["timeline_mode"],
+                "day_label_indexes": [day_index],
             }
-            if selection["timeline_mode"] == "single-choice":
-                item["code"] = selection["activity_code"]
-            else:
-                item["codes"] = [selection["activity_code"]]
-            return item
 
-        # Day 0 gets two records (one submitted request per day, because a
-        # submit replaces all activities of that participant-day), day 1 gets
-        # one. For the 04:00 day the default study uses: 04:00 is minute 0 of
-        # the axis and 02:00 the next morning is minute 1320 of the same day.
+        # Day 0 gets two records (04:00 and 02:00), day 1 gets one. Stored
+        # start/end are minute-of-day; on a 04:00 study day 02:00 maps to
+        # minute 1320 of the study-relative axis.
         submissions = [
-            (day_labels[0]["name"], [(240, 300), (1560, 1620)]),
-            (day_labels[1]["name"], [(240, 300)]),
+            (day_labels[0]["display_order"], [(240, 300), (120, 180)]),
+            (day_labels[1]["display_order"], [(240, 300)]),
         ]
-        for day_label_name, ranges in submissions:
+        for day_index, ranges in submissions:
             submit_resp = await client.post(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-                json={"activities": [activity_item(s, e) for s, e in ranges]},
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+                json={
+                    "items": [
+                        activity_item(s, e, day_index) for s, e in ranges
+                    ]
+                },
             )
-            assert submit_resp.status_code == 200, submit_resp.text
+            assert submit_resp.status_code == 201, submit_resp.text
 
         export_resp = await client.get(
             f"{BASE_URL}/api/admin/export/{study_name_short}/activities",
@@ -665,10 +642,10 @@ async def test_admin_activities_export_has_minutes_since_diary_start():
         assert {r["study_day_start_minutes"] for r in records} == {240}
 
         by_key = {(r["day_label_index"], r["start_minutes"]): r for r in records}
-        assert set(by_key) == {(0, 240), (0, 1560), (1, 240)}
+        assert set(by_key) == {(0, 240), (0, 120), (1, 240)}
 
         assert by_key[(0, 240)]["start_minutes_since_diary_start"] == 0
-        assert by_key[(0, 1560)]["start_minutes_since_diary_start"] == 1320
+        assert by_key[(0, 120)]["start_minutes_since_diary_start"] == 1320
         assert by_key[(1, 240)]["start_minutes_since_diary_start"] == 1440
         assert by_key[(1, 240)]["end_minutes_since_diary_start"] == 1500
 
@@ -713,7 +690,7 @@ async def test_admin_activities_export_has_minutes_since_diary_start():
         no_meta_record = next(
             r
             for r in no_meta_resp.json()["data"]
-            if r["participant_id"] == participant_id
+            if r["participant_id"] == participant_id and r["start_minutes"] == 240
         )
         assert "study_day_start_minutes" not in no_meta_record
         assert no_meta_record["start_minutes_since_diary_start"] == 0
@@ -742,29 +719,27 @@ async def test_export_includes_instructions_completed_at():
             params={"participant_id": participant_id},
         )
         assert study_cfg_resp.status_code == 200
-        day_label_name = study_cfg_resp.json()["day_labels"][0]["name"]
 
         selection = await _get_first_activity_selection(
             client, study_name_short, participant_id
         )
-        activity_item = {
-            "timeline_key": selection["timeline_key"],
-            "activity": selection["activity_name"],
-            "category": selection["category_name"],
-            "start_minutes": 240,
-            "end_minutes": 1680,
-            "mode": selection["timeline_mode"],
-        }
-        if selection["timeline_mode"] == "single-choice":
-            activity_item["code"] = selection["activity_code"]
-        else:
-            activity_item["codes"] = [selection["activity_code"]]
-
         submit_resp = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-            json={"activities": [activity_item]},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={
+                "items": [
+                    {
+                        "timeline_key": selection["timeline_key"],
+                        "activity_code": selection["activity_code"],
+                        "activity_name": selection["activity_name"],
+                        "category": selection["category_name"],
+                        "start_minutes": 240,
+                        "end_minutes": 1680,
+                        "day_label_indexes": [0],
+                    }
+                ]
+            },
         )
-        assert submit_resp.status_code == 200, submit_resp.text
+        assert submit_resp.status_code == 201, submit_resp.text
 
         export_resp = await client.get(
             f"{BASE_URL}/api/admin/export/{study_name_short}/activities",

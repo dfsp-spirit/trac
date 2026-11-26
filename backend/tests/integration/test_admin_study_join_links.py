@@ -1,11 +1,11 @@
-"""The study detail page links into both participant frontends.
+"""The study detail page links into the participant frontend.
 
 Requires a running backend (see ``./test_backend_integration.sh``)::
 
     TUD_BASE_SCHEME=http://localhost:3000 uv run pytest tests/integration/test_admin_study_join_links.py
 
-An open study offers a join link for new participants in the classic frontend
-and in the rewrite; a closed study links every listed participant into both.
+An open study offers a join link for new participants; a closed study links
+every listed participant.
 """
 
 import csv
@@ -105,7 +105,7 @@ def created_studies_for_cleanup():
 
 
 @pytest.mark.asyncio
-async def test_open_study_offers_new_participant_links_in_both_frontends(
+async def test_open_study_offers_a_new_participant_link(
     created_studies_for_cleanup,
 ):
     study_short = f"it_join_open_{uuid.uuid4().hex[:8]}"
@@ -126,15 +126,12 @@ async def test_open_study_offers_new_participant_links_in_both_frontends(
     _require_authenticated(response)
     assert response.status_code == 200, response.text
     assert (
-        f"{settings.frontend_url}/index.html?study_name={study_short}" in response.text
-    )
-    assert (
-        f"{settings.frontend_new_url}/index.html?study={study_short}" in response.text
+        f"{settings.frontend_url}/index.html?study={study_short}" in response.text
     )
 
 
 @pytest.mark.asyncio
-async def test_closed_study_links_each_participant_into_both_frontends(
+async def test_closed_study_links_each_participant(
     created_studies_for_cleanup,
 ):
     """Per-participant join links live in participant management.
@@ -175,20 +172,16 @@ async def test_closed_study_links_each_participant_into_both_frontends(
 
     table_body = html.unescape(table_response.text)
     assert (
-        f"{settings.frontend_url}/index.html?pid={PARTICIPANT_ID}"
-        f"&study_name={study_short}"
-    ) in table_body
-    assert (
-        f"{settings.frontend_new_url}/index.html?study={study_short}"
+        f"{settings.frontend_url}/index.html?study={study_short}"
         f"&pid={PARTICIPANT_ID}"
     ) in table_body
 
 
 @pytest.mark.asyncio
-async def test_invitation_links_defaults_to_new_frontend(
+async def test_invitation_links_point_at_the_frontend(
     created_studies_for_cleanup,
 ):
-    """One row per participant, pid first, links into the rewritten frontend."""
+    """One row per participant, pid first, links into the frontend."""
     study_short = f"it_invites_new_{uuid.uuid4().hex[:8]}"
     participant_ids = ["invite_a", "invite_b"]
 
@@ -216,7 +209,7 @@ async def test_invitation_links_defaults_to_new_frontend(
     assert rows[0] == ["pid", "invitation_link"]
     assert [row[0] for row in rows[1:]] == sorted(participant_ids)
     assert rows[1][1] == (
-        f"{settings.frontend_new_url}/index.html?study={study_short}&pid=invite_a"
+        f"{settings.frontend_url}/index.html?study={study_short}&pid=invite_a"
     )
 
 
@@ -255,7 +248,7 @@ async def test_invitation_links_can_be_downloaded_as_tsv(
     assert rows[0] == ["pid", "invitation_link"]
     assert [row[0] for row in rows[1:]] == sorted(participant_ids)
     assert rows[1][1] == (
-        f"{settings.frontend_new_url}/index.html?study={study_short}&pid=invite_a"
+        f"{settings.frontend_url}/index.html?study={study_short}&pid=invite_a"
     )
     assert "\t" in response.text.splitlines()[0]
 
@@ -283,62 +276,6 @@ async def test_invitation_links_rejects_unknown_format(
 
     _require_authenticated(response)
     assert response.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_invitation_links_can_target_the_legacy_frontend(
-    created_studies_for_cleanup,
-):
-    study_short = f"it_invites_legacy_{uuid.uuid4().hex[:8]}"
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        await _create_study(
-            client,
-            study_short,
-            allow_unlisted=False,
-            participant_ids=[PARTICIPANT_ID],
-        )
-        created_studies_for_cleanup.append(study_short)
-
-        response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
-            params={"frontend": "legacy"},
-            auth=ADMIN_AUTH,
-        )
-
-    _require_authenticated(response)
-    assert response.status_code == 200, response.text
-    rows = list(csv.reader(io.StringIO(response.text)))
-    assert rows[1] == [
-        PARTICIPANT_ID,
-        f"{settings.frontend_url}/index.html?pid={PARTICIPANT_ID}"
-        f"&study_name={study_short}",
-    ]
-
-
-@pytest.mark.asyncio
-async def test_invitation_links_rejects_unknown_frontend(
-    created_studies_for_cleanup,
-):
-    study_short = f"it_invites_bad_{uuid.uuid4().hex[:8]}"
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        await _create_study(
-            client,
-            study_short,
-            allow_unlisted=True,
-            participant_ids=[],
-        )
-        created_studies_for_cleanup.append(study_short)
-
-        response = await client.get(
-            f"{BASE_URL}/api/admin/studies/{study_short}/export-invitation-links",
-            params={"frontend": "flash"},
-            auth=ADMIN_AUTH,
-        )
-
-    _require_authenticated(response)
-    assert response.status_code == 400
 
 
 @pytest.mark.asyncio

@@ -14,7 +14,7 @@ decoration: the rosters shipped with the app (``pending_01``, ``diary_01``) and
 the admin placeholder (``participant_001``) use them, and both are safe in a
 URL, in CSV and in TSV without escaping.
 
-Both participant frontends generate 16-digit numeric ids for open studies, which
+The participant frontend generates 16-digit numeric ids for open studies, which
 fits this rule.
 """
 

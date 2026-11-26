@@ -1,26 +1,33 @@
 # Frontend Agent Documentation
 
 ## Tech Stack & Architecture
-- Pure JavaScript frontend. No React, Vite, Webpack, or runtime bundling toolchain in delivery.
-- Static HTML/CSS/JS served by the deployment stack.
-- Timeline UI supports one timeline over 24h; the time grid is per study (`time_step_minutes`, default 10) instead of a fixed 10-minute step.
+- Pure ES-module JavaScript frontend. No React, Vite, Webpack, or runtime
+  bundling toolchain in delivery.
+- Static HTML/CSS/JS served by the deployment stack from `frontend/src/`.
+- Architecture is enforced by `frontend/tools/check-architecture.mjs` (D33): only
+  `js/data` may call `fetch`, imports point downwards, files stay under the line
+  caps, and only `ui/dismissedMessages.js` may touch device storage.
+- The diary shows one timeline over 24h; the time grid is per study
+  (`time_step_minutes`, default 10) instead of a fixed 10-minute step.
 
 ## Configuration & Integration
-- Primary frontend settings file: `frontend/src/settings/tud_settings.js`.
-- Participant rewrite (`frontend_new/`): `frontend_new/src/js/config.js`, copied per environment from `dev_tools/*/frontend_settings/config.new.*.js`. It also carries `multiTimelinePolicy` (`ignore` | `merge` | `error`, default `ignore`) - the deployment's answer to a study whose activities config still defines two timelines. The rewrite otherwise assumes one timeline per study: it reads `GET …/diary?timelines=resolved` and sends `timeline_key` with every create. Remove the key when multi-timeline support is dropped.
-- Backend API is typically mounted under `/api` (or deployment-specific prefixes).
-- Participant context is URL-driven (`pid`, optional `lang`), not login-driven.
+- The single settings file is `frontend/src/js/config.js`, copied per
+  environment from `dev_tools/*/frontend_settings/config.*.js`. It carries
+  `apiBaseUrl`, the relative `localesUrl`, the supported languages and
+  `multiTimelinePolicy` (`ignore` | `merge` | `error`, default `ignore`) - the
+  deployment's answer to a study whose activities config still defines two
+  timelines. The app otherwise assumes one timeline per study: it reads
+  `GET …/diary?timelines=resolved` and sends `timeline_key` with every create.
+- Backend API is typically mounted under `/api` (or deployment-specific
+  prefixes).
+- Participant context is URL-driven (`study`, `pid`, optional `lang`), not
+  login-driven. The stage is re-read from the server on every load (D37).
 
-## Unsaved diary work (draft state)
-- `frontend/src/js/draft_storage.js` owns the browser-side copy of the diary that is being edited: `sessionStorage` (`trac.pendingTimelineState.v1`) plus `localStorage` (`trac.timelineDraftState.v1`, survives closing the browser, restored only while younger than 24h). `script.js` captures it on every change (debounced), on `beforeunload` and on `visibilitychange`, and restores it after a reload.
-- Nothing in that module may throw: `safeGetItem`/`safeSetItem`/`safeRemoveItem` swallow unavailable/quota-exceeded storage (Safari private mode, blocked cookies). Drafts are validated on read (`normalizeTimelineState`) and unusable payloads are deleted instead of restored.
-- A draft is only restored when `matchesTimelineContext()` agrees on `pid`, `study_name` and `day_label_index` - participants share browsers (family tablet, lab PC). Covered by `frontend/tests/unit/draft_storage.test.js` and E2E `draft_restore.spec.js`; the context rule itself is unit-tested because the browser flow for switching participant goes through consent/instructions, which drop the pending state first.
-
-## Usability signals (participant rewrite)
-- `frontend_new/src/js/domain/uxEvents.js` holds the rules (which events exist,
+## Usability signals
+- `frontend/src/js/domain/uxEvents.js` holds the rules (which events exist,
   which properties they may carry, query folding, load-id shape);
-  `frontend_new/src/js/data/signals.js` is the transport (buffer, 15 s flush,
-  `sendBeacon` on `pagehide`); `frontend_new/src/js/ui/formVisit.js` reports how
+  `frontend/src/js/data/signals.js` is the transport (buffer, 15 s flush,
+  `sendBeacon` on `pagehide`); `frontend/src/js/ui/formVisit.js` reports how
   one activity-form visit started and ended.
 - **Nothing is collected unless the study opts in** (`save_ux_events` in the
   study config) **and**, for a consent-requiring study, the participant
@@ -35,8 +42,6 @@
 - `activity.form.opened` without a matching `activity.form.closed` is the
   "left mid-entry" signal - that case only exists on the client, which is why
   the panel reports the pair rather than only the completed saves.
-- Old frontend (`frontend/src/`): no signals. Instrumenting both would double
-  the consent surface for a codebase being retired.
 
 ## Defaults for a new entry
 - Every way into the form resolves its start through `ui/entrySlot.js` +
@@ -391,20 +396,6 @@
   clicks the next save with a 3 s timeout, so a regression cannot hide behind
   the toast timing out.
 
-### The classic client (`frontend/`) has the same rule
-- Its toast was the worst case of the same bug: `pointer-events: auto` while
-  shown plus `z-index: 10000` over the activity menu (`3000`). The menu is clamped
-  into the viewport, so deleting several entries in a row put the next menu
-  exactly under the receipt from the previous delete - the last item ("Delete")
-  was hidden, and a tap meant for it hit **Undo**, re-adding the entry just
-  removed. Measured at 390×844: 43 of 44 px of the Delete item covered.
-- Fixed the same way as the rewrite: the box keeps `pointer-events: none` while
-  shown (only `.toast-action` opts in), `.activity-context-menu` paints above the
-  toast (`10001`), and `showMenu()` calls the new `window.hideToast()` so the
-  receipt of the previous action is gone before the next one starts.
-  `frontend/tests/unit/toast_layering.test.js` guards all three from source - it
-  runs without the stack, because nothing else loads the real stylesheet.
-
 ## Day names
 - Study day labels arrive per language (`days[].display_names`) and every screen
   renders them through `dayLabel()` in `domain/diary.js` - the rail, the day nav,
@@ -413,54 +404,43 @@
   `name.slice(0, 2)` gave every participant "mo", "tu", "we" whatever language
   the study ships.
 
-## Time handling
-- Activities carry minutes-of-day, never dates: `start`/`end` are display strings such as `"07:30"` or `"00:30(+1)"` (the `(+1)` suffix means the next day). Never run them through `new Date()` - that yields an Invalid Date in every engine (this silently disabled `Timeline.validate()`'s overlap check). Use `timeToMinutes()` / `getActivityTimeRangeMinutes()` from `frontend/src/js/utils.js` and compare numbers.
-- Because of that, no frontend code may derive a calendar date for an activity (the removed `formatTimeDDMMYYYYHHMM()` did exactly that and produced the browser's local "today"). Dates/timestamps belong to the backend.
-- `frontend/tests/unit/timeline_validation.test.js` covers `Timeline.validate()`: overlaps throw, and the drag/resize/undo handlers depend on that throw to revert an invalid change. CI runs an extra chromium E2E leg with `TZ=Europe/Berlin` (`.github/workflows/e2e_tests.yml`) so timezone/DST assumptions fail in CI rather than on a participant's phone.
-
 ## Accessibility & mobile
-- Participants answer on phones and include older adults, so both are treated as first-class: `frontend/tests/e2e/accessibility.spec.js` runs axe-core (WCAG 2.0/2.1/2.2 A + AA) over every participant page and over the activity picker / activity info dialogs, and `frontend/tests/e2e/mobile_layout.spec.js` checks a 390x844 phone (no sideways scrolling, >= 24x24 primary controls, placement by touch). `frontend/tests/e2e/participant_pages.js` is the shared page list - add a participant page there and all guards sweep it.
-- Never put `aria-label` on an element without a role: a bare `div` drops it (`timeline` containers are `role="group"`).
-- `role="dialog"` / `aria-modal` / `aria-labelledby` belong on the element that is actually shown and hidden (the `.modal-overlay`), not on an inner wrapper: `js/ui.js` finds dialogs by `[role="dialog"]` and watches their `style` attribute, so a role buried inside the overlay makes the dialog look permanently open (no focus restore, no Escape handling) and engines differ on where focus ends up once the overlay is hidden.
-- Colours: text must reach 4.5:1 (3:1 for large text) on the background it actually sits on - the timeline descriptions sit on `#eaeaea` when the timeline is active, not on white. Greys that pass: `#475569`, `#6b7280` on white; `#ccc` (1.53:1) and `#808080` on `#eaeaea` (3.28:1) do not.
-- `.skip-btn` shows why style order matters: the later `.btn { color: white }` rule silently won over the single-class `.skip-btn` colour, rendering the label invisible. State the colour with at least the same specificity (`.btn.skip-btn`) or after the base rule.
-- Do not disable zoom in the viewport meta (`user-scalable=no`, `maximum-scale=1.0`).
-- Pages that do not load `styles/styles.css` (`consent`, `instructions`, `open_studies`, `tasks`, `thank-you`, `timeout`) have no box-sizing reset, and their `body` is a grid with `1fr` tracks: use `box-sizing: border-box` on full-width containers, `minmax(0, 1fr)` for the content track and `min-width: 0` on the grid item, or a wide child (a long German label, a long study name) stretches the column past the viewport while `overflow-x: hidden` silently clips it.
-- Footer links classify by origin (`frontend/src/js/footer.js`): a same-origin `target_url` opens in an iframe dialog (`#footerLinkModal`, `role="dialog"`, labelled, Escape, focus back on the link, scroll lock) and never navigates - so a study can host its own information as a page on this server and keep the participant on the diary. External targets open in a new tab (`rel="noopener noreferrer"`) and say so in the accessible name (`footer.opensInNewTab`, all 7 locales) plus an `aria-hidden` ↗ marker. Never frame an external URL: `X-Frame-Options` / `frame-ancestors` produce a blank frame that cannot be detected from JS. The dialog is self-contained because these pages load neither `ui.js` nor `styles.css`. There is no per-link or per-deployment "new tab" flag any more. Guarded by `study_footer_links.spec.js`.
-- Interactive targets need 24x24 CSS px (WCAG 2.2 SC 2.5.8). Inline links in a wrapping row need padding, and a row of links must offer a break opportunity (flex-wrap with each link+separator kept together) - inline links with no whitespace between them cannot wrap at all.
-- `frontend/tests/e2e/keyboard_accessibility.spec.js` guards the dialog focus trap in `js/ui.js` (Tab/Shift+Tab stay inside, Escape closes and restores focus) and the timeline containers; a change to the MutationObserver, `MODAL_CLOSE_SELECTOR` or the focus restore has to keep those tests green.
-- On a phone a block is moved with the long-press menu's "Move earlier" / "Move later": 10-minute steps (the desktop drag's snap grid), duration preserved, clamped to the day (04:00-04:00(+1)), and a blocked move flashes the block instead of happening. The phone has no drag-to-move and the arrow keys move one edge at a time, so this action is the only way to shift a whole block; desktop keeps its drag and therefore a move-free menu (asserted in `activity_context_menu_desktop.spec.js`). Both paths share `commitActivityTiming()` in `script.js` - datasets, position, time chip, timeline state, then `updateButtonStates()` (which also marks the day dirty for autosave); the drag/resize handlers keep their own version because they write during the gesture and validate at its end.
-- Mobile block geometry is fixed in `createActivityBlock` (`MOBILE_BLOCK_WIDTH = 70`, `MOBILE_OFFSET = 25`) with the time chip *inside* the block (mobile `.time-label` rule, `right: 4px`). Two traps: a chip hanging off the block's right edge (`right: -50px`, the old value) is clipped to a sliver at a 390 px viewport - measured 1 px of its 48 px - and a block ending flush on the screen border reads as cut off. `mobile_layout.spec.js` asserts the gap share and that the chip is inside the block and on screen.
-- The diary's day is scrolled by `.timelines-wrapper`, never by the window: the page itself does not scroll on the diary, so any guard written against `window.pageYOffset` (or a listener that calls `preventDefault()` on a document-level `touchmove`) breaks the day's own scrolling silently. `preventPullToRefresh()` (ui.js) used exactly that condition to block pull-to-refresh and cancelled every downward finger drag with it - the day could be swiped forward to its end and not back, and no test saw it, because a mouse never goes through touch-action, touch listeners or gesture arbitration. Pull-to-refresh is now stopped by `overscroll-behavior: none` on `documentElement` + `body` alone. Content that ends exactly on the scroller's edge has the mirror-image problem: the day's last hour line sat at 0 px from the bottom and could not be reached, hence the content-box `padding-bottom: 20px` on `.last-initialized-timeline-wrapper` (the timeline keeps its 2500 px and its hour spacing). That padding is only worth anything if the scroller's own bottom edge is on screen: sizing it with `100vh` minus header/footer while `.timeline-canvas` also carried a 20 px vertical margin put the scroller's bottom 20 px *below* the viewport (measured 935 px in a 915 px viewport at 412x915), which ate the tail exactly. The canvas now has no vertical margin on phones (its breathing room is `padding-top` inside it), the scroller fills it (`height: 100%`) and the height uses `100svh` with a `100vh` fallback - `vh` is the viewport with the browser chrome *hidden*, and the diary's page never scrolls, so the URL bar stays and the day's end could hide behind it. Both are pinned by `frontend/tests/e2e/mobile_day_scroll.spec.js`, whose touch case uses CDP `Input.dispatchTouchEvent` and therefore skips on non-Chromium (it also asserts that the scroller's bottom edge itself ends within the viewport); `mobile_block_scroll.spec.js` is the other real-touch spec.
-- The block's resize grips (`.activity-block-grip`, decoration only, `pointer-events: none`) exist on every block and are oriented by the media queries: vertical bars on the side edges at 1440 px and up (revealed on hover/focus/resizing), horizontal bars flush on the top/bottom ends below that, where those ends are the draggable ones. The mobile rules must stay AFTER the base `display: none` - same specificity, so a rule placed before it is overridden and the grips exist but are never rendered. Unlike desktop they are visible without hover (a touch device has none) at 0.7 opacity, full while focused or resizing, and they sit inside the band that `touch-action: none` reserves so the marker and the touch target coincide.
-- The block's resize ends (`.activity-block-edge-zone`, top/bottom, `touch-action: none`, `min(16px, 30%)` of the block) are what let a resize survive a finger drag: without a non-pannable element under the finger the browser scrolls and fires `pointercancel`, cancelling interact.js' resize. Two traps live here. The base `.activity-block-edge-zone { display: none }` must stay **before** the mobile `@media` override - same specificity, so a later `display: none` silently wins and the bands reserve nothing (a hidden element still reports `touch-action: none`, so computed-style assertions pass). And the 30 % cap is load-bearing: a 10-minute block is ~17 px tall, and at 40 % the two bands left 3 px of scrollable middle - the "the scrolling doesn't work on my phone" dead zone. `mobile_block_scroll.spec.js` asserts a rendered band height and that the resize drag starts on a band.
+- Participants answer on phones and include older adults, so both are treated as
+  first-class: `frontend/tests/e2e/a11y.spec.js` runs axe-core (WCAG 2.0/2.1/2.2
+  A + AA) over the app and its views, and `touch-targets.spec.js` checks the
+  phone layout (no sideways scrolling, >= 24x24 primary controls).
+- Never put `aria-label` on an element without a role. Dialogs use a real
+  `<dialog>`; `ui/panelHost.js` is the one place that decides between the
+  desktop column and the modal dialog.
+- Do not disable zoom in the viewport meta (`user-scalable=no`,
+  `maximum-scale=1.0`).
+- Interactive targets need 24x24 CSS px (WCAG 2.2 SC 2.5.8). Inline links in a
+  wrapping row need padding, and a row of links must offer a break opportunity.
+- Components are mounted on their own fixture pages under
+  `frontend/tests/components/` (D33 rule 8), so a broken view fails in seconds
+  without the stack.
 
 ## Localization
-- Locale resources are in `frontend/src/locales/`.
+- Locale resources are in `frontend/src/locales/` and ship inside the app.
 - Language fallback order: URL `lang` -> browser language -> study default.
-- Every i18n key must exist in all locale files (identical key sets, plus no untranslated English values in non-en files); `frontend/tests/unit/locales_consistency.test.js` enforces this.
-- `frontend/tests/unit/page_i18n_keys.test.js` enforces the other direction: every key requested by markup (`data-i18n*`) or by a literal `t('key')`/`tOptional('key')` call must exist in every locale, and no stylesheet may carry hardcoded user-visible `content:` text. A key that is missing at runtime is *not* an error: `applyTranslations()` keeps the built-in English text of the markup, which is how half-translated pages happen - so add keys to all locales in the same change.
-- `frontend/tests/unit/locale_values.test.js` checks the values themselves: the {% raw %}`{{placeholders}}`{% endraw %} of every key and the HTML tags inside it must match `en.json` (balanced), so a translation cannot silently drop {% raw %}`{{days}}`{% endraw %} or break `data-i18n-html` markup.
-- `frontend/tests/unit/static_assets.test.js` verifies that every asset referenced by an HTML page or stylesheet exists in the repository (it ignores commented-out markup); E2E `no_broken_static_requests.spec.js` additionally loads every participant page and fails if any static request (js/css/gif/font/locale/settings json) does not succeed.
-- Stale cached locale files: `js/i18n.js` fetches locales with `cache: 'no-cache'`, and if the loaded file is missing requested keys it re-fetches it once with a `?v=<timestamp>` cache-buster (passing `cache: 'no-store'`) before logging the remaining keys as a real gap (`i18n: locale 'de' ... is missing N key(s) ...`). That self-heals a page whose browser/proxy cache still holds an old locale file. `frontend/tests/unit/i18n_missing_keys.test.js` covers this.
-- `i18n.tOptional(key)` / `i18n.has(key)` are the non-reporting lookups for keys that may legitimately be absent (deployment-overridable labels such as `footer.imprint`): they neither warn nor mark the locale as stale. Use them instead of `t()` when a miss is expected.
-- Markup hooks: `data-i18n` (textContent), `data-i18n-html` (innerHTML), `data-i18n-title`, `data-i18n-placeholder`, `data-i18n-value`, `data-i18n-aria-label`, `data-i18n-alt` (image alt text). Prefer a `data-i18n` hook over a CSS `content:` string, which can never be translated.
+- `frontend/tests/unit/page_i18n_keys.test.js` enforces that every key the app
+  requests exists in every locale file. Add keys to all three locales in the
+  same change.
+- Markup hooks (`data-i18n`, `data-i18n-aria-label`, ...) and `t('key')` are
+  resolved by `data/i18n.js`; the locale URL comes from `config.localesUrl`.
 
-## Page Texts (per-study overrides)
-- Pages show built-in text that a study can override from `studies_config.json`: `study_text_intro` -> `#study-custom-message-intro`, `study_text_instructions_title` -> `#study-custom-message-title` and `study_text_instructions` -> `#study-custom-message-instructions` (`pages/instructions.html`), `study_text_consent` (`pages/consent.html`), `study_text_end_{completed,skipped,noconsent}` (`pages/thank-you.html`).
-- The backend resolves each text's language before sending it in the participant `study-config` response (`_get_localized_study_text`: selected language -> study `default_language` -> `en`).
-- `pages/instructions.js` and `pages/consent.html` render these texts through `js/markdown.js`, which escapes HTML first (so `<br>` in study text shows up literally). The built-in intro default (`instructions.studyIntroDefault`) is injected as raw HTML via `data-i18n-html`; the override removes that attribute so i18n cannot overwrite it. The study title (`study_text_instructions_title`) is applied by `applyStudyTitleText()` through `renderInlineMarkdown()` instead: the `<h1>` already is a heading, so only inline Markdown (bold, italic, links) is honoured, and the override removes `data-i18n` so a later translation pass cannot replace it.
-- `pages/thank-you.html` assigns the end text straight to `innerHTML` (raw HTML, no Markdown rendering, no escaping).
-- Built-in fallbacks when a study sets nothing live in the locale files (all 7 locales): `instructions.studyIntroDefault` for the intro, `instructions.instructionsDefault` for the second block (`pages/instructions.js` looks the latter up via `i18n.t()`), and `instructions.welcomeTitle` for the title (applied by the normal i18n pass and left alone when the study defines no title).
-- The illustrated steps of `pages/instructions.html` follow the diary layout (`.horizontal-layout` / `.vertical-layout`, one image per layout, lazily loaded via `data-src`). `applyCopyDayStepVisibility()` in `pages/instructions.js` hides the "Copy a Day" step for studies with a single day (`study_days_count` of the participant `study-config` response, fallback `day_labels.length`; no config at all keeps the step visible, like the diary page, which only shows the copy button when there is another day). Hidden steps are skipped when numbering, so a single-day study numbers its steps 1-3 instead of 1-4.
-- The walk-through is a closed `<details id="howToSection">` inside `.instruction-card` (`instructions.howToSummary` is the summary label), and the Start nav is `position: fixed` below 1440 px (`@media (max-width: 1439.98px)`, with `body` padding for it) but a plain hairline action row at 1440 px and up: measured at 390x664 the page was 4779 px / 7.2 screens with Start at px 4623 as the last element (the nav is `static`), so the study's own text was gated behind the generic how-to. Nothing was removed - the steps and their GIFs load on demand. On desktop the old nav was an opaque white slab with an upward shadow between the text and the footer links (a stray-toolbar look), and the "please click the blue Start button" line above it is gone along with its locale key. The body grid (`grid-auto-rows: auto`) must keep `align-content: start`: its default `stretch` inflated the auto rows on a window taller than the page, and since `.navigation` is a flex row, the button stretched with the row into a square (140x131 at 1600x1300 - `align-items: center` on `.navigation` is the second guard). `?embed=1` (`IS_EMBED` in `pages/instructions.js`) renders the walk-through alone: no heading, study text, language pill, Start button or footer, `<details>` open, and the study-config redirects skipped. That is what the diary's ⋮ menu ("How to use the diary") loads into `#helpModal` as an iframe (`.help-modal-frame`, `openHelpModal()` in `js/ui.js`), so the modal has no second copy of four animated GIFs; `openHelpModal()` arms the shared focus manager itself, which `createModal()` otherwise only arms when the activity picker is first opened. Guards: `instructions_entry.spec.js` and `help_modal.spec.js`.
+## Study texts
+- Consent, instructions, tasks and thank-you texts come from the server in the
+  `study-config` payload (`study_text_*`), already resolved to the selected
+  language. Views render them as Markdown through `domain/markdown.js`; do not
+  add a second copy of the text to the locale files.
 
-## Entry page (participant rewrite)
-- Opening `frontend_new/` without a study in the URL is not a failure: `ui/boot.js` asks `GET /api/listed_public_studies?lang=<lang>` and `ui/views/studyList.js` renders one link per study (`ui/stageMachine.js` hides the diary chrome for it, like the other non-diary pages). The server decides what may appear - studies with `is_listed_publicly: true` that are also open, running and not paused - so the list never offers a study the diary would refuse.
+## Entry page
+- Opening `frontend/` without a study in the URL is not a failure: `ui/boot.js` asks `GET /api/listed_public_studies?lang=<lang>` and `ui/views/studyList.js` renders one link per study (`ui/stageMachine.js` hides the diary chrome for it, like the other non-diary pages). The server decides what may appear - studies with `is_listed_publicly: true` that are also open, running and not paused - so the list never offers a study the diary would refuse.
 - The entry page creates no identity: each link carries only `study` (plus the current `lang`). The participant id is generated by `ui/identity.js` when the link is followed, which is why opening the page cannot add a participant.
 - An empty list falls back to the `diary.stage.noInvitation*` page, and a failed request to the usual failure page with *Try again*. Guards: `tests/e2e/entry-page.spec.js`, `tests/e2e/failure-page.spec.js`, `tests/e2e/a11y.spec.js`.
 
-## Banner messages (participant rewrite)
+## Banner messages
 - `data/messages.js` fetches `GET /api/messages` (server message + the study's
   own one) and returns `{text, key}` or nulls. Failure is silent by design: a
   missing banner is not a reason to interrupt a diary.
@@ -495,6 +475,5 @@
   skipped for an unchanged range (e.g. a 10-minute entry after a study moved to
   a 15-minute grid). Without that, raising a setting would lock old data.
 - The error texts are step-aware (`diary.error.notOnStepGrid`, {% raw %}`{{step}}`{% endraw %}) and
-  the nudge shortcut moves one study step (`diary.shortcuts.nudgeStep`); the old
-  client keeps its own fixed-10 keys.
+  the nudge shortcut moves one study step (`diary.shortcuts.nudgeStep`).
 

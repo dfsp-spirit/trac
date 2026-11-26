@@ -79,32 +79,29 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
 
         selection = await _get_first_activity_selection(client, study_name_short)
 
-        activity_item = {
-            "timeline_key": selection["timeline_key"],
-            "activity": selection["activity_name"],
-            "category": selection["category_name"],
-            "start_minutes": 0,
-            "end_minutes": 10,
-            "mode": selection["timeline_mode"],
-        }
-
-        if selection["timeline_mode"] == "single-choice":
-            activity_item["code"] = selection["activity_code"]
-        else:
-            activity_item["codes"] = [selection["activity_code"]]
-
         # Every study day needs data before the study can be submitted.
-        for day_label_name in day_label_names:
-            submit_response = await client.post(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/day_labels/{day_label_name}/activities",
-                json={"activities": [activity_item]},
-            )
-            assert submit_response.status_code == 200
+        submit_response = await client.post(
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
+            json={
+                "items": [
+                    {
+                        "timeline_key": selection["timeline_key"],
+                        "activity_code": selection["activity_code"],
+                        "activity_name": selection["activity_name"],
+                        "category": selection["category_name"],
+                        "start_minutes": 0,
+                        "end_minutes": 10,
+                        "day_label_indexes": list(range(len(day_label_names))),
+                    }
+                ]
+            },
+        )
+        assert submit_response.status_code == 201
 
         # Submit the study: without a reset the participant would stay submitted
         # and the frontend would keep redirecting them away from the diary.
         study_submit_response = await client.post(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/submit",
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary/submit",
         )
         assert study_submit_response.status_code == 200
 
@@ -133,8 +130,7 @@ async def test_admin_reset_participant_data_endpoint_resets_submission_and_flags
         assert reset_data["submission_reset"] is True
 
         activities_after_reset_response = await client.get(
-            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-            params={"day_label_index": 0},
+            f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
         )
         assert activities_after_reset_response.status_code == 200
         activities_after_reset = activities_after_reset_response.json()

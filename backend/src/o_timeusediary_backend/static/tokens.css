@@ -1,14 +1,14 @@
 /*
  * GENERATED FILE - do not edit.
  *
- * Copied verbatim from frontend_new/src/styles/tokens.css by
- * `npm run sync:admin-tokens` (frontend_new/tools/sync-admin-tokens.mjs).
+ * Copied verbatim from frontend/src/styles/tokens.css by
+ * `npm run sync:admin-tokens` (frontend/tools/sync-admin-tokens.mjs).
  * The admin portal loads this before admin.css so both user interfaces read as
  * one product. Change the source, then run the sync.
  */
 
 /* Design tokens, copied from the Alex Horré prototype (tokens.css) under D23.
-   Light theme only: the rewrite ships no dark mode (D11), so the prototype's
+   Light theme only: the app ships no dark mode (D11), so the prototype's
    `prefers-color-scheme` and `[data-theme="dark"]` blocks are dropped rather
    than carried untested. Colour for activities comes from study config, never
    from here. */

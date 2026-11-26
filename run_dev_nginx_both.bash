@@ -79,10 +79,9 @@ fi
 FULL_NGINX_CONF_PATH="$(pwd)/$NGINX_CONF_FILE" # nginx requires an absolute path to the configuration file, or changing its config dir.
 mkdir -p "$HOME/nginx-client-body-temp" || { echo -e "ERROR: Failed to create nginx client body temp directory"; exit 1; }
 
-# Copy frontend config files: the old app's settings and the rewrite's config.
-# Both are tracked files, so they are restored from git when this script exits.
-cp "$CURRENT_DIR/dev_tools/local_nginx/frontend_settings/tud_settings.dev-nginx.js" "$CURRENT_DIR/frontend/src/settings/tud_settings.js" || { echo -e "ERROR: Failed to copy frontend config file"; exit 1; }
-cp "$CURRENT_DIR/dev_tools/local_nginx/frontend_settings/config.new.dev-nginx.js" "$CURRENT_DIR/frontend_new/src/js/config.js" || { echo -e "ERROR: Failed to copy the rewrite's config file"; exit 1; }
+# Copy the frontend config. It is a tracked file, so it is restored from git
+# when this script exits.
+cp "$CURRENT_DIR/dev_tools/local_nginx/frontend_settings/config.dev-nginx.js" "$CURRENT_DIR/frontend/src/js/config.js" || { echo -e "ERROR: Failed to copy the frontend config file"; exit 1; }
 
 # Copy backend config .env file
 cp "$CURRENT_DIR/dev_tools/local_nginx/backend_settings/.env.dev-nginx" "$CURRENT_DIR/backend/.env" || { echo -e "ERROR: Failed to copy backend config file"; exit 1; }
@@ -106,7 +105,7 @@ if [ -n "$LAN_IP" ]; then
         -e "s|^TUD_ALLOWED_ORIGINS=.*|TUD_ALLOWED_ORIGINS='[\"http://localhost:3000\", \"http://127.0.0.1:3000\", \"http://$LAN_IP:3000\", \"http://$LAN_IP\"]'|" \
         -e "s|^TUD_FRONTEND_URL=.*|TUD_FRONTEND_URL=http://$LAN_IP:3000/report/|" \
         "$CURRENT_DIR/backend/.env" || { echo -e "ERROR: Failed to write the LAN address into backend/.env"; exit 1; }
-    PHONE_URL="http://$LAN_IP:3000/report/index.html?study_name=default&lang=de"
+    PHONE_URL="http://$LAN_IP:3000/report/index.html?study=default&lang=de"
 else
     PHONE_URL=""
 fi
@@ -118,6 +117,10 @@ if [ "$USE_TEST_DB" = true ]; then
     TEST_DATABASE_URL=$(cd "$CURRENT_DIR/backend" && uv run python tests/support/database_tools.py url) \
         || { echo -e "ERROR: Failed to resolve the test database URL"; exit 1; }
     TEST_DATABASE_NAME=$(printf '%s' "$TEST_DATABASE_URL" | sed 's#.*/##')
+    # Prepare the test database before backend/.env points at it: the tool
+    # derives <development database>_test, so it must still see the dev URL.
+    (cd "$CURRENT_DIR/backend" && uv run python tests/support/database_tools.py reset) \
+        || { echo -e "ERROR: Failed to prepare the test database. It must exist (or be creatable) - see the README section on running the tests."; exit 1; }
     {
         echo ""
         echo "# --test-db: the throwaway database the test suites run against."
@@ -129,21 +132,17 @@ fi
 
 # Prepare backend DB state explicitly before starting the API server.
 cd "$CURRENT_DIR/backend/" || { echo -e "ERROR: Failed to change to backend directory"; exit 1; }
-if [ "$USE_TEST_DB" = true ]; then
-    uv run python tests/support/database_tools.py reset || { echo -e "ERROR: Failed to prepare the test database. It must exist (or be creatable) - see the README section on running the tests."; exit 1; }
-else
+if [ "$USE_TEST_DB" = false ]; then
     uv run tud db upgrade || { echo -e "ERROR: Failed to apply DB migrations"; exit 1; }
     uv run tud studies import --config studies_config.json --config studies_config_new.json || { echo -e "ERROR: Failed to import studies config"; exit 1; }
 fi
 
-# The deployment configs above are copies over tracked files; put the repo
-# versions back so a global `git add -A` cannot commit this machine's paths.
+# The deployment config above is a copy over a tracked file; put the repo
+# version back so a global `git add -A` cannot commit this machine's paths.
 restore_tracked_configs() {
     if git -C "$CURRENT_DIR" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
-        git -C "$CURRENT_DIR" checkout -- \
-            frontend/src/settings/tud_settings.js \
-            frontend_new/src/js/config.js 2>/dev/null \
-            && echo "Restored frontend/src/settings/tud_settings.js and frontend_new/src/js/config.js"
+        git -C "$CURRENT_DIR" checkout -- frontend/src/js/config.js 2>/dev/null \
+            && echo "Restored frontend/src/js/config.js"
     fi
 }
 
@@ -161,9 +160,8 @@ nginx -c "$FULL_NGINX_CONF_PATH"
 
 if [ $? -eq 0 ]; then
     echo -e "Started nginx successfully"
-    echo -e "  old frontend:  http://localhost:3000/report/"
-    echo -e "  rewrite:       http://localhost:3000/report-new/"
-    echo -e "  pilot study:   http://localhost:3000/report-new/?study=pilot_mpiae_01_open&pid=test01"
+    echo -e "  frontend:      http://localhost:3000/report/"
+    echo -e "  pilot study:   http://localhost:3000/report/?study=pilot_mpiae_01_open&pid=test01"
     echo -e "  backend API:   http://localhost:3000/tud_backend/api"
     if [ "$USE_TEST_DB" = true ]; then
         echo -e "  database:      $TEST_DATABASE_NAME (throwaway test database)"

@@ -127,29 +127,34 @@ def _activity_item(
     code: int = 100,
     start_minutes: int = 0,
     end_minutes: int = 10,
+    days: list[int] | None = None,
 ) -> dict:
     return {
         "timeline_key": "primary",
-        "activity": activity,
+        "activity_code": code,
+        "activity_name": activity,
         "category": "General",
         "start_minutes": start_minutes,
         "end_minutes": end_minutes,
-        "mode": "single-choice",
-        "code": code,
+        "day_label_indexes": days or [0],
     }
 
 
-async def _submit_day(client: httpx.AsyncClient, study: str, participant: str) -> None:
+async def _submit_day(
+    client: httpx.AsyncClient, study: str, participant: str
+) -> str:
+    """Create one activity on day 0 and return its client_uuid."""
     response = await client.post(
-        f"{BASE_URL}/api/studies/{study}/participants/{participant}/day_labels/monday/activities",
-        json={"activities": [_activity_item()]},
+        f"{BASE_URL}/api/studies/{study}/participants/{participant}/activities",
+        json={"items": [_activity_item()]},
     )
-    assert response.status_code == 200, response.text
+    assert response.status_code == 201, response.text
+    return response.json()["activities"][0]["client_uuid"]
 
 
 async def _submit_study(client: httpx.AsyncClient, study: str, participant: str) -> None:
     response = await client.post(
-        f"{BASE_URL}/api/studies/{study}/participants/{participant}/submit",
+        f"{BASE_URL}/api/studies/{study}/participants/{participant}/diary/submit",
     )
     assert response.status_code == 200, response.text
 
@@ -195,18 +200,21 @@ async def test_submitted_study_rejects_activity_edits_and_consent_changes():
             # 1. Diary edits are refused with 403.
             edit_resp = await client.post(
                 f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}"
-                f"/day_labels/monday/activities",
-                json={"activities": [_activity_item(end_minutes=20)]},
+                f"/activities",
+                json={"items": [_activity_item(end_minutes=20)]},
             )
             assert edit_resp.status_code == 403, edit_resp.text
 
             # ...and the submitted data is untouched by the rejected write.
             activities_resp = await client.get(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-                params={"day_label_index": 0},
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
             )
             assert activities_resp.status_code == 200
-            stored = activities_resp.json()["activities"]
+            stored = [
+                row
+                for row in activities_resp.json()["activities"]
+                if row["day_label_index"] == 0
+            ]
             assert len(stored) == 1
             assert stored[0]["end_minutes"] == 10
 
@@ -267,22 +275,25 @@ async def test_unsubmitted_study_still_allows_activity_edits():
         assert import_resp.status_code == 200, import_resp.text
 
         try:
-            await _submit_day(client, study_name_short, participant_id)
+            client_uuid = await _submit_day(client, study_name_short, participant_id)
 
-            # Edits before submission remain allowed (and replace the day).
-            edit_resp = await client.post(
+            # Edits before submission remain allowed.
+            edit_resp = await client.patch(
                 f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}"
-                f"/day_labels/monday/activities",
-                json={"activities": [_activity_item(end_minutes=20)]},
+                f"/activities/{client_uuid}",
+                json={"end_minutes": 20},
             )
             assert edit_resp.status_code == 200, edit_resp.text
 
             activities_resp = await client.get(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-                params={"day_label_index": 0},
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
             )
             assert activities_resp.status_code == 200
-            stored = activities_resp.json()["activities"]
+            stored = [
+                row
+                for row in activities_resp.json()["activities"]
+                if row["day_label_index"] == 0
+            ]
             assert len(stored) == 1
             assert stored[0]["end_minutes"] == 20
         finally:
@@ -310,12 +321,12 @@ async def _copy_day(
     client: httpx.AsyncClient,
     study: str,
     participant: str,
-    target_day: str,
-    source_day: str,
+    target_day: int,
+    source_day: int,
 ) -> httpx.Response:
     return await client.post(
-        f"{BASE_URL}/api/studies/{study}/participants/{participant}"
-        f"/day_labels/{target_day}/copy-from/{source_day}",
+        f"{BASE_URL}/api/studies/{study}/participants/{participant}/day-copies",
+        json={"source_day_index": source_day, "target_day_indexes": [target_day]},
     )
 
 
@@ -348,26 +359,29 @@ async def test_submitted_study_rejects_day_copy_overwrite():
             # Before submission the copy is allowed - it is how the second day
             # gets filled in from the first.
             pre_copy = await _copy_day(
-                client, study_name_short, participant_id, "tuesday", "monday"
+                client, study_name_short, participant_id, 1, 0
             )
-            assert pre_copy.status_code == 200, pre_copy.text
-            assert pre_copy.json()["copied_count"] == 1
+            assert pre_copy.status_code == 201, pre_copy.text
+            assert pre_copy.json()["results"][0]["status"] == "copied"
 
             await _submit_study(client, study_name_short, participant_id)
 
             # The reverse direction overwrites the submitted day -> refused.
             post_copy = await _copy_day(
-                client, study_name_short, participant_id, "monday", "tuesday"
+                client, study_name_short, participant_id, 0, 1
             )
             assert post_copy.status_code == 403, post_copy.text
 
             # ...and the submitted data is untouched by the rejected copy.
             activities_resp = await client.get(
-                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/activities",
-                params={"day_label_index": 0},
+                f"{BASE_URL}/api/studies/{study_name_short}/participants/{participant_id}/diary",
             )
             assert activities_resp.status_code == 200
-            stored = activities_resp.json()["activities"]
+            stored = [
+                row
+                for row in activities_resp.json()["activities"]
+                if row["day_label_index"] == 0
+            ]
             assert len(stored) == 1
             assert stored[0]["end_minutes"] == 10
         finally:

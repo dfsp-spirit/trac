@@ -1,4 +1,4 @@
-name: Frontend Unit Tests
+name: Frontend Tests
 
 on:
   push:
@@ -19,42 +19,14 @@ jobs:
       uses: actions/setup-node@v7
       with:
         node-version: '24'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
 
     - name: Install dependencies
       working-directory: frontend
       run: npm ci
 
-    # Type-check the files marked with `// @ts-check` (currently 15 of the 17
-    # modules under src/js; the two large DOM-heavy files script.js + ui.js are
-    # intentionally excluded). Scoped via jsconfig.json.
-    - name: Type-check the API boundary
-      run: sh test_frontend_typecheck.sh
-
-    # The unit tests use only Node built-ins (node:test, node:assert, fs, ...)
-    # and import the pure frontend src modules directly. The runner script wraps
-    # `node --test` with the global shim.
-    - name: Run frontend unit tests
-      run: sh test_frontend_unit.sh
-
-  # The rewrite in frontend_new/ has its own gates: unit tests, the
-  # architecture check (D33) and the type check. Kept as a separate job so a
-  # failure names the frontend it came from.
-  test_new_frontend:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v7
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v7
-      with:
-        node-version: '24'
-
-    - name: Install dependencies
-      working-directory: frontend_new
-      run: npm ci
-
-    - name: Run frontend_new checks
-      run: sh test_frontend_new.sh
+    # Unit tests, the D33 architecture check and the type check over the
+    # `// @ts-check` modules. `sh test_frontend.sh` runs all three.
+    - name: Run frontend checks
+      run: sh test_frontend.sh

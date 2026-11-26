@@ -114,7 +114,7 @@ def coverage_by_day_and_timeline(
         # endpoints would be equal and the length would be lost.
         duration = activity.end_minutes - activity.start_minutes
         if duration < 0:
-            # A cross-midnight row written by the old frontend can carry a
+            # A cross-midnight row written by the retired client can carry a
             # smaller end than start; read that as "ends tomorrow".
             duration += MINUTES_PER_DAY
         if duration <= 0:

@@ -4,7 +4,8 @@
 [![DOI](https://zenodo.org/badge/1093465883.svg)](https://doi.org/10.5281/zenodo.19594929)
 [![Backend Unit Tests](https://github.com/dfsp-spirit/trac/actions/workflows/backend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/backend_unit_tests.yml)
 [![Backend Integration Tests](https://github.com/dfsp-spirit/trac/actions/workflows/backend_integration_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/backend_integration_tests.yml)
-[![E2E Tests](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/e2e_tests.yml)
+[![Frontend Tests](https://github.com/dfsp-spirit/trac/actions/workflows/frontend_unit_tests.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/frontend_unit_tests.yml)
+[![E2E Tests](https://github.com/dfsp-spirit/trac/actions/workflows/frontend_e2e.yml/badge.svg)](https://github.com/dfsp-spirit/trac/actions/workflows/frontend_e2e.yml)
 
 
 TRAC is a web-based data collection software for time-use research: users can report what they did during one or more days by selecting activities and placing them on one a timeline.
@@ -163,7 +164,7 @@ The admin web interface at `<TUD_ROOTPATH>/admin` also lets you validate and
 import study configurations interactively through the browser.
 
 Each study uses `name_short` as its technical identifier, used in the frontend
-configuration and in participant invitation links via the `study_name` URL
+configuration and in participant invitation links via the `study` URL
 parameter. It must consist of lowercase letters (`a-z`), digits (`0-9`) and `_`,
 2 to 50 characters. The admin interface shows the same rule in the study rename
 form and when resolving a short-name clash during file validation.
@@ -172,107 +173,115 @@ form and when resolving a short-name clash during file validation.
 
 ### 4. Frontend Configuration
 
-The frontend has a single settings file: `frontend/src/settings/tud_settings.js`. The most important setting is `API_BASE_URL`, which must point to the backend API:
+The frontend has a single settings file: `frontend/src/js/config.js`.
 
 ```js
-const TUD_SETTINGS = {
-    // URL of the backend API as seen from the user's browser.
-    // If the backend is proxied at a sub-path, include that path here.
-    API_BASE_URL: 'https://your.domain.example.com/tud_backend/api',
+export const config = {
+  // URL of the backend API as seen from the user's browser.
+  apiBaseUrl: '/tud_backend/api',
 
-    // Short name of the study to load by default (must match 'name_short' in studies_config.json)
-    DEFAULT_STUDY_NAME: 'default',
+  // Locales ship inside the app (src/locales/). Resolving against this module
+  // rather than the site root lets the app be mounted under any path.
+  localesUrl: new URL('../locales/', import.meta.url).href,
 
-    // Whether to show navigation buttons for previous days
-    SHOW_PREVIOUS_DAYS_BUTTONS: true,
+  supportedLanguages: ['de', 'en', 'sv'],
+  defaultLanguage: 'de',
 
-    // Show a red "maintenance soon, please save your work" notice on every page.
-    // Intended for short maintenance windows (deploying files, restarting the
-    // backend): set it to true a few minutes before the maintenance starts so
-    // participants have time to save their current day.
-    IS_MAINTENANCE_MODE: false,
+  // Temporary, for studies whose activities config still defines a second
+  // timeline: 'ignore' | 'merge' | 'error'.
+  multiTimelinePolicy: 'ignore',
 
-    // Optional custom notice text. null uses the localised default from
-    // locales/*.json ('maintenance.banner'), which is preferred.
-    MAINTENANCE_MESSAGE: null
+  // Per participant from the query string; these are the fallbacks.
+  studyName: null,
+  participantId: null,
 };
 ```
 
-The maintenance notice is rendered by `frontend/src/js/maintenance.js`, which every page includes. It is purely informational: it never blocks the diary, and it takes effect on the next page load (day switches reload the page, so active participants usually see it quickly). New pages must include `../js/maintenance.js` as a module next to the settings include.
+No build step is required. `frontend/src/` is a directory of static files: copy it
+as-is to any static file server.
 
-Note: this file is not the only copy. `run_dev_nginx_both.bash`, `docker-compose.dev.yml`, the CI workflows and `dev_tools/local_minimal/README.md` each overwrite `frontend/src/settings/tud_settings.js` with a copy from `dev_tools/*/frontend_settings/`. Any setting added here has to be added to those copies as well, otherwise it is silently dropped wherever such a copy is used.
-
-No build step is required. Once this file is configured, the entire `frontend/src/` directory can be deployed as-is to any static file server.
+This file is not the only copy. `run_dev_nginx_both.bash`, `docker-compose.dev.yml`,
+the CI workflows and `dev_tools/local_minimal/README.md` each overwrite
+`frontend/src/js/config.js` with a copy from `dev_tools/*/frontend_settings/`. Any
+setting added here has to be added to those copies as well, otherwise it is
+silently dropped wherever such a copy is used.
 
 
 ### 5. Web Server and Reverse Proxy
 
 In a typical production setup a single web server (or reverse proxy) handles all traffic:
 
-- Static frontend files are served directly from the `frontend/src/` directory (the old app) and
-  from `frontend_new/src/` (the participant frontend rewrite).
+- Static frontend files are served directly from the `frontend/src/` directory.
 - Requests to the backend API path (e.g., `/tud_backend/`) are forwarded to the running backend process.
 
 Make sure the proxy passes the correct `X-Forwarded-*` headers so that the backend can construct correct URLs, and configure `TUD_ROOTPATH` and `TUD_ALLOWED_ORIGINS` accordingly.
 
-#### Serving the participant frontend (`frontend_new/`)
+#### Serving the participant frontend
 
-The rewrite is a directory of static files: **copy it, do not build it.** There is no bundler, no
-transpiler and no generated `dist/` — the files you copy are the files the browser runs, which is also
-why a problem can be read straight out of the served source.
+The app is a directory of static files: **copy it, do not build it.** There is no
+bundler, no transpiler and no generated `dist/` — the files you copy are the files
+the browser runs, which is also why a problem can be read straight out of the
+served source.
 
-It is mounted next to the old app while both are in use (for example `/report-new/` beside `/report/`).
-It does not care which path it lives at: script, style and locale URLs resolve relative to the files
-themselves, so moving it to another path is a copy rather than a configuration change, and no
-web-server alias, redirect or rewrite rule is needed for it.
+It does not care which path it lives at (the development and CI setups use
+`/report/`): script, style and locale URLs resolve relative to the files
+themselves, so moving it to another path is a copy rather than a configuration
+change.
 
 One file is per-deployment:
 
-- `frontend_new/src/js/config.js` — `apiBaseUrl` must be the API as the browser sees it (for example
-  `/tud_backend/api`), without a trailing slash. **Set it on the copy you deploy.** That file is
-  tracked in git, and the development and CI setups each overwrite it with their own variant, exactly
-  like `frontend/src/settings/tud_settings.js` (see the note in *4. Frontend Configuration*); keep your
-  production version outside the checkout, or restore it after a local run, or a deployment will ship
-  development values.
+- `frontend/src/js/config.js` — `apiBaseUrl` must be the API as the browser sees
+  it (for example `/tud_backend/api`), without a trailing slash. **Set it on the
+  copy you deploy.** That file is tracked in git, and the development and CI
+  setups each overwrite it with their own variant (see *4. Frontend
+  Configuration*); keep your production version outside the checkout, or restore
+  it after a local run, or a deployment will ship development values.
 
-The rewrite needs a browser with `<dialog>` support: **Safari/iOS 15.4+, Chrome 105+ or Firefox 121+**
-(the last two are set by `:has()`, and the missing pieces below that point are styling rather than
-function). Older engines are not turned away with a message — they simply fail to render — so a study
-aimed at a population with older devices should confirm the requirement before collecting data.
+The app needs a browser with `<dialog>` support: **Safari/iOS 15.4+, Chrome 105+
+or Firefox 121+** (the last two are set by `:has()`, and the missing pieces below
+that point are styling rather than function). Older engines are not turned away
+with a message — they simply fail to render — so a study aimed at a population
+with older devices should confirm the requirement before collecting data.
 
-The wiring that can only break in deployment — that the app is served, reaches the API, and finds its
-own locale files — is asserted by `frontend_new/tests/e2e/deployment.spec.js`, which is the quickest
-way to answer "is this frontend deployed correctly?" against a real host.
+The wiring that can only break in deployment — that the app is served, reaches
+the API, and finds its own locale files — is asserted by
+`frontend/tests/e2e/deployment.spec.js`, which is the quickest way to answer
+"is this frontend deployed correctly?" against a real host.
 
 #### Compression and HTTP/2
 
-The participant frontend is served as plain ES modules with no build step: `frontend_new/src/js/` holds
-roughly sixty small `.js` files that the browser fetches individually instead of one bundle. That is
-deliberate — there is no toolchain to install, run or keep in sync before a deployment, and the files
-in the browser are exactly the files a maintainer reads. The price is paid at delivery time, so the
+The participant frontend is served as plain ES modules with no build step:
+`frontend/src/js/` holds roughly sixty small `.js` files that the browser fetches
+individually instead of one bundle. That is deliberate — there is no toolchain to
+install, run or keep in sync before a deployment, and the files in the browser are
+exactly the files a maintainer reads. The price is paid at delivery time, so the
 web server has to cover two things:
 
-- **Compression (gzip or brotli) on text assets.** HTML, JS, CSS and JSON compress by roughly a factor
-  of three: the frontend is around 270 KB raw and around 100 KB gzipped. Without it a first visit
-  transfers nearly three times as much, which is the difference that matters on a mobile connection.
-- **HTTP/2.** It lets the browser fetch those sixty modules over a single connection in parallel. Over
-  HTTP/1.1 they queue six at a time, which is noticeably slower on anything with real latency. Browsers
-  only negotiate HTTP/2 over TLS, so this comes with the HTTPS setup above but still has to be enabled
-  explicitly.
+- **Compression (gzip or brotli) on text assets.** HTML, JS, CSS and JSON compress
+  by roughly a factor of three: the frontend is around 270 KB raw and around
+  100 KB gzipped. Without it a first visit transfers nearly three times as much,
+  which is the difference that matters on a mobile connection.
+- **HTTP/2.** It lets the browser fetch those sixty modules over a single
+  connection in parallel. Over HTTP/1.1 they queue six at a time, which is
+  noticeably slower on anything with real latency. Browsers only negotiate
+  HTTP/2 over TLS, so this comes with the HTTPS setup above but still has to be
+  enabled explicitly.
 
 On nginx, two details decide whether either setting does anything:
 
-- `gzip on;` compresses only `text/html` until you add the types, so the application's JavaScript and
-  CSS stay uncompressed: `gzip_types text/css application/javascript application/json;` (plus
-  `gzip_vary on;` if a cache sits in front). Stock nginx has no brotli module, so treat gzip as the
-  realistic option.
-- `http2 on;` requires nginx 1.25.1 or newer. On older versions — including the 1.24 that Ubuntu 24.04
-  ships — append it to the TLS `listen` line instead: `listen 443 ssl http2;`. Where both forms work,
-  prefer `http2 on;`, because `certbot --nginx` rewrites `listen` lines and would drop the appended
-  flag.
+- `gzip on;` compresses only `text/html` until you add the types, so the
+  application's JavaScript and CSS stay uncompressed:
+  `gzip_types text/css application/javascript application/json;` (plus
+  `gzip_vary on;` if a cache sits in front). Stock nginx has no brotli module, so
+  treat gzip as the realistic option.
+- `http2 on;` requires nginx 1.25.1 or newer. On older versions — including the
+  1.24 that Ubuntu 24.04 ships — append it to the TLS `listen` line instead:
+  `listen 443 ssl http2;`. Where both forms work, prefer `http2 on;`, because
+  `certbot --nginx` rewrites `listen` lines and would drop the appended flag.
 
-Neither setting changes what the app does, so neither shows up in the tests: verify them against the
-deployed host, where `<frontend-url>` is the URL the participants use:
+Neither setting changes what the app does, so neither shows up in the tests:
+verify them against the deployed host, where `<frontend-url>` is the URL the
+participants use:
 
 ```sh
 curl -sI -H 'Accept-Encoding: gzip' <frontend-url>/js/main.js | grep -i content-encoding
@@ -280,9 +289,10 @@ curl -sI <frontend-url>/js/main.js | grep -i content-type
 curl -so /dev/null -w '%{http_version}\n' <frontend-url>/index.html
 ```
 
-The first should report `gzip` (or `br`), the second a JavaScript MIME type, and the third `2` or `3`.
-A missing or wrong `Content-Type` breaks ES modules outright if `X-Content-Type-Options: nosniff` is
-set, and the failure looks like a blank page rather than a serving problem.
+The first should report `gzip` (or `br`), the second a JavaScript MIME type, and
+the third `2` or `3`. A missing or wrong `Content-Type` breaks ES modules
+outright if `X-Content-Type-Options: nosniff` is set, and the failure looks like
+a blank page rather than a serving problem.
 
 
 ### 6. Admin Interface
@@ -418,8 +428,8 @@ TRAC was written by Tim Schäfer as part of employment at the [Department of Cog
 
 Copyright 2025-2026 Max-Planck Institute for Empirical Aesthetics.
 
-The old frontend in `frontend/` is based on [o-timeusediary (O-TUD) by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary), the new mobile-first frontend in `frontend-new/` is **not**.
+The participant frontend in `frontend/` is an independent implementation and is not derived from [o-timeusediary (O-TUD) by Andrei Tamas Foldes et al.](https://github.com/andreifoldes/o-timeusediary).
 
-Both O-TUD and TRAC are published under the very permissive [MIT License](./LICENSE).
+TRAC is published under the very permissive [MIT License](./LICENSE).
 
 There is no academic paper on TRAC yet, but this software has a [DOI](https://doi.org/10.5281/zenodo.19594929) and is fully citeable. Please see the [CITATION.cff file](./CITATION.cff) for full information on how to properly cite TRAC in academic work.

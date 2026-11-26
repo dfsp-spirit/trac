@@ -43,9 +43,9 @@
                     <li>JavaScript: <code>encodeURIComponent(rawReturnUrl)</code></li>
                     <li>Python: <code>urllib.parse.quote(raw_return_url, safe='')</code></li>
                 </ul>
-                <p class="mt-sm">Example invitation link (rewritten frontend, the default):</p>
+                <p class="mt-sm">Example invitation link:</p>
                 <code id="exampleLink">index.html?study=STUDY_NAME&amp;pid=PARTICIPANT_ID&amp;return_url=https%3A%2F%2Fexample.org%2Ffinish%3Ftoken%3Dabc123</code>
-                <p class="hint">The classic client uses <code>index.html?study_name=STUDY_NAME&amp;pid=PARTICIPANT_ID&amp;return_url=...</code> instead. Do not double-encode the value: encode the raw destination URL once.</p>
+                <p class="hint">Do not double-encode the value: encode the raw destination URL once.</p>
             </div>
         </div>
 {% endblock %}

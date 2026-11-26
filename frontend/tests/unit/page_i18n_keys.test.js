@@ -1,162 +1,168 @@
-// Guards the second half of the i18n contract: every key that the pages and
-// scripts actually ask for must exist in every locale file.
-//
-// The other direction (all locales share the same key set) is covered by
-// locales_consistency.test.js. This test closes the remaining gap: a key that
-// is referenced from markup/JS but missing from a locale is *not* an error at
-// runtime - applyTranslations() simply leaves the built-in English text of the
-// markup in place - which is exactly how half-translated pages ("German
-// heading, English body") happen, and how `timeout.title` stayed English.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, sep } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SRC_DIR = fileURLToPath(new URL('../../src/', import.meta.url));
-const LOCALES_DIR = join(SRC_DIR, 'locales');
+// Guards the i18n contract for the new frontend (D34, D35):
+//
+//  * every key the markup and the code ask for exists in de, en and sv;
+//  * the new UI references only `diary.*` plus the shell allowlist, so it can
+//    never depend on an old diary key that is deleted at cutover;
+//  * `diary.*` values are plain text - no markup, no entities - so there is
+//    nothing for a translator to break;
+//  * plural keys carry both `_one` and `_other`.
+//
+// The old frontend has its own copy of this guard over `frontend/src`; this one
+// scans `frontend/src` and reads the locale files the app actually ships
+// (`src/locales/`).
 
-function flattenKeys(obj, prefix = '') {
-  const keys = new Set();
-  for (const [key, value] of Object.entries(obj)) {
-    const path = prefix ? `${prefix}.${key}` : key;
-    keys.add(path);
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      for (const child of flattenKeys(value, path)) keys.add(child);
-    }
+const SRC_DIR = fileURLToPath(new URL('../../src/', import.meta.url));
+const LOCALES_DIR = fileURLToPath(new URL('../../src/locales/', import.meta.url));
+
+/** Namespaces the new UI may borrow from the surviving pages (D35). */
+const SHELL_ALLOWLIST = ['common.', 'footer.', 'maintenance.', 'idleTimeout.'];
+
+/** @param {string} dir @param {(file: string) => boolean} predicate @param {string[]} [out] */
+function walk(dir, predicate, out = []) {
+  for (const entry of readdirSync(dir)) {
+    if (entry === 'node_modules') continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) walk(full, predicate, out);
+    else if (predicate(full)) out.push(full);
   }
-  return keys;
+  return out;
+}
+
+/** @param {Record<string, unknown>} messages @param {string} key */
+function lookup(messages, key) {
+  return key.split('.').reduce(
+    (node, part) =>
+      node && typeof node === 'object' && part in node
+        ? /** @type {Record<string, unknown>} */ (node)[part]
+        : undefined,
+    /** @type {unknown} */ (messages)
+  );
 }
 
 const localeFiles = readdirSync(LOCALES_DIR)
   .filter((file) => file.endsWith('.json'))
   .sort();
 
-const parsedLocales = {};
+/** @type {Record<string, Record<string, unknown>>} */
+const locales = {};
 for (const file of localeFiles) {
-  parsedLocales[file] = JSON.parse(
-    readFileSync(join(LOCALES_DIR, file), 'utf8')
-  );
+  locales[file] = JSON.parse(readFileSync(join(LOCALES_DIR, file), 'utf8'));
 }
 
-function walk(dir, predicate, out = []) {
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    const stat = statSync(full);
-    if (stat.isDirectory()) {
-      walk(full, predicate, out);
-    } else if (predicate(full)) {
-      out.push(full);
-    }
+const sourceFiles = walk(SRC_DIR, (file) => file.endsWith('.html') || file.endsWith('.js'));
+
+/** @typedef {{ key: string, file: string, plural: boolean }} Reference */
+
+/** @type {Reference[]} */
+const references = [];
+for (const file of sourceFiles) {
+  const text = readFileSync(file, 'utf8');
+  const relative = file.slice(SRC_DIR.length);
+  for (const match of text.matchAll(/data-i18n(?:-aria-label|-title|-placeholder)?="([^"]+)"/g)) {
+    references.push({ key: match[1], file: relative, plural: false });
   }
-  return out;
+  for (const match of text.matchAll(/\bt\(\s*['"]([^'"]+)['"]/g)) {
+    references.push({ key: match[1], file: relative, plural: false });
+  }
+  for (const match of text.matchAll(/\btCount\(\s*['"]([^'"]+)['"]/g)) {
+    references.push({ key: match[1], file: relative, plural: true });
+  }
 }
 
-const rel = (file) => relative(SRC_DIR, file).split(sep).join('/');
-
-// A translation key is a dotted, lowerCamelCase path (every leaf in the locale
-// files is nested, so a dot is always present). Requiring that shape keeps this
-// scan from picking up unrelated string literals.
-const KEY_SHAPE = /^[a-z][A-Za-z0-9_]*(\.[A-Za-z0-9_]+)+$/;
-const PLACEHOLDER_BUILDERS = /\$\{/; // template-literal key parts, not literals
-
-const DATA_I18N_RE = /data-i18n(?:-[a-z-]+)?\s*=\s*["'`]([^"'`]+)["'`]/g;
-const LOOKUP_CALL_RE = /\bt(?:Optional)?\s*\(\s*["'`]([^"'`]+)["'`]/g;
-
-/**
- * Collect i18n keys requested by a file: `data-i18n*` attributes in markup or
- * in generated markup templates, plus literal `t('key')` / `tOptional('key')`
- * lookups.
- * @param {string} source
- * @returns {Set<string>}
- */
-function collectRequestedKeys(source) {
-  const keys = new Set();
-
-  const add = (key) => {
-    const candidate = String(key).trim();
-    if (PLACEHOLDER_BUILDERS.test(candidate)) return; // built at runtime
-    if (KEY_SHAPE.test(candidate)) keys.add(candidate);
-  };
-
-  for (const match of source.matchAll(DATA_I18N_RE)) add(match[1]);
-  for (const match of source.matchAll(LOOKUP_CALL_RE)) add(match[1]);
-
-  return keys;
-}
-
-// Every page (markup) and every script that can translate markup.
-const SOURCE_FILES = [
-  ...walk(SRC_DIR, (file) => file.endsWith('.html')),
-  ...walk(join(SRC_DIR, 'js'), (file) => file.endsWith('.js')),
-  ...walk(join(SRC_DIR, 'pages'), (file) => file.endsWith('.js')),
-].sort();
-
-test('at least one source file and locale is scanned', () => {
-  assert.ok(SOURCE_FILES.length > 10, 'expected to scan many source files');
-  assert.ok(localeFiles.length >= 2, 'expected at least 2 locale files');
+test('the locale set is exactly the three supported languages', () => {
+  assert.deepEqual(localeFiles, ['de.json', 'en.json', 'sv.json'], 'D34 dropped es, fi, fr and pl');
 });
 
-test('every i18n key requested by markup or scripts exists in every locale', () => {
-  const missingByLocale = {};
-  for (const file of localeFiles) {
-    missingByLocale[file] = [];
-  }
+test('the scanner finds keys, so the guards below cannot pass vacuously', () => {
+  assert.ok(sourceFiles.length >= 3, 'expected at least index.html, main.js and the i18n modules');
+  assert.ok(references.length >= 10, `found only ${references.length} key references`);
+});
 
-  for (const sourceFile of SOURCE_FILES) {
-    const keys = collectRequestedKeys(readFileSync(sourceFile, 'utf8'));
-    if (keys.size === 0) continue;
-
+test('every referenced key exists in every locale', () => {
+  const missing = [];
+  // A plural key is stored as `<key>_one` / `<key>_other` only; the loader never
+  // looks the bare key up, so requiring it here would contradict `tCount` (the
+  // plural test below checks those two forms).
+  for (const reference of references.filter((item) => !item.plural)) {
     for (const file of localeFiles) {
-      const available = flattenKeys(parsedLocales[file]);
-      for (const key of keys) {
-        if (!available.has(key)) {
-          missingByLocale[file].push(`${key} (used by ${rel(sourceFile)})`);
+      if (typeof lookup(locales[file], reference.key) !== 'string') {
+        missing.push(`${file}: ${reference.key} (referenced from ${reference.file})`);
+      }
+    }
+  }
+  assert.deepEqual(missing, []);
+});
+
+test('the new UI references only diary.* keys and the shell allowlist', () => {
+  const offenders = references
+    .filter(
+      (reference) =>
+        !reference.key.startsWith('diary.') &&
+        !SHELL_ALLOWLIST.some((prefix) => reference.key.startsWith(prefix))
+    )
+    .map((reference) => `${reference.file}: ${reference.key}`);
+  assert.deepEqual(offenders, [], 'old diary namespaces disappear at cutover (D35)');
+});
+
+test('diary.* values are plain text: no markup and no HTML entities', () => {
+  const offenders = [];
+  for (const file of localeFiles) {
+    /** @param {Record<string, unknown>} node @param {string} path */
+    const visit = (node, path) => {
+      for (const [key, value] of Object.entries(node)) {
+        const full = path ? `${path}.${key}` : key;
+        if (value && typeof value === 'object') visit(/** @type {Record<string, unknown>} */ (value), full);
+        else if (typeof value === 'string' && full.startsWith('diary.')) {
+          if (/[<>]|&[a-z]+;/i.test(value)) offenders.push(`${file}: ${full} = ${value}`);
+        }
+      }
+    };
+    visit(locales[file], '');
+  }
+  assert.deepEqual(offenders, [], 'structure belongs in markup, not in translations (D35)');
+});
+
+test('plural references have both _one and _other in every locale', () => {
+  const missing = [];
+  for (const reference of references.filter((item) => item.plural)) {
+    for (const file of localeFiles) {
+      for (const suffix of ['_one', '_other']) {
+        if (typeof lookup(locales[file], `${reference.key}${suffix}`) !== 'string') {
+          missing.push(`${file}: ${reference.key}${suffix}`);
         }
       }
     }
   }
-
-  const problems = Object.entries(missingByLocale)
-    .filter(([, missing]) => missing.length > 0)
-    .map(([file, missing]) => `${file}: ${missing.join(', ')}`);
-
-  assert.deepEqual(
-    problems,
-    [],
-    `locale files are missing keys that pages/scripts request:\n${problems.join('\n')}`
-  );
+  assert.deepEqual(missing, []);
 });
 
-// A hardcoded string in a stylesheet cannot be translated at all, and the
-// fallback markup pattern ("Loading..." in CSS) produced user-visible English
-// text on otherwise localized pages.
-test('page stylesheets contain no hardcoded textual content', () => {
-  const stylesheets = walk(
-    SRC_DIR,
-    (file) =>
-      file.endsWith('.css') &&
-      !rel(file).includes('fontawesome') &&
-      !rel(file).includes('assets/'),
-  );
+test('every error code maps to a title and a text in every locale', () => {
+  const messagesSource = readFileSync(join(SRC_DIR, 'js', 'ui', 'messages.js'), 'utf8');
+  const codes = [
+    ...messagesSource.matchAll(/'(diary\.error\.[A-Za-z]+)'/g),
+  ].map((match) => match[1]);
+  assert.ok(codes.length >= 10, `expected the code map to be found, got ${codes.length}`);
 
-  const offenders = [];
-  for (const file of stylesheets) {
-    const source = readFileSync(file, 'utf8');
-    // content: 'text'  |  content: "text"   (skip escapes like content: '\f00c')
-    for (const match of source.matchAll(
-      /content\s*:\s*(["'])([^"'\\]*)\1\s*;/g
-    )) {
-      const value = match[2].trim();
-      if (/[A-Za-z]{2,}/.test(value)) {
-        offenders.push(`${rel(file)}: content: "${value}"`);
+  const missing = [];
+  for (const prefix of new Set(codes)) {
+    for (const suffix of ['.title', '.text']) {
+      for (const file of localeFiles) {
+        if (typeof lookup(locales[file], `${prefix}${suffix}`) !== 'string') {
+          missing.push(`${file}: ${prefix}${suffix}`);
+        }
       }
     }
   }
+  assert.deepEqual(missing, []);
+});
 
-  assert.deepEqual(
-    offenders,
-    [],
-    'move user-visible text out of CSS into the locale files (data-i18n)'
-  );
+test('the new UI never renders translations as HTML', () => {
+  const offenders = sourceFiles.filter((file) => readFileSync(file, 'utf8').includes('data-i18n-html'));
+  assert.deepEqual(offenders.map((file) => file.slice(SRC_DIR.length)), []);
 });
