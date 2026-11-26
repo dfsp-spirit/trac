@@ -1,0 +1,59 @@
+/* Banner messages above the app shell (ui/messageBanner.js).
+
+   The stack is in the normal flow at the top of #app, so it scrolls away with
+   the page: nothing sticky has to add its height to --topbar-h. It exists only
+   while a message is shown, which is why it carries its own border instead of
+   relying on the top bar's. */
+
+.t-message-stack {
+  display: grid;
+  gap: 1px;
+  background: var(--line);
+}
+
+.t-message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  background: var(--surface-100);
+  color: var(--ink);
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.t-message__text {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  /* Announcements are written as lines ("Sat 20:00-22:00, then again 02:00"),
+     so a single newline is a line break, not a space. */
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.t-message__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap-min);
+  height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font-size: 1.375rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.t-message__close:hover {
+  background: var(--surface-200);
+}
+
+.t-message__close:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}

@@ -1,0 +1,56 @@
+/* The compact day strip (ui/dayStrip.js): one 4px row per lane of a day, light
+   grey where nothing is recorded, the study's activity colour otherwise, plus
+   one row for the range being configured. A glance, not a reading surface - it
+   is aria-hidden and carries no labels, because the panel already names what is
+   around the selected time.
+
+   Tokens only, no ids, no colour literals. Height is deliberately tiny: the
+   whole strip is 9px for a day without overlaps, 14px with two lanes. */
+
+.t-daystrip {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.t-daystrip__row {
+  position: relative;
+  height: 4px;
+  border-radius: 1px;
+  background: var(--surface-200);
+  /* A segment clamped at the day boundary must not bleed past the row. */
+  overflow: hidden;
+}
+
+/* The pending range gets its own row on a slightly lighter track, so "where it
+   would land" never reads as one more activity. */
+.t-daystrip__row--pending {
+  background: var(--surface-100);
+}
+
+.t-daystrip__seg {
+  position: absolute;
+  inset-block: 0;
+  background: var(--ink-muted);
+}
+
+.t-daystrip__seg--pending {
+  /* A minimum-length row must stay visible even at a 5-minute step (1 px on a
+     320 px phone); the bar is the form's "where this goes" cue. */
+  min-width: 2px;
+  background-color: var(--ink);
+  /* The entry being worked on breathes from black down to light grey, so "this
+     bar is mine" does not have to be read off the fields below. base.css
+     switches the animation off for `prefers-reduced-motion`, where the static
+     black bar in its own row already says the same thing. */
+  animation: t-daystrip-pending 2s ease-in-out infinite alternate;
+}
+
+/* The full grey ramp rather than a whisper: at 4px tall (2px wide for a short
+   entry) a change of one or two steps is invisible. The light end still sits
+   below its own --surface-100 track, so the bar dims and returns instead of
+   looking like it was deleted. */
+@keyframes t-daystrip-pending {
+  from { background-color: var(--ink); }
+  to { background-color: var(--surface-300); }
+}

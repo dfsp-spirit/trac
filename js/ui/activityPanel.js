@@ -1,0 +1,299 @@
+// @ts-check
+/**
+ * The activity panel (D29, D30): one fixed-height panel whose content swaps
+ * between the catalogue and the form. The same markup is mounted into the
+ * desktop column or the mobile dialog; this component only ever touches the host
+ * it was given.
+ *
+ * It holds UI state (which mode, the query, the prefill) and nothing else. The
+ * diary itself lives in the store; edits are reported through the callbacks.
+ */
+import { createFormController } from './activityPanelForm.js';
+import { renderActivityList } from './activityList.js';
+import { flattenCatalogue, searchHits } from './activitySearch.js';
+import { recentEntriesForDiary } from './recentActivities.js';
+import { dayLabel, daySummaries } from '../domain/diary.js';
+import { createFormVisit } from './formVisit.js';
+import { describeError } from './messages.js';
+
+/** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
+
+/**
+ * @template {keyof HTMLElementTagNameMap} K
+ * @param {K} tag
+ * @param {string | null} [className]
+ * @param {string | null} [text]
+ * @returns {HTMLElementTagNameMap[K]}
+ */
+function el(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = text;
+  return node;
+}
+
+/**
+ * @param {{
+ *   host: HTMLElement,
+ *   t: Translator,
+ *   language: string,
+ *   getDiary: () => import('../domain/diary.js').ApiDiary,
+ *   getCatalogue: () => any,
+ *   getTimelineKeys: () => string[],
+ *   onCreate: (body: { items: any[], group_id?: string }) => Promise<any>,
+ *   onUpdate: (clientUuid: string, changes: Record<string, unknown>) => Promise<any>,
+ *   onDelete: (activity: import('../domain/diary.js').ApiActivity) => Promise<void>,
+ *   onFinished?: (intent?: 'close' | 'another' | 'deleted') => void,
+ *   getCurrentDay: () => number,
+ *   getAnchorMinutes: (dayIndex: number) => number,
+ *   toast: {
+ *     show: (message: string, action?: { label?: string, run?: () => void | Promise<void> }) => void,
+ *     hide: () => void,
+ *   },
+ *   signals?: {
+ *     track: (name: string, props?: Record<string, any>) => void,
+ *     trackSearch: (query: string, hits: number) => void,
+ *   },
+ * }} deps
+ */
+export function createActivityPanel(deps) {
+  const {
+    host,
+    t,
+    language,
+    getDiary,
+    getCatalogue,
+    getTimelineKeys,
+    onCreate,
+    onUpdate,
+    onDelete,
+    toast,
+    onFinished,
+    getCurrentDay,
+    getAnchorMinutes,
+    signals,
+  } = deps;
+
+  /**
+   * @template {keyof HTMLElementTagNameMap} K
+   * @param {string} selector
+   * @param {K} [tag] Only for a compile-time shape; the node already exists.
+   * @returns {HTMLElementTagNameMap[K]}
+   */
+  function must(selector, tag = /** @type {any} */ ('div')) {
+    const node = host.querySelector(selector);
+    if (!node) throw new Error(`Activity panel host is missing ${selector}`);
+    return /** @type {HTMLElementTagNameMap[K]} */ (node);
+  }
+
+  const title = must('[data-slot="title"]', 'h2');
+  const contextLine = must('[data-slot="context"]', 'p');
+  const searchRow = must('[data-slot="search"]', 'div');
+  const searchInput = must('input[type="search"]', 'input');
+  const searchClear = must('[data-slot="search-clear"]', 'button');
+  const backButton = must('[data-slot="back"]', 'button');
+  const content = must('[data-slot="content"]', 'div');
+  const foot = must('[data-slot="actions"]', 'div');
+
+  /** @type {'catalogue' | 'form'} */
+  let mode = 'catalogue';
+  let query = '';
+  let scrollOffset = 0;
+  const visit = createFormVisit({ track: (name, props) => signals?.track(name, props) });
+
+  function entries() {
+    return flattenCatalogue(getCatalogue(), getTimelineKeys()).entries;
+  }
+
+  function updateContext() {
+    if (!contextLine) return;
+    const diary = getDiary();
+    if (!diary) return;
+    const summaries = daySummaries(diary);
+    const index = mode === 'form' ? formController.dayIndex : 0;
+    const summary = summaries[index] || summaries[0];
+    if (!summary) return;
+    const required = diary.timeline.min_coverage || 0;
+    const state = summary.meets
+      ? t('diary.panel.met')
+      : summary.hasData
+        ? t('diary.panel.toGo', { minutes: Math.max(0, required - summary.coverage) })
+        : t('diary.panel.emptyDay');
+    contextLine.textContent = `${dayLabel(summary, language)}: ${state}`;
+    contextLine.hidden = false;
+  }
+
+  /**
+   * The catalogue step: search field above, "Used recently" (when there is
+   * anything in the diary and no query), then the categories.
+   */
+  function renderCatalogue() {
+    const all = entries();
+    const diary = getDiary();
+    renderActivityList(content, {
+      entries: all,
+      // With a query the matches are the whole answer; the shortcut row is for
+      // browsing. A study that sets the limit to 0 has no shortcut row at all.
+      recents: query ? [] : recentEntriesForDiary(all, diary),
+      query,
+      t,
+      onChoose: (hit, groupKind) =>
+        showForm(hit.entry, null, hit.child, groupKind, hit.prefillText ?? null),
+    });
+    // A search that found nothing is the most actionable signal this app can
+    // produce: it names vocabulary the catalogue is missing.
+    if (query) signals?.trackSearch(query, searchHits(all, query).length);
+  }
+
+  function showCatalogue({ preserveScroll = false } = {}) {
+    mode = 'catalogue';
+    if (title) title.textContent = t('diary.panel.chooseActivity');
+    searchRow.hidden = false;
+    if (backButton) backButton.hidden = true;
+    foot.hidden = true;
+    foot.replaceChildren();
+    renderCatalogue();
+    if (preserveScroll) content.scrollTop = scrollOffset;
+    updateContext();
+  }
+
+  /**
+   * @param {import('./activitySearch.js').CatalogueEntry} entry
+   * @param {import('../domain/diary.js').ApiActivity | null} [activity]
+   * @param {import('./activitySearch.js').CatalogueChild | null} [child] Sub-activity to preselect.
+   * @param {'recent' | 'catalogue'} [groupKind] Which list the entry was clicked in.
+   * @param {string | null} [prefillText] Typed text of a custom shortcut, if any.
+   */
+  function showForm(
+    entry,
+    activity = null,
+    child = null,
+    groupKind = 'catalogue',
+    prefillText = null
+  ) {
+    mode = 'form';
+    scrollOffset = content.scrollTop;
+    visit.begin({ entry, child, editing: Boolean(activity), groupKind, query });
+    if (title) title.textContent = activity ? t('diary.panel.editActivity') : t('diary.panel.addActivity');
+    searchRow.hidden = true;
+    if (backButton) backButton.hidden = false;
+    formController.show(entry, activity, child, prefillText);
+    updateContext();
+    // The list item that was just clicked is gone, so focus would fall back to
+    // the body; move it to the first field so the form is where the next key
+    // press lands.
+    const first = content.querySelector('input, select, textarea');
+    if (first instanceof HTMLElement) first.focus();
+  }
+
+  const formController = createFormController({
+    content,
+    foot,
+    t,
+    language,
+    getDiary,
+    getCatalogue,
+    onCreate,
+    onUpdate,
+    onDelete,
+    toast,
+    onRefused: (refusal) => signals?.track('diary.blocked', refusal),
+    onDone: (intent) => {
+      visit.end(intent === 'deleted' ? 'deleted' : 'saved');
+      showCatalogue();
+      onFinished?.(intent === 'deleted' ? 'close' : intent);
+    },
+    getCurrentDay,
+    getAnchorMinutes,
+  });
+
+  searchInput.addEventListener('input', () => {
+    query = searchInput.value;
+    if (searchClear) searchClear.hidden = !query;
+    if (mode !== 'catalogue') return;
+    scrollOffset = 0;
+    renderCatalogue();
+  });
+
+  if (searchClear) {
+    searchClear.hidden = true;
+    searchClear.addEventListener('click', () => {
+      query = '';
+      searchInput.value = '';
+      searchClear.hidden = true;
+      searchInput.focus();
+      renderCatalogue();
+    });
+  }
+
+  if (backButton) {
+    backButton.addEventListener('click', () => {
+      visit.end('cancelled');
+      showCatalogue({ preserveScroll: true });
+    });
+  }
+
+  return {
+    // A gap the participant clicked: that exact range, on that day.
+    /** @param {{ dayIndex: number, startMinutes: number, endMinutes: number }} next */
+    open(next) {
+      formController.setSlot(next);
+      showCatalogue();
+      searchInput.focus();
+    },
+
+    // "Add an entry here": only the minute they are looking at (see entrySlot).
+    /** @param {{ dayIndex: number, anchorMinutes: number }} next */
+    openHere(next) {
+      formController.setAnchor(next);
+      showCatalogue();
+      searchInput.focus();
+    },
+
+    /** @param {import('../domain/diary.js').ApiActivity} activity */
+    openEdit(activity) {
+      const all = entries();
+      const parentCode = activity.parent_activity_code || activity.activity_code;
+      const entry = all.find((item) => item.code === parentCode);
+      if (!entry) {
+        toast.show(t('diary.error.generic.title'));
+        return;
+      }
+      showForm(entry, activity);
+    },
+
+    refresh() {
+      if (mode === 'catalogue') showCatalogue({ preserveScroll: true });
+      else updateContext();
+    },
+
+    /** `/`: the catalogue, with the search field ready to type into. */
+    focusSearch() {
+      if (mode !== 'catalogue') showCatalogue();
+      searchInput.focus();
+      searchInput.select();
+    },
+
+    /**
+     * `Esc`: leave the form, or clear the search. Reports whether it did
+     * anything, so the caller can fall back to closing the dialog.
+     *
+     * @returns {boolean}
+     */
+    escape() {
+      if (mode === 'form') {
+        visit.end('cancelled');
+        showCatalogue({ preserveScroll: true });
+        backButton.focus();
+        return true;
+      }
+      if (query) {
+        searchClear?.click();
+        return true;
+      }
+      return false;
+    },
+
+    showCatalogue,
+  };
+}

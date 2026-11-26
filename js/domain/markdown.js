@@ -1,0 +1,153 @@
+// @ts-check
+/**
+ * Markdown for study-supplied text (D37).
+ *
+ * Consent and instruction pages are written by researchers in the study
+ * configuration, in Markdown. This is a port of the renderer the previous client
+ * uses, kept dependency-free on purpose: a page that must render text from a
+ * config file is not a reason to add a parsing library.
+ *
+ * Everything is escaped before a single tag is produced, so the only markup in
+ * the output is the markup this file emits. Supported: headings, ordered and
+ * unordered lists, paragraphs, bold, italic, and http(s) links. That is what the
+ * existing study texts use, and it is small enough to keep tested.
+ *
+ * Line breaks: a single newline inside a paragraph becomes a `<br>`, not a
+ * space. Study texts are written for reading, not for a 80-column editor -
+ * contact blocks, addresses and opening hours are one line each, and CommonMark's
+ * "soft break" would run them together into one sentence ("Grüneburgweg 14 60322
+ * Frankfurt am Main ana@example.org"). Authors therefore do not need trailing
+ * double spaces, and a blank line still starts a new paragraph.
+ *
+ * Pure: string in, string out. The caller decides where to put it.
+ */
+
+/**
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeHtml(text) {
+  return String(text)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/**
+ * @param {string} text
+ * @returns {string}
+ */
+function inline(text) {
+  return escapeHtml(text)
+    .replace(
+      /\[(.+?)\]\((https?:\/\/[^\s)]+)\)/g,
+      (_, label, url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${label}</a>`
+    )
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>');
+}
+
+/**
+ * Render Markdown to HTML. Empty or missing input renders as nothing, not as an
+ * empty paragraph, so a caller can test "is there any text?".
+ *
+ * @param {string | null | undefined} markdown
+ * @param {{ headingOffset?: number }} [options] Shift heading levels, e.g. 1 when
+ *   the page already owns the `h1`. With an offset the output is also normalised
+ *   so it never skips a level: study texts routinely jump from `#` to `####`,
+ *   which is a heading-order failure for screen readers.
+ * @returns {string}
+ */
+export function renderMarkdown(markdown, options = {}) {
+  const offset = Math.max(0, Number(options.headingOffset) || 0);
+  // The deepest level the document may use next: one step below the previous
+  // heading, and never above the page's own h1 when there is an offset.
+  let previousLevel = offset;
+  const lines = String(markdown || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n');
+  /** @type {string[]} */
+  const chunks = [];
+  /** @type {string[]} */
+  let paragraph = [];
+  /** @type {'ul' | 'ol' | null} */
+  let listType = null;
+  /** @type {string[]} */
+  let listItems = [];
+  // The first number of an ordered list is part of the Markdown: `3.` starts at
+  // 3. Later numbers are decoration, as in CommonMark.
+  let listStart = 1;
+
+  const flushParagraph = () => {
+    if (paragraph.length) {
+      chunks.push(`<p>${paragraph.join('<br>')}</p>`);
+      paragraph = [];
+    }
+  };
+
+  const flushList = () => {
+    if (listType && listItems.length) {
+      const start = listType === 'ol' && listStart !== 1 ? ` start="${listStart}"` : '';
+      chunks.push(
+        `<${listType}${start}>${listItems.map((item) => `<li>${item}</li>`).join('')}</${listType}>`
+      );
+    }
+    listType = null;
+    listItems = [];
+    listStart = 1;
+  };
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) {
+      // A blank line between two list items is a loose list, not the end of the
+      // list: flushing here would emit one list per item, each restarting at 1.
+      flushParagraph();
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.*)$/);
+    if (heading) {
+      flushParagraph();
+      flushList();
+      let level = Math.min(heading[1].length + offset, 6);
+      if (offset > 0) {
+        // At least one step below the page heading, and never more than one
+        // step below the heading before it.
+        const floor = Math.min(offset + 1, 6);
+        level = Math.min(Math.max(level, floor), Math.min(previousLevel + 1, 6));
+      }
+      previousLevel = level;
+      chunks.push(`<h${level}>${inline(heading[2])}</h${level}>`);
+      continue;
+    }
+
+    const unordered = line.match(/^[-*]\s+(.*)$/);
+    if (unordered) {
+      flushParagraph();
+      if (listType && listType !== 'ul') flushList();
+      listType = 'ul';
+      listItems.push(inline(unordered[1]));
+      continue;
+    }
+
+    const ordered = line.match(/^(\d+)\.\s+(.*)$/);
+    if (ordered) {
+      flushParagraph();
+      if (listType && listType !== 'ol') flushList();
+      if (!listType) listStart = Number.parseInt(ordered[1], 10);
+      listType = 'ol';
+      listItems.push(inline(ordered[2]));
+      continue;
+    }
+
+    flushList();
+    paragraph.push(inline(line));
+  }
+
+  flushParagraph();
+  flushList();
+  return chunks.join('');
+}
