@@ -1150,6 +1150,22 @@ textarea {
     padding: 0.45rem 0.5rem;
 }
 
+/* Runtime settings: two columns on wide screens, one on phones. Checkbox
+   rows share the same label rhythm as the other fields. */
+.runtime-settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 1rem 1.25rem;
+    margin-top: 0.75rem;
+}
+
+.settings-check {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2rem;
+}
+
 /* Desktop width of the study rename fields; the mobile block drops the minimum. */
 .study-rename-input {
     min-width: 18rem;

@@ -581,6 +581,24 @@ use after inactivity.
 
 ---
 
+### Runtime settings in the admin portal
+
+Admins and study owners can change these participant-facing settings without re-importing the study, on the study detail page under **Edit study → Enable editing → Participant runtime settings**:
+
+- `require_consent`
+- `allow_skip_timeuse`
+- `num_recent_activities_shown`
+- `time_step_minutes`
+- `min_duration_minutes`
+- `inactivity_timeout_minutes`
+- `hide_server_wide_links`
+
+Changes take effect for participants on their next page load. The backend validates the time step and minimum duration together, so changing only one of them can still be refused when the pair is invalid.
+
+Consent has an extra rule: `require_consent` can only be **enabled** when `study_text_consent` exists for every supported language. While consent is off and a translation is missing, the checkbox stays disabled with a link to the study’s **Texts** page. If consent is already on with incomplete text (for example after restoring an older export), the page warns about the missing languages and still lets you turn consent off. Existing consent flags are not reset when consent is enabled later; participants who already agreed will not automatically see the consent page again. If a study needs formal re-consent, handle that as a separate protocol step.
+
+Changing the time grid does not rewrite stored diary rows; the UI asks for confirmation before applying a time-grid change. Existing entries keep their stored times until edited; new entries and edits use the new grid. Enabling the inactivity timeout mid-study also means open tabs without a session will be sent to the timeout page on their next protected request.
+
 ### External Tasks (External Integrations)
 
 Studies may include `external_tasks` entries to describe external systems

@@ -153,6 +153,27 @@ def study_text_revision(values: Mapping[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def missing_consent_languages(
+    values: Mapping[str, Any], supported_languages: Sequence[str]
+) -> List[str]:
+    """Languages whose consent text is missing or only whitespace.
+
+    ``values`` is the canonical ``{field: {language: text}}`` map returned by
+    :func:`canonical_study_text_values`. Used by runtime consent activation, the
+    study-detail page and the Texts editor so all three agree on what "complete"
+    means.
+    """
+    consent = values.get("study_text_consent")
+    if not isinstance(consent, Mapping):
+        return list(dict.fromkeys(supported_languages))
+    missing: List[str] = []
+    for language in dict.fromkeys(supported_languages):
+        text = consent.get(language)
+        if not isinstance(text, str) or not text.strip():
+            missing.append(language)
+    return missing
+
+
 def validate_study_text_values(
     *,
     values: Mapping[str, Any],

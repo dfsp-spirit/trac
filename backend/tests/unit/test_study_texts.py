@@ -10,6 +10,7 @@ import pytest
 from o_timeusediary_backend.study_texts import (
     STUDY_TEXT_FIELD_NAMES,
     canonical_study_text_values,
+    missing_consent_languages,
     study_text_revision,
     study_text_values_from_object,
     validate_study_text_values,
@@ -49,6 +50,19 @@ def test_specs_cover_every_editable_text():
 
 def test_complete_maps_pass():
     _validate(_values())
+
+
+def test_missing_consent_languages_reports_missing_or_blank_entries():
+    assert missing_consent_languages(_values(), ["en", "sv"]) == []
+    assert missing_consent_languages(
+        _values(study_text_consent={"en": "Consent"}), ["en", "sv"]
+    ) == ["sv"]
+    assert missing_consent_languages(
+        _values(study_text_consent={"en": "Consent", "sv": "   "}), ["en", "sv"]
+    ) == ["sv"]
+    assert missing_consent_languages(
+        _values(study_text_consent=None), ["en", "sv"]
+    ) == ["en", "sv"]
 
 
 def test_missing_language_is_rejected():

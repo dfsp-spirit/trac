@@ -383,6 +383,90 @@
                     <div class="window-status-msg" id="window-status-{{ study.id }}"></div>
                 </div>
 
+                <div class="window-controls" id="runtime-settings-section">
+                    <h4>Participant runtime settings</h4>
+                    <p class="hint">
+                        These settings take effect for participants on their next page load. Existing diary rows
+                        are not rewritten.
+                    </p>
+                    <div class="runtime-settings-grid">
+                        <div class="window-control-field">
+                            <label class="settings-check" for="runtime-require-consent-{{ study.id }}">
+                                <input type="checkbox" id="runtime-require-consent-{{ study.id }}"{% if study.require_consent %} checked{% endif %} disabled>
+                                <strong>Require consent</strong>
+                            </label>
+                            <p class="hint">
+                                Turning this on routes participants who have not consented to the consent page.
+                                Existing consent flags are not reset.
+                            </p>
+                            {% if missing_consent_languages %}
+                            <p class="edit-section-warning" id="runtime-consent-missing-{{ study.id }}">
+                                {% if study.require_consent %}
+                                Consent is enabled, but the consent text is missing for: {{ missing_consent_languages|join(', ') }}.
+                                <a href="{{ request.scope.root_path }}/admin/study/{{ study.name_short }}/texts">Add it on the Texts page</a>.
+                                {% else %}
+                                Consent text missing for: {{ missing_consent_languages|join(', ') }}.
+                                <a href="{{ request.scope.root_path }}/admin/study/{{ study.name_short }}/texts">Add it on the Texts page</a>
+                                before enabling consent.
+                                {% endif %}
+                            </p>
+                            {% endif %}
+                        </div>
+
+                        <div class="window-control-field">
+                            <label class="settings-check" for="runtime-allow-skip-{{ study.id }}">
+                                <input type="checkbox" id="runtime-allow-skip-{{ study.id }}"{% if study.allow_skip_timeuse %} checked{% endif %} disabled>
+                                <strong>Allow skipping the diary</strong>
+                            </label>
+                            <p class="hint">Adds or removes the skip entry in the participant menu.</p>
+                        </div>
+
+                        <div class="window-control-field">
+                            <label for="runtime-recent-{{ study.id }}"><strong>Recent activities shown</strong></label>
+                            <input id="runtime-recent-{{ study.id }}" type="number" min="0" step="1" value="{{ study.num_recent_activities_shown }}" disabled>
+                            <p class="hint">How many “Used recently” shortcuts appear above the catalogue. 0 hides them.</p>
+                        </div>
+
+                        <div class="window-control-field">
+                            <label for="runtime-step-{{ study.id }}"><strong>Time step (minutes)</strong></label>
+                            <select id="runtime-step-{{ study.id }}" disabled>
+                                {% for step in time_step_choices %}
+                                <option value="{{ step }}"{% if study.time_step_minutes == step %} selected{% endif %}>{{ step }}</option>
+                                {% endfor %}
+                            </select>
+                            <p class="hint">The grid used by new entries and time edits. Stored times stay unchanged.</p>
+                        </div>
+
+                        <div class="window-control-field">
+                            <label for="runtime-min-duration-{{ study.id }}"><strong>Minimum duration (minutes)</strong></label>
+                            <input id="runtime-min-duration-{{ study.id }}" type="number" min="1" step="1" value="{{ study.min_duration_minutes }}" disabled>
+                            <p class="hint">Must be at least the time step and a multiple of it.</p>
+                        </div>
+
+                        <div class="window-control-field">
+                            <label for="runtime-inactivity-timeout-{{ study.id }}"><strong>Inactivity timeout (minutes)</strong></label>
+                            <input id="runtime-inactivity-timeout-{{ study.id }}" type="number" min="0" step="1" value="{{ study.inactivity_timeout_minutes }}" disabled>
+                            <p class="hint">0 disables it. A positive value requires browser cookies and redirects idle tabs to the timeout page.</p>
+                        </div>
+
+                        <div class="window-control-field">
+                            <label class="settings-check" for="runtime-hide-links-{{ study.id }}">
+                                <input type="checkbox" id="runtime-hide-links-{{ study.id }}"{% if study.hide_server_wide_links %} checked{% endif %} disabled>
+                                <strong>Hide server-wide legal links</strong>
+                            </label>
+                            <p class="hint">Check legal requirements before hiding the deployment’s imprint/privacy links.</p>
+                        </div>
+                    </div>
+                    <div class="window-controls-row">
+                        <button type="button" class="window-btn window-btn-save"
+                                id="runtime-settings-save-{{ study.id }}"
+                                onclick="saveRuntimeSettings('{{ study.name_short }}', '{{ study.id }}')" disabled>
+                            Save runtime settings
+                        </button>
+                    </div>
+                    <div class="window-status-msg" id="runtime-settings-status-{{ study.id }}" aria-live="polite"></div>
+                </div>
+
                 <div class="danger-zone">
                     <h4>Danger zone</h4>
                     <p>This permanently deletes this study and all related data (participants, activities, labels, and task assignments). This action cannot be undone.</p>
@@ -476,6 +560,7 @@
     <script>
         const ADMIN_ROOT_PATH = "{{ request.scope.root_path }}";
         const STUDY_NAME_SHORT = "{{ study.name_short }}";
+        const STUDY_ID = {{ study.id | tojson }};
         // Same rule as study_names.py on the server; the server stays
         // authoritative, this only saves a round trip.
         const STUDY_NAME_SHORT_RE = new RegExp(`^(?:{{ study_name_short_pattern }})$`);
@@ -484,6 +569,9 @@
         const IS_SUPER_ADMIN = {{ is_super_admin | tojson }};
         const SCIENTIST_NAMES = {{ scientist_names | tojson }};
         let studyOwners = {{ study_owner_usernames | tojson }};
+        const INITIAL_RUNTIME_SETTINGS = {{ runtime_settings | tojson }};
+        const MISSING_CONSENT_LANGUAGES = {{ missing_consent_languages | tojson }};
+        const TIME_STEP_CHOICES = {{ time_step_choices | tojson }};
 
         function ownersAreLocked() {
             const body = document.getElementById('edit-section-body');
@@ -985,6 +1073,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             renderOwners();
+            applyRuntimeSettingsAvailability();
 
             document.querySelectorAll('.open-delete-study-btn').forEach((button) => {
                 button.addEventListener('click', () => openDeleteStudyModal(button.dataset.studyId, button.dataset.studyNameShort, button.dataset.studyName));
@@ -1024,6 +1113,173 @@
             }
         });
 
+        function runtimeSettingsElement(studyId, suffix) {
+            return document.getElementById(`runtime-${suffix}-${studyId}`);
+        }
+
+        function showRuntimeSettingsStatus(studyId, message, isError = false) {
+            const status = document.getElementById(`runtime-settings-status-${studyId}`);
+            if (!status) return;
+            status.textContent = message || '';
+            status.style.color = isError ? '#b42318' : '#0f5132';
+        }
+
+        // The lock toggle enables every control in the edit section. Consent
+        // activation has a second gate (a complete localized consent text), so
+        // re-apply it after every toggle and on first render.
+        function applyRuntimeSettingsAvailability() {
+            const body = document.getElementById('edit-section-body');
+            const studyId = STUDY_ID;
+            const consent = document.getElementById(`runtime-require-consent-${studyId}`);
+            if (!body || !consent) return;
+            const locked = body.classList.contains('edit-section-body-locked');
+            const blocked = !INITIAL_RUNTIME_SETTINGS.require_consent
+                && MISSING_CONSENT_LANGUAGES.length > 0;
+            consent.disabled = locked || blocked;
+            if (blocked) {
+                consent.title = `Add consent text for ${MISSING_CONSENT_LANGUAGES.join(', ')} on the Texts page first.`;
+            } else {
+                consent.removeAttribute('title');
+            }
+        }
+
+        function readIntegerField(element) {
+            if (!element || element.value.trim() === '') return NaN;
+            const value = Number(element.value);
+            return Number.isInteger(value) ? value : NaN;
+        }
+
+        function readRuntimeSettings(studyId) {
+            const recent = runtimeSettingsElement(studyId, 'recent');
+            const step = runtimeSettingsElement(studyId, 'step');
+            const minDuration = runtimeSettingsElement(studyId, 'min-duration');
+            const timeout = runtimeSettingsElement(studyId, 'inactivity-timeout');
+            const requireConsent = runtimeSettingsElement(studyId, 'require-consent');
+            const allowSkip = runtimeSettingsElement(studyId, 'allow-skip');
+            const hideLinks = runtimeSettingsElement(studyId, 'hide-links');
+            if (!recent || !step || !minDuration || !timeout || !requireConsent || !allowSkip || !hideLinks) {
+                return null;
+            }
+            return {
+                require_consent: requireConsent.checked,
+                allow_skip_timeuse: allowSkip.checked,
+                num_recent_activities_shown: readIntegerField(recent),
+                time_step_minutes: Number(step.value),
+                min_duration_minutes: readIntegerField(minDuration),
+                inactivity_timeout_minutes: readIntegerField(timeout),
+                hide_server_wide_links: hideLinks.checked,
+            };
+        }
+
+        function validateRuntimeTiming(settings) {
+            if (!TIME_STEP_CHOICES.includes(settings.time_step_minutes)) {
+                return `Time step must be one of ${TIME_STEP_CHOICES.join(', ')}.`;
+            }
+            if (!Number.isInteger(settings.min_duration_minutes) || settings.min_duration_minutes < 1) {
+                return 'Minimum duration must be a whole number of at least 1 minute.';
+            }
+            if (settings.min_duration_minutes < settings.time_step_minutes) {
+                return 'Minimum duration must be at least the time step.';
+            }
+            if (settings.min_duration_minutes % settings.time_step_minutes !== 0) {
+                return 'Minimum duration must be a multiple of the time step.';
+            }
+            if (settings.min_duration_minutes > 1440) {
+                return 'Minimum duration must not exceed 1440 minutes.';
+            }
+            return null;
+        }
+
+        function restoreRuntimeSaveButton(studyId) {
+            const saveBtn = document.getElementById(`runtime-settings-save-${studyId}`);
+            if (!saveBtn) return;
+            saveBtn.textContent = 'Save runtime settings';
+            const body = document.getElementById('edit-section-body');
+            saveBtn.disabled = body ? body.classList.contains('edit-section-body-locked') : false;
+        }
+
+        async function saveRuntimeSettings(studyNameShort, studyId) {
+            const settings = readRuntimeSettings(studyId);
+            if (!settings) return;
+
+            if (!Number.isInteger(settings.num_recent_activities_shown) || settings.num_recent_activities_shown < 0) {
+                showRuntimeSettingsStatus(studyId, 'Recent activities shown must be a whole number of at least 0.', true);
+                return;
+            }
+            if (!Number.isInteger(settings.inactivity_timeout_minutes) || settings.inactivity_timeout_minutes < 0) {
+                showRuntimeSettingsStatus(studyId, 'Inactivity timeout must be a whole number of at least 0.', true);
+                return;
+            }
+            const timingError = validateRuntimeTiming(settings);
+            if (timingError) {
+                showRuntimeSettingsStatus(studyId, timingError, true);
+                return;
+            }
+            if (settings.require_consent && !INITIAL_RUNTIME_SETTINGS.require_consent && MISSING_CONSENT_LANGUAGES.length > 0) {
+                showRuntimeSettingsStatus(
+                    studyId,
+                    `Add the consent text for ${MISSING_CONSENT_LANGUAGES.join(', ')} on the Texts page before enabling consent.`,
+                    true
+                );
+                return;
+            }
+
+            const payload = {};
+            for (const key of Object.keys(INITIAL_RUNTIME_SETTINGS)) {
+                if (settings[key] !== INITIAL_RUNTIME_SETTINGS[key]) payload[key] = settings[key];
+            }
+            if (Object.keys(payload).length === 0) {
+                showRuntimeSettingsStatus(studyId, 'No changes to save.');
+                return;
+            }
+
+            const timingChanged = 'time_step_minutes' in payload || 'min_duration_minutes' in payload;
+            if (timingChanged && !window.confirm(
+                'Changing the time grid affects new entries and future edits. Existing diary entries keep their stored times. Continue?'
+            )) {
+                showRuntimeSettingsStatus(studyId, 'Save cancelled.');
+                return;
+            }
+
+            const saveBtn = document.getElementById(`runtime-settings-save-${studyId}`);
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving…';
+            }
+            showRuntimeSettingsStatus(studyId, 'Saving…');
+            try {
+                const response = await fetch(
+                    `${ADMIN_ROOT_PATH}/api/admin/studies/${encodeURIComponent(studyNameShort)}/runtime-settings`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    }
+                );
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    const detail = errorPayload.detail;
+                    let message = 'Failed to save runtime settings.';
+                    if (typeof detail === 'string') {
+                        message = detail;
+                    } else if (detail && typeof detail === 'object') {
+                        message = detail.message || message;
+                        if (Array.isArray(detail.missing_languages) && detail.missing_languages.length) {
+                            message += ` Missing: ${detail.missing_languages.join(', ')}.`;
+                        }
+                    }
+                    showRuntimeSettingsStatus(studyId, message, true);
+                    restoreRuntimeSaveButton(studyId);
+                    return;
+                }
+                showRuntimeSettingsStatus(studyId, 'Runtime settings saved. Reloading…');
+                setTimeout(() => { window.location.reload(); }, 700);
+            } catch (error) {
+                showRuntimeSettingsStatus(studyId, `Request failed: ${error.message}`, true);
+                restoreRuntimeSaveButton(studyId);
+            }
+        }
+
         function toggleEditSection() {
             const body = document.getElementById('edit-section-body');
             const toggleBtn = document.getElementById('edit-section-toggle-btn');
@@ -1047,6 +1303,7 @@
 
             // Re-apply the owner-control state, including the self-lock for scientists.
             renderOwners();
+            applyRuntimeSettingsAvailability();
         }
 
     </script>

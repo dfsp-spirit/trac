@@ -757,6 +757,11 @@ STUDY_SCOPED_ADMIN_ENDPOINTS = [
         "/api/admin/studies/{study}/collection-window",
         {"data_collection_start": None},
     ),
+    (
+        "PATCH",
+        "/api/admin/studies/{study}/runtime-settings",
+        {"allow_skip_timeuse": False},
+    ),
     ("PATCH", "/api/admin/studies/{study}/pause", None),
     ("PATCH", "/api/admin/studies/{study}/unpause", None),
     ("PATCH", "/api/admin/studies/{study}/rename", {"name_short": "{study}"}),

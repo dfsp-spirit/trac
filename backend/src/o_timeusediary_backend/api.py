@@ -155,7 +155,7 @@ from .utils import (
     utc_now,
 )
 from . import stages
-from .timing import validate_timing_settings
+from .timing import TIME_STEP_CHOICES, validate_timing_settings
 from .api_deps.diary_access import study_availability
 from .api_deps.participant_identity import (
     require_valid_display_name,
@@ -181,6 +181,7 @@ from .study_names import (
 from .study_texts import (
     STUDY_TEXT_FIELD_NAMES,
     canonical_study_text_values,
+    missing_consent_languages,
     study_text_revision,
     study_text_specs_payload,
     study_text_values_from_object,
@@ -2310,6 +2311,16 @@ async def admin_study_detail(
         "has_external_tasks": study_has_external_tasks,
     }
 
+    supported_languages = _get_study_blob_languages(session, study.id) or [
+        study.default_language
+    ]
+    missing_consent_language_codes = missing_consent_languages(
+        canonical_study_text_values(study), supported_languages
+    )
+    runtime_settings = {
+        field: getattr(study, field) for field in STUDY_RUNTIME_SETTING_FIELDS
+    }
+
     context_dict = {
         "request": request,
         "current_admin": current_admin,
@@ -2352,6 +2363,9 @@ async def admin_study_detail(
         "study_name_short_rule_text": STUDY_NAME_SHORT_RULE_TEXT,
         "study_name_short_pattern": STUDY_NAME_SHORT_PATTERN,
         "study_name_short_max_length": STUDY_NAME_SHORT_MAX_LENGTH,
+        "missing_consent_languages": missing_consent_language_codes,
+        "runtime_settings": runtime_settings,
+        "time_step_choices": list(TIME_STEP_CHOICES),
     }
     template = templates.get_template("admin_study_detail.html")
     html_content = template.render(context_dict)
@@ -2599,6 +2613,21 @@ async def update_study_texts(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
+    if study.require_consent and "study_text_consent" in changed_fields:
+        missing = missing_consent_languages(new_values, supported_languages)
+        if missing:
+            # The text editor displays string details directly; keep the
+            # structured payload for the runtime-settings endpoint only.
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This study requires consent, so the consent text must "
+                    "exist for every supported language. Missing: "
+                    f"{missing}. Disable consent on the study detail page "
+                    "before removing the text."
+                ),
+            )
+
     for field_name in changed_fields:
         setattr(study, field_name, new_values[field_name])
 
@@ -2656,6 +2685,36 @@ class DeletePreviewResponse(BaseModel):
 class UpdateStudyCollectionWindowRequest(BaseModel):
     data_collection_start: Optional[datetime] = None
     data_collection_end: Optional[datetime] = None
+
+
+STUDY_RUNTIME_SETTING_FIELDS = (
+    "require_consent",
+    "allow_skip_timeuse",
+    "num_recent_activities_shown",
+    "time_step_minutes",
+    "min_duration_minutes",
+    "inactivity_timeout_minutes",
+    "hide_server_wide_links",
+)
+
+
+class UpdateStudyRuntimeSettingsRequest(BaseModel):
+    """Partial update of participant-facing study behaviour.
+
+    Omitted fields stay unchanged. ``time_step_minutes`` and
+    ``min_duration_minutes`` are validated together against the study's current
+    values, so a request may send only one of them.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    require_consent: Optional[bool] = None
+    allow_skip_timeuse: Optional[bool] = None
+    num_recent_activities_shown: Optional[int] = Field(default=None, ge=0)
+    time_step_minutes: Optional[int] = Field(default=None, ge=1)
+    min_duration_minutes: Optional[int] = Field(default=None, ge=1)
+    inactivity_timeout_minutes: Optional[int] = Field(default=None, ge=0)
+    hide_server_wide_links: Optional[bool] = None
 
 
 class RenameStudyRequest(BaseModel):
@@ -4313,6 +4372,94 @@ async def update_study_collection_window(
             "data_collection_start": study.data_collection_start,
             "data_collection_end": study.data_collection_end,
         },
+    }
+
+
+@app.patch("/api/admin/studies/{study_name_short}/runtime-settings")
+async def update_study_runtime_settings(
+    study_name_short: str,
+    payload: UpdateStudyRuntimeSettingsRequest,
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Update participant-facing study behaviour without re-importing the study.
+
+    The request is a partial update: omitted fields keep their current value.
+    Timing is validated as one pair, and enabling consent requires the consent
+    text to be complete for every supported language. Existing consent flags are
+    deliberately not reset (see README_CREATE_STUDY.md).
+    """
+    study = _get_study_or_404(session, study_name_short)
+
+    field_names = STUDY_RUNTIME_SETTING_FIELDS
+    changes = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if not changes:
+        raise HTTPException(
+            status_code=400,
+            detail="At least one runtime setting must be provided",
+        )
+
+    previous = {field: getattr(study, field) for field in field_names}
+    effective = {**previous, **changes}
+
+    try:
+        validate_timing_settings(
+            effective["time_step_minutes"], effective["min_duration_minutes"]
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    if effective["require_consent"] and not study.require_consent:
+        supported_languages = _get_study_blob_languages(session, study.id) or [
+            study.default_language
+        ]
+        missing = missing_consent_languages(
+            canonical_study_text_values(study), supported_languages
+        )
+        if missing:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "code": "consent_text_incomplete",
+                    "message": (
+                        "Consent cannot be enabled until study_text_consent "
+                        "exists for every supported language. Missing: "
+                        f"{missing}."
+                    ),
+                    "missing_languages": missing,
+                },
+            )
+
+    for field, value in changes.items():
+        setattr(study, field, value)
+
+    session.add(study)
+    session.commit()
+    session.refresh(study)
+
+    changed_fields = [
+        field for field in field_names if previous[field] != getattr(study, field)
+    ]
+    if changed_fields:
+        details = ", ".join(
+            f"{field}: {previous[field]!r} -> {getattr(study, field)!r}"
+            for field in changed_fields
+        )
+        logger.info(
+            "Admin '%s' updated runtime settings for study '%s': %s",
+            current_admin,
+            study_name_short,
+            details,
+        )
+        audit_admin_action(
+            current_admin,
+            f"updated runtime settings for study '{study_name_short}' ({details})",
+        )
+
+    return {
+        "study_name_short": study_name_short,
+        "changed": changed_fields,
+        "settings": {field: getattr(study, field) for field in field_names},
     }
 
 

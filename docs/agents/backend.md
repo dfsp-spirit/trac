@@ -143,6 +143,35 @@ session; with the default 0 they behave exactly as before.
   it starts a new session; the timeout protects an idle tab and rejects direct
   API use after inactivity. It does not prove who is at the keyboard.
 
+## Admin runtime settings
+
+`PATCH /api/admin/studies/{study_name_short}/runtime-settings` changes the
+participant-facing behaviour without re-importing the study:
+
+`require_consent`, `allow_skip_timeuse`, `num_recent_activities_shown`,
+`time_step_minutes`, `min_duration_minutes`, `inactivity_timeout_minutes`,
+`hide_server_wide_links`.
+
+- The request is partial (`model_dump(exclude_unset=True, exclude_none=True)`);
+  omitted fields stay unchanged. Unknown fields are rejected.
+- The merged `time_step_minutes`/`min_duration_minutes` pair is validated with
+  `timing.validate_timing_settings`, so sending only one of them cannot bypass
+  the step/minimum rules.
+- Enabling consent (`false → true`) requires a non-empty
+  `study_text_consent` entry for every language from
+  `_get_study_blob_languages(...) or [study.default_language]`. The error carries
+  `code: "consent_text_incomplete"` and `missing_languages`. The shared
+  `study_texts.missing_consent_languages` helper is also used by the study
+  detail page and the Texts editor; while consent is required, the editor cannot
+  clear the text.
+- Existing consent flags are intentionally not reset. Enabling consent later
+  only routes participants whose `consent_given` is not true through the consent
+  page; documented in `README_CREATE_STUDY.md`.
+- The response returns `changed` and the effective `settings`; every changed
+  field is audit-logged. No schema migration is involved.
+- The admin study-detail page renders the form inside the existing locked edit
+  section and saves only changed fields.
+
 ## Browser/device identification (`save_browser_identification`)
 
 Opt-in per study, **off by default**. The participant UI reports the device through
