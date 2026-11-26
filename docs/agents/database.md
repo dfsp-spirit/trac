@@ -40,6 +40,21 @@
   validation message appeared, or that a search found nothing). These signals
   are not linked to your answers."*
 
+## Participant sessions (migration 0024)
+- `participant_sessions` backs the opt-in inactivity timeout. One row per
+  browser session: `study_id` (FK, `ON DELETE CASCADE`), the study-scoped
+  `participant_id`, a SHA-256 `token_hash` (unique), `created_at`,
+  `last_seen_at`, and nullable `ended_at`. The raw cookie token is never stored.
+- The table deliberately keys on `study_id` + the string participant id rather
+  than `study_participants.id`: an open study creates a session before the first
+  diary write materialises the association row.
+- `study_cleanup.delete_study_data` and the participant deletion/reset endpoints
+  delete sessions explicitly as well as relying on the FK, matching the existing
+  pattern for SQLite test runs without FK enforcement.
+- The old `studies.inactivity_timeout_stress_time_left` column remains in the
+  schema but is no longer read, written or exported. Dropping it is a separate
+  contract migration, per the additive rule above.
+
 ## Migration Guardrail
 - Existing studies keyed by `name_short` are not auto-synchronized from JSON edits.
 - Non-trivial changes require explicit migration/admin intervention.

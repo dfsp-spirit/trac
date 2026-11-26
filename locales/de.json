@@ -216,6 +216,16 @@
     "accessStudy": "Studie „{{study}}“ aufrufen"
   },
   "diary": {
+    "session": {
+      "idleNote_one": "Zu Ihrer Privatsphäre endet diese Sitzung nach {{count}} Minute Inaktivität.",
+      "idleNote_other": "Zu Ihrer Privatsphäre endet diese Sitzung nach {{count}} Minuten Inaktivität."
+    },
+    "timeout": {
+      "pageTitle": "Sitzung beendet",
+      "heading": "Ihre Sitzung wurde beendet",
+      "body": "Sie waren eine Weile inaktiv, daher wurde diese Sitzung zu Ihrem Schutz geschlossen.",
+      "hint": "Bitte öffnen Sie Ihren Einladungslink erneut, um fortzufahren."
+    },
     "message": {
       "dismiss": "Diese Mitteilung schließen"
     },
@@ -323,6 +333,8 @@
       "unavailableEndedText": "Der Erhebungszeitraum endete am {{date}}. Bitte wenden Sie sich an das Forschungsteam, wenn Sie Fragen haben.",
       "failedTitle": "Das hat nicht geklappt",
       "failedText": "Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+      "cookiesRequiredTitle": "Cookies erforderlich",
+      "cookiesRequiredText": "Diese Studie verwendet eine Inaktivitäts-Zeitüberschreitung und benötigt Browser-Cookies. Bitte erlauben Sie Cookies für diese Seite und laden Sie die Seite neu oder öffnen Sie Ihren Einladungslink erneut.",
       "retry": "Erneut versuchen",
       "noInvitationTitle": "Keine Einladung gefunden",
       "noInvitationText": "Bitte öffnen Sie den Link aus Ihrer Einladung. Er enthält die Angaben zu Ihrer Studie.",

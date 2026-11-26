@@ -23,6 +23,33 @@
 - Participant context is URL-driven (`study`, `pid`, optional `lang`), not
   login-driven. The stage is re-read from the server on every load (D37).
 
+## Inactivity timeout (opt-in)
+- The study-config payload's `inactivity_timeout_minutes` defaults to `0` (off). When it is
+  greater than zero, `ui/boot.js` starts a server session before an external-task
+  return is redeemed; `ui/shellChrome.js` arms `ui/sessionLifecycle.js`.
+- The lifecycle is invisible: one `setTimeout`, activity listeners
+  (`pointerdown`, `keydown`, `touchstart`, `wheel`, `scroll`) and a throttled
+  `POST /session/touch`. There is deliberately **no countdown, progress bar or
+  seconds display**; a ticking clock pressures participants and costs timeline
+  space.
+- The only visible hint is the static privacy note in the drawer
+  (`#session-note`), rendered from `diary.session.idleNote_one/_other`. It names
+  the duration but does not update.
+- On expiry the app calls `DELETE /session` best-effort and uses
+  `location.replace` to `timeout.html?lang=…` (plus the study's optional
+  `inactivity_page_custom_text` as `text`). The page is a separate entry point
+  (`js/timeout-main.js`), has no shell and no API bootstrap, receives no study or
+  participant identifier, and contains no invitation link. It renders the custom
+  text as plain text via `textContent`.
+- The server is the authority. A `401` with `session.required`,
+  `session.expired` or `session.invalid` calls `chrome.expireSession()` through
+  the `onSessionExpired` API hook, so a direct request or a cookie cleared in
+  another tab still ends the app.
+- The timeout is a privacy guard, not authentication: reopening the invitation
+  link starts a new session. Cookies are required; with `0` none are used.
+- `ui/sessionLifecycle.js` keeps all DOM and timer access; `data/request.js` owns
+  the session-error hook and the `credentials: 'include'` fetch.
+
 ## Usability signals
 - `frontend/src/js/domain/uxEvents.js` holds the rules (which events exist,
   which properties they may carry, query folding, load-id shape);

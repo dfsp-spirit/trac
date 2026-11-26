@@ -15,6 +15,7 @@ import { canSkipDiary } from '../domain/skip.js';
 import { createDrawer } from './drawer.js';
 import { restrictLanguageOptions } from './i18n-dom.js';
 import { createLegalLinks } from './legalLinks.js';
+import { createSessionLifecycle, isTimedStage } from './sessionLifecycle.js';
 import { createSkipDialog } from './skipDialog.js';
 
 /**
@@ -37,8 +38,11 @@ import { createSkipDialog } from './skipDialog.js';
  *     languageSelect: HTMLSelectElement | null,
  *     menuLanguageBlock: HTMLElement | null,
  *     forWhom: HTMLElement | null,
+ *     sessionNote: HTMLElement | null,
  *   },
  *   t: (key: string, params?: Record<string, string | number>) => string,
+ *   tCount: (key: string, count: number) => string,
+ *   api: any,
  *   getLanguage: () => string,
  *   onLanguageChange: (language: string) => void,
  *   onSkip: (body: { reason_code?: string, reason_note?: string }) => Promise<void> | void,
@@ -49,6 +53,8 @@ import { createSkipDialog } from './skipDialog.js';
 export function createShellChrome({
   shell,
   t,
+  tCount,
+  api,
   getLanguage,
   onLanguageChange,
   onSkip,
@@ -122,6 +128,12 @@ export function createShellChrome({
   /** @type {any} */
   let session = null;
 
+  const sessionLifecycle = createSessionLifecycle({
+    api,
+    getLanguage,
+    getSession: () => session,
+  });
+
   /**
    * Whose diary this is, in the topbar and in the document title. Runs with
    * every session (the name is per participant, not per stage) and again after
@@ -136,6 +148,21 @@ export function createShellChrome({
     document.title = documentTitle(session, t);
   }
 
+  /**
+   * A static privacy note, never a ticking clock: it names the configured
+   * duration and leaves the diary space alone. Hidden when the timeout is off
+   * or the study is already at a terminal stage.
+   */
+  function renderSessionNote() {
+    if (!shell.sessionNote) return;
+    const minutes = Number(session?.inactivity_timeout_minutes) || 0;
+    const show = minutes > 0 && isTimedStage(session?.stage);
+    shell.sessionNote.hidden = !show;
+    shell.sessionNote.textContent = show
+      ? tCount('diary.session.idleNote', minutes)
+      : '';
+  }
+
   return {
     /**
      * The study config is in: offer its languages and render its pages.
@@ -144,6 +171,8 @@ export function createShellChrome({
     apply(studySession) {
       session = studySession;
       renderForWhom();
+      renderSessionNote();
+      sessionLifecycle.sync(studySession);
       const languages = studyLanguageOptions(
         studySession?.supported_languages ?? [],
         config.supportedLanguages
@@ -169,16 +198,23 @@ export function createShellChrome({
     syncLanguage(language) {
       if (select) select.value = language;
       renderForWhom();
+      renderSessionNote();
       legal.render(session);
     },
 
     closeMenu,
+
+    /** The API hook calls this when the server rejects an expired session. */
+    expireSession() {
+      sessionLifecycle.expire();
+    },
 
     destroy() {
       select?.removeEventListener('change', onSelectChange);
       shell.menuSkip?.removeEventListener('click', onSkipClick);
       shell.menuCopy?.removeEventListener('click', onCopyClick);
       shell.menuReview?.removeEventListener('click', onReviewClick);
+      sessionLifecycle.destroy();
       drawer?.destroy();
       skipDialog.destroy();
       legal.destroy();

@@ -46,6 +46,7 @@ export function readShell(root) {
     template: /** @type {HTMLTemplateElement | null} */ (maybe('#activity-panel-tpl')),
     languageSelect: /** @type {HTMLSelectElement | null} */ (maybe('#language-select')),
     menuLanguageBlock: maybe('#menu-language-block'),
+    sessionNote: maybe('#session-note'),
     menu: /** @type {HTMLDialogElement | null} */ (maybe('#menu')),
     menuOpen: maybe('#menu-open'),
     menuClose: maybe('#menu-close'),
