@@ -210,3 +210,57 @@ def test_codes_per_timeline_are_disjoint_and_complete():
     assert by_timeline["primary"] == {100, 101, 200}
     assert by_timeline["secondary"] == {900, 901}
     assert get_activity_codes_set(config) == {100, 101, 200, 900, 901}
+
+
+def test_custom_input_question_is_kept_for_parent_and_child_rows():
+    payload = _example_activities_payload()
+    sleep, work = payload["timeline"]["primary"]["categories"][0]["activities"]
+
+    work["is_custom_input"] = True
+    work["custom_input_question"] = "  What is your job?  "
+    sleep["childItems"][0]["is_custom_input"] = True
+    sleep["childItems"][0]["custom_input_question"] = "Which kind of nap?"
+
+    config = ActivitiesConfig(**payload)
+
+    assert (
+        config.timeline["primary"].categories[0].activities[1].custom_input_question
+        == "What is your job?"
+    )
+    assert (
+        config.timeline["primary"]
+        .categories[0]
+        .activities[0]
+        .childItems[0]
+        .custom_input_question
+        == "Which kind of nap?"
+    )
+    assert get_all_activity_codes(config)[200]["custom_input_question"] == (
+        "What is your job?"
+    )
+    assert get_all_activity_codes(config)[100]["custom_input_question"] is None
+
+
+def test_custom_input_question_defaults_to_none_and_blank_becomes_none():
+    payload = _example_activities_payload()
+    work = payload["timeline"]["primary"]["categories"][0]["activities"][1]
+    work["is_custom_input"] = True
+    work["custom_input_question"] = "   "
+
+    config = ActivitiesConfig(**payload)
+
+    assert config.timeline["primary"].categories[0].activities[1].custom_input_question is None
+    assert config.timeline["primary"].categories[0].activities[0].custom_input_question is None
+
+
+def test_custom_input_question_requires_is_custom_input():
+    payload = _example_activities_payload()
+    payload["timeline"]["primary"]["categories"][0]["activities"][1][
+        "custom_input_question"
+    ] = "What is your job?"
+
+    with pytest.raises(Exception) as error:
+        ActivitiesConfig(**payload)
+
+    assert "custom_input_question" in str(error.value)
+    assert "is_custom_input" in str(error.value)

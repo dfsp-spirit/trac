@@ -14,12 +14,14 @@ import { generalTimelineSettings } from '../domain/timelines.js';
  * A sub-activity row. `customInput` mirrors the config's `is_custom_input`, which
  * a sub-activity may set exactly like its parent may (the study's "Sport in
  * Innenräumen (z.B. Schwimmen, Kurse)" asks for the participant's words): the
- * form needs it to know whether to offer the text field.
+ * form needs it to know whether to offer the text field. `customInputQuestion`
+ * is that row's own prompt, or null for the client's localized default.
  *
  * @typedef {Object} CatalogueChild
  * @property {number} code
  * @property {string} name
  * @property {boolean} customInput
+ * @property {string | null} customInputQuestion
  */
 
 /**
@@ -31,6 +33,8 @@ import { generalTimelineSettings } from '../domain/timelines.js';
  * @property {string | null} color
  * @property {string | null} examples
  * @property {boolean} isCustomInput
+ * @property {string | null} customInputQuestion The form label for this row's
+ *   free text; null means the client's localized default.
  * @property {CatalogueChild[]} children
  * @property {Array<{ key: string, label: string }>} frequencyOptions
  * @property {string} haystack Folded text used by the search.
@@ -76,6 +80,17 @@ function locate(haystack, needle) {
 }
 
 /**
+ * A row's own prompt for the free-text field, or null when it has none.
+ *
+ * @param {unknown} value
+ * @returns {string | null}
+ */
+function customInputQuestion(value) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return text || null;
+}
+
+/**
  * Flatten a study activities config into searchable entries.
  *
  * @param {any} catalogue Response of /activities-config
@@ -110,6 +125,7 @@ export function flattenCatalogue(catalogue, timelineKeys = null) {
             // A sub-activity can be a custom input in its own right; dropping
             // this flag here is what made the form skip its text field.
             customInput: Boolean(child.is_custom_input),
+            customInputQuestion: customInputQuestion(child.custom_input_question),
           })
         );
         const frequencyOptions = (activity.frequency_options || []).map(
@@ -123,6 +139,7 @@ export function flattenCatalogue(catalogue, timelineKeys = null) {
           color: activity.color || category.color || null,
           examples: activity.examples || null,
           isCustomInput: Boolean(activity.is_custom_input),
+          customInputQuestion: customInputQuestion(activity.custom_input_question),
           children,
           frequencyOptions,
           haystack: fold(

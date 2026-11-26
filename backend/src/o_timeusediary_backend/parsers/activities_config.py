@@ -32,6 +32,10 @@ class ActivityItem(BaseModel):
     examples: Optional[str] = None
     frequency_options: Optional[List[FrequencyOption]] = None
     is_custom_input: Optional[bool] = False
+    # Label of the free-text field for this row, e.g. "What is your job?".
+    # Only meaningful together with `is_custom_input`; omitted means the client
+    # uses its localized generic question.
+    custom_input_question: Optional[str] = None
     childItems: List["ActivityItem"] = []
 
     model_config = ConfigDict(validate_assignment=True)
@@ -42,6 +46,24 @@ class ActivityItem(BaseModel):
         if self.label is None:
             self.label = self.name
         return self
+
+    @model_validator(mode="after")
+    def require_custom_input_for_question(self) -> "ActivityItem":
+        """Reject a question on a row that collects no free text."""
+        if self.custom_input_question and not self.is_custom_input:
+            raise ValueError(
+                "custom_input_question is only allowed on activities with "
+                f"is_custom_input=true (activity '{self.name}')"
+            )
+        return self
+
+    @field_validator("custom_input_question")
+    @classmethod
+    def normalize_custom_input_question(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        text = v.strip()
+        return text or None
 
     @field_validator("frequency_options")
     @classmethod
@@ -309,6 +331,7 @@ def get_all_activity_codes(config: ActivitiesConfig) -> Dict[int, Dict[str, Any]
                 ]
                 or None,
                 "is_custom_input": activity.is_custom_input,
+                "custom_input_question": activity.custom_input_question,
                 "timeline": context.get("timeline"),
                 "category": context.get("category"),
                 "is_child": context.get("is_child", False),

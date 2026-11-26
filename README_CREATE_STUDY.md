@@ -1098,6 +1098,7 @@ Each activity item in a category can have these fields:
 | `color` | string | No | CSS color for the timeline bar, e.g., `"#A8D8EA"`. |
 | `examples` | string | No | Examples shown in the UI to help participants understand the activity, e.g., `"Eating, drinking, personal care"`. |
 | `is_custom_input` | boolean | No | If `true`, the participant can type a free-text custom description for this activity. Default: `false`. |
+| `custom_input_question` | string | No | Prompt shown as the label of the free-text field, e.g. `"What is your job?"`. Only allowed together with `is_custom_input: true`. When omitted, the client uses its localized generic question ("What did you do?"). Because each language has its own activities file, write the question in that language's file — no separate i18n map is needed. |
 | `frequency_options` | `[{key, label}]` | No | Array of frequency options the participant can select from. Each option has a `key` (machine identifier) and `label` (display text). All keys must be unique within the activity. |
 | `childItems` | `[object]` | No | Array of child activities. When a parent activity is selected, the participant can optionally choose a more specific child activity. Child items use the same fields as parent activities (except they cannot have their own `childItems`). |
 
@@ -1140,9 +1141,16 @@ description to specify details:
   "label": "paid work (including at home)",
   "color": "#FFB6C1",
   "is_custom_input": true,
+  "custom_input_question": "What is your job?",
   "childItems": []
 }
 ```
+
+The `custom_input_question` is optional. Without it the form asks the
+localized generic question; with it, the field above the free-text input asks
+for exactly what this activity needs. It is not a translation key: put the
+English question in `activities_…_en.json`, the German one in the German file,
+and so on.
 
 #### 3. Parent Activity with Children
 
@@ -1182,9 +1190,14 @@ A child item that also allows free-text input:
   "examples": "Playstation, Xbox, Nintendo Switch, etc",
   "label": "Console Gaming, alone",
   "color": "#FFA500",
-  "is_custom_input": true
+  "is_custom_input": true,
+  "custom_input_question": "Which game?"
 }
 ```
+
+A child row may name its own `custom_input_question` exactly like a parent
+activity; this is the case the field is designed for, because the child — not
+the parent — is the row whose text is stored.
 
 ---
 

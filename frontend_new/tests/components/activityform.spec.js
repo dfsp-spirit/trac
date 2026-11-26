@@ -37,9 +37,19 @@ test.describe('a custom sub-activity', () => {
     // The custom sub-activity asks for the participant's words.
     await childSelect(page).selectOption('1173');
     await expect(textField(page)).toBeVisible();
-    // The label asks for the words; it is the one the parent-level custom input
-    // already uses.
-    await expect(page.locator('label[for="form-text"]')).toHaveText('Was haben Sie gemacht?');
+    // The row names its own prompt; without one the form asks the generic
+    // question from the locale files.
+    await expect(page.locator('label[for="form-text"]')).toHaveText(
+      'Welche Sportart genau?'
+    );
+
+    // The prompt follows the row: a custom row without one falls back, and a
+    // plain row hides the field entirely.
+    await childSelect(page).selectOption('1174');
+    await expect(textField(page)).toBeVisible();
+    await expect(page.locator('label[for="form-text"]')).toHaveText(
+      'Was haben Sie gemacht?'
+    );
 
     // Switching back hides it again - the choice can change while the form is open.
     await childSelect(page).selectOption('1171');
@@ -116,6 +126,9 @@ test.describe('a custom activity without sub-activities', () => {
     await open(page, '?custom_parent=1');
 
     await expect(textField(page)).toBeVisible();
+    await expect(page.locator('label[for="form-text"]')).toHaveText(
+      'Was ist Ihr Beruf?'
+    );
     await textField(page).fill('Programmieren');
 
     const result = await read(page);

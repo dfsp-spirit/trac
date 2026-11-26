@@ -121,9 +121,19 @@
 - How many shortcuts the row shows is the study's `num_recent_activities_shown`
   (default 5), delivered in the diary payload under `study`; `0` hides the
   section entirely. The client never hard-codes the number.
+- `custom_input_question` (optional, per row) replaces the field's label:
+  "Paid work" asks "What is your job?", a gaming child asks "Which game?".
+  `flattenCatalogue()` carries it as `children[].customInputQuestion` /
+  `customInputQuestion`, and `createCustomField()` sets the label from the
+  *currently selected* row in `sync()`, falling back to `diary.form.what` when
+  the row names none. It is a label, not a placeholder: the prompt stays visible
+  while typing and is the input's accessible name. The backend rejects the field
+  on a row without `is_custom_input`, so the config cannot promise text the form
+  never asks for.
 - `activityform.spec.js` mounts the form with a custom sub-activity and pins
-  visibility, the composed name, the refusal without text, the search prefill and
-  the edit round-trip.
+  visibility, the composed name, the refusal without text, the search prefill,
+  the edit round-trip, and that the label follows the chosen row (own question,
+  fallback, hidden for a plain row).
 
 ## Surroundings block in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a

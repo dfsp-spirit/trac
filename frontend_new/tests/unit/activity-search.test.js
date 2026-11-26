@@ -27,8 +27,14 @@ const config = {
               childItems: [
                 { code: 1021, name: 'Travelling: cycle' },
                 // A sub-activity may be a custom input in its own right; the
-                // flag has to survive flattening or the form skips its text field.
-                { code: 1022, name: 'Travelling: indoor sport', is_custom_input: true },
+                // flag and its own prompt have to survive flattening, or the
+                // form skips its text field or asks the wrong question.
+                {
+                  code: 1022,
+                  name: 'Travelling: indoor sport',
+                  is_custom_input: true,
+                  custom_input_question: '  Which sport?  ',
+                },
               ],
               frequency_options: [{ key: 'often', label: 'Often' }],
             },
@@ -36,7 +42,14 @@ const config = {
         },
         {
           name: 'Work',
-          activities: [{ code: 200, name: 'Paid work', is_custom_input: true }],
+          activities: [
+            {
+              code: 200,
+              name: 'Paid work',
+              is_custom_input: true,
+              custom_input_question: 'What is your job?',
+            },
+          ],
         },
       ],
     },
@@ -52,11 +65,24 @@ test('the catalogue is flattened with children, options and timeline limits', ()
 
   const travelling = entries.find((entry) => entry.code === 102);
   assert.deepEqual(travelling.children, [
-    { code: 1021, name: 'Travelling: cycle', customInput: false },
-    { code: 1022, name: 'Travelling: indoor sport', customInput: true },
+    { code: 1021, name: 'Travelling: cycle', customInput: false, customInputQuestion: null },
+    {
+      code: 1022,
+      name: 'Travelling: indoor sport',
+      customInput: true,
+      customInputQuestion: 'Which sport?',
+    },
   ]);
   assert.deepEqual(travelling.frequencyOptions, [{ key: 'often', label: 'Often' }]);
   assert.equal(entries.find((entry) => entry.code === 200).isCustomInput, true);
+  assert.equal(
+    entries.find((entry) => entry.code === 200).customInputQuestion,
+    'What is your job?'
+  );
+  assert.equal(
+    entries.find((entry) => entry.code === 100).customInputQuestion,
+    null
+  );
 });
 
 test('fold strips diacritics and normalises ß', () => {
@@ -161,6 +187,7 @@ test('a sub-activity stays the row the participant picked', () => {
     code: 1021,
     name: 'Travelling: cycle',
     customInput: false,
+    customInputQuestion: null,
   });
   assert.equal(recent.label, null);
 });

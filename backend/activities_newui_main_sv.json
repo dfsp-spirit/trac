@@ -47,7 +47,8 @@
               "label": "betalt arbete",
               "color": "#FFB6C1",
               "childItems": [],
-              "is_custom_input": true
+              "is_custom_input": true,
+              "custom_input_question": "Vad är ditt yrke?"
             },
             {
               "name": "Skola",

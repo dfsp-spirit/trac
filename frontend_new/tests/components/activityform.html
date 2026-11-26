@@ -54,6 +54,13 @@
                         name: 'Sport in Innenräumen (z.B. Schwimmen, Kurse)',
                         color: '#9370DB',
                         is_custom_input: true,
+                        custom_input_question: 'Welche Sportart genau?',
+                      },
+                      {
+                        code: 1174,
+                        name: 'Sport im Verein',
+                        color: '#9370DB',
+                        is_custom_input: true,
                       },
                     ],
                   },
@@ -64,7 +71,12 @@
                 name: 'Arbeit',
                 activities: [
                   { code: 1101, name: 'Arbeiten', color: '#3366cc' },
-                  { code: 1199, name: 'Bezahlte Arbeit', is_custom_input: true },
+                  {
+                    code: 1199,
+                    name: 'Bezahlte Arbeit',
+                    is_custom_input: true,
+                    custom_input_question: 'Was ist Ihr Beruf?',
+                  },
                 ],
               },
             ],

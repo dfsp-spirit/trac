@@ -10,6 +10,10 @@
  *
  * The compose/split pair stays in `domain/activityName.js`, because the stored
  * name is the authoritative value for the timeline, the export and the server.
+ *
+ * The prompt above the field follows the same row: a catalogue row may name its
+ * own question (`custom_input_question`), and the form falls back to the
+ * localized generic one when it does not.
  */
 import { composeCustomName, customActivityText } from '../domain/activityName.js';
 import { el } from './dom.js';
@@ -17,7 +21,12 @@ import { field } from './formFields.js';
 
 /**
  * @typedef {import('./activitySearch.js').CatalogueChild} CatalogueChild
- * @typedef {{ code: number, name: string, customInput?: boolean }} CustomRow
+ * @typedef {{
+ *   code: number,
+ *   name: string,
+ *   customInput?: boolean,
+ *   customInputQuestion?: string | null,
+ * }} CustomRow
  * @typedef {(key: string, params?: Record<string, string | number>) => string} Translator
  */
 
@@ -67,7 +76,13 @@ export function createCustomField({
    * @returns {CustomRow | null}
    */
   function row() {
-    if (entry.isCustomInput) return { code: entry.code, name: entry.name };
+    if (entry.isCustomInput) {
+      return {
+        code: entry.code,
+        name: entry.name,
+        customInputQuestion: entry.customInputQuestion,
+      };
+    }
     return selectedCustomChild();
   }
 
@@ -75,6 +90,8 @@ export function createCustomField({
   let input = null;
   /** @type {HTMLElement | null} */
   let element = null;
+  /** @type {HTMLLabelElement | null} */
+  let label = null;
 
   if (entry.isCustomInput || entry.children.some((child) => child.customInput)) {
     input = el('input', 't-input');
@@ -82,6 +99,7 @@ export function createCustomField({
     input.maxLength = 200;
     input.autocomplete = 'off';
     element = field(t('diary.form.what'), 'form-text', input);
+    label = element.querySelector('label');
 
     const target = row();
     if (storedActivity && target && storedActivity.parent_activity_code === entry.code) {
@@ -91,10 +109,17 @@ export function createCustomField({
     }
   }
 
-  /** Show the field only while a custom row is the one being saved. */
+  /**
+   * Show the field only while a custom row is the one being saved, and use that
+   * row's own prompt when it names one.
+   */
   function sync() {
     if (!element) return;
-    element.hidden = row() === null;
+    const target = row();
+    element.hidden = target === null;
+    if (label) {
+      label.textContent = target?.customInputQuestion || t('diary.form.what');
+    }
   }
 
   /** @returns {{ name: string } | { error: 'form.needsText' } | null} */
