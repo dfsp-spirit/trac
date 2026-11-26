@@ -1,0 +1,1082 @@
+// @ts-check
+// settings/study_config_manager.js - IMPROVED
+import { captureClientInfoIfEnabled } from './client_info.js';
+import { fetchWithRetry } from './api_request.js';
+console.log('=== Study Config Manager Loading ===');
+
+// Simple retry helper for background sync operations. The retry policy itself
+// lives in js/api_request.js so the standalone pages (consent, ...) retry the
+// same failures; only the logging differs here.
+function fetchWithBackgroundRetry(url, maxRetries = 2, delayMs = 1500) {
+  return fetchWithRetry(url, {}, {
+    maxRetries,
+    delayMs,
+    onRetry: (attempt, delay) => {
+      console.log(
+        `Study config sync attempt ${attempt}/${
+          maxRetries + 1
+        } failed, retrying in ${delay}ms...`
+      );
+    },
+  });
+}
+
+if (!TUD_SETTINGS) {
+  TUD_SETTINGS = {
+    API_BASE_URL: 'http://localhost:8000/api',
+    ALLOW_NO_UID: true,
+    DEFAULT_STUDY_NAME: null,
+    DEFAULT_STUDIES_FILE: null,
+  };
+  console.warn(
+    'TUD_SETTINGS not found in window! Creating fallback and trying to reach API at http://localhost:8000/api. Please ensure TUD_SETTINGS is properly defined in your HTML template for production use.'
+  );
+  // Also set it on window for other scripts
+  window.TUD_SETTINGS = TUD_SETTINGS;
+}
+
+let STUDIES_CONFIG_CACHE = null;
+let CURRENT_STUDY_CACHE = null;
+
+function getLangFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('lang');
+}
+
+function getParticipantIdFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('pid');
+}
+
+function getStudyNameFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlStudy = urlParams.get('study_name');
+  if (urlStudy && urlStudy.trim()) return urlStudy.trim();
+
+  // Treat empty string DEFAULT_STUDY_NAME as "no frontend default"
+  if (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME) {
+    const def = TUD_SETTINGS.DEFAULT_STUDY_NAME;
+    if (typeof def === 'string' && def.trim()) return def.trim();
+  }
+
+  return null;
+}
+
+function normalizeLanguageCode(language) {
+  if (typeof language !== 'string') {
+    return null;
+  }
+  const normalized = language.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  const primarySubtag = normalized.split('-')[0];
+  if (!/^[a-z]{2}$/.test(primarySubtag)) {
+    return null;
+  }
+  return primarySubtag;
+}
+
+function getPreferredLanguage(
+  supportedLanguages = [],
+  fallbackLanguage = 'en'
+) {
+  const normalizedSupported = (
+    Array.isArray(supportedLanguages) ? supportedLanguages : []
+  )
+    .map((language) => normalizeLanguageCode(language))
+    .filter(Boolean);
+
+  const uniqueSupported = [...new Set(normalizedSupported)];
+  const normalizedFallback = normalizeLanguageCode(fallbackLanguage) || 'en';
+
+  const pickIfSupported = (candidate) => {
+    const normalizedCandidate = normalizeLanguageCode(candidate);
+    if (!normalizedCandidate) {
+      return null;
+    }
+    if (
+      uniqueSupported.length === 0 ||
+      uniqueSupported.includes(normalizedCandidate)
+    ) {
+      return normalizedCandidate;
+    }
+    return null;
+  };
+
+  // Always trust explicit URL language, even if local fallback config is stale.
+  // Backend remains authoritative and can validate/fallback if unsupported.
+  const fromUrl = normalizeLanguageCode(getLangFromUrl());
+  if (
+    fromUrl &&
+    (uniqueSupported.length === 0 || uniqueSupported.includes(fromUrl))
+  ) {
+    return fromUrl;
+  }
+
+  const browserLanguages =
+    Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+
+  for (const browserLanguage of browserLanguages) {
+    const picked = pickIfSupported(browserLanguage);
+    if (picked) {
+      return picked;
+    }
+  }
+
+  return (
+    pickIfSupported(normalizedFallback) ||
+    uniqueSupported[0] ||
+    normalizedFallback
+  );
+}
+
+/**
+ * Normalize day labels, resolving per-language display names for the target
+ * language. Mirrors what getDayDisplayLabel() does for a single label.
+ * @param {{ default_language?: string, day_labels?: Array<import('./api_types.js').ApiDayLabel | string> }} study
+ * @param {string|null} [language]
+ * @returns {Array<import('./api_types.js').ApiDayLabel | string>}
+ */
+function normalizeDayLabels(study, language = null) {
+  const targetLanguage =
+    normalizeLanguageCode(language) ||
+    normalizeLanguageCode(study?.default_language) ||
+    'en';
+  const defaultLanguage =
+    normalizeLanguageCode(study?.default_language) || 'en';
+  const dayLabels = Array.isArray(study?.day_labels) ? study.day_labels : [];
+
+  return dayLabels.map((label) => {
+    if (!label || typeof label !== 'object') {
+      return label;
+    }
+
+    /** @type {string | Record<string,string> | undefined} */
+    let displayName = label.display_name;
+    if (
+      !displayName &&
+      label.display_names &&
+      typeof label.display_names === 'object'
+    ) {
+      displayName = label.display_names;
+    }
+
+    if (typeof displayName === 'string') {
+      // Already a plain string; keep it (empty string falls back to name below).
+    } else if (displayName) {
+      // display_name is a {lang: string} map (legacy) or came from display_names.
+      const names = /** @type {Record<string,string>} */ (displayName);
+      displayName =
+        names[targetLanguage] ||
+        names[defaultLanguage] ||
+        names.en ||
+        Object.values(names).find((value) => typeof value === 'string') ||
+        label.name;
+    }
+
+    return {
+      ...label,
+      // displayName is guaranteed to be a plain string here: any map was
+      // resolved by the branch above (a truthy object always entered it).
+      display_name: /** @type {string} */ (displayName || label.name),
+      // Preserve the full translations map so syncWithBackendConfig() and
+      // getDayDisplayLabel() can re-resolve for any language later.
+      ...(label.display_names && typeof label.display_names === 'object'
+        ? { display_names: label.display_names }
+        : {}),
+    };
+  });
+}
+
+/**
+ * Resolve a study text that may be a plain string or a language->text map.
+ * @param {string|Record<string,string>|null|undefined} textValue
+ * @param {string} selectedLanguage
+ * @param {string} [defaultLanguage]
+ * @returns {string|null}
+ */
+function resolveLocalizedStudyText(
+  textValue,
+  selectedLanguage,
+  defaultLanguage = 'en'
+) {
+  if (typeof textValue === 'string') {
+    return textValue;
+  }
+
+  if (!textValue || typeof textValue !== 'object') {
+    return null;
+  }
+
+  return (
+    textValue[selectedLanguage] ||
+    textValue[defaultLanguage] ||
+    textValue.en ||
+    Object.values(textValue).find((value) => typeof value === 'string') ||
+    null
+  );
+}
+
+// Load studies config from JSON file (fallback)
+async function loadStudiesConfigFromFile() {
+  try {
+    // Determine studies file to load. If TUD_SETTINGS.DEFAULT_STUDIES_FILE is
+    // missing or empty, skip local fallback entirely.
+    const studiesFile =
+      TUD_SETTINGS &&
+      typeof TUD_SETTINGS.DEFAULT_STUDIES_FILE === 'string' &&
+      TUD_SETTINGS.DEFAULT_STUDIES_FILE.trim()
+        ? TUD_SETTINGS.DEFAULT_STUDIES_FILE
+        : null;
+
+    if (!studiesFile) {
+      CURRENT_STUDY_CACHE = null;
+      return null;
+    }
+
+    console.log('Loading studies config from file:', studiesFile);
+
+    const response = await fetch(studiesFile);
+    if (!response.ok) {
+      throw new Error(`Failed to load ${studiesFile}: ${response.status}`);
+    }
+    STUDIES_CONFIG_CACHE = await response.json();
+
+    // Find current study
+    const studyName = getStudyNameFromUrl();
+    const studies = Array.isArray(STUDIES_CONFIG_CACHE?.studies)
+      ? STUDIES_CONFIG_CACHE.studies
+      : [];
+
+    CURRENT_STUDY_CACHE = studies.find((s) => s.name_short === studyName);
+
+    if (!CURRENT_STUDY_CACHE) {
+      throw new Error(`Study "${studyName}" not found in ${studiesFile}`);
+    }
+
+    const supportedLanguages = Object.keys(
+      CURRENT_STUDY_CACHE.activities_json_files ||
+        CURRENT_STUDY_CACHE.activities_json_file || {
+          en: 'activities_default.json',
+        }
+    );
+    const selectedLanguage = getPreferredLanguage(
+      supportedLanguages,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.supported_languages = supportedLanguages;
+    CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
+    if (CURRENT_STUDY_CACHE.allow_skip_timeuse === undefined) {
+      CURRENT_STUDY_CACHE.allow_skip_timeuse = true;
+    }
+    CURRENT_STUDY_CACHE.day_labels = normalizeDayLabels(
+      CURRENT_STUDY_CACHE,
+      selectedLanguage
+    );
+
+    CURRENT_STUDY_CACHE.study_text_intro = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_intro,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_end_completed = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_end_completed,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_end_skipped = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_end_skipped,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_end_noconsent = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_end_noconsent,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_consent = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_consent,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_instructions = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_instructions,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+    CURRENT_STUDY_CACHE.study_text_instructions_title = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.study_text_instructions_title,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+
+    // Resolve study description to a single-language string for frontend consumption.
+    CURRENT_STUDY_CACHE.description = resolveLocalizedStudyText(
+      CURRENT_STUDY_CACHE.description,
+      selectedLanguage,
+      CURRENT_STUDY_CACHE.default_language || 'en'
+    );
+
+    console.log(
+      `Loaded study from file: ${CURRENT_STUDY_CACHE.name} with ${CURRENT_STUDY_CACHE.day_labels.length} days`
+    );
+    return CURRENT_STUDY_CACHE;
+  } catch (error) {
+    console.error(
+      `Error loading ${
+        TUD_SETTINGS?.DEFAULT_STUDIES_FILE || 'local studies file'
+      }:`,
+      error.message
+    );
+    CURRENT_STUDY_CACHE = null;
+    return null;
+  }
+}
+
+// Sync with backend (preferred source)
+async function syncWithBackendConfig() {
+  try {
+    let studyName = getStudyNameFromUrl();
+    const participantId = getParticipantIdFromUrl();
+    const selectedLanguageFromContext = getPreferredLanguage(
+      CURRENT_STUDY_CACHE?.supported_languages || [],
+      CURRENT_STUDY_CACHE?.default_language || 'en'
+    );
+
+    // If no studyName was provided via URL or frontend default, ask backend for
+    // active open studies and pick the first one. If backend returns empty,
+    // signal the caller that there are no studies available.
+    if (!studyName) {
+      const openListUrl = `${TUD_SETTINGS.API_BASE_URL}/active_open_study_names`;
+      console.log(`No study specified locally; querying ${openListUrl}`);
+      console.log('TUD_SETTINGS:', TUD_SETTINGS);
+      let listResp = null;
+      try {
+        listResp = await fetchWithBackgroundRetry(openListUrl, 1, 800);
+        console.log(
+          'active_open_study_names response status:',
+          listResp && listResp.status
+        );
+      } catch (err) {
+        console.log(
+          'Failed to fetch active open study names:',
+          err.message,
+          err
+        );
+        const noStudiesError = new Error(
+          'No studies available because backend is unreachable and no local fallback is configured.'
+        );
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
+      }
+
+      if (listResp && listResp.ok) {
+        const studiesList = await listResp.json();
+        if (!Array.isArray(studiesList) || studiesList.length === 0) {
+          const noStudiesError = new Error(
+            'No active open studies available from backend.'
+          );
+          noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+          throw noStudiesError;
+        }
+        // If multiple studies are available, surface choice to the UI
+        if (studiesList.length === 1) {
+          studyName = studiesList[0].name_short;
+          console.log(`Auto-selected study from backend: ${studyName}`);
+        } else {
+          // Expose list for the UI and abort initialization so caller can render chooser
+          window.availableOpenStudies = Array.isArray(studiesList)
+            ? studiesList
+            : [];
+          const choiceError = new Error('Multiple open studies available');
+          choiceError.code = 'STUDY_CHOICES_AVAILABLE';
+          throw choiceError;
+        }
+      }
+    }
+
+    if (!studyName) {
+      const noStudiesError = new Error('No studies available.');
+      noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+      throw noStudiesError;
+    }
+
+    // Build the final URL to request study-config from backend
+    const apiUrl = new URL(
+      `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/study-config`,
+      window.location.origin
+    );
+    if (participantId) {
+      apiUrl.searchParams.set('participant_id', participantId);
+    }
+    if (selectedLanguageFromContext) {
+      apiUrl.searchParams.set('lang', selectedLanguageFromContext);
+    }
+
+    console.log(
+      `Attempting to sync study config from backend: ${apiUrl.toString()}`
+    );
+    console.log(
+      'TUD_SETTINGS.API_BASE_URL:',
+      TUD_SETTINGS.API_BASE_URL,
+      'studyName:',
+      studyName,
+      'participantId:',
+      participantId,
+      'selectedLanguage:',
+      selectedLanguageFromContext
+    );
+
+    // Use simple retry for background sync (silent backoff, no UI notifications)
+    let response;
+    try {
+      response = await fetchWithBackgroundRetry(apiUrl.toString(), 2, 1200);
+      console.log(
+        'study-config fetch response status:',
+        response && response.status
+      );
+    } catch (error) {
+      if (!CURRENT_STUDY_CACHE) {
+        const noStudiesError = new Error(
+          'No studies available because backend is unreachable and no local fallback is configured.'
+        );
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
+      }
+      console.log(
+        'Backend unavailable after retries, using file config:',
+        error && error.message,
+        error
+      );
+      CURRENT_STUDY_CACHE.source = 'file';
+      return CURRENT_STUDY_CACHE;
+    }
+
+    if (response.ok) {
+      /** @type {import('./api_types.js').StudyConfigResponse} */
+      const backendConfig = await response.json();
+      console.log('Backend study config received');
+      console.log(
+        '[TRAC day-label-debug] backend study-config language/day-labels',
+        {
+          selected_language: backendConfig.selected_language,
+          default_language: backendConfig.default_language,
+          supported_languages: backendConfig.supported_languages,
+          first_day_label: backendConfig.day_labels?.[0] || null,
+          day_labels_count: Array.isArray(backendConfig.day_labels)
+            ? backendConfig.day_labels.length
+            : 0,
+        }
+      );
+
+      // Backend is authoritative and may return studies that are not listed in
+      // local settings/studies_config.json. Ensure the cache exists so the
+      // merge/update logic below works for backend-only studies.
+      if (!CURRENT_STUDY_CACHE || typeof CURRENT_STUDY_CACHE !== 'object') {
+        CURRENT_STUDY_CACHE = {
+          name_short: studyName || null,
+          name: backendConfig.study_name || studyName || null,
+          day_labels: [],
+          supported_languages: Array.isArray(backendConfig.supported_languages)
+            ? backendConfig.supported_languages
+            : [],
+          default_language: backendConfig.default_language || 'en',
+          selected_language:
+            normalizeLanguageCode(backendConfig.selected_language) ||
+            selectedLanguageFromContext ||
+            normalizeLanguageCode(backendConfig.default_language) ||
+            'en',
+          allow_skip_timeuse: true,
+          external_tasks: [],
+        };
+      }
+
+      // Update current study cache with backend data
+      const selectedLanguageFromConfig =
+        normalizeLanguageCode(backendConfig.selected_language) ||
+        selectedLanguageFromContext ||
+        CURRENT_STUDY_CACHE.selected_language ||
+        CURRENT_STUDY_CACHE.default_language ||
+        'en';
+      const defaultLanguageFromConfig =
+        normalizeLanguageCode(backendConfig.default_language) ||
+        normalizeLanguageCode(CURRENT_STUDY_CACHE.default_language) ||
+        'en';
+
+      if (backendConfig.day_labels && backendConfig.day_labels.length > 0) {
+        const fallbackDayLabels = Array.isArray(CURRENT_STUDY_CACHE.day_labels)
+          ? CURRENT_STUDY_CACHE.day_labels
+          : [];
+
+        const normalizedBackendDayLabels = normalizeDayLabels(
+          {
+            day_labels: backendConfig.day_labels,
+            default_language: defaultLanguageFromConfig,
+          },
+          selectedLanguageFromConfig
+        );
+
+        CURRENT_STUDY_CACHE.day_labels = normalizedBackendDayLabels.map(
+          (backendLabel) => {
+            if (!backendLabel || typeof backendLabel !== 'object') {
+              return backendLabel;
+            }
+
+            const fallbackLabel = fallbackDayLabels.find(
+              (candidateLabel) =>
+                candidateLabel &&
+                typeof candidateLabel === 'object' &&
+                candidateLabel.name === backendLabel.name
+            );
+
+            return {
+              ...backendLabel,
+              // Always trust backend-localized display_name for the requested language.
+              // Local fallback translations may be stale on deployed frontend assets and
+              // must never override backend response text.
+              // Preserve all translations so getDayDisplayLabel() can re-resolve
+              // for any language change without a page reload.
+              ...(fallbackLabel?.display_names
+                ? { display_names: fallbackLabel.display_names }
+                : {}),
+            };
+          }
+        );
+      }
+
+      if (backendConfig.default_language) {
+        CURRENT_STUDY_CACHE.default_language = backendConfig.default_language;
+      }
+
+      if (
+        Array.isArray(backendConfig.supported_languages) &&
+        backendConfig.supported_languages.length > 0
+      ) {
+        CURRENT_STUDY_CACHE.supported_languages =
+          backendConfig.supported_languages;
+      }
+
+      if (backendConfig.selected_language) {
+        CURRENT_STUDY_CACHE.selected_language = backendConfig.selected_language;
+      }
+
+      const selectedLanguage =
+        normalizeLanguageCode(backendConfig.selected_language) ||
+        getPreferredLanguage(
+          backendConfig.supported_languages ||
+            CURRENT_STUDY_CACHE.supported_languages ||
+            [],
+          backendConfig.default_language ||
+            CURRENT_STUDY_CACHE.default_language ||
+            'en'
+        ) ||
+        CURRENT_STUDY_CACHE.selected_language ||
+        CURRENT_STUDY_CACHE.default_language ||
+        'en';
+
+      // Keep cache language in sync with the actual effective language used in UI.
+      CURRENT_STUDY_CACHE.selected_language = selectedLanguage;
+
+      const defaultLanguage =
+        backendConfig.default_language ||
+        CURRENT_STUDY_CACHE.default_language ||
+        'en';
+
+      const resolvedIntro = resolveLocalizedStudyText(
+        backendConfig.study_text_intro,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedIntro && !CURRENT_STUDY_CACHE.study_text_intro) {
+        CURRENT_STUDY_CACHE.study_text_intro = resolvedIntro;
+      }
+
+      const resolvedCompleted = resolveLocalizedStudyText(
+        backendConfig.study_text_end_completed,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedCompleted && !CURRENT_STUDY_CACHE.study_text_end_completed) {
+        CURRENT_STUDY_CACHE.study_text_end_completed = resolvedCompleted;
+      }
+
+      const resolvedSkipped = resolveLocalizedStudyText(
+        backendConfig.study_text_end_skipped,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedSkipped && !CURRENT_STUDY_CACHE.study_text_end_skipped) {
+        CURRENT_STUDY_CACHE.study_text_end_skipped = resolvedSkipped;
+      }
+
+      const resolvedNoConsent = resolveLocalizedStudyText(
+        backendConfig.study_text_end_noconsent,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedNoConsent && !CURRENT_STUDY_CACHE.study_text_end_noconsent) {
+        CURRENT_STUDY_CACHE.study_text_end_noconsent = resolvedNoConsent;
+      }
+
+      const resolvedConsent = resolveLocalizedStudyText(
+        backendConfig.study_text_consent,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (resolvedConsent && !CURRENT_STUDY_CACHE.study_text_consent) {
+        CURRENT_STUDY_CACHE.study_text_consent = resolvedConsent;
+      }
+
+      const resolvedInstructions = resolveLocalizedStudyText(
+        backendConfig.study_text_instructions,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (
+        resolvedInstructions &&
+        !CURRENT_STUDY_CACHE.study_text_instructions
+      ) {
+        CURRENT_STUDY_CACHE.study_text_instructions = resolvedInstructions;
+      }
+
+      const resolvedInstructionsTitle = resolveLocalizedStudyText(
+        backendConfig.study_text_instructions_title,
+        selectedLanguage,
+        defaultLanguage
+      );
+      if (
+        resolvedInstructionsTitle &&
+        !CURRENT_STUDY_CACHE.study_text_instructions_title
+      ) {
+        CURRENT_STUDY_CACHE.study_text_instructions_title =
+          resolvedInstructionsTitle;
+      }
+
+      if (backendConfig.require_consent !== undefined) {
+        CURRENT_STUDY_CACHE.require_consent = backendConfig.require_consent;
+      }
+      if (backendConfig.allow_skip_timeuse !== undefined) {
+        CURRENT_STUDY_CACHE.allow_skip_timeuse =
+          backendConfig.allow_skip_timeuse;
+      }
+
+      // Inactivity timeout configuration
+      if (backendConfig.inactivity_timeout_minutes !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_timeout_minutes =
+          backendConfig.inactivity_timeout_minutes;
+      }
+      if (backendConfig.inactivity_timeout_stress_time_left !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_timeout_stress_time_left =
+          backendConfig.inactivity_timeout_stress_time_left;
+      }
+      if (backendConfig.inactivity_page_custom_text !== undefined) {
+        CURRENT_STUDY_CACHE.inactivity_page_custom_text =
+          backendConfig.inactivity_page_custom_text;
+      }
+
+      // Study-specific footer links
+      if (backendConfig.footer_links != null) {
+        CURRENT_STUDY_CACHE.footer_links = backendConfig.footer_links;
+      }
+      if (backendConfig.hide_server_wide_links != null) {
+        CURRENT_STUDY_CACHE.hide_server_wide_links =
+          backendConfig.hide_server_wide_links;
+      }
+
+      // Browser/device identification capture (per-study opt-out, on by default).
+      if (backendConfig.save_browser_identification != null) {
+        CURRENT_STUDY_CACHE.save_browser_identification =
+          backendConfig.save_browser_identification;
+      }
+
+      if (backendConfig.consent_given !== undefined) {
+        CURRENT_STUDY_CACHE.consent_given = backendConfig.consent_given;
+      }
+      if (backendConfig.consent_decided_at !== undefined) {
+        CURRENT_STUDY_CACHE.consent_decided_at =
+          backendConfig.consent_decided_at;
+      }
+
+      if (backendConfig.instructions_completed !== undefined) {
+        CURRENT_STUDY_CACHE.instructions_completed =
+          backendConfig.instructions_completed;
+      }
+      if (backendConfig.instructions_completed_at !== undefined) {
+        CURRENT_STUDY_CACHE.instructions_completed_at =
+          backendConfig.instructions_completed_at;
+      }
+      if (backendConfig.participant_has_completed_study !== undefined) {
+        CURRENT_STUDY_CACHE.participant_has_completed_study =
+          backendConfig.participant_has_completed_study;
+      }
+      if (backendConfig.external_tasks !== undefined) {
+        CURRENT_STUDY_CACHE.external_tasks = Array.isArray(
+          backendConfig.external_tasks
+        )
+          ? backendConfig.external_tasks
+          : [];
+      }
+      if (backendConfig.all_external_tasks_confirmed !== undefined) {
+        CURRENT_STUDY_CACHE.all_external_tasks_confirmed =
+          backendConfig.all_external_tasks_confirmed;
+      }
+
+      if (backendConfig.study_days_count) {
+        // Ensure day_labels matches study_days_count
+        if (
+          !CURRENT_STUDY_CACHE.day_labels ||
+          CURRENT_STUDY_CACHE.day_labels.length !==
+            backendConfig.study_days_count
+        ) {
+          CURRENT_STUDY_CACHE.day_labels = Array.from(
+            { length: backendConfig.study_days_count },
+            (_, i) => `day_${i + 1}`
+          );
+        }
+      }
+
+      // The backend is authoritative for the study identity. The local
+      // settings/studies_config.json bootstrap file may not list every study
+      // (e.g. restricted studies), in which case loadStudiesConfigFromFile()
+      // fell back to a minimal 'default' study. Always trust the backend's
+      // short name so downstream consumers (activities-config fetch, submit
+      // URLs, ...) target the correct study.
+      const backendStudyNameShort =
+        backendConfig.study_name_short || studyName || null;
+      if (backendStudyNameShort) {
+        CURRENT_STUDY_CACHE.name_short = backendStudyNameShort;
+      }
+      if (backendConfig.study_name) {
+        CURRENT_STUDY_CACHE.name = backendConfig.study_name;
+      }
+
+      // Store full backend config for reference
+      CURRENT_STUDY_CACHE.backend_config = backendConfig;
+      CURRENT_STUDY_CACHE.source = 'backend';
+
+      // Best-effort, fire-and-forget: record browser/device identification once
+      // per participant. Never blocks or breaks study initialisation. Skipped
+      // until consent is given when the study requires it.
+      void captureClientInfoIfEnabled({
+        studyNameShort: CURRENT_STUDY_CACHE.name_short || studyName,
+        participantId,
+        enabled: CURRENT_STUDY_CACHE.save_browser_identification,
+        requiresConsent: CURRENT_STUDY_CACHE.require_consent === true,
+        consentGiven: CURRENT_STUDY_CACHE.consent_given === true,
+      });
+
+      console.log('[TRAC day-label-debug] study cache after backend sync', {
+        selected_language: CURRENT_STUDY_CACHE.selected_language,
+        default_language: CURRENT_STUDY_CACHE.default_language,
+        supported_languages: CURRENT_STUDY_CACHE.supported_languages,
+        first_day_label: CURRENT_STUDY_CACHE.day_labels?.[0] || null,
+        day_labels_count: Array.isArray(CURRENT_STUDY_CACHE.day_labels)
+          ? CURRENT_STUDY_CACHE.day_labels.length
+          : 0,
+      });
+
+      console.log(
+        `Synced with backend: ${CURRENT_STUDY_CACHE.day_labels.length} days`
+      );
+      return CURRENT_STUDY_CACHE;
+    } else if (response.status === 403) {
+      let errorMessage = 'You are not authorized to participate in this study.';
+      let errorCode = 'STUDY_NOT_AUTHORIZED';
+      try {
+        const payload = await response.json();
+        const detail = payload?.detail;
+        if (typeof detail === 'string' && detail.trim()) {
+          errorMessage = detail;
+        } else if (
+          detail &&
+          typeof detail === 'object' &&
+          typeof detail.message === 'string' &&
+          detail.message.trim()
+        ) {
+          errorMessage = detail.message;
+          if (detail.code === 'study_unavailable') {
+            errorCode = 'STUDY_UNAVAILABLE';
+          }
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse 403 study-config response:', parseError);
+      }
+
+      const unauthorizedError = new Error(errorMessage);
+      unauthorizedError.code = errorCode;
+      unauthorizedError.status = 403;
+      throw unauthorizedError;
+    } else if (response.status === 400) {
+      const participantIdRequiredError = new Error(
+        'A participant link is required for this study.'
+      );
+      participantIdRequiredError.code = 'STUDY_PARTICIPANT_ID_REQUIRED';
+      participantIdRequiredError.status = 400;
+      throw participantIdRequiredError;
+    } else if (response.status === 404) {
+      const notFoundError = new Error(
+        `Study '${studyName}' not found on server.`
+      );
+      notFoundError.code = 'STUDY_NOT_FOUND';
+      notFoundError.status = 404;
+      throw notFoundError;
+    } else {
+      if (!CURRENT_STUDY_CACHE) {
+        const noStudiesError = new Error('No studies available.');
+        noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+        throw noStudiesError;
+      }
+      console.log(`Backend returned ${response.status}, using file config`);
+      CURRENT_STUDY_CACHE.source = 'file';
+      return CURRENT_STUDY_CACHE;
+    }
+  } catch (error) {
+    if (
+      error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_UNAVAILABLE' ||
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' ||
+      error?.code === 'STUDY_NOT_FOUND'
+    ) {
+      throw error;
+    }
+    if (error?.code === 'NO_STUDIES_AVAILABLE') {
+      throw error;
+    }
+    if (!CURRENT_STUDY_CACHE) {
+      const noStudiesError = new Error(
+        'No studies available because backend is unreachable and no local fallback is configured.'
+      );
+      noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+      throw noStudiesError;
+    }
+    console.log('Backend unavailable, using file config:', error.message);
+    CURRENT_STUDY_CACHE.source = 'file';
+    return CURRENT_STUDY_CACHE;
+  }
+}
+
+// Public API
+function getCurrentStudy() {
+  return CURRENT_STUDY_CACHE;
+}
+
+function getSupportedLanguages() {
+  if (!CURRENT_STUDY_CACHE) {
+    return [];
+  }
+  return CURRENT_STUDY_CACHE.supported_languages || [];
+}
+
+function getSelectedLanguage() {
+  if (!CURRENT_STUDY_CACHE) {
+    return 'en';
+  }
+  return (
+    CURRENT_STUDY_CACHE.selected_language ||
+    CURRENT_STUDY_CACHE.default_language ||
+    'en'
+  );
+}
+
+function getDayLabels() {
+  if (!CURRENT_STUDY_CACHE || !Array.isArray(CURRENT_STUDY_CACHE.day_labels)) {
+    return [];
+  }
+  return CURRENT_STUDY_CACHE.day_labels;
+}
+
+function getStudyByShortName(nameShort) {
+  if (STUDIES_CONFIG_CACHE && STUDIES_CONFIG_CACHE.studies) {
+    return STUDIES_CONFIG_CACHE.studies.find((s) => s.name_short === nameShort);
+  }
+  return null;
+}
+
+// Initialize - load from file first, then sync with backend
+async function initializeStudyConfig() {
+  // First load from file
+  await loadStudiesConfigFromFile();
+
+  // Then sync with backend (wait for it to complete)
+  try {
+    await syncWithBackendConfig();
+    console.log('Backend sync completed in initializeStudyConfig');
+  } catch (error) {
+    // When backend indicates there are no studies or multiple choices available,
+    // propagate these specific codes so the caller can present the correct UI.
+    if (
+      error?.code === 'STUDY_NOT_AUTHORIZED' ||
+      error?.code === 'STUDY_UNAVAILABLE' ||
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' ||
+      error?.code === 'STUDY_NOT_FOUND' ||
+      error?.code === 'NO_STUDIES_AVAILABLE' ||
+      error?.code === 'STUDY_CHOICES_AVAILABLE'
+    ) {
+      throw error;
+    }
+    console.log(
+      'Background sync failed:',
+      error && error.message ? error.message : error
+    );
+  }
+
+  if (!CURRENT_STUDY_CACHE) {
+    const noStudiesError = new Error('No studies available.');
+    noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+    throw noStudiesError;
+  }
+
+  // Notify footer.js and other consumers that study config is ready
+  window.TUD_STUDY_CONFIG = CURRENT_STUDY_CACHE;
+  window.dispatchEvent(new CustomEvent('tud:studyConfigReady'));
+
+  return CURRENT_STUDY_CACHE;
+}
+
+// Get day label for a specific index
+function getDayLabel(dayIndex) {
+  console.log(`getDayLabel called with index: ${dayIndex}`);
+
+  if (!CURRENT_STUDY_CACHE || !CURRENT_STUDY_CACHE.day_labels) {
+    console.log('No day_labels cache, returning fallback');
+    return `day_${dayIndex + 1}`;
+  }
+
+  const label = CURRENT_STUDY_CACHE.day_labels[dayIndex];
+  console.log(`Label at index ${dayIndex}:`, label);
+
+  // Handle object format: {name: "monday", display_name: "Monday", ...}
+  // For backend submission endpoints, we must use the stable day label name.
+  if (label && typeof label === 'object' && label.name) {
+    console.log(`Extracting name from object: ${label.name}`);
+    return label.name;
+  }
+
+  // Handle string format (for backward compatibility)
+  if (typeof label === 'string') {
+    console.log(`Using string label: ${label}`);
+    return label;
+  }
+
+  // Fallback
+  const fallback = `day_${dayIndex + 1}`;
+  console.log(`Using fallback: ${fallback}`);
+  return fallback;
+}
+
+// Get display label for a specific day index (UI-facing)
+function getDayDisplayLabel(dayIndex) {
+  if (!CURRENT_STUDY_CACHE || !CURRENT_STUDY_CACHE.day_labels) {
+    return `day_${dayIndex + 1}`;
+  }
+
+  const label = CURRENT_STUDY_CACHE.day_labels[dayIndex];
+
+  console.log('[TRAC day-label-debug] getDayDisplayLabel input', {
+    dayIndex,
+    selected_language: getSelectedLanguage(),
+    default_language: CURRENT_STUDY_CACHE.default_language || 'en',
+    label,
+  });
+
+  if (label && typeof label === 'object') {
+    if (label.display_names && typeof label.display_names === 'object') {
+      const selectedLanguage = getSelectedLanguage();
+      const defaultLanguage = CURRENT_STUDY_CACHE.default_language || 'en';
+
+      // Prefer exact selected-language match from display_names first.
+      // If missing, trust backend-provided display_name before falling back
+      // to default/en values from possibly stale fallback display_names.
+      const selectedDisplay = label.display_names[selectedLanguage];
+      const backendDisplayName =
+        typeof label.display_name === 'string' ? label.display_name : null;
+
+      const resolvedDisplay =
+        selectedDisplay ||
+        backendDisplayName ||
+        label.display_names[defaultLanguage] ||
+        label.display_names.en ||
+        label.name ||
+        `day_${dayIndex + 1}`;
+
+      console.log(
+        '[TRAC day-label-debug] getDayDisplayLabel resolved from display_names',
+        {
+          dayIndex,
+          selectedLanguage,
+          defaultLanguage,
+          available_languages: Object.keys(label.display_names),
+          resolvedDisplay,
+        }
+      );
+
+      return resolvedDisplay;
+    }
+    const fallbackDisplay =
+      label.display_name || label.name || `day_${dayIndex + 1}`;
+    console.log(
+      '[TRAC day-label-debug] getDayDisplayLabel resolved from display_name/name',
+      {
+        dayIndex,
+        fallbackDisplay,
+      }
+    );
+    return fallbackDisplay;
+  }
+
+  if (typeof label === 'string') {
+    console.log('[TRAC day-label-debug] getDayDisplayLabel string label', {
+      dayIndex,
+      label,
+    });
+    return label;
+  }
+
+  console.log(
+    '[TRAC day-label-debug] getDayDisplayLabel fallback placeholder',
+    { dayIndex }
+  );
+  return `day_${dayIndex + 1}`;
+}
+
+// Get number of days in current study
+function getStudyDaysCount() {
+  if (!CURRENT_STUDY_CACHE || !CURRENT_STUDY_CACHE.day_labels) {
+    return 1;
+  }
+  return CURRENT_STUDY_CACHE.day_labels.length;
+}
+
+// Make everything available globally
+window.studyConfigManager = {
+  getCurrentStudy,
+  getSupportedLanguages,
+  getSelectedLanguage,
+  getDayLabels,
+  getStudyByShortName,
+  initializeStudyConfig,
+  syncWithBackendConfig,
+  getDayLabel,
+  getDayDisplayLabel,
+  getStudyDaysCount,
+};
+
+export {
+  getCurrentStudy,
+  getSupportedLanguages,
+  getSelectedLanguage,
+  getDayLabels,
+  getStudyByShortName,
+  initializeStudyConfig,
+  syncWithBackendConfig,
+  getDayLabel,
+  getDayDisplayLabel,
+  getStudyDaysCount,
+  // Pure helpers, exported for unit testing.
+  normalizeDayLabels,
+  resolveLocalizedStudyText,
+  normalizeLanguageCode,
+};

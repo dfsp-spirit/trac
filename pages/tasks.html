@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Filled by setStudyPageTitle() in js/footer.js - "<study name> - Tasks".
+         Not data-i18n, for the same reason as the consent page. -->
+    <title>Tasks</title>
+    <link href="../assets/fonts/inter/inter.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/fonts/fontawesome/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #475569;
+            --background-color: #f8fafc;
+            --text-color: #1e293b;
+            --border-color: #e2e8f0;
+            --success-color: #059669;
+            --warning-color: #92400e;
+            --warning-bg: #fef3c7;
+        }
+
+        html {
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--background-color) 0%, #e2e8f0 100%);
+            color: var(--text-color);
+            display: grid;
+            grid-template-columns: 1fr minmax(0, 1100px) 1fr;
+            grid-auto-rows: 1fr;
+        }
+
+        .tasks-container {
+            /* border-box: width:100% + padding otherwise overflows phones. */
+            box-sizing: border-box;
+            grid-column: 2;
+            width: 100%;
+            margin: 0;
+            padding: 36px 28px;
+            background: white;
+            border-left: 1px solid rgba(226, 232, 240, 0.95);
+            border-right: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 0;
+            box-shadow: none;
+            animation: none;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 30px;
+            margin: 0 0 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--secondary-color);
+            margin: 0 0 24px;
+        }
+
+        .task-list {
+            display: grid;
+            gap: 12px;
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .task-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+
+        .task-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 6px;
+        }
+
+        .task-title {
+            font-weight: 600;
+        }
+
+        .task-status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 600;
+            background: var(--warning-bg);
+            color: var(--warning-color);
+            white-space: nowrap;
+        }
+
+        .task-status.is-completed {
+            background: #e2e8f0;
+            color: #334155;
+        }
+
+        .task-status.is-locked {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+
+        .task-item.is-locked {
+            opacity: 0.55;
+        }
+
+        .task-item.is-locked .task-title {
+            color: #94a3b8;
+        }
+
+        .task-description {
+            font-size: 14px;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .task-link {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .task-link:hover,
+        .task-link:focus {
+            text-decoration: underline;
+        }
+
+        .footer-actions {
+            margin-top: 24px;
+        }
+
+        .continue-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: white;
+            /* #059669 (--success-color) gives white text only 3.76:1. */
+            background: #047857;
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            body {
+                grid-template-columns: 12px 1fr 12px;
+            }
+
+            .tasks-container {
+                grid-column: 2;
+                padding: 28px 18px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="tasks-container">
+        <h1 id="tasks-heading" data-i18n="taskPage.heading">Final Tasks</h1>
+        <p id="tasks-subtitle" class="subtitle" data-i18n="taskPage.subtitle">Please complete the following tasks before finishing the study.</p>
+
+        <ul id="tasks-list" class="task-list"></ul>
+
+        <div id="continue-wrapper" class="footer-actions hidden">
+            <a id="continue-link" class="continue-btn" href="#">
+                <i class="fas fa-check"></i>
+                <span data-i18n="taskPage.continueLink">Continue to final page</span>
+            </a>
+        </div>
+    </main>
+
+    <script src="../settings/tud_settings.js"></script>
+    <script src="../js/maintenance.js" type="module"></script>
+    <script type="module">
+        import i18n from '../js/i18n.js';
+
+        function getUrlParams() {
+            return new URLSearchParams(window.location.search);
+        }
+
+        function getCompletionStatus() {
+            return getUrlParams().get('completion_status') || 'completed';
+        }
+
+        function getReturnUrlStorageKey() {
+            const urlParams = getUrlParams();
+            const studyName = (
+                urlParams.get('study_name') ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                ''
+            ).trim();
+            const participantId = (urlParams.get('pid') || '').trim();
+            return `trac:return_url:${studyName}:${participantId}`;
+        }
+
+        function persistReturnUrlFromParams() {
+            const rawReturnUrl = (getUrlParams().get('return_url') || '').trim();
+            if (!rawReturnUrl) {
+                return;
+            }
+            try {
+                window.localStorage.setItem(getReturnUrlStorageKey(), rawReturnUrl);
+            } catch (error) {
+                console.warn('Could not persist return_url on tasks page:', error);
+            }
+        }
+
+        function getEffectiveReturnUrl() {
+            const rawReturnUrl = (getUrlParams().get('return_url') || '').trim();
+            if (rawReturnUrl) {
+                return rawReturnUrl;
+            }
+
+            try {
+                const stored = (window.localStorage.getItem(getReturnUrlStorageKey()) || '').trim();
+                return stored || null;
+            } catch (error) {
+                console.warn('Could not read persisted return_url on tasks page:', error);
+                return null;
+            }
+        }
+
+        function appendReturnUrlToTargetUrl(rawTargetUrl) {
+            if (typeof rawTargetUrl !== 'string' || rawTargetUrl.trim() === '') {
+                return rawTargetUrl;
+            }
+
+            const effectiveReturnUrl = getEffectiveReturnUrl();
+            if (!effectiveReturnUrl) {
+                return rawTargetUrl;
+            }
+
+            try {
+                const targetUrl = new URL(rawTargetUrl, window.location.href);
+                if (!targetUrl.searchParams.has('return_url')) {
+                    targetUrl.searchParams.set('return_url', effectiveReturnUrl);
+                }
+                return targetUrl.toString();
+            } catch (error) {
+                return rawTargetUrl;
+            }
+        }
+
+        function buildDiaryUrl() {
+            const currentUrl = new URL(window.location.href);
+            const diaryUrl = new URL('../index.html', currentUrl.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                diaryUrl.searchParams.set(key, value);
+            });
+            return diaryUrl.toString();
+        }
+
+        function buildThankYouUrl() {
+            const currentUrl = new URL(window.location.href);
+            const redirectUrl = new URL('thank-you.html', currentUrl.href);
+            currentUrl.searchParams.forEach((value, key) => {
+                redirectUrl.searchParams.set(key, value);
+            });
+            const effectiveReturnUrl = getEffectiveReturnUrl();
+            if (effectiveReturnUrl && !redirectUrl.searchParams.has('return_url')) {
+                redirectUrl.searchParams.set('return_url', effectiveReturnUrl);
+            }
+            return redirectUrl.toString();
+        }
+
+        async function loadStudyConfig(language) {
+            const urlParams = getUrlParams();
+            const studyName =
+                urlParams.get('study_name') ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                null;
+            if (!studyName) {
+                throw new Error('No studies available.');
+            }
+            const participantId = urlParams.get('pid');
+            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+            const endpointUrl = new URL(`${apiBaseUrl}/studies/${studyName}/study-config`, window.location.origin);
+
+            if (participantId) {
+                endpointUrl.searchParams.set('participant_id', participantId);
+            }
+            if (language) {
+                endpointUrl.searchParams.set('lang', language);
+            }
+
+            const response = await fetch(endpointUrl.toString(), {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to load study-config: ${response.status}`);
+            }
+
+            return await response.json();
+        }
+
+        function getCallbackParams() {
+            const urlParams = getUrlParams();
+            const taskKey = (
+                urlParams.get('callback_task_key') ||
+                urlParams.get('task_key') ||
+                ''
+            ).trim();
+            const assignedToken = (
+                urlParams.get('callback_token') ||
+                urlParams.get('token') ||
+                ''
+            ).trim();
+
+            if (!taskKey || !assignedToken) {
+                return null;
+            }
+
+            const hmac = (urlParams.get('hmac') || '').trim();
+            return { taskKey, assignedToken, hmac: hmac || undefined };
+        }
+
+        async function confirmCallbackExternalTask(studyConfig) {
+            const callbackParams = getCallbackParams();
+            if (!callbackParams) {
+                return null;
+            }
+
+            const urlParams = getUrlParams();
+            const studyName =
+                urlParams.get('study_name') ||
+                studyConfig?.study_name_short ||
+                window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+                null;
+            const participantId = urlParams.get('pid');
+            if (!studyName) {
+                return null;
+            }
+            if (!participantId) {
+                return null;
+            }
+
+            const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+            const response = await fetch(
+                `${apiBaseUrl}/studies/${studyName}/participants/${participantId}/external-tasks/confirm`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        task_key: callbackParams.taskKey,
+                        assigned_token: callbackParams.assignedToken,
+                        ...(callbackParams.hmac ? { hmac: callbackParams.hmac } : {}),
+                    }),
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(`Failed to confirm callback external task: ${response.status}`);
+            }
+
+            const confirmationResult = await response.json();
+            const matchedTask = Array.isArray(studyConfig?.external_tasks)
+                ? studyConfig.external_tasks.find((task) => task.task_key === confirmationResult.task_key)
+                : null;
+
+            if (matchedTask) {
+                matchedTask.is_confirmed = true;
+                matchedTask.confirmed_at = confirmationResult.confirmed_at;
+            }
+
+            return confirmationResult;
+        }
+
+        function isTaskSupported(task) {
+            return task?.confirmation_type === 'none' || task?.confirmation_type === 'callback';
+        }
+
+        function getEligibleTasks(studyConfig) {
+            const externalTasks = Array.isArray(studyConfig?.external_tasks)
+                ? studyConfig.external_tasks
+                : [];
+            return externalTasks.filter(isTaskSupported);
+        }
+
+        function hasPendingTasks(studyConfig) {
+            const eligibleTasks = getEligibleTasks(studyConfig);
+            if (eligibleTasks.length === 0) {
+                return false;
+            }
+
+            if (studyConfig?.all_external_tasks_confirmed === true) {
+                return false;
+            }
+
+            return eligibleTasks.some((task) => task?.is_confirmed !== true);
+        }
+
+        function getLocalizedText(key, fallback) {
+            const translated = window.i18n?.t?.(key);
+            if (
+                typeof translated !== 'string' ||
+                translated.trim() === '' ||
+                translated.trim() === key
+            ) {
+                return fallback;
+            }
+            return translated;
+        }
+
+        function renderTaskList(studyConfig) {
+            const tasksList = document.getElementById('tasks-list');
+            const continueWrapper = document.getElementById('continue-wrapper');
+            const continueLink = document.getElementById('continue-link');
+
+            if (!tasksList || !continueWrapper || !continueLink) {
+                return;
+            }
+
+            tasksList.innerHTML = '';
+
+            const statusCompleted = getLocalizedText('taskPage.statusAlreadyCompleted', 'Already completed');
+            const statusPending = getLocalizedText('taskPage.statusNotCompleted', 'Not completed');
+            const statusLocked = getLocalizedText('taskPage.statusLocked', 'Complete other tasks first');
+
+            const diaryTitle = getLocalizedText('taskPage.diaryTaskTitle', 'Fill out diary');
+            const diaryDescription = getLocalizedText('taskPage.diaryTaskDescription', 'Complete your time-use diary for all days of the study.');
+            const diaryCompletedLabel = getLocalizedText('taskPage.diaryTaskStatusCompleted', 'Completed');
+            const diaryNotCompletedLabel = getLocalizedText('taskPage.diaryTaskStatusNotCompleted', 'Not completed');
+
+            const diaryCompleted = studyConfig?.participant_has_completed_study === true;
+
+            const diaryLi = document.createElement('li');
+            diaryLi.className = 'task-item';
+
+            const diaryTitleRow = document.createElement('div');
+            diaryTitleRow.className = 'task-title-row';
+
+            const diaryTitleEl = document.createElement(diaryCompleted ? 'span' : 'a');
+            diaryTitleEl.className = diaryCompleted ? 'task-title' : 'task-title task-link';
+            diaryTitleEl.textContent = diaryTitle;
+            if (!diaryCompleted) {
+                diaryTitleEl.href = buildDiaryUrl();
+            }
+
+            const diaryStatus = document.createElement('span');
+            if (diaryCompleted) {
+                diaryStatus.className = 'task-status is-completed';
+                diaryStatus.textContent = diaryCompletedLabel;
+            } else {
+                diaryStatus.className = 'task-status';
+                diaryStatus.textContent = diaryNotCompletedLabel;
+            }
+
+            diaryTitleRow.appendChild(diaryTitleEl);
+            diaryTitleRow.appendChild(diaryStatus);
+            diaryLi.appendChild(diaryTitleRow);
+
+            const diaryDesc = document.createElement('p');
+            diaryDesc.className = 'task-description';
+            diaryDesc.textContent = diaryDescription;
+            diaryLi.appendChild(diaryDesc);
+
+            tasksList.appendChild(diaryLi);
+
+            const eligibleTasks = getEligibleTasks(studyConfig);
+
+            eligibleTasks.forEach((task) => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+
+                const titleRow = document.createElement('div');
+                titleRow.className = 'task-title-row';
+
+                const hasContinuationUrl = typeof task?.continuation_url === 'string' && task.continuation_url.trim() !== '';
+                const isLink = task?.is_confirmed !== true && hasContinuationUrl;
+                const isLocked = task?.is_confirmed !== true && !hasContinuationUrl;
+
+                const title = document.createElement(isLink ? 'a' : 'span');
+                title.className = isLink ? 'task-title task-link' : 'task-title';
+                title.textContent =
+                    typeof task?.name === 'string' && task.name.trim() !== ''
+                        ? task.name.trim()
+                        : getLocalizedText('thankYou.continueLink', 'Click here to continue.');
+
+                if (isLink) {
+                    title.href = appendReturnUrlToTargetUrl(task.continuation_url);
+                }
+
+                const status = document.createElement('span');
+                if (task?.is_confirmed === true) {
+                    status.className = 'task-status is-completed';
+                    status.textContent = statusCompleted;
+                } else if (isLocked) {
+                    status.className = 'task-status is-locked';
+                    status.textContent = statusLocked;
+                    li.classList.add('is-locked');
+                } else {
+                    status.className = 'task-status';
+                    status.textContent = statusPending;
+                }
+
+                titleRow.appendChild(title);
+                titleRow.appendChild(status);
+                li.appendChild(titleRow);
+
+                if (typeof task?.description === 'string' && task.description.trim() !== '') {
+                    const description = document.createElement('p');
+                    description.className = 'task-description';
+                    description.textContent = task.description.trim();
+                    li.appendChild(description);
+                }
+
+                tasksList.appendChild(li);
+            });
+
+            const pending = hasPendingTasks(studyConfig);
+            if (pending) {
+                continueWrapper.classList.add('hidden');
+            } else {
+                continueLink.href = buildThankYouUrl();
+                continueWrapper.classList.remove('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            persistReturnUrlFromParams();
+
+            if (getCompletionStatus() === 'noconsent') {
+                window.location.href = buildThankYouUrl();
+                return;
+            }
+
+            const requestedLanguage = getUrlParams().get('lang');
+            let studyConfig = null;
+            try {
+                studyConfig = await loadStudyConfig(requestedLanguage || undefined);
+            } catch (error) {
+                console.warn('Could not load study-config for tasks page:', error.message);
+                window.location.href = buildThankYouUrl();
+                return;
+            }
+
+            const language =
+                requestedLanguage || studyConfig?.selected_language || studyConfig?.default_language || 'en';
+
+            await i18n.init(language);
+            i18n.applyTranslations();
+
+            try {
+                const confirmationResult = await confirmCallbackExternalTask(studyConfig);
+                if (confirmationResult) {
+                    try {
+                        studyConfig = await loadStudyConfig(requestedLanguage || undefined);
+                    } catch (reloadError) {
+                        console.warn('Could not reload study-config after callback confirmation:', reloadError.message);
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not confirm callback external task:', error.message);
+            }
+
+            // After applyTranslations(), same as the consent page.
+            window.setStudyPageTitle(studyConfig, 'taskPage.title');
+            renderTaskList(studyConfig);
+        });
+    </script>
+    <script src="../js/footer.js"></script>
+</body>
+</html>

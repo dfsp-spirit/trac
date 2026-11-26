@@ -12,20 +12,20 @@
 ## Admin & Security
 - Admin portal templates are under `backend/src/o_timeusediary_backend/templates/`.
 - **One layout, one stylesheet, one script:** every admin page does {% raw %}`{% extends "admin_base.html" %}`{% endraw %} and sets {% raw %}`{% block nav %}{{ admin_nav('<page-id>', study) }}{% endblock %}`{% endraw %} from `templates/partials/admin_nav.html`. Styling lives in `static/admin.css` and shared JS helpers (`switchTab`, `adminFetch`, `setStatus`, `copyToClipboard`) in `static/admin.js`; both are mounted at `/static`. Pages must not carry their own `<style>` block - add the rule to `admin.css` behind a page-specific class instead, so the admin area keeps one look. `tests/integration/test_admin_ui_shell.py` enforces this.
-- **Shared brand layer:** `static/tokens.css` is a generated copy of `frontend/src/styles/tokens.css` (colour, type, spacing, radii, shadows) and is loaded before `admin.css`, so the portal and the participant app read as one product. Never edit the backend copy: change the source and run `npm run sync:admin-tokens` in `frontend/`; `tests/unit/admin_tokens_sync.test.js` fails on drift. Component styles and the semantic status colours stay in `admin.css`, which maps its legacy names (`--surface`, `--text`, `--muted`, `--border`) onto the tokens. Use `.text-ok` / `.text-warn` / `.text-danger` instead of inline colours, and `class="num"` on numeric `th`/`td` so counts align.
+- **Shared brand layer:** `static/tokens.css` is a generated copy of `frontend_new/src/styles/tokens.css` (colour, type, spacing, radii, shadows) and is loaded before `admin.css`, so the portal and the participant app read as one product. Never edit the backend copy: change the source and run `npm run sync:admin-tokens` in `frontend_new/`; `tests/unit/admin_tokens_sync.test.js` fails on drift. Component styles and the semantic status colours stay in `admin.css`, which maps its legacy names (`--surface`, `--text`, `--muted`, `--border`) onto the tokens. Use `.text-ok` / `.text-warn` / `.text-danger` instead of inline colours, and `class="num"` on numeric `th`/`td` so counts align.
 - **Mobile layout:** the portal is desktop-first but has to stay usable on a phone, so all phone rules live in the single `@media (max-width: 768px)` block in `admin.css`. Use `class="table-container"` around every `<table>` (it owns the horizontal scroll and its edge shadow; a bare table inside `.study-section` is clipped by its `overflow: hidden`), `class="col-md-hide"` on `th`/`td` pairs for columns that only matter on a desktop (the value must remain reachable on the corresponding detail page), and `class="table-sticky-first"` when the first column identifies the row. Do not shrink form fields with inline `min-width`; give them a class and drop the minimum in the mobile block, because inline styles win over the stylesheet.
 - Admin routes rely on HTTP Basic Auth and environment-driven credentials.
 - Request validation and constrained response models are required.
 - **HTML escaping:** admin pages are opened by authenticated administrators, so anything request- or store-controlled that reaches an HTML response must be escaped. Render a Jinja template (autoescaping is on) or escape explicitly with `html.escape()` - never interpolate values into HTML with an f-string (`HTMLResponse(content=f"...")`), and never add `|safe` to a template. `tests/unit/test_html_escaping_guards.py` fails on both shapes; `tests/integration/test_admin_html_escaping.py` verifies the behaviour of the admin study pages.
 - **Scientist data exports:** `/api/admin/export/{study}/activities` is ordered by participant, `DayLabel.display_order`, then `start_minutes`, and every row carries `day_label_index` plus the two derived columns `start_minutes_since_diary_start` / `end_minutes_since_diary_start` (from `coverage.to_study_relative_minutes`): minutes since the start of the day label with display order 0, so the axis continues across days (day 0 22:00 -> 1320, 04:00 on day 1 -> 1440) instead of restarting every day. They are computed on read - never stored and never authoritative - and are part of the base record, not of the optional metadata columns; `study_day_start_minutes` (metadata only) documents the axis origin. CSV picks the columns up from the record keys, so a new derived field must be added to the shared `record` dict, not to `export_csv`.
-- **Invitation-link export:** `/api/admin/studies/{s}/export-invitation-links` returns one row per participant with exactly `pid,invitation_link` - no participant data, consent state or external-task tokens, because those belong to exports with a different audience. Links point into the participant frontend; reuse `_build_frontend_study_join_url` rather than formatting URLs again. A `pid` link is a participant credential, so the response sets `Cache-Control: no-store` and the download is audited. It passes explicit rows to `tabular_export()` and not `export_csv()`, which sorts column names and would put the link before the `pid`.
+- **Invitation-link export:** `/api/admin/studies/{s}/export-invitation-links` returns one row per participant with exactly `pid,invitation_link` - no participant data, consent state or external-task tokens, because those belong to exports with a different audience. Links point into `frontend_new` by default and into the classic client with `?frontend=legacy`; reuse `_build_frontend_new_study_join_url` / `_build_frontend_study_join_url` rather than formatting URLs again. A `pid` link is a participant credential, so the response sets `Cache-Control: no-store` and the download is audited. It passes explicit rows to `tabular_export()` and not `export_csv()`, which sorts column names and would put the link before the `pid`.
 - **Participant ids:** `participant_ids.py` is the only place that defines what an id may look like (`[A-Za-z0-9_-]+`, at most 100 characters). Never write a second regex or a local `strip()` loop: import `normalize_participant_ids` (bulk input) or `validate_participant_id` (single value) and let it raise. `api_deps/participant_identity.py` wraps the rule into a 400 with the offending value, because the global validation handler deliberately reduces pydantic errors to "Invalid request data". Enforced in the paste box, `/import-participants`, the token imports, the study-config import (`_validate_import_study_payload`, the CLI model `CfgFileStudy`), and every participant-facing route, so an open study cannot store an arbitrary string from a URL.
 - **Study texts:** `study_texts.py` owns the editable text registry (`STUDY_TEXT_FIELD_SPECS`), the per-language completeness rules, canonicalization of the legacy string `description`, and the content-hash revision used by the admin editor. The CLI parser (`CfgFileStudy`), the admin upload/import path (`_validate_import_study_payload`) and the text PATCH endpoint must all call `validate_study_text_values`; do not add a fourth text policy. The editor is the **Texts** page per study (`templates/admin_study_texts.html` + `static/admin_study_texts.js`), and its field list comes from `study_text_specs_payload()`. The CLI and editor keep `require_complete_translations=True`; the admin upload/create helpers pass `False` because they also restore exports of legacy rows with partial maps. In that mode missing translations become `text_warnings` (surfaced as `text_translation_warning`) instead of errors.
 - **Runtime config export:** treat the runtime-config export as a backup contract, including its outer envelope (`{studies_config, activities, ...}`). The admin file-validation upload accepts that envelope and unwraps it; the inner `studies_config` is the bare importable shape. `tests/integration/test_admin_export_import_roundtrip.py::test_runtime_export_is_lossless_for_every_backup_field` exports, imports with only `name`/`name_short` changed, exports again and asserts full equality. When adding a backup-relevant `Study` field, add it to `export_runtime_studies_config` and to that kitchen-sink test. `owner_usernames`, ids/timestamps and recorded participant data are intentionally excluded.
 - **Study `name_short`:** `study_names.py` is the only place that defines the technical study identifier (`[a-z0-9_]{2,50}`, trimmed). It is enforced in `CfgFileStudy` (CLI/config), in `_validate_import_study_payload` (which normalizes the payload in place, covering `import-config` and the file-validation create flow) and in `rename_study` via `api_deps/study_identity.py`. Do not re-derive it: the admin rename form and the file-validation clash resolver render the same rule text and pattern from this module. Note it is *not* the pid rule - pids allow `-` and mixed case, study names must not, so a value that is a valid pid can still be an invalid `name_short`. The file-validation flow accepts `study_name_short_override`; it is applied after the uploaded study is selected and overrides only `name_short`, so the rest of the file remains authoritative.
 - **Roster upload:** `POST /api/admin/studies/{s}/import-participants` reads a CSV/TSV file, uses only the `pid` column (case-insensitive header match; other columns are reported as ignored) and rejects the whole file when one id is invalid. `tabular_files.parse_delimited_upload` detects tab/semicolon/comma from the header line, tolerates a UTF-8 BOM and CRLF, and is the place to extend if another delimited format appears. Assignment itself goes through `apply_participant_assignment`, shared with `assign-participants`, so counts cannot drift between paste and upload; `dry_run=true` reports the counts without writing.
 - **Download formats:** every admin table download takes `?format=csv` (default) or `?format=tsv`, typed as `ExportFormat` so FastAPI rejects anything else and documents the values. `tabular_export()` owns the dialect: delimiter, media type (`text/csv` / `text/tab-separated-values`), filename extension and the `X-Export-Schema-Version` header. Add a format to `EXPORT_DIALECTS` rather than branching on it at a call site, and never hard-code `text/csv` or a `.csv` filename in a route.
-- **Participant page pagination:** `/admin/participant-management` pages in SQL. `q` becomes a LIKE-escaped `ilike` on the participant id, `page`/`per_page` become `LIMIT`/`OFFSET`, an out-of-range `page` clamps to the last page, and the order is `COALESCE(last activity, created_at) DESC, participant_id` so the most recently active rows come first and pages never overlap or skip tied rows. External-task assignments, participant records, activity counts and min-coverage day counts are loaded only for the visible page - in a fixed number of queries, never one per row (`_get_days_meeting_min_coverage_bulk`). The table also carries the per-participant join links (`?pid=...`) into the frontend.
+- **Participant page pagination:** `/admin/participant-management` pages in SQL. `q` becomes a LIKE-escaped `ilike` on the participant id, `page`/`per_page` become `LIMIT`/`OFFSET`, an out-of-range `page` clamps to the last page, and the order is `COALESCE(last activity, created_at) DESC, participant_id` so the most recently active rows come first and pages never overlap or skip tied rows. External-task assignments, participant records, activity counts and min-coverage day counts are loaded only for the visible page - in a fixed number of queries, never one per row (`_get_days_meeting_min_coverage_bulk`). The table also carries the per-participant join links (`?pid=...`) into both frontends.
 - **One participant roster:** this table is the only per-participant view. The study detail page shows aggregate counters (total / in progress / submitted / skipped / consent denied) plus a link here; it must not grow a second roster or a second copy of the join links.
 - **Deleting a study:** `study_cleanup.delete_study_data(session, name_short)` is the single cascade implementation (activities, participants, config blobs, available catalog + i18n, external tasks + assignments, timelines, day labels, the study row). Both `DELETE /api/admin/studies/{s}` and `tud studies delete <name_short>` call it and own the commit; a second deletion path would leave orphaned catalog rows behind. The CLI asks for confirmation unless `--yes` is passed (and refuses on a non-interactive stdin) and reports the affected participant/activity counts with `--dry-run`.
 
@@ -46,8 +46,8 @@
 ## Participant diary API (incremental)
 
 `backend/src/o_timeusediary_backend/api_diary.py` is the participant-facing write
-path. It replaces "delete the whole day, insert a snapshot" with one row per
-activity, addressed by `client_uuid`.
+path of the frontend rewrite. It replaces "delete the whole day, insert a
+snapshot" with one row per activity, addressed by `client_uuid`.
 
 | Method | Path (under `/api/studies/{study}/participants/{participant}`) | Purpose |
 | --- | --- | --- |
@@ -73,8 +73,9 @@ Rules that must not drift:
 - **Access** is decided once, in `api_deps/diary_access.py`: open studies create
   the participant row on first write, and a submitted diary is readable but not
   writable (`study_already_submitted`).
-- **`POST /diary/submit` sits under `/diary`**, not on the participant root, so
-  it does not shadow the other participant routes.
+- **`POST /diary/submit` is not `POST .../submit`.** The latter is the old
+  whole-day writer's route and stays until cutover; the new one sits under
+  `/diary` so the two cannot shadow each other.
 - Errors carry a machine-readable `detail.code` (`overlap.limit_reached`,
   `activity.duplicate`, `day.ends_at_midnight`, `days.incomplete`, ...); the
   frontend maps those codes to translations and never parses message text.
@@ -105,72 +106,9 @@ JavaScript file:
   all produces no footer and no menu section.
 - `hide_server_wide_links` hides the deployment pair for that study only; the
   study's own `footer_links` are unaffected.
-- Do not add a second source for these URLs: `study-config` is the only place the
-  participant app learns them.
-
-## Participant inactivity sessions (opt-in)
-
-`studies.inactivity_timeout_minutes` defaults to **0 (off)** for every study.
-When it is greater than zero, participant data routes require a server-side
-session; with the default 0 they behave exactly as before.
-
-- **Storage / migration:** `participant_sessions` (0024) stores the study,
-  participant id, SHA-256 of the cookie token, `created_at`, `last_seen_at` and
-  `ended_at`. The raw token exists only in the browser cookie.
-- **Cookie:** `trac_session`, `HttpOnly`, `SameSite=Lax`, `Secure` when the
-  frontend URL is HTTPS, path-scoped to
-  `.../participants/<pid>/`. Cookies are required: participants who block them
-  cannot use a timed study. This is documented for study authors.
-- **Endpoints:** `api_session.py` provides `POST .../session` (start/resume on a
-  page load; replaces an expired cookie), `POST .../session/touch` (refresh from
-  user activity; 401 when already expired), `GET .../session`, and
-  `DELETE .../session`.
-- **Enforcement:** `api_deps/participant_session.py` wraps `get_participant_context`
-  and is used by `get_readable_diary_context` (and therefore all diary writes),
-  consent, instructions, client-info, and external-task launch/confirm. It is
-  deliberately absent from `study-config`, `activities-config`, the public study
-  list and `ux-events`, so the app can bootstrap and telemetry cannot keep a
-  session alive.
-- **Errors:** 401 with `detail.code` `session.required`, `session.expired` or
-  `session.invalid`. The frontend redirects to the timeout page for all three.
-- **Sliding window:** valid protected requests refresh `last_seen_at` (throttled
-  to 5 s); `/session/touch` refreshes it from non-API activity. Expiry is
-  `now >= last_seen_at + timeout`, so exactly the configured duration counts as
-  expired.
-- **Cleanup:** participant removal, participant data reset, all-participant-data
-  deletion and study deletion remove the corresponding session rows.
-- **Not authentication:** the invitation link remains the credential. Reopening
-  it starts a new session; the timeout protects an idle tab and rejects direct
-  API use after inactivity. It does not prove who is at the keyboard.
-
-## Admin runtime settings
-
-`PATCH /api/admin/studies/{study_name_short}/runtime-settings` changes the
-participant-facing behaviour without re-importing the study:
-
-`require_consent`, `allow_skip_timeuse`, `num_recent_activities_shown`,
-`time_step_minutes`, `min_duration_minutes`, `inactivity_timeout_minutes`,
-`hide_server_wide_links`.
-
-- The request is partial (`model_dump(exclude_unset=True, exclude_none=True)`);
-  omitted fields stay unchanged. Unknown fields are rejected.
-- The merged `time_step_minutes`/`min_duration_minutes` pair is validated with
-  `timing.validate_timing_settings`, so sending only one of them cannot bypass
-  the step/minimum rules.
-- Enabling consent (`false → true`) requires a non-empty
-  `study_text_consent` entry for every language from
-  `_get_study_blob_languages(...) or [study.default_language]`. The error carries
-  `code: "consent_text_incomplete"` and `missing_languages`. The shared
-  `study_texts.missing_consent_languages` helper is also used by the study
-  detail page and the Texts editor; while consent is required, the editor cannot
-  clear the text.
-- Existing consent flags are intentionally not reset. Enabling consent later
-  only routes participants whose `consent_given` is not true through the consent
-  page; documented in `README_CREATE_STUDY.md`.
-- The response returns `changed` and the effective `settings`; every changed
-  field is audit-logged. No schema migration is involved.
-- The admin study-detail page renders the form inside the existing locked edit
-  section and saves only changed fields.
+- The old frontend still reads the same two URLs from its
+  `frontend/src/settings/tud_settings.js`; that duplication goes away with the
+  cutover. Do not add a third source.
 
 ## Browser/device identification (`save_browser_identification`)
 
@@ -189,7 +127,7 @@ call entirely when the study has the flag off (it answers `saved: false`).
   `device_pixel_ratio`, `max_touch_points`). Anything else is dropped, which is
   what removed the client-side `ua-parser-js` snapshot — parsing rules improve,
   so the raw values are stored and interpreted later.
-- **Idempotent by design:** the app has no device storage (D33) and posts on
+- **Idempotent by design:** the rewrite has no device storage (D33) and posts on
   every load. An unchanged snapshot is not a capture: the endpoint returns
   `unchanged: true` and leaves `capture_count`/`first_captured_at` alone.
 - **Exports:** only the participant export carries it (`client_*` columns, 15 of
@@ -262,15 +200,18 @@ longer protocol - can close it from the menu:
   `task_level`, `null` when open) next to `task_level`, so a client renders the
   lock instead of guessing from an empty `continuation_url`. Level locks come
   from `_build_participant_external_task_unlock_map` and nowhere else.
-- **External-task return URL:** `_build_external_task_expected_return_url_template`
-  builds the one shape: `{TUD_FRONTEND_URL}/index.html?study=...&pid={participant_id}&callback_task_key=...&callback_token={assigned_token}#/tasks`.
-  It is shown in the admin study card; reuse it rather than formatting a return URL again, and
-  remember the HMAC message itself does not depend on the URL shape.
+- **External-task return URL:** two frontends, two shapes - `_build_external_task_expected_return_url_template`
+  (`study_name`, `pages/tasks.html`) and `_build_external_task_expected_return_url_template_new`
+  (`study`, `index.html`, `#/tasks`). Both are shown in the admin study card; reuse them rather than
+  formatting a return URL again, and remember the HMAC message itself does not depend on which one
+  the provider used.
 - **Export:** the participant export gains `participant_skipped_at`,
   `participant_skip_reason_code` and `participant_skip_note`, but only for studies
   that allow skipping. `study_submitted_at` alone cannot tell a skipped diary
   from a filled one; `participant_diary_completed_at` (coverage-based) stays empty
   for a skipper.
+- **Old app:** still skips by redirect (`completion_status=skipped`) and records
+  nothing. That goes away with the cutover; do not add a second code path.
 
 ## Banner messages (issue #153)
 

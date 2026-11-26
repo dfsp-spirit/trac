@@ -216,16 +216,6 @@
     "accessStudy": "Öppna studien '{{study}}'"
   },
   "diary": {
-    "session": {
-      "idleNote_one": "För din integritet avslutas sessionen efter {{count}} minut av inaktivitet.",
-      "idleNote_other": "För din integritet avslutas sessionen efter {{count}} minuter av inaktivitet."
-    },
-    "timeout": {
-      "pageTitle": "Sessionen avslutades",
-      "heading": "Din session har avslutats",
-      "body": "Du var inaktiv ett tag, så sessionen stängdes för din integritet.",
-      "hint": "Öppna din inbjudningslänk igen för att fortsätta."
-    },
     "message": {
       "dismiss": "Stäng det här meddelandet"
     },
@@ -333,8 +323,6 @@
       "unavailableEndedText": "Insamlingsperioden avslutades den {{date}}. Kontakta forskargruppen om du har frågor.",
       "failedTitle": "Det gick inte",
       "failedText": "Kontrollera din anslutning och försök igen.",
-      "cookiesRequiredTitle": "Cookies krävs",
-      "cookiesRequiredText": "Den här studien använder en inaktivitetsgräns och kräver webbläsarcookies. Tillåt cookies för den här webbplatsen och ladda om sidan eller öppna din inbjudningslänk igen.",
       "retry": "Försök igen",
       "noInvitationTitle": "Ingen inbjudan hittades",
       "noInvitationText": "Öppna länken i din inbjudan. Den innehåller uppgifterna om din studie.",

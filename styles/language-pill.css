@@ -1,0 +1,83 @@
+/* One language control for the whole app.
+ *
+ * Pages with their own stylesheet (consent, instructions) link this file; the
+ * diary reaches the same language list through its "More actions" menu instead,
+ * because a select in the toolbar competes with the actions that matter while the
+ * language is touched about once per participant.
+ *
+ * Markup it expects:
+ *   <div class="language-pill">
+ *     <i class="fas fa-globe language-pill-globe" aria-hidden="true"></i>
+ *     <label class="language-pill-label" for="...">Language</label>
+ *     <select id="...">…</select>
+ *     <i class="fas fa-caret-down language-pill-caret" aria-hidden="true"></i>
+ *   </div>
+ *
+ * The word "Language" stays in the DOM for screen readers (the select also
+ * carries an aria-label); visually the globe names the control, which is also the
+ * only label that is readable when the page is in a language the participant
+ * cannot read.
+ */
+
+.language-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background-color: #fff;
+  color: var(--secondary-color, #475569);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+.language-pill:hover {
+  border-color: #94a3b8;
+}
+
+.language-pill-globe {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.language-pill-caret {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Screen-reader only: keeps the "Language" label without widening the pill. */
+.language-pill-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The native select keeps its behaviour (keyboard, tap target, mobile pickers)
+   and loses its platform chrome, so the pill looks the same everywhere. The
+   caret above replaces the native arrow that `appearance: none` removes. */
+.language-pill select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: inherit;
+  cursor: pointer;
+}
+
+.language-pill select:focus-visible {
+  outline: 2px solid var(--primary-color, #2563eb);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -216,16 +216,6 @@
     "accessStudy": "Access study '{{study}}'"
   },
   "diary": {
-    "session": {
-      "idleNote_one": "For your privacy, this session ends after {{count}} minute of inactivity.",
-      "idleNote_other": "For your privacy, this session ends after {{count}} minutes of inactivity."
-    },
-    "timeout": {
-      "pageTitle": "Session ended",
-      "heading": "Your session has ended",
-      "body": "You were inactive for a while, so this session was closed for your privacy.",
-      "hint": "Please open your invitation link again to continue."
-    },
     "message": {
       "dismiss": "Dismiss this message"
     },
@@ -333,8 +323,6 @@
       "unavailableEndedText": "The collection period ended on {{date}}. Please contact the research team if you have questions.",
       "failedTitle": "That did not work",
       "failedText": "Please check your connection and try again.",
-      "cookiesRequiredTitle": "Cookies required",
-      "cookiesRequiredText": "This study uses an inactivity timeout and needs browser cookies. Please allow cookies for this site, then reload the page or open your invitation link again.",
       "retry": "Try again",
       "noInvitationTitle": "No invitation found",
       "noInvitationText": "Please open the link from your invitation. It contains the details of your study.",

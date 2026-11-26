@@ -1,0 +1,615 @@
+import { getIsMobile, updateIsMobile } from '../js/globals.js';
+import i18n from '../js/i18n.js';
+import { loadActivitiesConfig } from '../js/activities_config.js';
+import { renderMarkdown, renderInlineMarkdown } from '../js/markdown.js';
+import { hasPendingExternalTasks } from '../js/utils.js';
+
+function getUrlParams() {
+  return new URLSearchParams(window.location.search);
+}
+
+/**
+ * `?embed=1` renders this page as the walk-through only - no page heading, no
+ * study text, no language pill, no Start button - for the diary's help modal,
+ * which loads it in an iframe so the GIFs, the layout switching and the
+ * translations stay in one place. The walk-through is open, and the Start
+ * button's job (marking the instructions as completed) is unreachable from
+ * there.
+ */
+const IS_EMBED = getUrlParams().get('embed') === '1';
+
+function getCurrentLanguageFromUrl() {
+  return getUrlParams().get('lang');
+}
+
+function normalizeLanguageCode(language) {
+  if (typeof language !== 'string') {
+    return null;
+  }
+  const normalized = language.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  return normalized.split('-')[0] || null;
+}
+
+function getPreferredLanguage(
+  supportedLanguages = [],
+  fallbackLanguage = 'en'
+) {
+  const normalizedSupported = (
+    Array.isArray(supportedLanguages) ? supportedLanguages : []
+  )
+    .map((language) => normalizeLanguageCode(language))
+    .filter(Boolean);
+  const supportedSet = new Set(normalizedSupported);
+
+  const pickIfSupported = (candidate) => {
+    const normalizedCandidate = normalizeLanguageCode(candidate);
+    if (!normalizedCandidate) {
+      return null;
+    }
+    if (supportedSet.size === 0 || supportedSet.has(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+    return null;
+  };
+
+  const fromUrl = pickIfSupported(getCurrentLanguageFromUrl());
+  if (fromUrl) {
+    return fromUrl;
+  }
+
+  const browserLanguages =
+    Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+
+  for (const browserLanguage of browserLanguages) {
+    const picked = pickIfSupported(browserLanguage);
+    if (picked) {
+      return picked;
+    }
+  }
+
+  return (
+    pickIfSupported(fallbackLanguage) ||
+    normalizeLanguageCode(fallbackLanguage) ||
+    'en'
+  );
+}
+
+function setLanguageInUrl(language) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('lang', language);
+  window.history.replaceState({}, '', url.toString());
+}
+
+function resolveLocalizedStudyText(
+  textValue,
+  selectedLanguage,
+  defaultLanguage = 'en'
+) {
+  if (typeof textValue === 'string') {
+    return textValue;
+  }
+
+  if (!textValue || typeof textValue !== 'object') {
+    return '';
+  }
+
+  return (
+    textValue[selectedLanguage] ||
+    textValue[defaultLanguage] ||
+    textValue.en ||
+    Object.values(textValue).find((value) => typeof value === 'string') ||
+    ''
+  );
+}
+
+async function loadStudyConfigForInstructions(language) {
+  const urlParams = getUrlParams();
+  const studyName =
+    urlParams.get('study_name') ||
+    window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+    null;
+  if (!studyName) {
+    const noStudiesError = new Error('No studies available.');
+    noStudiesError.code = 'NO_STUDIES_AVAILABLE';
+    throw noStudiesError;
+  }
+  const participantId = urlParams.get('pid');
+  const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+  const endpointUrl = new URL(
+    `${apiBaseUrl}/studies/${studyName}/study-config`,
+    window.location.origin
+  );
+
+  if (participantId) {
+    endpointUrl.searchParams.set('participant_id', participantId);
+  }
+  if (language) {
+    endpointUrl.searchParams.set('lang', language);
+  }
+
+  const response = await fetch(endpointUrl.toString(), {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    let detailMessage = '';
+    let detailCode = '';
+    try {
+      const payload = await response.json();
+      const detail = payload?.detail;
+      if (typeof detail === 'string') {
+        detailMessage = detail;
+      } else if (detail && typeof detail === 'object') {
+        detailMessage = detail.message || '';
+        detailCode = detail.code || '';
+      }
+    } catch (_parseError) {
+      // keep generic fallback
+    }
+
+    const message =
+      detailMessage ||
+      `Failed to load study-config from backend: ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    if (detailCode === 'study_unavailable') {
+      error.code = 'STUDY_UNAVAILABLE';
+    }
+    throw error;
+  }
+
+  return await response.json();
+}
+
+function renderLanguageSelector(studyConfig, selectedLanguage) {
+  const supportedLanguages = studyConfig?.supported_languages || [];
+  const existingSelector = document.getElementById('languageSelect');
+  if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+    existingSelector?.closest('.language-selector-container')?.remove();
+    return;
+  }
+
+  if (existingSelector) {
+    return;
+  }
+
+  const selectorContainer = document.createElement('div');
+  selectorContainer.className = 'language-pill language-selector-container';
+  selectorContainer.style.marginBottom = '1rem';
+
+  // Globe + language code, the same control as on the consent page
+  // (styles/language-pill.css). The word "Language" stays for screen readers: a
+  // visible label in the page's own language is no help to someone who cannot
+  // read that language, which is exactly who needs this control.
+  const globe = document.createElement('i');
+  globe.className = 'fas fa-globe language-pill-globe';
+  globe.setAttribute('aria-hidden', 'true');
+
+  const label = document.createElement('label');
+  label.setAttribute('for', 'languageSelect');
+  label.className = 'language-pill-label';
+  label.textContent = 'Language';
+  label.setAttribute('data-i18n', 'common.language');
+
+  const select = document.createElement('select');
+  select.id = 'languageSelect';
+  select.setAttribute('aria-label', 'Choose language');
+  select.setAttribute('data-i18n-aria-label', 'common.chooseLanguage');
+
+  supportedLanguages.forEach((language) => {
+    const option = document.createElement('option');
+    option.value = language;
+    option.textContent = language.toUpperCase();
+    if (language === selectedLanguage) {
+      option.selected = true;
+    }
+    select.appendChild(option);
+  });
+
+  select.addEventListener('change', () => {
+    const newLanguage = select.value;
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', newLanguage);
+    window.location.href = url.toString();
+  });
+
+  const caret = document.createElement('i');
+  caret.className = 'fas fa-caret-down language-pill-caret';
+  caret.setAttribute('aria-hidden', 'true');
+
+  selectorContainer.appendChild(globe);
+  selectorContainer.appendChild(label);
+  selectorContainer.appendChild(select);
+  selectorContainer.appendChild(caret);
+
+  const bodyFirstDiv = document.body.querySelector('div');
+  if (bodyFirstDiv) {
+    bodyFirstDiv.insertBefore(selectorContainer, bodyFirstDiv.firstChild);
+  }
+}
+
+function applyStudyIntroText(studyConfig) {
+  const selectedLanguage =
+    studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
+  const defaultLanguage = studyConfig?.default_language || 'en';
+  const introElement = document.getElementById('study-custom-message-intro');
+  if (!introElement) {
+    return;
+  }
+
+  const resolvedText = resolveLocalizedStudyText(
+    studyConfig?.study_text_intro,
+    selectedLanguage,
+    defaultLanguage
+  );
+
+  if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
+    introElement.innerHTML = renderMarkdown(resolvedText);
+    introElement.removeAttribute('data-i18n-html');
+  }
+}
+
+function applyStudyInstructionsText(studyConfig) {
+  const selectedLanguage =
+    studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
+  const defaultLanguage = studyConfig?.default_language || 'en';
+  const instructionsElement = document.getElementById(
+    'study-custom-message-instructions'
+  );
+  if (!instructionsElement) {
+    return;
+  }
+
+  const resolvedText = resolveLocalizedStudyText(
+    studyConfig?.study_text_instructions,
+    selectedLanguage,
+    defaultLanguage
+  );
+
+  if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
+    instructionsElement.innerHTML = renderMarkdown(resolvedText);
+    return;
+  }
+
+  // Fallback: the built-in default text, which lives in the locale files
+  // (instructions.instructionsDefault) like the intro default above.
+  // i18n.t() returns the key itself when it is missing.
+  const fallbackKey = 'instructions.instructionsDefault';
+  const fallbackText = i18n.t(fallbackKey);
+  instructionsElement.innerHTML = renderMarkdown(
+    fallbackText === fallbackKey ? '' : fallbackText
+  );
+}
+
+/**
+ * Override the big page title with the study's own title when it defines one.
+ * Without a study title the localized default (`instructions.welcomeTitle`)
+ * that i18n already applied stays in place.
+ */
+function applyStudyTitleText(studyConfig) {
+  const titleElement = document.getElementById('study-custom-message-title');
+  if (!titleElement) {
+    return;
+  }
+
+  const selectedLanguage =
+    studyConfig?.selected_language || getCurrentLanguageFromUrl() || 'en';
+  const defaultLanguage = studyConfig?.default_language || 'en';
+
+  const resolvedText = resolveLocalizedStudyText(
+    studyConfig?.study_text_instructions_title,
+    selectedLanguage,
+    defaultLanguage
+  );
+
+  if (typeof resolvedText === 'string' && resolvedText.trim() !== '') {
+    // Inline markdown only: this element already is the page <h1>, so a heading
+    // marker in the study text would nest a heading inside a heading.
+    titleElement.innerHTML = renderInlineMarkdown(resolvedText);
+    // Detached from i18n so a later translation pass cannot overwrite it.
+    titleElement.removeAttribute('data-i18n');
+  }
+}
+
+function buildPostDiaryLandingUrlWithCurrentParams(studyConfig) {
+  const currentUrl = new URL(window.location.href);
+  const hasPendingTasks = hasPendingExternalTasks(studyConfig);
+  const targetPath = hasPendingTasks ? 'tasks.html' : 'thank-you.html';
+  const redirectUrl = new URL(targetPath, currentUrl.href);
+  currentUrl.searchParams.forEach((value, key) => {
+    redirectUrl.searchParams.set(key, value);
+  });
+  if (!redirectUrl.searchParams.has('completion_status')) {
+    redirectUrl.searchParams.set('completion_status', 'completed');
+  }
+  return redirectUrl.toString();
+}
+
+async function markInstructionsCompletedInBackend() {
+  const urlParams = getUrlParams();
+  const studyName =
+    urlParams.get('study_name') ||
+    window.TUD_SETTINGS?.DEFAULT_STUDY_NAME ||
+    null;
+  if (!studyName) {
+    return;
+  }
+  const participantId = urlParams.get('pid');
+  if (!participantId) {
+    return;
+  }
+
+  const apiBaseUrl = window.TUD_SETTINGS?.API_BASE_URL || '/api';
+  const endpointUrl = new URL(
+    `${apiBaseUrl}/studies/${studyName}/participants/${participantId}/instructions/complete`,
+    window.location.origin
+  );
+
+  const response = await fetch(endpointUrl.toString(), {
+    method: 'POST',
+    keepalive: true,
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ completed: true }),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to persist instructions completion: ${response.status}`
+    );
+  }
+}
+
+// Add the missing updateLayout function
+function updateLayout() {
+  const isMobile = getIsMobile();
+  document.body.classList.toggle('mobile-layout', isMobile);
+  document.body.classList.toggle('desktop-layout', !isMobile);
+
+  // Update orientation classes
+  const isHorizontal = window.innerWidth > window.innerHeight;
+  document.body.classList.toggle('is-horizontal', isHorizontal);
+  document.body.classList.toggle('is-vertical', !isHorizontal);
+}
+
+/**
+ * The "Copy a Day" step only makes sense when there is another day to copy to.
+ * The diary page shows the copy button under the same condition
+ * (addCopyDayLink() in ui.js), so hide the step for single-day studies.
+ * (The steps carry no numbers any more, so hiding one leaves no gap to fix up.)
+ */
+function applyCopyDayStepVisibility(studyConfig) {
+  const copyDayStep = document.getElementById('instruction-step-copy-day');
+
+  const declaredDaysCount = Number(studyConfig?.study_days_count);
+  const daysCount = Number.isFinite(declaredDaysCount)
+    ? declaredDaysCount
+    : Array.isArray(studyConfig?.day_labels)
+      ? studyConfig.day_labels.length
+      : null;
+
+  // Without a study config we cannot tell, so keep the step visible.
+  if (copyDayStep && daysCount !== null) {
+    copyDayStep.hidden = daysCount <= 1;
+  }
+}
+
+// Initialize i18n when the module loads
+(async () => {
+  try {
+    if (IS_EMBED) {
+      document.body.classList.add('is-embedded');
+      const howToSection = document.getElementById('howToSection');
+      if (howToSection) howToSection.open = true;
+    }
+
+    let studyConfig = null;
+    const requestedLanguage =
+      getCurrentLanguageFromUrl() || getPreferredLanguage();
+
+    try {
+      studyConfig = await loadStudyConfigForInstructions(
+        requestedLanguage || undefined
+      );
+      // Store globally for footer.js and other consumers
+      window.TUD_STUDY_CONFIG = studyConfig;
+      window.dispatchEvent(new CustomEvent('tud:studyConfigReady'));
+    } catch (studyConfigError) {
+      // Inside the help modal a dead study config must not navigate the iframe
+      // to the diary - the generic walk-through is still worth showing.
+      if (
+        !IS_EMBED &&
+        (studyConfigError?.code === 'STUDY_UNAVAILABLE' ||
+          studyConfigError?.status === 403)
+      ) {
+        const currentUrl = new URL(window.location.href);
+        const redirectUrl = new URL('../index.html', currentUrl.href);
+        currentUrl.searchParams.forEach((value, key) => {
+          redirectUrl.searchParams.set(key, value);
+        });
+        window.location.href = redirectUrl.toString();
+        return;
+      }
+      console.warn(
+        'Could not load study-config for instructions page:',
+        studyConfigError.message
+      );
+    }
+
+    const selectedLanguage = getPreferredLanguage(
+      studyConfig?.supported_languages || [],
+      requestedLanguage ||
+        studyConfig?.selected_language ||
+        studyConfig?.default_language ||
+        'en'
+    );
+    if (!requestedLanguage && selectedLanguage) {
+      setLanguageInUrl(selectedLanguage);
+    }
+
+    if (studyConfig && !IS_EMBED) {
+      if (studyConfig.participant_has_completed_study === true) {
+        window.location.href =
+          buildPostDiaryLandingUrlWithCurrentParams(studyConfig);
+        return;
+      }
+      renderLanguageSelector(studyConfig, selectedLanguage);
+    }
+
+    const activitiesConfig = await loadActivitiesConfig({
+      lang: selectedLanguage,
+      settingsBasePath: '../settings',
+      preferBackend: true,
+      requireBackend: false,
+      useCache: true,
+    });
+    const language =
+      selectedLanguage || activitiesConfig?.general?.language || 'en';
+    console.log('Loading language:', language);
+    await i18n.init(language);
+    i18n.applyTranslations();
+    if (studyConfig && !IS_EMBED) {
+      applyStudyIntroText(studyConfig);
+      applyStudyTitleText(studyConfig);
+      applyStudyInstructionsText(studyConfig);
+    }
+    // Applies in the modal too: a single-day study has no day to copy to.
+    applyCopyDayStepVisibility(studyConfig);
+    console.log('i18n initialized successfully');
+  } catch (error) {
+    console.error('Error initializing i18n:', error);
+    // Fallback to English if there's any error
+    await i18n.init('en');
+    i18n.applyTranslations();
+  }
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+  const continueBtn = document.getElementById('continueBtn');
+  const progressBar = document.getElementById('progressBar');
+
+  // Function to create URL with preserved parameters
+  function createUrlWithParams(targetPath) {
+    const currentUrl = new URL(window.location.href);
+    const redirectUrl = new URL(
+      targetPath,
+      currentUrl.origin + currentUrl.pathname.replace(/[^/]*$/, '')
+    );
+
+    // Preserve all existing URL parameters
+    currentUrl.searchParams.forEach((value, key) => {
+      // Don't override 'instructions' param if it's the target destination
+      if (targetPath === '../index.html' && key === 'instructions') {
+        return;
+      }
+      redirectUrl.searchParams.set(key, value);
+    });
+
+    // Add instructions=completed for final redirect
+    if (targetPath === '../index.html') {
+      redirectUrl.searchParams.set('instructions', 'completed');
+    }
+
+    return redirectUrl.toString();
+  }
+
+  // Update progress bar
+  if (progressBar) {
+    progressBar.style.transition = 'width 0.6s ease';
+    progressBar.style.width = '100%';
+  }
+
+  // Handle orientation changes
+  let orientationTimeout;
+  function updateLayoutClass() {
+    clearTimeout(orientationTimeout);
+    orientationTimeout = setTimeout(() => {
+      const isHorizontal = window.innerWidth > window.innerHeight;
+      document.body.classList.toggle('is-horizontal', isHorizontal);
+      document.body.classList.toggle('is-vertical', !isHorizontal);
+    }, 100);
+  }
+
+  // Update layout class on load and resize with passive event listener
+  updateLayoutClass();
+  window.addEventListener('resize', updateLayoutClass, { passive: true });
+
+  // Lazy load images with IntersectionObserver
+  const lazyImageObservers = new Map();
+  const lazyImages = document.querySelectorAll('.gif-container[data-src]');
+  lazyImages.forEach((container) => {
+    const img = container.querySelector('img');
+    if (img) {
+      const observer = new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              img.src = container.dataset.src;
+              observer.unobserve(entry.target);
+              lazyImageObservers.delete(container);
+            }
+          });
+        },
+        { rootMargin: '50px', threshold: 0.1 }
+      );
+      observer.observe(container);
+      lazyImageObservers.set(container, observer);
+    }
+  });
+
+  // Handle start button click
+  if (continueBtn) {
+    console.log('Continue button found, adding click handler');
+    continueBtn.addEventListener('click', (e) => {
+      console.log('Continue button clicked:', e);
+      markInstructionsCompletedInBackend().catch((error) => {
+        console.warn(
+          'Could not persist instructions completion:',
+          error.message
+        );
+      });
+      const targetUrl = createUrlWithParams('../index.html');
+      console.log('Redirecting to:', targetUrl);
+      window.location.href = targetUrl;
+    });
+  } else {
+    console.error('Continue button not found!');
+  }
+
+  // Cleanup function
+  function cleanup() {
+    if (orientationTimeout) clearTimeout(orientationTimeout);
+    lazyImageObservers.forEach((observer) => observer.disconnect());
+    lazyImageObservers.clear();
+    window.removeEventListener('resize', updateLayoutClass);
+  }
+
+  // Clean up when page is unloaded
+  window.addEventListener('unload', cleanup);
+});
+
+// Initial layout
+updateLayout();
+
+// Update on resize with debouncing
+let resizeTimeout;
+window.addEventListener(
+  'resize',
+  () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      updateIsMobile();
+      updateLayout();
+    }, 100);
+  },
+  { passive: true }
+);

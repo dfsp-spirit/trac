@@ -1,0 +1,346 @@
+{
+  "studies": [
+    {
+      "name": "Default Weekly Study for Adults FRONTEND",
+      "name_short": "default",
+      "description": "Default Study from FRONTEND demo file",
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Söndag",
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_intro": {
+        "en": "This is our time use study for adults. Please reconstruct a typical week of your daily activities.",
+        "sv": "Detta är vår tidsanvändningsstudie för vuxna. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
+        "de": "Dies ist unsere Zeitnutzungsstudie für Erwachsene. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten.",
+        "pl": "To jest nasze badanie wykorzystania czasu dla dorosłych. Prosimy o odtworzenie typowego tygodnia Twoich codziennych aktywności.",
+        "fi": "Tämä on aikuisten ajankäyttötutkimuksemme. Ole hyvä ja rekonstruoi tyypillinen viikko päivittäisistä toiminnoistasi.",
+        "fr": "Ceci est notre étude sur l'utilisation du temps pour les adultes. Veuillez reconstituer une semaine typique de vos activités quotidiennes.",
+        "es": "Este es nuestro estudio sobre el uso del tiempo para adultos. Por favor, reconstruya una semana típica de sus actividades diarias."
+      },
+      "study_text_end_completed": {
+        "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
+        "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
+        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
+        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
+        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
+        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
+      },
+      "study_text_end_skipped": {
+        "en": "You skipped the time reporting part. If you provided some information, we will try to use it. Thank you!",
+        "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
+        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
+        "pl": "Pominąłeś część dotyczącą raportowania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
+        "fi": "Ohitit ajankäytön raportointiosuuden. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
+        "fr": "Vous avez ignoré la partie de déclaration du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
+        "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
+      },
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "en",
+      "supported_languages": ["en", "sv", "de"],
+      "activities_json_files": {
+        "en": "activities_ki_adults_en.json",
+        "sv": "activities_ki_adults_sv.json",
+        "de": "activities_ki_adults_de.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2030-12-31T23:59:59Z",
+      "footer_links": [
+        {
+          "title": {
+            "en": "Study Information",
+            "sv": "Studieinformation",
+            "de": "Studieninformation"
+          },
+          "target_url": "https://example.com/study-info"
+        },
+        {
+          "title": {
+            "en": "Contact",
+            "sv": "Kontakt",
+            "de": "Kontakt"
+          },
+          "target_url": "https://example.com/contact"
+        }
+      ]
+    },
+    {
+      "name": "Weekly Study for 15 year olds",
+      "name_short": "15yearolds",
+      "description": "Weekly Study for 15 year olds at KI, filled out by themselves.",
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Sunday",
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_intro": {
+        "en": "This is our time use study for 15 year olds. Please reconstruct a typical week of your daily activities.",
+        "sv": "Detta är vår tidsanvändningsstudie för 15-åringar. Vänligen återskapa en typisk vecka av dina dagliga aktiviteter.",
+        "de": "Dies ist unsere Zeitnutzungsstudie für 15-Jährige. Bitte rekonstruieren Sie eine typische Woche Ihrer täglichen Aktivitäten.",
+        "pl": "To jest nasze badanie wykorzystania czasu dla 15-latków. Prosimy o odtworzenie typowego tygodnia Twoich codziennych aktywności.",
+        "fi": "Tämä on 15-vuotiaille tarkoitettu ajankäyttötutkimuksemme. Ole hyvä ja rekonstruoi tyypillinen viikko päivittäisistä toiminnoistasi.",
+        "fr": "Ceci est notre étude sur l'utilisation du temps pour les 15 ans. Veuillez reconstituer une semaine typique de vos activités quotidiennes.",
+        "es": "Este es nuestro estudio sobre el uso del tiempo para jóvenes de 15 años. Por favor, reconstruya una semana típica de sus actividades diarias."
+      },
+      "study_text_end_completed": {
+        "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
+        "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
+        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
+        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
+        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
+        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
+      },
+      "study_text_end_skipped": {
+        "en": "You skipped the time reporting part. If you provided some information, we will try to use it. Thank you!",
+        "sv": "Du hoppade över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
+        "de": "Sie haben den Teil zur Zeitberichterstattung übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
+        "pl": "Pominąłeś część dotyczącą raportowania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
+        "fi": "Ohitit ajankäytön raportointiosuuden. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
+        "fr": "Vous avez ignoré la partie de déclaration du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
+        "es": "Ha omitido la parte de registro del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
+      },
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "en",
+      "supported_languages": ["en", "sv"],
+      "activities_json_files": {
+        "en": "activities_ki_15yearolds_en.json",
+        "sv": "activities_ki_15yearolds_sv.json",
+        "de": "activities_ki_15yearolds_de.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
+    },
+    {
+      "name": "Weekly Study for 9 year olds",
+      "name_short": "9yearolds",
+      "description": "Weekly Study for 9 year olds at KI, filled out by their parents.",
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday",
+            "sv": "Måndag",
+            "de": "Montag"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday",
+            "sv": "Tisdag",
+            "de": "Dienstag"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday",
+            "sv": "Onsdag",
+            "de": "Mittwoch"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday",
+            "sv": "Torsdag",
+            "de": "Donnerstag"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday",
+            "sv": "Fredag",
+            "de": "Freitag"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday",
+            "sv": "Lördag",
+            "de": "Samstag"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday",
+            "sv": "Söndag",
+            "de": "Sonntag"
+          }
+        }
+      ],
+      "study_text_intro": {
+        "en": "Please fill out this study for 9 year old children. You will be asked to report time use for an entire week.",
+        "sv": "Vänligen fyll i denna studie för 9-åringar. Du kommer att bli ombedd att rapportera tidsanvändning för en hel vecka.",
+        "de": "Bitte füllen Sie diese Studie für 9-jährige Kinder aus. Sie werden gebeten, die Zeitnutzung für eine ganze Woche zu berichten.",
+        "pl": "Prosimy o wypełnienie tego badania dla 9-letnich dzieci. Zostaniesz poproszony o raportowanie wykorzystania czasu przez cały tydzień.",
+        "fi": "Täytä tämä tutkimus 9-vuotiaita lapsia varten. Sinua pyydetään raportoimaan ajankäyttö koko viikon ajalta.",
+        "fr": "Veuillez remplir cette étude pour des enfants de 9 ans. Il vous sera demandé de déclarer l'utilisation du temps pour une semaine entière.",
+        "es": "Por favor complete este estudio para niños de 9 años. Se le pedirá que informe el uso del tiempo durante una semana completa."
+      },
+      "study_text_end_completed": {
+        "en": "Thanks for filling out this study. Your efforts will contribute to valuable research.",
+        "sv": "Tack för att du fyllde i denna studie. Dina insatser kommer att bidra till värdefull forskning.",
+        "de": "Vielen Dank für das Ausfüllen dieser Studie. Ihre Beiträge werden zu wertvoller Forschung beitragen.",
+        "pl": "Dziękujemy za wypełnienie tego badania. Twoje wysiłki przyczynią się do wartościowych badań.",
+        "fi": "Kiitos tämän tutkimuksen täyttämisestä. Panoksesi edistää arvokasta tutkimusta.",
+        "fr": "Merci d'avoir rempli cette étude. Vos efforts contribueront à une recherche précieuse.",
+        "es": "Gracias por completar este estudio. Sus esfuerzos contribuirán a una investigación valiosa."
+      },
+      "study_text_end_skipped": {
+        "en": "You have skipped filling out the time use part of the study. If you provided some information, we will try to use it. Thank you!",
+        "sv": "Du har hoppat över att fylla i tidsanvändningsdelen av studien. Om du har lämnat viss information kommer vi att försöka använda den. Tack!",
+        "de": "Sie haben das Ausfüllen des Zeitnutzungsteils der Studie übersprungen. Wenn Sie einige Angaben gemacht haben, werden wir versuchen, diese zu verwenden. Vielen Dank!",
+        "pl": "Pominąłeś wypełnienie części badania dotyczącej wykorzystania czasu. Jeśli podałeś pewne informacje, postaramy się je wykorzystać. Dziękujemy!",
+        "fi": "Ohitit tutkimuksen ajankäyttöosan täyttämisen. Jos annoit joitakin tietoja, yritämme käyttää niitä. Kiitos!",
+        "fr": "Vous avez ignoré le remplissage de la partie de l'étude sur l'utilisation du temps. Si vous avez fourni certaines informations, nous essaierons de les utiliser. Merci !",
+        "es": "Ha omitido completar la parte del estudio sobre el uso del tiempo. Si proporcionó alguna información, intentaremos utilizarla. ¡Gracias!"
+      },
+      "study_participant_ids": [],
+      "allow_unlisted_participants": true,
+      "default_language": "sv",
+      "supported_languages": ["en", "sv"],
+      "activities_json_files": {
+        "en": "activities_ki_9yearolds_en.json",
+        "sv": "activities_ki_9yearolds_sv.json",
+        "de": "activities_ki_9yearolds_de.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2026-12-31T23:59:59Z"
+    }
+  ]
+}

@@ -1,0 +1,7475 @@
+import { TimelineMarker } from './timeline_marker.js';
+import { Timeline } from './timeline.js';
+import { TimelineContainer } from './timeline_container.js';
+import i18n from './i18n.js';
+import {
+  loadActivitiesConfig,
+  getCachedActivitiesConfig,
+  getTimelineCategories,
+} from './activities_config.js';
+import {
+  getCurrentTimelineData,
+  getCurrentTimelineKey,
+  sendData,
+  createTimelineJSON,
+  getPostDiaryRedirectPath,
+  validateMinCoverage,
+  getTimelineCoverage,
+  calculateTimeDifference,
+  syncURLParamsToStudy,
+} from './utils.js';
+import { updateIsMobile, getIsMobile } from './globals.js';
+import { createAutosave } from './autosave.js';
+import {
+  PENDING_TIMELINE_STATE_KEY,
+  DRAFT_TIMELINE_STATE_KEY,
+  clearTimelineState,
+  readStoredTimelineState,
+  storeTimelineState,
+  isStoredTimelineStateFresh,
+  matchesTimelineContext,
+  safeGetItem,
+  safeSetItem,
+  safeRemoveItem,
+} from './draft_storage.js';
+import {
+  createModal,
+  createFloatingAddButton,
+  updateFloatingButtonPosition,
+  updateButtonStates,
+  initButtons,
+  updateDebugOverlay,
+  hideDebugOverlay,
+  updateGradientBarLayout,
+  scrollToActiveTimeline,
+  updateTimelineCountVariable,
+  initDebugOverlay,
+  handleResize,
+  preventPullToRefresh,
+  updateHeaderHeight,
+  updateFooterHeight,
+} from './ui.js';
+import {
+  DEBUG_MODE,
+  MINUTES_PER_DAY,
+  INCREMENT_MINUTES,
+  DEFAULT_ACTIVITY_LENGTH,
+  TIMELINE_START_HOUR,
+  TIMELINE_HOURS,
+  TUD_FRONTEND_VERSION,
+} from './constants.js';
+import { startIdleTimer, stopIdleTimer } from './idle_timeout.js';
+import { checkAndRequestPID } from './utils.js';
+
+// Make window.selectedActivity a global property that persists across DOM changes.
+// Using a property setter so the body cursor updates automatically whenever an
+// activity is selected (→ crosshair to indicate "carrying" it) or cleared.
+(function () {
+  let _selectedActivity = null;
+  Object.defineProperty(window, 'selectedActivity', {
+    get() {
+      return _selectedActivity;
+    },
+    set(value) {
+      _selectedActivity = value;
+      if (value) {
+        document.body.classList.add('carrying-activity');
+      } else {
+        document.body.classList.remove('carrying-activity');
+      }
+    },
+    configurable: true,
+  });
+})();
+
+// Single timeline management object
+window.timelineManager = {
+  metadata: {}, // Timeline metadata (former timelines object)
+  activities: {}, // Timeline activities (former timelineData object)
+  initialized: new Set(), // Tracks initialized timelines
+  activeTimeline: null, // Will be set when first timeline is created
+  keys: [], // Available timeline keys
+  currentIndex: 0, // Current timeline index
+  study: {}, // Store URL parameters
+  general: {}, // Store general configuration
+};
+
+// Additional context for custom input activities: manages free text input state for top-level or child items
+window.customInputContext = {
+  type: null, // 'topLevel' or 'childItem'
+  parentActivity: null,
+  categoryName: null,
+};
+
+// ── Copy Days: sessionStorage helpers for template suppression ───────────
+// When a user saves a day (even empty), we record it so templates aren't
+// re-loaded on the next visit within the same browser session.  If the user
+// closes the tab and returns, templates are offered again — that's a fresh
+// session and the head-start is useful.
+
+function _daySavedKey(study, pid, dayIndex) {
+  return 'tud_saved_' + study + '_' + pid + '_' + dayIndex;
+}
+
+function markDaySaved(study, pid, dayIndex) {
+  try {
+    sessionStorage.setItem(_daySavedKey(study, pid, dayIndex), '1');
+  } catch (_) {
+    /* storage full or unavailable — best effort */
+  }
+}
+
+function wasDaySaved(study, pid, dayIndex) {
+  try {
+    return sessionStorage.getItem(_daySavedKey(study, pid, dayIndex)) === '1';
+  } catch (_) {
+    return false;
+  }
+}
+
+window.markDaySaved = markDaySaved;
+
+/**
+ * Mark the day the participant is looking at as intentionally saved. Used after
+ * an explicit save and after every successful autosave: it stops the template
+ * from being applied again over a day the participant deliberately left empty.
+ */
+function markDaySavedForCurrentDay() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const studyName =
+    window.timelineManager?.study?.study_name_short ||
+    urlParams.get('study_name');
+  const pid = window.timelineManager?.study?.pid || urlParams.get('pid');
+  const dayIndex = getCurrentDayIndex();
+  if (studyName && pid && Number.isInteger(dayIndex)) {
+    markDaySaved(studyName, pid, dayIndex);
+  }
+}
+
+function clearSelectedActivityButtons() {
+  document.querySelectorAll('.activity-button.selected').forEach((btn) => {
+    btn.classList.remove('selected');
+  });
+}
+
+function clearActiveActivitySelection() {
+  clearSelectedActivityButtons();
+  window.selectedActivity = null;
+}
+
+function normalizeFrequencyOptions(source) {
+  const rawOptions =
+    source?.frequency_options || source?.frequencyOptions || [];
+  if (!Array.isArray(rawOptions)) {
+    return [];
+  }
+
+  return rawOptions
+    .map((option) => {
+      const key =
+        option?.key || option?.frequency_key || option?.value || option?.id;
+      const label =
+        option?.label || option?.name || option?.text || option?.title || key;
+
+      if (!key) {
+        return null;
+      }
+
+      return {
+        key: String(key),
+        label: String(label || key),
+      };
+    })
+    .filter(Boolean);
+}
+
+function getFrequencyOptionsForActivity(activity, childItem = null) {
+  return normalizeFrequencyOptions(childItem || activity);
+}
+
+// ---- Saved custom activity texts (per activity code, persisted in localStorage) ----
+const CUSTOM_TEXT_STORAGE_KEY = 'tud_custom_activity_texts';
+
+function _loadCustomTexts() {
+  try {
+    const raw = localStorage.getItem(CUSTOM_TEXT_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function _saveCustomTexts(texts) {
+  try {
+    localStorage.setItem(CUSTOM_TEXT_STORAGE_KEY, JSON.stringify(texts));
+  } catch {
+    // storage full or unavailable — ignore silently
+  }
+}
+
+function getSavedCustomText(activityCode) {
+  if (!activityCode) return '';
+  return _loadCustomTexts()[activityCode] || '';
+}
+
+function saveCustomText(activityCode, text) {
+  if (!activityCode) return;
+  const texts = _loadCustomTexts();
+  const trimmed = (text || '').trim();
+  if (trimmed) {
+    texts[activityCode] = trimmed;
+  } else {
+    delete texts[activityCode];
+  }
+  _saveCustomTexts(texts);
+}
+
+function clearSavedCustomText(activityCode) {
+  if (!activityCode) return;
+  const texts = _loadCustomTexts();
+  delete texts[activityCode];
+  _saveCustomTexts(texts);
+}
+
+// Expose for the clear button in the modal to access
+window.tudClearCustomActivityText = function (activityCode) {
+  clearSavedCustomText(activityCode);
+  const input = document.getElementById('customActivityInput');
+  if (input) {
+    input.value = '';
+    input.focus();
+  }
+};
+// ---- End saved custom texts ----
+
+function getActivityDetailsModalElements() {
+  const modal = document.getElementById('customActivityModal');
+  if (!modal) {
+    return null;
+  }
+
+  return {
+    modal,
+    title: modal.querySelector('h3'),
+    inputContainer: document.getElementById('customActivityInputContainer'),
+    input: document.getElementById('customActivityInput'),
+    frequencyContainer: document.getElementById(
+      'customActivityFrequencyContainer'
+    ),
+    frequencyLabel: document.getElementById('customActivityFrequencyLabel'),
+    frequencySelect: document.getElementById('customActivityFrequencySelect'),
+    confirmButton: document.getElementById('confirmCustomActivity'),
+  };
+}
+
+function createFrequencyIndicator() {
+  const indicator = document.createElement('span');
+  indicator.className = 'activity-frequency-indicator';
+  indicator.textContent = '⟳';
+  indicator.title =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('modals.customActivity.frequency')
+      : 'Frequency';
+  indicator.setAttribute('aria-hidden', 'true');
+  return indicator;
+}
+
+function populateFrequencySelect(selectElement, options, selectedKey = '') {
+  if (!selectElement) {
+    return;
+  }
+
+  selectElement.innerHTML = '';
+
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t('modals.customActivity.frequencyNone')
+      : 'No special frequency';
+  selectElement.appendChild(placeholderOption);
+
+  options.forEach((option) => {
+    const optionElement = document.createElement('option');
+    optionElement.value = option.key;
+    optionElement.textContent = option.label;
+    selectElement.appendChild(optionElement);
+  });
+
+  selectElement.value = selectedKey || '';
+}
+
+function openActivityDetailsModal({
+  title,
+  showInput = false,
+  inputValue = '',
+  inputPlaceholder = '',
+  frequencyOptions = [],
+  selectedFrequencyKey = '',
+  activityCode = null,
+  onConfirm,
+}) {
+  const elements = getActivityDetailsModalElements();
+  if (!elements) {
+    return;
+  }
+
+  const {
+    modal,
+    title: titleElement,
+    inputContainer,
+    input,
+    frequencyContainer,
+    frequencyLabel,
+    frequencySelect,
+    confirmButton,
+  } = elements;
+
+  if (titleElement && title) {
+    titleElement.textContent = title;
+  }
+
+  // Determine the initial value: explicit inputValue takes precedence over saved text
+  const savedText =
+    !inputValue && activityCode ? getSavedCustomText(activityCode) : '';
+  const initialValue = inputValue || savedText;
+
+  if (inputContainer && input) {
+    inputContainer.style.display = showInput ? 'block' : 'none';
+    input.value = showInput ? initialValue : '';
+    if (inputPlaceholder) {
+      input.placeholder = inputPlaceholder;
+    }
+  }
+
+  // Update clear-button visibility based on whether we have an activityCode
+  const clearBtn = document.getElementById('customActivityClearBtn');
+  if (clearBtn) {
+    clearBtn.style.display =
+      activityCode && savedText ? 'inline-block' : 'none';
+  }
+
+  const normalizedFrequencyOptions = Array.isArray(frequencyOptions)
+    ? frequencyOptions
+    : [];
+  if (frequencyContainer && frequencySelect) {
+    const shouldShowFrequency = normalizedFrequencyOptions.length > 0;
+    frequencyContainer.style.display = shouldShowFrequency ? 'block' : 'none';
+    if (frequencyLabel && shouldShowFrequency) {
+      frequencyLabel.textContent =
+        window.i18n && window.i18n.isReady()
+          ? window.i18n.t('modals.customActivity.frequency')
+          : 'Frequency';
+    }
+    populateFrequencySelect(
+      frequencySelect,
+      normalizedFrequencyOptions,
+      selectedFrequencyKey
+    );
+  }
+
+  const newConfirmButton = confirmButton.cloneNode(true);
+  confirmButton.parentNode.replaceChild(newConfirmButton, confirmButton);
+
+  if (showInput && input) {
+    const newInput = input.cloneNode(true);
+    input.parentNode.replaceChild(newInput, input);
+
+    // Re-wire the clear button since the input container was cloned
+    const clonedClearBtn = document.getElementById('customActivityClearBtn');
+    if (clonedClearBtn) {
+      const reWiredClearBtn = clonedClearBtn.cloneNode(true);
+      clonedClearBtn.parentNode.replaceChild(reWiredClearBtn, clonedClearBtn);
+      reWiredClearBtn.addEventListener('click', () => {
+        window.tudClearCustomActivityText(activityCode);
+      });
+      reWiredClearBtn.style.display =
+        activityCode && getSavedCustomText(activityCode)
+          ? 'inline-block'
+          : 'none';
+    }
+  }
+
+  const refreshedInput = document.getElementById('customActivityInput');
+  const refreshedConfirmButton = document.getElementById(
+    'confirmCustomActivity'
+  );
+  const refreshedFrequencySelect = document.getElementById(
+    'customActivityFrequencySelect'
+  );
+
+  window.handleCustomActivityModalClose = () => {
+    modal.style.cssText = 'display: none !important';
+  };
+
+  const commitSelection = () => {
+    const customText =
+      showInput && refreshedInput ? refreshedInput.value.trim() : '';
+    const frequencyKey =
+      refreshedFrequencySelect && refreshedFrequencySelect.value
+        ? refreshedFrequencySelect.value
+        : null;
+
+    if (showInput && !customText) {
+      refreshedInput?.focus();
+      return;
+    }
+
+    // Persist the custom text for this activity code so it is pre-filled next time
+    if (activityCode && showInput && customText) {
+      saveCustomText(activityCode, customText);
+    }
+
+    onConfirm?.({ customText, frequencyKey });
+    window.handleCustomActivityModalClose = null;
+    modal.style.cssText = 'display: none !important';
+  };
+
+  refreshedConfirmButton.addEventListener('click', commitSelection);
+  refreshedInput?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      commitSelection();
+    }
+  });
+
+  modal.style.display = 'block';
+  if (showInput) {
+    refreshedInput?.focus();
+  } else if (
+    refreshedFrequencySelect &&
+    normalizedFrequencyOptions.length > 0
+  ) {
+    refreshedFrequencySelect.focus();
+  }
+}
+
+function setSingleActiveActivityButton(activityButton) {
+  clearSelectedActivityButtons();
+  if (activityButton) {
+    activityButton.classList.add('selected');
+  }
+}
+
+function activityIdsEqual(leftId, rightId) {
+  return String(leftId) === String(rightId);
+}
+
+function ensureTimelineHoverTooltipElement() {
+  let tooltipElement = document.getElementById('timeline-hover-tooltip');
+  if (tooltipElement) {
+    return tooltipElement;
+  }
+
+  tooltipElement = document.createElement('div');
+  tooltipElement.id = 'timeline-hover-tooltip';
+  tooltipElement.className = 'timeline-hover-tooltip';
+  tooltipElement.setAttribute('role', 'tooltip');
+  document.body.appendChild(tooltipElement);
+  return tooltipElement;
+}
+
+function hideTimelineHoverTooltip() {
+  const tooltipElement = document.getElementById('timeline-hover-tooltip');
+  if (!tooltipElement) return;
+
+  tooltipElement.classList.remove('visible');
+}
+
+function getTimelineHoverTooltipMessage(timelineElement) {
+  const t = window.i18n?.t?.bind(window.i18n);
+  const isActiveTimeline =
+    timelineElement?.getAttribute('data-active') === 'true';
+
+  if (!isActiveTimeline) {
+    return t
+      ? t('messages.timelineHoverInactive')
+      : 'Click to switch to this timeline';
+  }
+
+  if (!window.selectedActivity) {
+    return t
+      ? t('messages.timelineHoverActiveNoSelection')
+      : 'Select an activity below, then place it here.';
+  }
+
+  return t
+    ? t('messages.timelineHoverActiveWithSelection')
+    : 'Click to place the selected activity here.';
+}
+
+function showTimelineHoverTooltip(event, timelineElement) {
+  if (getIsMobile() || !timelineElement) {
+    hideTimelineHoverTooltip();
+    return;
+  }
+
+  const hoverTarget = event?.target;
+  if (hoverTarget && hoverTarget.closest('.activity-block')) {
+    hideTimelineHoverTooltip();
+    return;
+  }
+
+  const tooltipElement = ensureTimelineHoverTooltipElement();
+  tooltipElement.textContent = getTimelineHoverTooltipMessage(timelineElement);
+
+  const offsetX = 14;
+  const offsetY = 18;
+  tooltipElement.style.left = `${event.clientX + offsetX}px`;
+  tooltipElement.style.top = `${event.clientY + offsetY}px`;
+  tooltipElement.classList.add('visible');
+}
+
+// Function to calculate timeline coverage in minutes
+window.getTimelineCoverage = getTimelineCoverage;
+
+import {
+  formatTimeHHMM,
+  timeToMinutes,
+  findNearestMarkers,
+  minutesToPercentage,
+  positionToMinutes,
+  calculateMinimumBlockWidth,
+  hasOverlap,
+  canPlaceActivity,
+  isTimelineFull,
+  isOverlapping,
+  generateUniqueId,
+  createTimeLabel,
+  updateTimeLabel,
+} from './utils.js';
+
+function initInstructionBanner() {
+  const banner = document.getElementById('instructionBanner');
+  if (!banner) return;
+
+  const bannerStorageKey = getInstructionBannerStorageKey();
+
+  // The banner stays until the participant closes it - including on later days,
+  // which is what makes it usable as a reminder of the gestures (feedback: "it
+  // only shows on first day of study, which is irritating; show it on all days
+  // UNTIL user first closes it"). It used to be a day-one-only banner, so a
+  // participant who came back the next day had to remember the gestures.
+  //
+  // Check if the user has already closed it (using localStorage).
+  // Storage access itself can throw (blocked cookies, private mode), so it is
+  // guarded.
+  const bannerClosed = safeGetItem(localStorage, bannerStorageKey);
+  if (bannerClosed === 'true') {
+    banner.remove();
+    return;
+  }
+
+  banner.style.display = 'block';
+
+  // Set up close button
+  const closeBtn = banner.querySelector('.banner-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      banner.style.display = 'none';
+      safeSetItem(localStorage, bannerStorageKey, 'true');
+    });
+  }
+}
+
+function getInstructionBannerStorageKey() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const pid = urlParams.get('pid') || 'anonymous';
+  const studyName =
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+    urlParams.get('study_name') ||
+    (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+      ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+      : '');
+  // One flag per participant and study, deliberately not per day and no longer
+  // carrying the historical `:day1` suffix in its name: the key predates the
+  // banner being shown on every day, and renaming it would make everyone who
+  // already closed the banner see it again.
+  return `instructionBannerClosed:${studyName}:${pid}:day1`;
+}
+
+// Init keyboard shortcuts for deleting activity blocks.
+function initKeyboardShortcuts() {
+  document.addEventListener('keydown', (event) => {
+    // Handle both 'd' key (case insensitive) and 'Delete' key
+    const isDKey = event.key.toLowerCase() === 'd';
+    const isDeleteKey = event.key === 'Delete' || event.key === 'Del';
+
+    if (!isDKey && !isDeleteKey) return;
+
+    // Don't trigger if user is typing in an input field
+    if (
+      event.target.tagName === 'INPUT' ||
+      event.target.tagName === 'TEXTAREA'
+    ) {
+      return;
+    }
+
+    // Find the hovered activity block
+    const hoveredActivity = document.querySelector('.activity-block:hover');
+    if (!hoveredActivity) return;
+
+    // Only allow deleting from the currently active timeline
+    if (hoveredActivity.dataset.timelineKey !== getCurrentTimelineKey()) return;
+
+    // Prevent browser default behavior for Delete key (like navigating back in some browsers)
+    if (isDeleteKey) {
+      event.preventDefault();
+    }
+
+    // Delete the activity immediately
+    deleteActivityBlock(hoveredActivity);
+  });
+}
+
+// Delete activity block function, removes from DOM and timeline manager data.
+// Required for editing activities.
+function deleteActivityBlock(activityBlock) {
+  const activityId = activityBlock.dataset.id;
+  const timelineKey = activityBlock.dataset.timelineKey;
+
+  if (!activityId || !timelineKey) {
+    console.error('Missing activity data');
+    return;
+  }
+
+  console.log(
+    `=== DELETING ACTIVITY ${activityId} FROM TIMELINE ${timelineKey} ===`
+  );
+  console.log(
+    'Before deletion - activities:',
+    window.timelineManager.activities[timelineKey]?.map((a) => ({
+      id: a.id,
+      activity: a.activity,
+    }))
+  );
+
+  // Keep what an undo needs: the removed row and the index it sat at.
+  const timelineActivitiesBeforeDelete =
+    window.timelineManager.activities[timelineKey];
+  const removedIndex = Array.isArray(timelineActivitiesBeforeDelete)
+    ? timelineActivitiesBeforeDelete.findIndex((activity) =>
+        activityIdsEqual(activity.id, activityId)
+      )
+    : -1;
+  const removedActivity =
+    removedIndex === -1 ? null : timelineActivitiesBeforeDelete[removedIndex];
+
+  // Store reference to the timeline
+  const timeline = activityBlock.closest('.timeline');
+
+  // Remove from DOM first
+  activityBlock.remove();
+
+  // Remove from timeline manager data
+  const timelineActivities = window.timelineManager.activities[timelineKey];
+  if (timelineActivities) {
+    const index = timelineActivities.findIndex((activity) =>
+      activityIdsEqual(activity.id, activityId)
+    );
+    if (index !== -1) {
+      timelineActivities.splice(index, 1);
+
+      console.log(
+        'After deletion (before reassign) - activities:',
+        window.timelineManager.activities[timelineKey]?.map((a) => ({
+          id: a.id,
+          activity: a.activity,
+        }))
+      );
+
+      // CRITICAL: Ensure the array is properly updated by reassigning
+      window.timelineManager.activities[timelineKey] = [...timelineActivities];
+
+      console.log(
+        'After deletion (after reassign) - activities:',
+        window.timelineManager.activities[timelineKey]?.map((a) => ({
+          id: a.id,
+          activity: a.activity,
+        }))
+      );
+      console.log(
+        'Number of remaining activities:',
+        window.timelineManager.activities[timelineKey].length
+      );
+
+      // Re-render the timeline from the manager state to ensure clean state
+      rerenderActivitiesInTimeline(timeline, timelineKey);
+    } else {
+      console.error('Activity not found in timelineActivities array');
+    }
+  } else {
+    console.error('timelineActivities not found for key:', timelineKey);
+  }
+
+  // Update button states (coverage might have changed).  renderPreviousDaysSwitchRow()
+  // is called from within updateButtonStates() so the day-switch buttons refresh too.
+  updateButtonStates();
+  persistPendingTimelineStateSoon();
+
+  // Deleting is one tap in a menu, so offer the way back for a few seconds
+  // instead of keeping a "remove last" button in the toolbar.
+  if (removedActivity) {
+    showUndoDeleteToast(timelineKey, removedActivity, removedIndex);
+  }
+
+  console.log(`=== DELETION COMPLETE ===`);
+}
+
+/**
+ * Re-render every block of a timeline from the manager state. Used by deletion
+ * and by undoing a deletion, so both paths render identically.
+ */
+function rerenderActivitiesInTimeline(timeline, timelineKey) {
+  if (!timeline) {
+    console.error('Timeline element not found');
+    return;
+  }
+
+  const activitiesContainer = timeline.querySelector('.activities');
+  if (!activitiesContainer) {
+    console.error('Activities container not found in timeline');
+    return;
+  }
+
+  const activities = window.timelineManager.activities[timelineKey] || [];
+  activitiesContainer.innerHTML = '';
+
+  activities.forEach((activityData) => {
+    if (!activityData.startMinutes || !activityData.endMinutes) {
+      console.error('Activity missing minutes:', activityData);
+      return;
+    }
+    recreateActivityBlockFromTemplate(activityData);
+  });
+
+  // Re-initialize interact.js for the new blocks
+  initTimelineInteraction(timeline);
+}
+
+/** Put a deleted activity back where it was and re-render its timeline. */
+function undoDeleteActivity(timelineKey, activityData, index) {
+  const activities = window.timelineManager.activities[timelineKey];
+  if (!Array.isArray(activities)) return;
+
+  const insertAt = Math.max(0, Math.min(index, activities.length));
+  activities.splice(insertAt, 0, activityData);
+  window.timelineManager.activities[timelineKey] = [...activities];
+
+  if (getCurrentTimelineKey() === timelineKey) {
+    rerenderActivitiesInTimeline(
+      window.timelineManager.activeTimeline,
+      timelineKey
+    );
+  }
+
+  updateButtonStates();
+  persistPendingTimelineStateSoon();
+}
+
+function showUndoDeleteToast(timelineKey, activityData, index) {
+  if (typeof window.showToast !== 'function') return;
+
+  const translate = (key, fallback) =>
+    window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
+
+  window.showToast(
+    translate('messages.activityRemoved', 'Activity removed'),
+    'info',
+    6000,
+    {
+      label: translate('buttons.undo', 'Undo'),
+      onClick: () => undoDeleteActivity(timelineKey, activityData, index),
+    }
+  );
+}
+
+window.deleteActivityBlock = deleteActivityBlock;
+
+/**
+ * Clear timeline empties a whole timeline at once. Before autosave that was
+ * recoverable by simply not pressing Save Day; now the empty timeline reaches
+ * the backend a second later, so the action needs an undo of its own - the same
+ * one the single-activity delete has.
+ */
+function undoClearTimeline(timelineKey, activitiesSnapshot) {
+  window.timelineManager.activities[timelineKey] = [...activitiesSnapshot];
+
+  if (getCurrentTimelineKey() === timelineKey) {
+    rerenderActivitiesInTimeline(
+      window.timelineManager.activeTimeline,
+      timelineKey
+    );
+  }
+
+  // The day is different again, which is what makes autosave store it.
+  updateButtonStates();
+  persistPendingTimelineStateSoon();
+}
+
+function showUndoClearTimelineToast(timelineKey, activitiesSnapshot) {
+  if (typeof window.showToast !== 'function') return;
+
+  const translate = (key, fallback) =>
+    window.i18n && window.i18n.isReady() ? window.i18n.t(key) : fallback;
+
+  // Longer than the single-activity undo: this one removed a whole timeline, and
+  // it is the participant's only way back.
+  window.showToast(
+    translate('messages.timelineCleared', 'Timeline cleared'),
+    'info',
+    8000,
+    {
+      label: translate('buttons.undo', 'Undo'),
+      onClick: () => undoClearTimeline(timelineKey, activitiesSnapshot),
+    }
+  );
+}
+
+window.showUndoClearTimelineToast = showUndoClearTimelineToast;
+
+/**
+ * Mobile: long-pressing an activity opens the shared activity context menu
+ * (Copy / Show info / Delete) instead of deleting it outright. The hold is the
+ * mobile equivalent of the desktop right-click, and deleting is one explicit
+ * choice inside the menu - which is what pages/instructions.html describes.
+ *
+ * Bound on mobile only; the desktop entry point is the `contextmenu` event in
+ * initActivityContextMenu().
+ */
+function initMobileLongPressMenu() {
+  if (!getIsMobile()) return;
+
+  // Long enough not to fire while scrolling or tapping, short enough to feel
+  // like the platform long-press.
+  const LONG_PRESS_DURATION = 500;
+  const LONG_PRESS_VISUAL_DELAY = 120;
+  const LONG_PRESS_MOVE_PX = 6;
+
+  let pressedActivity = null;
+  let pressTimer = null;
+  let pressStartTime = 0;
+  let pressStartX = 0;
+  let pressStartY = 0;
+  let visualFrame = null;
+  let pointerId = null;
+  let menuOpened = false;
+
+  document.addEventListener('pointerdown', handlePressStart, {
+    passive: false,
+  });
+  document.addEventListener('pointermove', handlePressMove, { passive: true });
+  document.addEventListener('pointerup', handlePressEnd, { passive: true });
+  document.addEventListener('pointercancel', handlePressCancel, {
+    passive: true,
+  });
+
+  function getOrCreateLongPressIndicator(activityBlock) {
+    let indicator = activityBlock.querySelector('.long-press-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.className = 'long-press-indicator';
+      activityBlock.appendChild(indicator);
+    }
+    return indicator;
+  }
+
+  function updateVisualProgress() {
+    if (!pressedActivity || menuOpened) {
+      visualFrame = null;
+      return;
+    }
+
+    const elapsed = Date.now() - pressStartTime;
+    const visualWindow = LONG_PRESS_DURATION - LONG_PRESS_VISUAL_DELAY;
+    const progress = Math.max(
+      0,
+      Math.min(1, (elapsed - LONG_PRESS_VISUAL_DELAY) / visualWindow)
+    );
+    const indicator = getOrCreateLongPressIndicator(pressedActivity);
+
+    if (progress > 0) {
+      indicator.style.opacity = '1';
+      indicator.style.setProperty('--long-press-progress', String(progress));
+    } else {
+      indicator.style.opacity = '0';
+      indicator.style.setProperty('--long-press-progress', '0');
+    }
+
+    visualFrame = requestAnimationFrame(updateVisualProgress);
+  }
+
+  function clearPressTimer() {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }
+
+  function clearVisualFrame() {
+    if (visualFrame) {
+      cancelAnimationFrame(visualFrame);
+      visualFrame = null;
+    }
+  }
+
+  function cleanupPress() {
+    clearPressTimer();
+    clearVisualFrame();
+
+    if (pressedActivity) {
+      pressedActivity.classList.remove('long-press-armed');
+      const indicator = pressedActivity.querySelector('.long-press-indicator');
+      if (indicator) {
+        indicator.style.opacity = '0';
+        indicator.style.setProperty('--long-press-progress', '0');
+      }
+    }
+
+    pressedActivity = null;
+    pointerId = null;
+    menuOpened = false;
+  }
+
+  function handlePressStart(e) {
+    if (e.button != null && e.button !== 0) {
+      return;
+    }
+
+    const activityBlock = e.target.closest('.activity-block');
+    if (!activityBlock) {
+      return;
+    }
+
+    if (activityBlock.dataset.timelineKey !== getCurrentTimelineKey()) {
+      return;
+    }
+
+    if (e.pointerType === 'touch') {
+      e.preventDefault();
+    }
+
+    cleanupPress();
+
+    pressedActivity = activityBlock;
+    pressStartTime = Date.now();
+    pressStartX = e.clientX;
+    pressStartY = e.clientY;
+    pointerId = e.pointerId;
+
+    pressedActivity.classList.add('long-press-armed');
+    const indicator = getOrCreateLongPressIndicator(pressedActivity);
+    indicator.style.opacity = '0';
+    indicator.style.setProperty('--long-press-progress', '0');
+
+    pressTimer = setTimeout(() => {
+      if (!pressedActivity) {
+        return;
+      }
+      const blockToMenu = pressedActivity;
+      cleanupPress();
+      if (
+        blockToMenu.isConnected &&
+        typeof window.showActivityContextMenu === 'function'
+      ) {
+        window.showActivityContextMenu(pressStartX, pressStartY, blockToMenu);
+      }
+    }, LONG_PRESS_DURATION);
+
+    updateVisualProgress();
+  }
+
+  function handlePressMove(e) {
+    if (!pressedActivity || pointerId !== e.pointerId) {
+      return;
+    }
+
+    const deltaX = e.clientX - pressStartX;
+    const deltaY = e.clientY - pressStartY;
+    if (Math.hypot(deltaX, deltaY) > LONG_PRESS_MOVE_PX) {
+      cleanupPress();
+    }
+  }
+
+  function handlePressEnd(e) {
+    if (pointerId !== e.pointerId) {
+      return;
+    }
+    cleanupPress();
+  }
+
+  function handlePressCancel(e) {
+    if (pointerId !== e.pointerId) {
+      return;
+    }
+    cleanupPress();
+  }
+}
+
+function translateOrFallback(key, fallback) {
+  if (!window.i18n?.isReady()) {
+    return fallback;
+  }
+
+  const translation = window.i18n.t(key);
+  return translation === key ? fallback : translation;
+}
+
+function formatDurationForInfo(minutes) {
+  if (!Number.isFinite(minutes) || minutes < 0) {
+    return '—';
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  const hh = String(hours).padStart(2, '0');
+  const mm = String(mins).padStart(2, '0');
+
+  return `${minutes} min (${hh}:${mm})`;
+}
+
+function getActivityBlockInfo(activityBlock) {
+  const timelineKey = activityBlock.dataset.timelineKey;
+  const activityId = activityBlock.dataset.id;
+  const timelineActivities =
+    window.timelineManager.activities[timelineKey] || [];
+  const storedActivity = timelineActivities.find((activity) =>
+    activityIdsEqual(activity.id, activityId)
+  );
+
+  const start = storedActivity?.startTime || activityBlock.dataset.start || '—';
+  const end = storedActivity?.endTime || activityBlock.dataset.end || '—';
+  const durationMinutes = Number.isFinite(Number(storedActivity?.blockLength))
+    ? Number(storedActivity.blockLength)
+    : calculateTimeDifference(start, end);
+  const label =
+    storedActivity?.parentName ||
+    activityBlock
+      .querySelector('div[class^="activity-block-text"]')
+      ?.textContent?.trim() ||
+    activityBlock.dataset.tooltipText ||
+    storedActivity?.activity ||
+    '—';
+
+  return {
+    start,
+    end,
+    duration: formatDurationForInfo(durationMinutes),
+    label,
+    category: storedActivity?.category || activityBlock.dataset.category || '—',
+    name: storedActivity?.activity || activityBlock.dataset.tooltipText || '—',
+    code:
+      storedActivity?.codes ||
+      storedActivity?.code ||
+      activityBlock.dataset.codes ||
+      activityBlock.dataset.code ||
+      '—',
+  };
+}
+
+function ensureActivityInfoModal() {
+  let modalOverlay = document.getElementById('activityInfoModal');
+  if (modalOverlay) {
+    return modalOverlay;
+  }
+
+  modalOverlay = document.createElement('div');
+  modalOverlay.id = 'activityInfoModal';
+  modalOverlay.className = 'modal-overlay';
+  // The role belongs to the element that is shown and hidden (the overlay), not
+  // to an inner wrapper: ui.js detects open/close by watching the style of the
+  // [role="dialog"] element, so a role buried inside the overlay meant the
+  // dialog was treated as "always open" and focus was never given back (WebKit
+  // then left focus on a control the user can no longer see).
+  modalOverlay.setAttribute('role', 'dialog');
+  modalOverlay.setAttribute('aria-modal', 'true');
+  modalOverlay.setAttribute('aria-labelledby', 'activityInfoModalTitle');
+  modalOverlay.innerHTML = `
+        <div class="modal activity-info-modal">
+            <div class="modal-header">
+                <h3 id="activityInfoModalTitle">${translateOrFallback(
+                  'modals.activityContext.infoTitle',
+                  'Activity details'
+                )}</h3>
+                <button class="modal-close" type="button" aria-label="${translateOrFallback(
+                  'buttons.close',
+                  'Close'
+                )}">&times;</button>
+            </div>
+            <div class="modal-content">
+                <table class="activity-info-table">
+                    <tbody id="activityInfoTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+  const closeModal = () => {
+    modalOverlay.style.cssText = 'display: none !important';
+  };
+
+  modalOverlay
+    .querySelector('.modal-close')
+    .addEventListener('click', closeModal);
+  modalOverlay.addEventListener('click', (event) => {
+    if (event.target === modalOverlay) {
+      closeModal();
+    }
+  });
+
+  document.body.appendChild(modalOverlay);
+  return modalOverlay;
+}
+
+function showActivityInfoModal(activityBlock) {
+  if (!activityBlock || !activityBlock.isConnected) {
+    return;
+  }
+
+  const modalOverlay = ensureActivityInfoModal();
+  const tableBody = modalOverlay.querySelector('#activityInfoTableBody');
+  const info = getActivityBlockInfo(activityBlock);
+
+  const rows = [
+    {
+      label: translateOrFallback('modals.activityContext.start', 'Start'),
+      value: info.start,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.end', 'End'),
+      value: info.end,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.duration', 'Duration'),
+      value: info.duration,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.label', 'Label'),
+      value: info.label,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.category', 'Category'),
+      value: info.category,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.name', 'Name'),
+      value: info.name,
+    },
+    {
+      label: translateOrFallback('modals.activityContext.code', 'Code'),
+      value: info.code,
+    },
+  ];
+
+  tableBody.innerHTML = '';
+  rows.forEach((rowData) => {
+    const row = document.createElement('tr');
+    const labelCell = document.createElement('th');
+    const valueCell = document.createElement('td');
+
+    labelCell.textContent = rowData.label;
+    valueCell.textContent = rowData.value;
+
+    row.appendChild(labelCell);
+    row.appendChild(valueCell);
+    tableBody.appendChild(row);
+  });
+
+  modalOverlay.style.display = 'block';
+}
+
+function handleCopyActivity(activityBlock) {
+  if (!activityBlock || !activityBlock.isConnected) {
+    return;
+  }
+
+  const activityId = activityBlock.dataset.id;
+  const timelineKey = activityBlock.dataset.timelineKey;
+  const timelineActivities =
+    window.timelineManager.activities[timelineKey] || [];
+  const storedActivity = timelineActivities.find((activity) =>
+    activityIdsEqual(activity.id, activityId)
+  );
+
+  if (!storedActivity) {
+    console.error('Cannot copy: activity not found in timeline data');
+    return;
+  }
+
+  clearSelectedActivityButtons();
+
+  window.selectedActivity = {
+    name: storedActivity.activity,
+    category: storedActivity.category,
+    code: storedActivity.code,
+    codes: storedActivity.codes,
+    color: storedActivity.color,
+    parentName: storedActivity.parentName,
+    parentCode: storedActivity.parentCode,
+    selected: storedActivity.selected,
+    isCustomInput: storedActivity.isCustomInput,
+    originalSelection: storedActivity.originalSelection,
+    frequencyKey: storedActivity.frequencyKey || null,
+    selections: storedActivity.selections || undefined,
+    availableOptions: storedActivity.availableOptions || undefined,
+    blockLength: storedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH,
+  };
+}
+
+/**
+ * Write a new start/end pair into a block: its datasets, its position on the
+ * timeline, its time chip, and the timeline state the rest of the app reads -
+ * then refresh the button states (coverage indicator, Submit gate, day row),
+ * which is also what marks the day dirty for autosave.
+ *
+ * The arrow-key nudge and the phone menu's move both go through here; the drag
+ * and resize handlers keep their own version because they write during the
+ * gesture and validate/revert at its end.
+ */
+function commitActivityTiming(block, newStartMinutes, newEndMinutes) {
+  const newStartTime = formatTimelineStart(newStartMinutes);
+  const newEndTime = formatTimelineEnd(newEndMinutes);
+
+  block.dataset.startMinutes = newStartMinutes;
+  block.dataset.endMinutes = newEndMinutes;
+  block.dataset.start = newStartTime;
+  block.dataset.end = newEndTime;
+  block.dataset.length = newEndMinutes - newStartMinutes;
+
+  if (getIsMobile()) {
+    block.style.top = `${minutesToPercentage(newStartMinutes)}%`;
+    block.style.height = `${
+      ((newEndMinutes - newStartMinutes) / MINUTES_PER_DAY) * 100
+    }%`;
+  } else {
+    block.style.left = `${minutesToPercentage(newStartMinutes)}%`;
+    block.style.width = `${
+      ((newEndMinutes - newStartMinutes) / MINUTES_PER_DAY) * 100
+    }%`;
+  }
+
+  const timeLabel = block.querySelector('.time-label');
+  if (timeLabel) {
+    updateTimeLabel(timeLabel);
+  }
+
+  const timelineKey = block.dataset.timelineKey;
+  const currentData = window.timelineManager.activities[timelineKey] || [];
+  const activityEntry = currentData.find((activity) =>
+    activityIdsEqual(activity.id, block.dataset.id)
+  );
+  if (activityEntry) {
+    activityEntry.startTime = newStartTime;
+    activityEntry.endTime = newEndTime;
+    activityEntry.startMinutes = newStartMinutes;
+    activityEntry.endMinutes = newEndMinutes;
+    activityEntry.blockLength = newEndMinutes - newStartMinutes;
+  }
+
+  persistPendingTimelineStateSoon();
+  updateButtonStates();
+}
+
+/** Minutes one nudge moves; the desktop drag snaps to the same grid. */
+const ACTIVITY_MOVE_STEP_MINUTES = 10;
+
+/**
+ * Move a whole block along the time axis by `deltaMinutes`, keeping its duration.
+ *
+ * This is what the phone's long-press menu uses ("Move earlier" / "Move later").
+ * A phone has no drag-to-move - interact.js' draggable is desktop-only, and the
+ * long press already opens this menu - so shifting a block has to be an action.
+ * A move that would leave the day or land on another activity changes nothing
+ * and only flashes the block, exactly like the arrow keys.
+ */
+function moveActivityBlockBy(block, deltaMinutes) {
+  const startMinutes = parseInt(block.dataset.startMinutes, 10);
+  const endMinutes = parseInt(block.dataset.endMinutes, 10);
+  if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) {
+    return;
+  }
+
+  // Same bounds as the arrow keys and the desktop drag: the day runs 04:00 to
+  // 04:00(+1), and a block slides up against either end but not past it.
+  const duration = endMinutes - startMinutes;
+  const newStart = Math.max(
+    240,
+    Math.min(1680 - duration, startMinutes + deltaMinutes)
+  );
+
+  // Already against the end of the day: there is nowhere left to go.
+  if (newStart === startMinutes) return;
+
+  if (!canPlaceActivity(newStart, newStart + duration, block.dataset.id)) {
+    block.classList.add('invalid');
+    setTimeout(() => block.classList.remove('invalid'), 400);
+    return;
+  }
+
+  commitActivityTiming(block, newStart, newStart + duration);
+}
+
+function initActivityContextMenu() {
+  const MENU_ID = 'activityContextMenu';
+  let targetBlock = null;
+
+  function ensureMenu() {
+    let menu = document.getElementById(MENU_ID);
+    if (menu) {
+      return menu;
+    }
+
+    menu = document.createElement('div');
+    menu.id = MENU_ID;
+    menu.className = 'activity-context-menu';
+    // Moving a whole block is a phone action: desktop drags it, and on a phone
+    // the long press owns the gesture that would otherwise start a drag. The
+    // arrow keys resize (each one moves one edge), so they are not a substitute.
+    const moveItems = getIsMobile()
+      ? `
+            <button type="button" class="activity-context-menu-item" data-action="move-earlier">${translateOrFallback(
+              'modals.activityContext.moveEarlier',
+              'Move earlier'
+            )}</button>
+            <button type="button" class="activity-context-menu-item" data-action="move-later">${translateOrFallback(
+              'modals.activityContext.moveLater',
+              'Move later'
+            )}</button>`
+      : '';
+    menu.innerHTML = `
+            <button type="button" class="activity-context-menu-item" data-action="copy">${translateOrFallback(
+              'modals.activityContext.copy',
+              'Copy'
+            )}</button>
+            <button type="button" class="activity-context-menu-item" data-action="show-info">${translateOrFallback(
+              'modals.activityContext.showInfo',
+              'Show info'
+            )}</button>${moveItems}
+            <button type="button" class="activity-context-menu-item danger" data-action="delete">${translateOrFallback(
+              'modals.activityContext.delete',
+              'Delete'
+            )}</button>
+        `;
+
+    menu.addEventListener('click', (event) => {
+      const actionButton = event.target.closest('.activity-context-menu-item');
+      if (!actionButton) {
+        return;
+      }
+
+      const action = actionButton.dataset.action;
+      const blockForAction = targetBlock;
+      hideMenu();
+
+      if (!blockForAction || !blockForAction.isConnected) {
+        return;
+      }
+
+      if (action === 'copy') {
+        handleCopyActivity(blockForAction);
+      } else if (action === 'show-info') {
+        showActivityInfoModal(blockForAction);
+      } else if (action === 'move-earlier') {
+        moveActivityBlockBy(blockForAction, -ACTIVITY_MOVE_STEP_MINUTES);
+      } else if (action === 'move-later') {
+        moveActivityBlockBy(blockForAction, ACTIVITY_MOVE_STEP_MINUTES);
+      } else if (action === 'delete') {
+        deleteActivityBlock(blockForAction);
+      }
+    });
+
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  function hideMenu() {
+    const menu = document.getElementById(MENU_ID);
+    if (!menu) {
+      return;
+    }
+
+    menu.style.display = 'none';
+    targetBlock = null;
+  }
+
+  function showMenu(clientX, clientY, activityBlock) {
+    const menu = ensureMenu();
+    targetBlock = activityBlock;
+
+    // The receipt from the previous delete belongs to that delete. Keeping it
+    // would float it over this menu (clamped into the viewport, so near the
+    // bottom it lands on the same spot), and deleting several entries in a row
+    // is exactly when it would be in the way.
+    if (typeof window.hideToast === 'function') window.hideToast();
+
+    menu.style.display = 'block';
+
+    const menuRect = menu.getBoundingClientRect();
+    const margin = 8;
+    let left = clientX;
+    let top = clientY;
+
+    if (left + menuRect.width + margin > window.innerWidth) {
+      left = window.innerWidth - menuRect.width - margin;
+    }
+    if (top + menuRect.height + margin > window.innerHeight) {
+      top = window.innerHeight - menuRect.height - margin;
+    }
+
+    left = Math.max(margin, left);
+    top = Math.max(margin, top);
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  // Shared with the mobile long-press handler (initMobileLongPressMenu).
+  window.showActivityContextMenu = showMenu;
+
+  // Desktop right-click - and the native long-press menu on platforms that emit
+  // `contextmenu` for it (Android). iOS does not, which is why the mobile
+  // long-press runs its own timer.
+  document.addEventListener('contextmenu', (event) => {
+    const activityBlock = event.target.closest('.activity-block');
+    if (!activityBlock) {
+      hideMenu();
+      return;
+    }
+
+    if (activityBlock.dataset.timelineKey !== getCurrentTimelineKey()) {
+      hideMenu();
+      return;
+    }
+
+    event.preventDefault();
+    showMenu(event.clientX, event.clientY, activityBlock);
+  });
+
+  document.addEventListener('pointerdown', (event) => {
+    const menu = document.getElementById(MENU_ID);
+    if (!menu || menu.style.display !== 'block') {
+      return;
+    }
+
+    if (!event.target.closest('.activity-context-menu')) {
+      hideMenu();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      hideMenu();
+    }
+  });
+
+  window.addEventListener('resize', hideMenu);
+  document.addEventListener('scroll', hideMenu, true);
+}
+
+// Add this after the imports and before other functions
+// This creates an activity block element from given activity data. such a block is what is visible on the timeline.
+function createActivityBlock(activityData, isFromTemplate = false) {
+  const currentBlock = document.createElement('div');
+  currentBlock.className = 'activity-block';
+  currentBlock.dataset.timelineKey = activityData.timelineKey; //getCurrentTimelineKey();
+
+  // CRITICAL: Every activity MUST have a timelineKey
+  if (!activityData.timelineKey) {
+    console.error(
+      'CRITICAL BUG: Cannot create activity block without timelineKey in supplied activityData.',
+      {
+        activityData: activityData,
+        stack: new Error().stack,
+      }
+    );
+    throw new Error(
+      `Cannot create activity block: missing timelineKey for activity "${
+        activityData.activity || 'unknown'
+      }"`
+    );
+  }
+
+  const timelineKey = activityData.timelineKey;
+  currentBlock.dataset.timelineKey = timelineKey;
+
+  // Use existing ID or generate new one
+  currentBlock.dataset.id = activityData.id || generateUniqueId();
+
+  // Set all data attributes
+  currentBlock.dataset.start = activityData.startTime;
+  currentBlock.dataset.end = activityData.endTime;
+  currentBlock.dataset.length = activityData.blockLength;
+  currentBlock.dataset.category = activityData.category;
+  currentBlock.dataset.mode = activityData.mode || 'single-choice';
+  currentBlock.dataset.count = activityData.count || 1;
+  currentBlock.dataset.startMinutes = activityData.startMinutes;
+  currentBlock.dataset.endMinutes = activityData.endMinutes;
+  currentBlock.dataset.code = activityData.code;
+  currentBlock.dataset.frequencyKey = activityData.frequencyKey || '';
+
+  if (activityData.selections) {
+    currentBlock.dataset.tooltipText = activityData.selections
+      .map((s) => s.name)
+      .join(' | ');
+  } else if (activityData.isCustomInput) {
+    const _trueParent =
+      activityData.parentName &&
+      activityData.parentName !== activityData.activity
+        ? activityData.parentName
+        : null;
+    const _prefix = _trueParent || activityData.originalSelection || '';
+    currentBlock.dataset.tooltipText = _prefix
+      ? `${_prefix}: ${activityData.activity}`
+      : activityData.activity;
+  } else if (
+    activityData.parentName &&
+    activityData.parentName !== activityData.activity
+  ) {
+    currentBlock.dataset.tooltipText = activityData.parentName;
+  } else {
+    currentBlock.dataset.tooltipText = activityData.activity;
+  }
+
+  // Store parent name if this is a child activity
+  if (
+    activityData.parentName &&
+    activityData.parentName !== activityData.activity
+  ) {
+    currentBlock.dataset.parentName = activityData.parentName;
+    currentBlock.dataset.parentCode = activityData.parentCode;
+  }
+
+  console.log(
+    'Creating activity block',
+    currentBlock,
+    ' from activityData:',
+    activityData
+  );
+
+  // Handle multiple selections (gradient backgrounds)
+  if (activityData.selections) {
+    const colors = activityData.selections.map((s) => s.color);
+    const codes = activityData.selections.map((s) => s.code);
+    currentBlock.dataset.codes = codes.join('|');
+    const isMobile = getIsMobile();
+    const numSelections = colors.length;
+    const percentage = 100 / numSelections;
+
+    if (isMobile) {
+      // Horizontal splits for mobile
+      const stops = colors
+        .map(
+          (color, index) =>
+            `${color} ${index * percentage}%, ${color} ${
+              (index + 1) * percentage
+            }%`
+        )
+        .join(', ');
+      currentBlock.style.background = `linear-gradient(to right, ${stops})`;
+    } else {
+      // Vertical splits for desktop
+      const stops = colors
+        .map(
+          (color, index) =>
+            `${color} ${index * percentage}%, ${color} ${
+              (index + 1) * percentage
+            }%`
+        )
+        .join(', ');
+      currentBlock.style.background = `linear-gradient(to bottom, ${stops})`;
+    }
+  } else {
+    currentBlock.style.backgroundColor = activityData.color;
+  }
+
+  // Create text content
+  const textDiv = document.createElement('div');
+  let combinedActivityText;
+
+  if (activityData.selections) {
+    // For multiple selections, join names with line break in the text div
+    textDiv.innerHTML = activityData.selections.map((s) => s.name).join('<br>');
+    // But join with vertical separator for storing in timelineManager
+    combinedActivityText = activityData.selections
+      .map((s) => s.name)
+      .join(' | ');
+  } else if (activityData.isCustomInput) {
+    // Custom input activity: show "<Category>: <custom text>" as the label
+    const trueParent =
+      activityData.parentName &&
+      activityData.parentName !== activityData.activity
+        ? activityData.parentName
+        : null;
+    const prefix = trueParent || activityData.originalSelection || '';
+    textDiv.textContent = prefix
+      ? `${prefix}: ${activityData.activity}`
+      : activityData.activity;
+    combinedActivityText = activityData.activity;
+  } else if (
+    activityData.parentName &&
+    activityData.parentName !== activityData.activity
+  ) {
+    // Regular child item: display the parent name, store the child name
+    textDiv.textContent = activityData.parentName;
+    combinedActivityText = activityData.activity;
+  } else {
+    textDiv.textContent = activityData.activity;
+    combinedActivityText = activityData.activity;
+  }
+
+  textDiv.style.maxWidth = '90%';
+  textDiv.style.overflow = 'hidden';
+  textDiv.style.textOverflow = 'ellipsis';
+  textDiv.style.whiteSpace = 'nowrap';
+
+  // Set initial class based on length and mode
+  const length = parseInt(activityData.blockLength);
+  textDiv.className = getIsMobile()
+    ? length >= 60
+      ? 'activity-block-text-narrow wide resized'
+      : 'activity-block-text-narrow'
+    : length >= 60
+      ? 'activity-block-text-narrow wide resized'
+      : 'activity-block-text-vertical';
+
+  currentBlock.appendChild(textDiv);
+
+  const bottomTooltip = document.createElement('div');
+  bottomTooltip.className = 'activity-tooltip-bottom';
+  bottomTooltip.setAttribute('aria-hidden', 'true');
+  bottomTooltip.textContent = currentBlock.dataset.tooltipText || '';
+  currentBlock.appendChild(bottomTooltip);
+
+  // Resize grips: the left/right edges have always been draggable (a 10 px
+  // zone plus interact.js resizing), but nothing on the block showed it, so
+  // participants did not find the gesture and asked for a visible marker in
+  // the style of an Excel fill handle. The grips are decoration only
+  // (`pointer-events: none`), which keeps the block the pointer target and
+  // leaves the resize zones and cursor untouched. Whether they are shown at
+  // all, and how they are oriented, is decided by the media queries in
+  // styles/styles.css: vertical bars on the block's side edges on desktop,
+  // horizontal bars on its top/bottom ends on a phone.
+  ['left', 'right'].forEach((side) => {
+    const grip = document.createElement('span');
+    grip.className = `activity-block-grip activity-block-grip-${side}`;
+    grip.setAttribute('aria-hidden', 'true');
+    currentBlock.appendChild(grip);
+  });
+
+  // Mobile end zones: they reserve the top/bottom band of the block for the
+  // resize gesture by declaring `touch-action: none`, so the browser does not
+  // take the drag over as a scroll and cancel the resize (see the mobile rules
+  // in styles/styles.css). The rest of the block allows vertical panning, which
+  // is what makes a swipe that starts on a block scroll the timeline again -
+  // before, `touch-action: none` on the whole block turned 75 % of the timeline
+  // width into a scroll dead zone ("Handy-Scrollen defekt").
+  ['top', 'bottom'].forEach((end) => {
+    const zone = document.createElement('span');
+    zone.className = `activity-block-edge-zone activity-block-edge-zone-${end}`;
+    zone.setAttribute('aria-hidden', 'true');
+    currentBlock.appendChild(zone);
+  });
+
+  // No extra title attribute - child/custom label is shown inline in the block
+
+  // Give the focusable block an accessible name (activity + time range) so a
+  // screen reader can announce what the block is when it receives focus.
+  currentBlock.setAttribute('role', 'group');
+  const blockStartTime = currentBlock.dataset.start;
+  const blockEndTime = currentBlock.dataset.end;
+  const blockA11yLabel =
+    blockStartTime && blockEndTime
+      ? `${combinedActivityText}, ${blockStartTime}\u2013${blockEndTime}`
+      : combinedActivityText;
+  currentBlock.setAttribute('aria-label', blockA11yLabel);
+
+  // Make block keyboard-focusable for arrow-key resize
+  currentBlock.tabIndex = 0;
+  currentBlock.addEventListener('keydown', (event) => {
+    const isLeft = event.key === 'ArrowLeft';
+    const isRight = event.key === 'ArrowRight';
+    const isUp = event.key === 'ArrowUp';
+    const isDown = event.key === 'ArrowDown';
+    if (!isLeft && !isRight && !isUp && !isDown) return;
+
+    event.preventDefault();
+
+    const block = event.currentTarget;
+    const timelineKey = block.dataset.timelineKey;
+
+    // Only allow editing the currently active timeline
+    if (timelineKey !== getCurrentTimelineKey()) return;
+    const isMobile = getIsMobile();
+    const STEP = 10; // minutes per key press
+    const TIMELINE_MIN = 240; // 04:00
+    const TIMELINE_MAX = 1680; // 04:00(+1)
+
+    let startMinutes = parseInt(block.dataset.startMinutes, 10);
+    let endMinutes = parseInt(block.dataset.endMinutes, 10);
+
+    // Arrow semantics:
+    //   Desktop: Left/Right => move right edge (end time); Up/Down => move left edge (start time)
+    //   Mobile:  Up/Down   => move bottom edge (end time); Left/Right => move top edge (start time)
+    let newStart = startMinutes;
+    let newEnd = endMinutes;
+
+    if (!isMobile) {
+      if (isRight) newEnd = Math.min(TIMELINE_MAX, endMinutes + STEP);
+      if (isLeft) newEnd = Math.max(startMinutes + STEP, endMinutes - STEP);
+      if (isDown) newStart = Math.max(TIMELINE_MIN, startMinutes + STEP);
+      if (isUp) newStart = Math.min(endMinutes - STEP, startMinutes - STEP);
+    } else {
+      if (isDown) newEnd = Math.min(TIMELINE_MAX, endMinutes + STEP);
+      if (isUp) newEnd = Math.max(startMinutes + STEP, endMinutes - STEP);
+      if (isRight) newStart = Math.max(TIMELINE_MIN, startMinutes + STEP);
+      if (isLeft) newStart = Math.min(endMinutes - STEP, startMinutes - STEP);
+    }
+
+    // Basic sanity check
+    if (newStart < TIMELINE_MIN || newEnd > TIMELINE_MAX || newEnd <= newStart)
+      return;
+
+    // Overlap check
+    if (!canPlaceActivity(newStart, newEnd, block.dataset.id)) {
+      block.classList.add('invalid');
+      setTimeout(() => block.classList.remove('invalid'), 400);
+      return;
+    }
+
+    // Same commit path the phone menu's move uses: datasets, position, time
+    // chip, timeline state, then the button states (coverage, Submit gate,
+    // day row) - the latter is also what marks the day dirty for autosave.
+    commitActivityTiming(block, newStart, newEnd);
+  });
+
+  // Positioning logic
+  const startPositionPercent = minutesToPercentage(activityData.startMinutes);
+  const blockSize =
+    ((activityData.endMinutes - activityData.startMinutes) / MINUTES_PER_DAY) *
+    100;
+
+  // Fixed dimensions for consistency
+  // Mobile: the block starts after the 25 % label gutter and stops 5 % short of
+  // the right edge instead of running flush against it - against the screen
+  // border it looked cut off, and it left no thumb-safe margin for the Android
+  // back gesture. Desktop keeps its own values (time is the horizontal axis
+  // there, so the width is the duration).
+  const MOBILE_BLOCK_WIDTH = 70;
+  const DESKTOP_BLOCK_HEIGHT = 90;
+  const MOBILE_OFFSET = 25;
+  const DESKTOP_OFFSET = 5;
+
+  if (getIsMobile()) {
+    currentBlock.style.height = `${blockSize}%`;
+    currentBlock.style.top = `${startPositionPercent}%`;
+    currentBlock.style.width = `${MOBILE_BLOCK_WIDTH}%`;
+    currentBlock.style.left = `${MOBILE_OFFSET}%`;
+  } else {
+    currentBlock.style.width = `${blockSize}%`;
+    currentBlock.style.left = `${startPositionPercent}%`;
+    currentBlock.style.height = '75%';
+    currentBlock.style.top = '25%';
+  }
+
+  // Return both the block and the standardized activity data
+  return {
+    block: currentBlock,
+    activityData: {
+      id: currentBlock.dataset.id,
+      activity: combinedActivityText,
+      category: activityData.category,
+      startTime: activityData.startTime,
+      endTime: activityData.endTime,
+      blockLength: activityData.blockLength,
+      color: activityData.color,
+      code: activityData.code,
+      codes: activityData.codes,
+      parentName: activityData.parentName || combinedActivityText,
+      parentCode: activityData.parentCode || null,
+      selected: activityData.selected || combinedActivityText,
+      isCustomInput: activityData.isCustomInput || false,
+      originalSelection: activityData.originalSelection || null,
+      frequencyKey: activityData.frequencyKey || null,
+      startMinutes: activityData.startMinutes,
+      endMinutes: activityData.endMinutes,
+      mode: activityData.mode || 'single-choice',
+      count: activityData.count || 1,
+      selections: activityData.selections || null,
+      availableOptions: activityData.availableOptions || null,
+      timelineKey: timelineKey,
+    },
+  };
+}
+
+function initPastTimelineClickHandlers() {
+  const pastTimelinesWrapper = document.querySelector(
+    '.past-initialized-timelines-wrapper'
+  );
+  if (!pastTimelinesWrapper) return;
+
+  // Use a single event listener but check state at time of click
+  pastTimelinesWrapper.addEventListener('click', async function (event) {
+    // Find which timeline container was clicked
+    let element = event.target;
+    let timelineContainer = null;
+
+    // Walk up the DOM to find the timeline container
+    while (element && element !== this) {
+      if (
+        element.classList &&
+        element.classList.contains('timeline-container')
+      ) {
+        timelineContainer = element;
+        break;
+      }
+      element = element.parentNode;
+    }
+
+    if (!timelineContainer) return;
+
+    // Check if it's still in the past wrapper (might have moved during async ops)
+    if (!pastTimelinesWrapper.contains(timelineContainer)) {
+      console.log('Timeline container moved during click, ignoring');
+      return;
+    }
+
+    // Check if it's inactive
+    if (timelineContainer.getAttribute('data-active') === 'true') {
+      console.log('Clicked active timeline, ignoring');
+      return;
+    }
+
+    const timelineElement = timelineContainer.querySelector('.timeline');
+    if (!timelineElement) return;
+
+    await navigateToTimelineByKey(timelineElement.id);
+  });
+}
+
+async function navigateToTimelineByKey(targetTimelineKey) {
+  const currentTimelineKey = getCurrentTimelineKey();
+
+  if (!targetTimelineKey || targetTimelineKey === currentTimelineKey) {
+    return;
+  }
+
+  console.log(`Navigating to ${targetTimelineKey} from ${currentTimelineKey}`);
+
+  const targetIndex = window.timelineManager.keys.indexOf(targetTimelineKey);
+  const currentIndex = window.timelineManager.keys.indexOf(currentTimelineKey);
+
+  if (targetIndex === -1 || currentIndex === -1) {
+    console.warn('Cannot navigate timeline: index not found', {
+      targetTimelineKey,
+      currentTimelineKey,
+      targetIndex,
+      currentIndex,
+    });
+    return;
+  }
+
+  if (targetIndex < currentIndex) {
+    const stepsBack = currentIndex - targetIndex;
+    for (let i = 0; i < stepsBack; i++) {
+      await goToPreviousTimeline();
+    }
+  } else {
+    const stepsForward = targetIndex - currentIndex;
+    for (let i = 0; i < stepsForward; i++) {
+      await addNextTimeline();
+    }
+  }
+}
+
+function recreateActivityBlockFromTemplate(activityData) {
+  console.log('=== RECREATE ACTIVITY BLOCK START ===');
+  console.log('Input activityData:', activityData);
+
+  // Make sure we have an ID
+  if (!activityData.id) {
+    activityData.id = generateUniqueId();
+  }
+
+  const result = createActivityBlock(activityData, true);
+  const currentBlock = result.block;
+
+  console.log('Activity block created:', currentBlock);
+  console.log('Activity data result:', result.activityData);
+
+  const targetTimelineKey = activityData.timelineKey || getCurrentTimelineKey();
+  const targetTimelineElement =
+    document.getElementById(targetTimelineKey) ||
+    window.timelineManager.activeTimeline;
+
+  // Get or create activities container
+  let activitiesContainer = targetTimelineElement.querySelector('.activities');
+  if (!activitiesContainer) {
+    console.log('Creating new activities container');
+    activitiesContainer = document.createElement('div');
+    activitiesContainer.className = 'activities';
+    targetTimelineElement.appendChild(activitiesContainer);
+  }
+
+  console.log('Activities container:', activitiesContainer);
+  console.log('Appending block to container...');
+  activitiesContainer.appendChild(currentBlock);
+  console.log(
+    'Block appended, container children count:',
+    activitiesContainer.children.length
+  );
+
+  // Create time label
+  const timeLabel = createTimeLabel(currentBlock);
+  updateTimeLabel(timeLabel);
+
+  // Ensure the activity data in the manager matches
+  console.log(
+    'Current timeline key:',
+    getCurrentTimelineKey(),
+    'target timeline key:',
+    targetTimelineKey
+  );
+
+  window.timelineManager.activities[targetTimelineKey] =
+    window.timelineManager.activities[targetTimelineKey] || [];
+
+  // Check if this activity already exists in the manager
+  const existingIndex = window.timelineManager.activities[
+    targetTimelineKey
+  ].findIndex((a) => activityIdsEqual(a.id, activityData.id));
+  if (existingIndex === -1) {
+    console.log('Adding activity to manager');
+    window.timelineManager.activities[targetTimelineKey].push(
+      result.activityData
+    );
+  } else {
+    console.log('Activity already exists in manager at index', existingIndex);
+  }
+
+  console.log(
+    'Activities in manager:',
+    window.timelineManager.activities[targetTimelineKey].map((a) => a.id)
+  );
+  console.log('=== RECREATE ACTIVITY BLOCK END ===');
+
+  return result;
+}
+
+// NEW: Helper functions to format timeline times based on our 04:00 (240 minutes) rule
+function formatTimelineStart(minutes) {
+  // Normalize to current day (0-1440)
+  const modMinutes = minutes % 1440;
+  // For start times, if the time is before 04:00, mark as next day
+  const addNextDayMarker = modMinutes < 240;
+  return formatTimeHHMM(modMinutes, addNextDayMarker);
+}
+
+function formatTimelineEnd(minutes) {
+  const modMinutes = minutes % 1440;
+  // For end times, we want to mark 04:00 as next day as well (<= 240)
+  const addNextDayMarker = modMinutes <= 240;
+  return formatTimeHHMM(modMinutes, addNextDayMarker);
+}
+
+function isDesktopFixedTimelineOrdering() {
+  return !getIsMobile();
+}
+
+function setTimelineActiveState(timelineElement, isActive) {
+  if (!timelineElement) return;
+  timelineElement.setAttribute('data-active', isActive ? 'true' : 'false');
+  if (timelineElement.parentElement) {
+    timelineElement.parentElement.setAttribute(
+      'data-active',
+      isActive ? 'true' : 'false'
+    );
+  }
+}
+
+function updateTimelineHeader(title, description) {
+  const timelineTitle = document.querySelector('.timeline-title');
+  const timelineDescription = document.querySelector('.timeline-description');
+
+  if (timelineTitle) {
+    timelineTitle.dataset.timelineName = title || '';
+    timelineTitle.textContent = title || '';
+  }
+
+  if (timelineDescription) {
+    const descriptionText = (description || '').trim();
+    timelineDescription.textContent = descriptionText;
+    timelineDescription.classList.toggle(
+      'is-empty',
+      descriptionText.length === 0
+    );
+  }
+}
+
+/**
+ * A timeline's name plus where it sits in the set - "Hauptaktivität (1/2)" - the
+ * compact pattern the phone day counter already uses ("(3/7)"). The bare name
+ * left a participant who had only ever seen one timeline with no hint that the
+ * study has a second one; the count says so for the price of a few characters,
+ * and it is plain numbers, so it needs no translation. A single-timeline study
+ * is unchanged: "(1/1)" would announce a choice that does not exist.
+ */
+function getTimelineLabel(timelineKey) {
+  const manager = window.timelineManager;
+  const name = manager?.metadata?.[timelineKey]?.name || timelineKey || '';
+  const keys = manager?.keys || [];
+  const index = keys.indexOf(timelineKey);
+
+  if (keys.length < 2 || index === -1) {
+    return name;
+  }
+
+  return `${name} (${index + 1}/${keys.length})`;
+}
+
+function appendTimelineCanvasLabels(
+  containerElement,
+  timelineKey,
+  timelineMeta
+) {
+  const titleDiv = document.createElement('div');
+  titleDiv.className = 'title';
+  titleDiv.textContent = getTimelineLabel(timelineKey);
+
+  const coverageIndicator = document.createElement('span');
+  coverageIndicator.className = 'timeline-coverage-indicator';
+  coverageIndicator.dataset.timelineKey = timelineKey;
+  coverageIndicator.textContent = '✓';
+  titleDiv.appendChild(coverageIndicator);
+
+  containerElement.appendChild(titleDiv);
+
+  const descriptionDiv = document.createElement('div');
+  descriptionDiv.className = 'timeline-canvas-description';
+  const descriptionText = (timelineMeta?.description || '').trim();
+  descriptionDiv.textContent = descriptionText;
+  descriptionDiv.classList.toggle('is-empty', descriptionText.length === 0);
+  containerElement.appendChild(descriptionDiv);
+}
+
+// Function to restore an existing timeline from past-initialized-timelines-wrapper
+async function restoreNextTimeline(nextTimelineIndex, nextTimelineKey) {
+  // Increment the current index
+  window.timelineManager.currentIndex = nextTimelineIndex;
+
+  try {
+    // Load timeline data (for categories/activities)
+    const categories = await fetchActivities(nextTimelineKey);
+
+    // Update UI for next timeline with animation
+    const nextTimeline = window.timelineManager.metadata[nextTimelineKey];
+    const timelineHeader = document.querySelector('.timeline-header');
+
+    // Animation setup
+    timelineHeader.classList.remove('flip-animation');
+    void timelineHeader.offsetWidth;
+    timelineHeader.classList.add('flip-animation');
+
+    // Update content
+    updateTimelineHeader(nextTimeline.name, nextTimeline.description);
+
+    void timelineHeader.offsetWidth;
+    timelineHeader.classList.add('flip-animation');
+
+    timelineHeader.addEventListener(
+      'animationend',
+      () => {
+        timelineHeader.classList.remove('flip-animation');
+      },
+      { once: true }
+    );
+
+    const activeTimelineWrapper = document.querySelector(
+      '.last-initialized-timeline-wrapper'
+    );
+    const pastTimelinesWrapper = document.querySelector(
+      '.past-initialized-timelines-wrapper'
+    );
+
+    if (isDesktopFixedTimelineOrdering()) {
+      const currentTimeline = window.timelineManager.activeTimeline;
+      setTimelineActiveState(currentTimeline, false);
+
+      const nextTimelineElement = document.getElementById(nextTimelineKey);
+      if (!nextTimelineElement) {
+        throw new Error(`Timeline element '${nextTimelineKey}' not found`);
+      }
+
+      setTimelineActiveState(nextTimelineElement, true);
+      window.timelineManager.activeTimeline = nextTimelineElement;
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+
+      renderActivities(categories);
+      updateButtonStates();
+      scrollToActiveTimeline();
+
+      const activitiesContainerElement = document.querySelector(
+        '#activitiesContainer'
+      );
+      if (activitiesContainerElement) {
+        activitiesContainerElement.setAttribute(
+          'data-mode',
+          window.timelineManager.metadata[nextTimelineKey].mode
+        );
+      }
+
+      updateFloatingButtonPosition();
+      return;
+    }
+
+    // Move current timeline to past wrapper
+    const currentTimeline = window.timelineManager.activeTimeline;
+    if (currentTimeline && currentTimeline.parentElement) {
+      currentTimeline.setAttribute('data-active', 'false');
+      currentTimeline.parentElement.setAttribute('data-active', 'false');
+      pastTimelinesWrapper.appendChild(currentTimeline.parentElement);
+      updateTimelineCountVariable();
+    }
+
+    // Clear active wrapper
+    activeTimelineWrapper.innerHTML = '';
+
+    // Move the next timeline from past wrapper to active wrapper
+    const nextTimelineElement = document.getElementById(nextTimelineKey);
+    if (nextTimelineElement && nextTimelineElement.parentElement) {
+      nextTimelineElement.setAttribute('data-active', 'true');
+      nextTimelineElement.parentElement.setAttribute('data-active', 'true');
+      activeTimelineWrapper.appendChild(nextTimelineElement.parentElement);
+
+      // Set active timeline reference
+      window.timelineManager.activeTimeline = nextTimelineElement;
+
+      // Re-initialize timeline interaction
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+    }
+
+    // Render activities for restored timeline
+    renderActivities(categories);
+
+    // Scroll to active timeline in mobile view
+    if (getIsMobile()) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+
+    // Reset button states
+    updateButtonStates();
+
+    // Scroll to the active timeline
+    scrollToActiveTimeline();
+
+    if (DEBUG_MODE) {
+      console.log(`Restored ${nextTimelineKey} timeline from past wrapper`);
+      console.log(
+        'Timeline data structure:',
+        window.timelineManager.activities
+      );
+      // Give short info with number of activities per timeline
+      console.log(
+        'Activities per timeline:',
+        Object.fromEntries(
+          Object.entries(window.timelineManager.activities).map(
+            ([key, activities]) => [key, activities.length]
+          )
+        )
+      );
+    }
+
+    // Update activities container data-mode
+    const activitiesContainerElement = document.querySelector(
+      '#activitiesContainer'
+    );
+    if (activitiesContainerElement) {
+      activitiesContainerElement.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[nextTimelineKey].mode
+      );
+    }
+
+    // Update floating button position after timeline changes
+    updateFloatingButtonPosition();
+  } catch (error) {
+    console.error(`Error restoring ${nextTimelineKey} timeline:`, error);
+    throw new Error(
+      `Failed to restore ${nextTimelineKey} timeline: ${error.message}`
+    );
+  }
+}
+
+// Function to add next timeline
+async function addNextTimeline() {
+  if (DEBUG_MODE) {
+    console.log(
+      `Current timeline data saved:`,
+      window.timelineManager.activities
+    );
+  }
+
+  // Check if we're at the end of timelines before incrementing
+  if (
+    window.timelineManager.currentIndex + 1 >=
+    window.timelineManager.keys.length
+  ) {
+    if (DEBUG_MODE) {
+      console.log('All timelines initialized');
+    }
+    return;
+  }
+
+  // Clear selected activity before switching timelines to prevent user from placing primary activity on secondary timeline
+  clearActiveActivitySelection();
+  console.log(
+    'Cleared selected activity before switching timeline to next timeline'
+  );
+
+  // Get the next timeline key before incrementing
+  const nextTimelineIndex = window.timelineManager.currentIndex + 1;
+  const nextTimelineKey = window.timelineManager.keys[nextTimelineIndex];
+
+  // Check if the next timeline already exists in past-initialized-timelines-wrapper
+  const pastTimelinesWrapper = document.querySelector(
+    '.past-initialized-timelines-wrapper'
+  );
+  const existingNextTimeline = document.getElementById(nextTimelineKey);
+
+  if (
+    existingNextTimeline &&
+    pastTimelinesWrapper.contains(existingNextTimeline.parentElement)
+  ) {
+    // Timeline exists in past wrapper, restore it instead of creating new one
+    if (DEBUG_MODE) {
+      console.log(
+        `Restoring existing timeline "${nextTimelineKey}" from past wrapper`
+      );
+    }
+    await restoreNextTimeline(nextTimelineIndex, nextTimelineKey);
+    return;
+  }
+
+  // If timeline doesn't exist in past wrapper but exists elsewhere, skip creation
+  if (
+    existingNextTimeline ||
+    window.timelineManager.initialized.has(nextTimelineKey)
+  ) {
+    console.warn(
+      `Timeline with key "${nextTimelineKey}" already exists or is initialized, skipping creation`
+    );
+    return;
+  }
+
+  // Only increment the index after validation passes
+  window.timelineManager.currentIndex = nextTimelineIndex;
+
+  try {
+    // Load next timeline data
+    const categories = await fetchActivities(nextTimelineKey);
+
+    const isMobile = getIsMobile();
+
+    // Update UI for next timeline with animation
+    const nextTimeline = window.timelineManager.metadata[nextTimelineKey];
+    const timelineHeader = document.querySelector('.timeline-header');
+
+    // First remove any existing animation
+    timelineHeader.classList.remove('flip-animation');
+
+    // Force a reflow before starting new animation
+    void timelineHeader.offsetWidth;
+
+    // Add animation class before content change
+    timelineHeader.classList.add('flip-animation');
+
+    // Update content immediately
+    updateTimelineHeader(nextTimeline.name, nextTimeline.description);
+
+    // Trigger reflow to ensure animation plays
+    void timelineHeader.offsetWidth;
+
+    // Add animation class
+    timelineHeader.classList.add('flip-animation');
+
+    // Remove animation class after it finishes
+    timelineHeader.addEventListener(
+      'animationend',
+      () => {
+        timelineHeader.classList.remove('flip-animation');
+      },
+      { once: true }
+    );
+
+    // Clear any existing timeline containers to prevent duplicates
+    const activeTimelineWrapper = document.querySelector(
+      '.last-initialized-timeline-wrapper'
+    );
+    const inactiveTimelinesWrapper = document.querySelector(
+      '.past-initialized-timelines-wrapper'
+    );
+
+    if (isDesktopFixedTimelineOrdering()) {
+      if (window.timelineManager.currentIndex === 0) {
+        activeTimelineWrapper.innerHTML = '';
+        inactiveTimelinesWrapper.innerHTML = '';
+        console.log(
+          'Cleared all timeline wrappers for first timeline initialization'
+        );
+      }
+
+      const previousTimeline = window.timelineManager.activeTimeline;
+      setTimelineActiveState(previousTimeline, false);
+
+      const newTimelineContainer = document.createElement('div');
+      newTimelineContainer.className = 'timeline-container';
+      appendTimelineCanvasLabels(
+        newTimelineContainer,
+        nextTimelineKey,
+        window.timelineManager.metadata[nextTimelineKey]
+      );
+
+      const newTimeline = document.createElement('div');
+      newTimeline.className = 'timeline';
+      newTimelineContainer.appendChild(newTimeline);
+
+      inactiveTimelinesWrapper.appendChild(newTimelineContainer);
+
+      newTimeline.id = nextTimelineKey;
+      newTimeline.setAttribute('data-timeline-type', nextTimelineKey);
+      newTimeline.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[nextTimelineKey].mode
+      );
+      setTimelineActiveState(newTimeline, true);
+
+      window.timelineManager.activeTimeline = newTimeline;
+      window.timelineManager.activities[nextTimelineKey] =
+        window.timelineManager.activities[nextTimelineKey] || [];
+
+      initTimeline(window.timelineManager.activeTimeline);
+      renderActivities(categories);
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+
+      updateButtonStates();
+      scrollToActiveTimeline();
+
+      const activitiesContainerElement = document.querySelector(
+        '#activitiesContainer'
+      );
+      if (activitiesContainerElement) {
+        activitiesContainerElement.setAttribute(
+          'data-mode',
+          window.timelineManager.metadata[nextTimelineKey].mode
+        );
+      }
+
+      updateFloatingButtonPosition();
+      initPastTimelineClickHandlers();
+      return;
+    }
+
+    // For the first timeline, clear everything to ensure a clean start
+    if (window.timelineManager.currentIndex === 0) {
+      activeTimelineWrapper.innerHTML = '';
+      inactiveTimelinesWrapper.innerHTML = '';
+      console.log(
+        'Cleared all timeline wrappers for first timeline initialization'
+      );
+    } else {
+      // Move previous timeline to inactive wrapper BEFORE adding new one
+      const previousTimeline = window.timelineManager.activeTimeline;
+      if (previousTimeline && previousTimeline.parentElement) {
+        previousTimeline.setAttribute('data-active', 'false');
+        previousTimeline.parentElement.setAttribute('data-active', 'false');
+
+        // Move the previous timeline to the inactive wrapper
+        inactiveTimelinesWrapper.appendChild(previousTimeline.parentElement);
+
+        // Update timeline count variable
+        updateTimelineCountVariable();
+      }
+
+      // Clear any existing containers in the active wrapper to prevent duplicates
+      activeTimelineWrapper.innerHTML = '';
+    }
+
+    // Desktop mode - create new timeline container
+    const newTimelineContainer = document.createElement('div');
+    newTimelineContainer.className = 'timeline-container';
+    appendTimelineCanvasLabels(
+      newTimelineContainer,
+      nextTimelineKey,
+      window.timelineManager.metadata[nextTimelineKey]
+    );
+
+    const newTimeline = document.createElement('div');
+    newTimeline.className = 'timeline';
+    newTimelineContainer.appendChild(newTimeline);
+
+    // Add new timeline to active wrapper
+    activeTimelineWrapper.appendChild(newTimelineContainer);
+
+    // Initialize new timeline and container with proper IDs and mode
+    newTimeline.id = nextTimelineKey;
+    newTimeline.setAttribute('data-timeline-type', nextTimelineKey);
+    newTimeline.setAttribute('data-active', 'true');
+    newTimeline.setAttribute(
+      'data-mode',
+      window.timelineManager.metadata[nextTimelineKey].mode
+    );
+    newTimelineContainer.setAttribute('data-active', 'true');
+
+    // Set active timeline reference
+    window.timelineManager.activeTimeline = newTimeline;
+
+    // Initialize activities array if not exists
+    window.timelineManager.activities[nextTimelineKey] =
+      window.timelineManager.activities[nextTimelineKey] || [];
+
+    // Scroll to active timeline in mobile view
+    if (getIsMobile()) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+
+    // Initialize timeline with markers and containers
+    initTimeline(window.timelineManager.activeTimeline);
+
+    // Render activities for next timeline
+    renderActivities(categories);
+
+    // Initialize interaction for the timeline
+    initTimelineInteraction(window.timelineManager.activeTimeline);
+
+    // Reset button states
+    updateButtonStates();
+
+    // Scroll to the active timeline
+    scrollToActiveTimeline();
+
+    if (DEBUG_MODE) {
+      console.log(`Switched to ${nextTimelineKey} timeline`);
+      console.log(
+        'Timeline data structure:',
+        window.timelineManager.activities
+      );
+      console.log(
+        'Activities per timeline:',
+        Object.fromEntries(
+          Object.entries(window.timelineManager.activities).map(
+            ([key, activities]) => [key, activities.length]
+          )
+        )
+      );
+    }
+
+    // Update activities container data-mode
+    const activitiesContainerElement = document.querySelector(
+      '#activitiesContainer'
+    );
+    if (activitiesContainerElement) {
+      activitiesContainerElement.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[nextTimelineKey].mode
+      );
+    }
+
+    // Update floating button position after timeline changes
+    updateFloatingButtonPosition();
+    initPastTimelineClickHandlers();
+  } catch (error) {
+    console.error(`Error switching to ${nextTimelineKey} timeline:`, error);
+    throw new Error(
+      `Failed to switch to ${nextTimelineKey} timeline: ${error.message}`
+    );
+  }
+}
+
+// Function to go back to previous timeline
+async function goToPreviousTimeline() {
+  if (DEBUG_MODE) {
+    console.log(
+      `Going back from timeline ${window.timelineManager.currentIndex}`
+    );
+  }
+
+  // Check if we can go back
+  if (window.timelineManager.currentIndex <= 0) {
+    if (DEBUG_MODE) {
+      console.log('Already at first timeline, cannot go back');
+    }
+    return;
+  }
+
+  // Clear selected activity before switching timelines to prevent user from placing primary activity on secondary timeline
+  clearActiveActivitySelection();
+  console.log('Cleared selected activity before going to previous timeline');
+
+  // Get the previous timeline key
+  const previousTimelineIndex = window.timelineManager.currentIndex - 1;
+  const previousTimelineKey =
+    window.timelineManager.keys[previousTimelineIndex];
+
+  // Decrement the index
+  window.timelineManager.currentIndex = previousTimelineIndex;
+
+  try {
+    // Load previous timeline data
+    const categories = await fetchActivities(previousTimelineKey);
+
+    // Update UI for previous timeline with animation
+    const previousTimeline =
+      window.timelineManager.metadata[previousTimelineKey];
+    const timelineHeader = document.querySelector('.timeline-header');
+
+    // First remove any existing animation
+    timelineHeader.classList.remove('flip-animation');
+
+    // Force a reflow before starting new animation
+    void timelineHeader.offsetWidth;
+
+    // Add animation class before content change
+    timelineHeader.classList.add('flip-animation');
+
+    // Update content immediately
+    updateTimelineHeader(previousTimeline.name, previousTimeline.description);
+
+    // Trigger reflow to ensure animation plays
+    void timelineHeader.offsetWidth;
+
+    // Add animation class
+    timelineHeader.classList.add('flip-animation');
+
+    // Remove animation class after it finishes
+    timelineHeader.addEventListener(
+      'animationend',
+      () => {
+        timelineHeader.classList.remove('flip-animation');
+      },
+      { once: true }
+    );
+
+    const activeTimelineWrapper = document.querySelector(
+      '.last-initialized-timeline-wrapper'
+    );
+    const inactiveTimelinesWrapper = document.querySelector(
+      '.past-initialized-timelines-wrapper'
+    );
+
+    if (isDesktopFixedTimelineOrdering()) {
+      const currentTimeline = window.timelineManager.activeTimeline;
+      setTimelineActiveState(currentTimeline, false);
+
+      const previousTimelineElement =
+        document.getElementById(previousTimelineKey);
+      if (!previousTimelineElement) {
+        throw new Error(
+          `Previous timeline element '${previousTimelineKey}' not found`
+        );
+      }
+
+      setTimelineActiveState(previousTimelineElement, true);
+      window.timelineManager.activeTimeline = previousTimelineElement;
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+
+      renderActivities(categories);
+      updateButtonStates();
+      scrollToActiveTimeline();
+
+      const activitiesContainerElement = document.querySelector(
+        '#activitiesContainer'
+      );
+      if (activitiesContainerElement) {
+        activitiesContainerElement.setAttribute(
+          'data-mode',
+          window.timelineManager.metadata[previousTimelineKey].mode
+        );
+      }
+
+      updateFloatingButtonPosition();
+      initPastTimelineClickHandlers();
+      return;
+    }
+
+    // Move all future timelines to past wrapper (so they can be restored later)
+    const currentTimelineIndex = window.timelineManager.currentIndex + 1; // +1 because we already decremented
+    for (
+      let i = currentTimelineIndex;
+      i < window.timelineManager.keys.length;
+      i++
+    ) {
+      const futureTimelineKey = window.timelineManager.keys[i];
+      const futureTimelineElement = document.getElementById(futureTimelineKey);
+      if (futureTimelineElement && futureTimelineElement.parentElement) {
+        // Move to past wrapper instead of removing
+        futureTimelineElement.setAttribute('data-active', 'false');
+        futureTimelineElement.parentElement.setAttribute(
+          'data-active',
+          'false'
+        );
+        inactiveTimelinesWrapper.appendChild(
+          futureTimelineElement.parentElement
+        );
+      }
+    }
+
+    // Move current timeline to inactive wrapper
+    const currentTimeline = window.timelineManager.activeTimeline;
+    if (currentTimeline && currentTimeline.parentElement) {
+      currentTimeline.setAttribute('data-active', 'false');
+      currentTimeline.parentElement.setAttribute('data-active', 'false');
+
+      // Move the current timeline to the inactive wrapper
+      inactiveTimelinesWrapper.appendChild(currentTimeline.parentElement);
+
+      // Update timeline count variable
+      updateTimelineCountVariable();
+    }
+
+    // Clear active wrapper
+    activeTimelineWrapper.innerHTML = '';
+
+    // Find the previous timeline in inactive wrapper and move it back to active
+    const previousTimelineElement =
+      document.getElementById(previousTimelineKey);
+    if (previousTimelineElement && previousTimelineElement.parentElement) {
+      // Move previous timeline back to active wrapper
+      previousTimelineElement.setAttribute('data-active', 'true');
+      previousTimelineElement.parentElement.setAttribute('data-active', 'true');
+      activeTimelineWrapper.appendChild(previousTimelineElement.parentElement);
+
+      // Set active timeline reference
+      window.timelineManager.activeTimeline = previousTimelineElement;
+
+      // IMPORTANT: Re-initialize timeline interaction for the reactivated timeline
+      // This ensures that click events and activity placement still work
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+    } else {
+      // If timeline doesn't exist in inactive wrapper, recreate it
+      const newTimelineContainer = document.createElement('div');
+      newTimelineContainer.className = 'timeline-container';
+      appendTimelineCanvasLabels(
+        newTimelineContainer,
+        previousTimelineKey,
+        window.timelineManager.metadata[previousTimelineKey]
+      );
+
+      const newTimeline = document.createElement('div');
+      newTimeline.className = 'timeline';
+      newTimelineContainer.appendChild(newTimeline);
+
+      // Add timeline to active wrapper
+      activeTimelineWrapper.appendChild(newTimelineContainer);
+
+      // Initialize timeline and container with proper IDs and mode
+      newTimeline.id = previousTimelineKey;
+      newTimeline.setAttribute('data-timeline-type', previousTimelineKey);
+      newTimeline.setAttribute('data-active', 'true');
+      newTimeline.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[previousTimelineKey].mode
+      );
+      newTimelineContainer.setAttribute('data-active', 'true');
+
+      // Set active timeline reference
+      window.timelineManager.activeTimeline = newTimeline;
+
+      // Initialize timeline with markers and containers
+      initTimeline(window.timelineManager.activeTimeline);
+
+      // Initialize interaction for the timeline
+      initTimelineInteraction(window.timelineManager.activeTimeline);
+    }
+
+    // Activities will be restored automatically when the timeline is re-initialized
+    // The activity data is already stored in window.timelineManager.activities[previousTimelineKey]
+
+    // Render activities categories for previous timeline
+    renderActivities(categories);
+
+    // Scroll to active timeline in mobile view
+    if (getIsMobile()) {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+
+    // Reset button states
+    updateButtonStates();
+
+    // Scroll to the active timeline
+    scrollToActiveTimeline();
+
+    if (DEBUG_MODE) {
+      console.log(`Switched back to ${previousTimelineKey} timeline`);
+      console.log(
+        'Timeline data structure:',
+        window.timelineManager.activities
+      );
+      console.log(
+        'Activities per timeline:',
+        Object.fromEntries(
+          Object.entries(window.timelineManager.activities).map(
+            ([key, activities]) => [key, activities.length]
+          )
+        )
+      );
+    }
+
+    // Update activities container data-mode
+    const activitiesContainerElement = document.querySelector(
+      '#activitiesContainer'
+    );
+    if (activitiesContainerElement) {
+      activitiesContainerElement.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[previousTimelineKey].mode
+      );
+    }
+
+    // Update floating button position after timeline changes
+    updateFloatingButtonPosition();
+    initPastTimelineClickHandlers();
+  } catch (error) {
+    console.error(
+      `Error switching back to ${previousTimelineKey} timeline:`,
+      error
+    );
+    throw new Error(
+      `Failed to switch back to ${previousTimelineKey} timeline: ${error.message}`
+    );
+  }
+}
+
+function logDebugInfo() {
+  if (DEBUG_MODE) {
+    console.log('timelineData:', timelineData);
+  }
+}
+
+// Add a cache for fetched timelines
+const timelineFetchCache = new Map();
+
+async function fetchActivities(key) {
+  console.log(`Fetching activities configuration for timeline key: ${key}`);
+
+  // Check if we have cached config
+  const configData = getCachedActivitiesConfig();
+  if (!configData) {
+    // This should never happen if init succeeded
+    throw new Error(
+      'Activities configuration cache is empty. Application was not properly initialized.'
+    );
+  }
+
+  // Validate min_coverage
+  try {
+    validateMinCoverage(configData.timeline[key].min_coverage);
+  } catch (error) {
+    const errorMessage = `Timeline "${key}": ${error.message}`;
+    document.getElementById('activitiesContainer').innerHTML =
+      `<p style="color: red; padding: 10px; background: #ffebee; border: 1px solid #ef9a9a; border-radius: 4px;">
+                ${errorMessage}
+            </p>`;
+    throw new Error(errorMessage);
+  }
+
+  const categories = getTimelineCategories(key, configData);
+
+  // Mark timeline as initialized
+  window.timelineManager.initialized.add(key);
+
+  if (DEBUG_MODE) {
+    console.log(
+      `Returning cached activities for ${key} with ${categories.length} categories`
+    );
+  }
+
+  return categories;
+}
+
+// Create a child items modal for activity selection
+function createChildItemsModal() {
+  // Check if modal already exists
+  if (document.getElementById('childItemsModal')) {
+    return document.getElementById('childItemsModal');
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'childItemsModal';
+  modal.className = 'modal';
+  modal.style.display = 'none';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'childItemsModalTitle');
+
+  const modalContent = document.createElement('div');
+  modalContent.className = 'modal-content';
+
+  const modalHeader = document.createElement('div');
+  modalHeader.className = 'modal-header';
+
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'close';
+  closeButton.innerHTML = '&times;';
+  closeButton.setAttribute('aria-label', 'Close');
+  closeButton.setAttribute('data-i18n-aria-label', 'buttons.close');
+  closeButton.addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
+
+  const title = document.createElement('h3');
+  title.id = 'childItemsModalTitle';
+  title.setAttribute('data-i18n', 'modals.childItems.title');
+  title.textContent = window.i18n
+    ? window.i18n.t('modals.childItems.title')
+    : 'Select an option';
+
+  modalHeader.appendChild(title);
+  modalHeader.appendChild(closeButton);
+
+  const modalBody = document.createElement('div');
+  modalBody.className = 'modal-body';
+  modalBody.id = 'childItemsContainer';
+
+  modalContent.appendChild(modalHeader);
+  modalContent.appendChild(modalBody);
+  modal.appendChild(modalContent);
+
+  document.body.appendChild(modal);
+
+  // Close modal when clicking outside
+  window.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+
+  return modal;
+}
+
+function renderChildItems(activity, categoryName) {
+  const modal = createChildItemsModal();
+  const container = document.getElementById('childItemsContainer');
+  const title = document.getElementById('childItemsModalTitle');
+
+  // Set the title to the parent activity name
+  if (window.i18n && window.i18n.isReady()) {
+    const template = window.i18n.t('modals.childItems.titleFor');
+    title.textContent = template.replace(/\{activityName\}/g, activity.name);
+  } else {
+    title.textContent = `Select an option for "${activity.name}"`;
+  }
+
+  // Clear previous content
+  container.innerHTML = '';
+
+  //console.log(`>>>>Rendering child items for activity "${activity.name}" in category "${categoryName}"`);
+
+  // Create buttons for each child item
+  if (activity.childItems && activity.childItems.length > 0) {
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'child-item-buttons';
+
+    activity.childItems.forEach((childItem) => {
+      //console.log(`>>Adding child item button: "${childItem.name}" with color "${childItem.color || activity.color}"`);
+      const button = document.createElement('button');
+      button.className = 'child-item-button';
+
+      // Add custom-input class if this is a custom child item
+      const is_custom_input = childItem.is_custom_input || false;
+      if (is_custom_input) {
+        button.classList.add('custom-input');
+      }
+
+      const frequencyOptions = getFrequencyOptionsForActivity(
+        activity,
+        childItem
+      );
+      if (frequencyOptions.length > 0) {
+        button.classList.add('has-frequency');
+      }
+
+      button.style.setProperty('--color', childItem.color || activity.color);
+      button.dataset.code = childItem.code;
+
+      // Create container for button content (to handle examples layout)
+      const buttonContent = document.createElement('div');
+      buttonContent.className = 'child-item-button-content';
+
+      // Create name element
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'child-item-name';
+      nameSpan.textContent = childItem.name;
+      buttonContent.appendChild(nameSpan);
+
+      if (childItem.examples) {
+        const examplesSpan = document.createElement('span');
+        examplesSpan.className = 'child-item-examples';
+        examplesSpan.textContent = childItem.examples;
+        buttonContent.appendChild(examplesSpan);
+      }
+
+      button.appendChild(buttonContent);
+      if (frequencyOptions.length > 0) {
+        button.appendChild(createFrequencyIndicator());
+      }
+
+      // ... rest of the existing click handler code remains the same
+      button.addEventListener('click', () => {
+        // Check if this is a custom input child item
+        if (is_custom_input) {
+          console.log(
+            '>>>>[CHILD ITEM] Custom input child item clicked, showing custom activity modal'
+          );
+
+          // Set context for custom input
+          window.customInputContext = {
+            type: 'childItem',
+            parentActivity: activity,
+            categoryName: categoryName,
+            childItem: childItem,
+          };
+
+          // Close child items modal
+          modal.style.display = 'none';
+
+          // Show custom activity modal with appropriate title
+          const customActivityModal = document.getElementById(
+            'customActivityModal'
+          );
+          const customActivityInput = document.getElementById(
+            'customActivityInput'
+          );
+          const modalTitle = customActivityModal.querySelector('h3');
+          const activitiesModal = document.getElementById('activitiesModal');
+          const customActivityInputContainer = document.getElementById(
+            'customActivityInputContainer'
+          );
+          const customActivityFrequencyContainer = document.getElementById(
+            'customActivityFrequencyContainer'
+          );
+          const customActivityFrequencySelect = document.getElementById(
+            'customActivityFrequencySelect'
+          );
+          const frequencyOptions = getFrequencyOptionsForActivity(
+            activity,
+            childItem
+          );
+
+          // Update modal title for child item context
+          if (window.i18n && window.i18n.isReady()) {
+            const template = window.i18n.t(
+              'modals.customActivity.childItemTitle'
+            );
+            modalTitle.textContent = template.replace(
+              /\{parentActivity\}/g,
+              activity.name
+            );
+          } else {
+            modalTitle.textContent = `Enter custom value for: ${activity.name}`;
+          }
+
+          if (customActivityInputContainer) {
+            customActivityInputContainer.style.display = 'block';
+          }
+          if (customActivityFrequencyContainer) {
+            customActivityFrequencyContainer.style.display =
+              frequencyOptions.length ? 'block' : 'none';
+          }
+          populateFrequencySelect(
+            customActivityFrequencySelect,
+            frequencyOptions
+          );
+
+          customActivityInput.value = getSavedCustomText(childItem.code); // Use saved text if available
+          // Update clear-button visibility
+          const clearBtn = document.getElementById('customActivityClearBtn');
+          if (clearBtn) {
+            clearBtn.style.display = getSavedCustomText(childItem.code)
+              ? 'inline-block'
+              : 'none';
+            clearBtn.setAttribute('data-activity-code', childItem.code || '');
+          }
+          customActivityModal.style.display = 'block';
+          customActivityInput.focus();
+
+          // SET UP EVENT LISTENERS FOR CUSTOM ACTIVITY MODAL (CHILD ITEM VERSION)
+          const confirmBtn = document.getElementById('confirmCustomActivity');
+          const inputField = document.getElementById('customActivityInput');
+
+          if (confirmBtn && inputField) {
+            // Remove any existing listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            const newInputField = inputField.cloneNode(true);
+            inputField.parentNode.replaceChild(newInputField, inputField);
+
+            // Re-wire the clear button since the input was cloned
+            const newClearBtn = document.getElementById(
+              'customActivityClearBtn'
+            );
+            if (newClearBtn) {
+              const clonedClearBtn = newClearBtn.cloneNode(true);
+              newClearBtn.parentNode.replaceChild(clonedClearBtn, newClearBtn);
+              clonedClearBtn.addEventListener('click', () => {
+                clearSavedCustomText(childItem.code || '');
+                newInputField.value = '';
+                newInputField.focus();
+                clonedClearBtn.style.display = 'none';
+              });
+            }
+
+            // Handle custom activity submission for child items
+            const handleChildItemCustomActivity = () => {
+              const customText = newInputField.value.trim();
+              const selectedFrequencyKey =
+                customActivityFrequencySelect?.value || null;
+              if (customText) {
+                // Persist the custom text for this activity code
+                saveCustomText(childItem.code, customText);
+
+                // Create child item structure with custom text
+                window.selectedActivity = {
+                  name: customText,
+                  parentName: activity.name,
+                  parentCode: activity.code,
+                  color: childItem.color || activity.color,
+                  category: categoryName,
+                  selected: customText,
+                  originalSelection: childItem.name, // Store what was originally clicked
+                  isCustomInput: true,
+                  frequencyKey: selectedFrequencyKey,
+                  code: childItem.code,
+                };
+
+                // Close modals
+                console.log('>>>>Closing modals after custom child item input');
+                customActivityModal.style.cssText = 'display: none !important';
+                const childItemsModal =
+                  document.getElementById('childItemsModal');
+                if (childItemsModal) {
+                  childItemsModal.style.cssText = 'display: none !important';
+                }
+                if (activitiesModal) {
+                  activitiesModal.style.cssText = 'display: none !important';
+                }
+
+                newInputField.value = '';
+
+                // Reset context
+                window.customInputContext = {
+                  type: null,
+                  parentActivity: null,
+                  categoryName: null,
+                };
+              }
+            };
+
+            // Add new listeners
+            newConfirmBtn.addEventListener(
+              'click',
+              handleChildItemCustomActivity
+            );
+            newInputField.addEventListener('keypress', (e) => {
+              if (e.key === 'Enter') {
+                handleChildItemCustomActivity();
+              }
+            });
+          }
+
+          return;
+        }
+
+        //console.log(`>>[CHILD ITEM] non-custom Selected child item: "${childItem.name}"`);
+
+        const frequencyOptions = getFrequencyOptionsForActivity(
+          activity,
+          childItem
+        );
+        if (frequencyOptions.length > 0) {
+          modal.style.display = 'none';
+          openActivityDetailsModal({
+            title: `Select frequency for: ${childItem.name}`,
+            showInput: false,
+            frequencyOptions,
+            onConfirm: ({ frequencyKey }) => {
+              window.selectedActivity = {
+                name: childItem.name,
+                parentName: activity.name,
+                parentCode: activity.code,
+                color: childItem.color || activity.color,
+                category: categoryName,
+                selected: childItem.name,
+                isCustomInput: false,
+                frequencyKey: frequencyKey || null,
+                code: childItem.code,
+              };
+
+              // Close the modal
+              modal.style.display = 'none';
+
+              // Also close activities modal if open
+              const activitiesModal =
+                document.getElementById('activitiesModal');
+              if (activitiesModal) {
+                activitiesModal.style.display = 'none';
+              }
+            },
+          });
+          return;
+        }
+
+        // Regular child item selection (not custom)
+        window.selectedActivity = {
+          name: childItem.name,
+          parentName: activity.name,
+          parentCode: activity.code,
+          color: childItem.color || activity.color,
+          category: categoryName,
+          selected: childItem.name,
+          isCustomInput: false,
+          frequencyKey: null,
+          code: childItem.code,
+        };
+
+        // Close the modal
+        modal.style.display = 'none';
+
+        // Also close activities modal if open
+        const activitiesModal = document.getElementById('activitiesModal');
+        if (activitiesModal) {
+          activitiesModal.style.display = 'none';
+        }
+      });
+
+      buttonsContainer.appendChild(button);
+    });
+
+    container.appendChild(buttonsContainer);
+  }
+
+  // Show the modal
+  modal.style.display = 'block';
+}
+
+function renderActivities(
+  categories,
+  container = document.getElementById('activitiesContainer')
+) {
+  console.log('>>Rendering activities for container:', container.id);
+  container.innerHTML = '';
+
+  // Set data-mode attribute based on current timeline's mode
+  const currentKey = getCurrentTimelineKey();
+  if (currentKey && window.timelineManager.metadata[currentKey]) {
+    container.setAttribute(
+      'data-mode',
+      window.timelineManager.metadata[currentKey].mode
+    );
+  }
+
+  const isMobile = getIsMobile();
+  const isModal = container.id === 'modalActivitiesContainer';
+
+  // Only create accordion if this is the modal container and in mobile view
+  if (isMobile && isModal) {
+    console.log('>>Creating accordion layout for mobile modal activities');
+    const accordionContainer = document.createElement('div');
+    accordionContainer.className = 'activities-accordion';
+    // Set data-mode attribute to match current timeline's mode
+    const currentKey = getCurrentTimelineKey();
+    if (currentKey && window.timelineManager.metadata[currentKey]) {
+      accordionContainer.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[currentKey].mode
+      );
+    }
+
+    categories.forEach((category) => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = 'activity-category';
+
+      const categoryTitle = document.createElement('h3');
+      categoryTitle.textContent = category.name;
+      categoryDiv.appendChild(categoryTitle);
+
+      const activityButtonsDiv = document.createElement('div');
+      activityButtonsDiv.className = 'activity-buttons';
+
+      category.activities.forEach((activity) => {
+        //console.log(">>>Rendering activity:", activity.name, " of category:", category.name, "in accordion (mobile modal)");
+        const activityButton = document.createElement('button');
+        const isMultipleChoice =
+          container.getAttribute('data-mode') === 'multiple-choice';
+        const is_custom_input = activity.is_custom_input || false;
+        activityButton.className = `activity-button ${
+          isMultipleChoice ? 'checkbox-style' : ''
+        }`;
+        const frequencyOptions = getFrequencyOptionsForActivity(activity);
+        if (frequencyOptions.length > 0) {
+          activityButton.classList.add('has-frequency');
+        }
+        // Add indicator class if activity has child items
+        if (activity.childItems && activity.childItems.length > 0) {
+          activityButton.classList.add('has-child-items');
+        }
+
+        activityButton.style.setProperty('--color', activity.color);
+        activityButton.dataset.code = activity.code;
+
+        if (isMultipleChoice) {
+          const checkmark = document.createElement('span');
+          checkmark.className = 'checkmark';
+          activityButton.appendChild(checkmark);
+        }
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'activity-text';
+
+        // Create name span
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'activity-name';
+        if (is_custom_input) {
+          activityButton.classList.add('custom-input');
+          nameSpan.classList.add('custom-input');
+        }
+        nameSpan.textContent = activity.name;
+        textSpan.appendChild(nameSpan);
+
+        // Add examples if they exist
+        if (activity.examples) {
+          const examplesSpan = document.createElement('span');
+          examplesSpan.className = 'activity-examples';
+          examplesSpan.textContent = activity.examples;
+          textSpan.appendChild(examplesSpan);
+        }
+
+        activityButton.appendChild(textSpan);
+        if (frequencyOptions.length > 0) {
+          activityButton.appendChild(createFrequencyIndicator());
+        }
+        activityButton.addEventListener('click', () => {
+          const activitiesContainer = activityButton.closest(
+            '#activitiesContainer, #modalActivitiesContainer'
+          );
+          const isMultipleChoice =
+            activitiesContainer.getAttribute('data-mode') === 'multiple-choice';
+          const categoryButtons = activityButton
+            .closest('.activity-category')
+            .querySelectorAll('.activity-button');
+
+          // Check if this is the "other not listed" button
+          if (is_custom_input) {
+            const frequencyOptions = getFrequencyOptionsForActivity(activity);
+            window.customInputContext = {
+              type: null,
+              parentActivity: null,
+              categoryName: null,
+            };
+            openActivityDetailsModal({
+              title: `Enter custom value for: ${activity.name}`,
+              showInput: true,
+              frequencyOptions,
+              activityCode: activity.code,
+              onConfirm: ({ customText, frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: customText,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: customText,
+                  originalSelection: activity.name,
+                  isCustomInput: true,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
+            console.log(
+              'window.customInputContext: ',
+              window.customInputContext
+            );
+            return;
+          } else {
+            console.log(
+              '[ACTIVITY] This click was not a "Other not listed" activity, continuing...'
+            );
+          }
+
+          // Check if activity has child items
+          if (activity.childItems && activity.childItems.length > 0) {
+            setSingleActiveActivityButton(activityButton);
+
+            // Show child items modal
+            renderChildItems(activity, category.name);
+            return;
+          }
+
+          const frequencyOptions = getFrequencyOptionsForActivity(activity);
+          if (frequencyOptions.length > 0 && !isMultipleChoice) {
+            openActivityDetailsModal({
+              title: `Select frequency for: ${activity.name}`,
+              showInput: false,
+              frequencyOptions,
+              onConfirm: ({ frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: activity.name,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: activity.name,
+                  originalSelection: null,
+                  isCustomInput: is_custom_input,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
+            return;
+          }
+
+          if (isMultipleChoice) {
+            // Toggle selection for this button
+            activityButton.classList.toggle('selected');
+
+            // Get all selected activities in this category
+            const selectedButtons = Array.from(categoryButtons).filter((btn) =>
+              btn.classList.contains('selected')
+            );
+            const buttonsArray = Array.from(categoryButtons); // Convert node list to array for map()
+
+            const availableOptions = buttonsArray.map((btn) => ({
+              name: btn.querySelector('.activity-text').textContent,
+              color: btn.style.getPropertyValue('--color'),
+            }));
+
+            if (selectedButtons.length > 0) {
+              window.selectedActivity = {
+                selections: selectedButtons.map((btn) => ({
+                  name: btn.textContent,
+                  color: btn.style.getPropertyValue('--color'),
+                })),
+                category: category.name,
+                mode: 'multiple-choice',
+                count: selectedButtons.length,
+                availableOptions: availableOptions,
+                isCustomInput: false,
+                codes: selectedButtons.map((btn) => btn.dataset.code),
+              };
+            } else {
+              // Only clear window.selectedActivity in multiple-choice mode if user actively deselected
+              // Don't clear if we're in a modal that's about to close
+              const isInModal = activityButton.closest(
+                '#modalActivitiesContainer'
+              );
+              if (!isInModal) {
+                console.log(
+                  '[ACTIVITY] Clearing window.selectedActivity - not in modal'
+                );
+                clearActiveActivitySelection();
+              } else {
+                console.log(
+                  '[ACTIVITY] NOT clearing window.selectedActivity - in modal'
+                );
+              }
+            }
+          } else {
+            // Single choice mode
+            clearSelectedActivityButtons();
+            window.selectedActivity = {
+              name: activity.name,
+              parentName: null,
+              parentCode: null,
+              color: activity.color,
+              category: category.name,
+              selected: activity.name,
+              //originalSelection: activity.name, // Store what was originally clicked,
+              isCustomInput: is_custom_input, // false
+              mode: 'single-choice',
+              code: activity.code,
+            };
+            console.log(
+              '[ACTIVITY] Selected activity:',
+              window.selectedActivity
+            );
+            setSingleActiveActivityButton(activityButton);
+          }
+          // Only close modal in single-choice mode
+          if (!isMultipleChoice) {
+            // Store the selected activity before closing modal to prevent it from being cleared
+            const preservedActivity = window.selectedActivity;
+
+            // Force close modals with a slight delay on mobile
+            if (getIsMobile()) {
+              setTimeout(() => {
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                const customActivityModal = document.getElementById(
+                  'customActivityModal'
+                );
+                if (activitiesModal) {
+                  activitiesModal.style.cssText = 'display: none !important';
+                }
+                if (customActivityModal) {
+                  customActivityModal.style.cssText =
+                    'display: none !important';
+                }
+                // Restore window.selectedActivity after modal closes in case it was cleared
+                if (preservedActivity && !window.selectedActivity) {
+                  window.selectedActivity = preservedActivity;
+                  console.log(
+                    '[MODAL] Restored window.selectedActivity:',
+                    window.selectedActivity
+                  );
+                } else {
+                  console.log(
+                    '[MODAL] window.selectedActivity after close:',
+                    window.selectedActivity
+                  );
+                }
+              }, 50);
+            } else {
+              // Immediate close on desktop
+              const activitiesModal =
+                document.getElementById('activitiesModal');
+              const customActivityModal = document.getElementById(
+                'customActivityModal'
+              );
+              if (activitiesModal) {
+                activitiesModal.style.cssText = 'display: none !important';
+              }
+              if (customActivityModal) {
+                customActivityModal.style.cssText = 'display: none !important';
+              }
+              // Restore window.selectedActivity after modal closes in case it was cleared
+              if (preservedActivity && !window.selectedActivity) {
+                window.selectedActivity = preservedActivity;
+              }
+            }
+          }
+        });
+        activityButtonsDiv.appendChild(activityButton);
+      });
+
+      categoryDiv.appendChild(activityButtonsDiv);
+      accordionContainer.appendChild(categoryDiv);
+    });
+
+    container.appendChild(accordionContainer);
+
+    // Add click event listener to category titles
+    const categoryTitles = accordionContainer.querySelectorAll(
+      '.activity-category h3'
+    );
+    categoryTitles.forEach((title) => {
+      title.addEventListener('click', () => {
+        const category = title.parentElement;
+        category.classList.toggle('active');
+      });
+    });
+  } else {
+    console.log(
+      '>>Rendering standard layout for activities (not on mobile modal)'
+    );
+    categories.forEach((category) => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = 'activity-category';
+
+      const categoryTitle = document.createElement('h3');
+      categoryTitle.textContent = category.name;
+      categoryDiv.appendChild(categoryTitle);
+
+      const activityButtonsDiv = document.createElement('div');
+      activityButtonsDiv.className = 'activity-buttons';
+
+      category.activities.forEach((activity) => {
+        //console.log(">>>Rendering activity:", activity.name, " of category:", category.name, "(not on mobile modal)");
+        const activityButton = document.createElement('button');
+        const is_custom_input = activity.is_custom_input || false;
+        //console.log(">>> is_custom_input for activity", activity.name, "is", is_custom_input);
+        const isMultipleChoice =
+          container.getAttribute('data-mode') === 'multiple-choice';
+        activityButton.className = `activity-button ${
+          isMultipleChoice ? 'checkbox-style' : ''
+        }`;
+        const frequencyOptions = getFrequencyOptionsForActivity(activity);
+        if (frequencyOptions.length > 0) {
+          activityButton.classList.add('has-frequency');
+        }
+        // Add indicator class if activity has child items
+        if (activity.childItems && activity.childItems.length > 0) {
+          activityButton.classList.add('has-child-items');
+        }
+
+        activityButton.style.setProperty('--color', activity.color);
+        activityButton.dataset.code = activity.code;
+
+        if (isMultipleChoice) {
+          const checkmark = document.createElement('span');
+          checkmark.className = 'checkmark';
+          activityButton.appendChild(checkmark);
+        }
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'activity-text';
+
+        // Create name span
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'activity-name';
+        if (is_custom_input) {
+          activityButton.classList.add('custom-input');
+          nameSpan.classList.add('custom-input');
+        }
+        nameSpan.textContent = activity.name;
+        textSpan.appendChild(nameSpan);
+
+        // Add examples if they exist
+        if (activity.examples) {
+          const examplesSpan = document.createElement('span');
+          examplesSpan.className = 'activity-examples';
+          examplesSpan.textContent = activity.examples;
+          textSpan.appendChild(examplesSpan);
+        }
+
+        activityButton.appendChild(textSpan);
+        if (frequencyOptions.length > 0) {
+          activityButton.appendChild(createFrequencyIndicator());
+        }
+        activityButton.addEventListener('click', () => {
+          const activitiesContainer = activityButton.closest(
+            '#activitiesContainer, #modalActivitiesContainer'
+          );
+          const isMultipleChoice =
+            activitiesContainer.getAttribute('data-mode') === 'multiple-choice';
+          const categoryButtons = activityButton
+            .closest('.activity-category')
+            .querySelectorAll('.activity-button');
+
+          // Check if this is the "other not listed" button
+          if (is_custom_input) {
+            const frequencyOptions = getFrequencyOptionsForActivity(activity);
+            window.customInputContext = {
+              type: null,
+              parentActivity: null,
+              categoryName: null,
+            };
+            openActivityDetailsModal({
+              title: `Enter custom value for: ${activity.name}`,
+              showInput: true,
+              frequencyOptions,
+              activityCode: activity.code,
+              onConfirm: ({ customText, frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: customText,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  originalSelection: activity.name,
+                  selected: customText,
+                  mode: 'single-choice',
+                  isCustomInput: true,
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
+
+            return;
+          } else {
+            console.log(
+              '[ACTIVITY] The button clicked was not a custom input button, proceeding with logic for non-custom buttons...'
+            );
+          }
+
+          // Check if activity has child items
+          if (activity.childItems && activity.childItems.length > 0) {
+            setSingleActiveActivityButton(activityButton);
+
+            // Show child items modal
+            console.log(
+              '>>>>[ACTIVITY] Activity has child items, rendering child items modal'
+            );
+            renderChildItems(activity, category.name);
+            return;
+          }
+          console.log(
+            '>>>>[ACTIVITY] This activity has no child items, proceeding with selection logic'
+          );
+
+          const frequencyOptions = getFrequencyOptionsForActivity(activity);
+          if (frequencyOptions.length > 0 && !isMultipleChoice) {
+            openActivityDetailsModal({
+              title: `Select frequency for: ${activity.name}`,
+              showInput: false,
+              frequencyOptions,
+              onConfirm: ({ frequencyKey }) => {
+                clearSelectedActivityButtons();
+                window.selectedActivity = {
+                  name: activity.name,
+                  parentName: null,
+                  parentCode: null,
+                  color: activity.color,
+                  category: category.name,
+                  selected: activity.name,
+                  originalSelection: null,
+                  isCustomInput: is_custom_input,
+                  mode: 'single-choice',
+                  frequencyKey: frequencyKey || null,
+                  code: activity.code,
+                };
+                setSingleActiveActivityButton(activityButton);
+
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                if (activitiesModal) {
+                  activitiesModal.style.display = 'none';
+                }
+              },
+            });
+            return;
+          }
+
+          if (isMultipleChoice) {
+            console.log(
+              '>>>>[ACTIVITY] non-custom Multiple-choice mode active'
+            );
+            // Toggle selection for this button
+            activityButton.classList.toggle('selected');
+
+            // Get all selected activities in this category
+            const selectedButtons = Array.from(categoryButtons).filter((btn) =>
+              btn.classList.contains('selected')
+            );
+
+            console.log(
+              '>>>>[ACTIVITY] Computing available options for multiple-choice selection'
+            );
+            console.log('categoryButtons:', categoryButtons);
+            console.log('categoryButtons type:', typeof categoryButtons);
+            console.log('categoryButtons length:', categoryButtons?.length);
+
+            const buttonsArray = Array.from(categoryButtons); // Convert node list to array, we need map()
+
+            const availableOptions = buttonsArray.map((btn) => ({
+              name: btn.querySelector('.activity-text').textContent,
+              color: btn.style.getPropertyValue('--color'),
+            }));
+
+            if (selectedButtons.length > 0) {
+              window.selectedActivity = {
+                selections: selectedButtons.map((btn) => ({
+                  name: btn.querySelector('.activity-text').textContent,
+                  color: btn.style.getPropertyValue('--color'),
+                  code: btn.dataset.code,
+                })),
+                category: category.name,
+                mode: 'multiple-choice',
+                isCustomInput: false,
+                availableOptions: availableOptions,
+                codes: selectedButtons.map((btn) => btn.dataset.code),
+              };
+            } else {
+              // Only clear window.selectedActivity in multiple-choice mode if user actively deselected
+              // Don't clear if we're in a modal that's about to close
+              const isInModal = activityButton.closest(
+                '#modalActivitiesContainer'
+              );
+              if (!isInModal) {
+                console.log(
+                  '[ACTIVITY] Clearing window.selectedActivity - not in modal'
+                );
+                clearActiveActivitySelection();
+              } else {
+                console.log(
+                  '[ACTIVITY] NOT clearing window.selectedActivity - in modal'
+                );
+              }
+            }
+            console.log(
+              '>>>>[ACTIVITY] window.selectedActivity after multiple-choice selection:',
+              window.selectedActivity
+            );
+          } else {
+            // Single choice mode
+            console.log('>>>>[ACTIVITY] non-custom Single-choice mode active');
+            clearSelectedActivityButtons();
+            window.selectedActivity = {
+              name: activity.name,
+              parentName: null,
+              parentCode: null,
+              color: activity.color,
+              category: category.name,
+              selected: activity.name,
+              originalSelection: null, // this is not a custom input, so no original selection
+              mode: 'single-choice',
+              isCustomInput: is_custom_input,
+              code: activity.code,
+            };
+            console.log(
+              '[ACTIVITY] Selected activity after single-choice selection:',
+              window.selectedActivity
+            );
+            setSingleActiveActivityButton(activityButton);
+          }
+          // Only close modal in single-choice mode
+          if (!isMultipleChoice) {
+            // Store the selected activity before closing modal to prevent it from being cleared
+            const preservedActivity = window.selectedActivity;
+
+            // Force close modals with a slight delay on mobile
+            if (getIsMobile()) {
+              setTimeout(() => {
+                const activitiesModal =
+                  document.getElementById('activitiesModal');
+                const customActivityModal = document.getElementById(
+                  'customActivityModal'
+                );
+                if (activitiesModal) {
+                  activitiesModal.style.cssText = 'display: none !important';
+                }
+                if (customActivityModal) {
+                  customActivityModal.style.cssText =
+                    'display: none !important';
+                }
+                // Restore window.selectedActivity after modal closes in case it was cleared
+                if (preservedActivity && !window.selectedActivity) {
+                  window.selectedActivity = preservedActivity;
+                  console.log(
+                    '[MODAL] Restored window.selectedActivity:',
+                    window.selectedActivity
+                  );
+                } else {
+                  console.log(
+                    '[MODAL] window.selectedActivity after close:',
+                    window.selectedActivity
+                  );
+                }
+              }, 50);
+            } else {
+              // Immediate close on desktop
+              const activitiesModal =
+                document.getElementById('activitiesModal');
+              const customActivityModal = document.getElementById(
+                'customActivityModal'
+              );
+              if (activitiesModal) {
+                activitiesModal.style.cssText = 'display: none !important';
+              }
+              if (customActivityModal) {
+                customActivityModal.style.cssText = 'display: none !important';
+              }
+              // Restore window.selectedActivity after modal closes in case it was cleared
+              if (preservedActivity && !window.selectedActivity) {
+                window.selectedActivity = preservedActivity;
+              }
+            }
+          }
+        });
+        activityButtonsDiv.appendChild(activityButton);
+      });
+
+      categoryDiv.appendChild(activityButtonsDiv);
+      container.appendChild(categoryDiv);
+    });
+  }
+}
+
+function initTimeline(timeline) {
+  timeline.setAttribute('data-active', 'true');
+  timeline.setAttribute(
+    'data-layout',
+    getIsMobile() ? 'vertical' : 'horizontal'
+  );
+
+  // Remove existing markers
+  if (
+    timeline.containerInstance &&
+    timeline.containerInstance.hourLabelsContainer
+  ) {
+    timeline.containerInstance.hourLabelsContainer.innerHTML = '';
+  }
+
+  // Create and initialize timeline container
+  const timelineContainer = new TimelineContainer(timeline);
+  timelineContainer.initialize(getIsMobile()).createMarkers(getIsMobile());
+
+  // Store the container instance and markers on the timeline element for later access
+  timeline.containerInstance = timelineContainer;
+  timeline.markers = timelineContainer.markers || [];
+
+  // Add window resize handler to update marker positions
+  window.addEventListener('resize', () => {
+    const newIsMobile = window.innerWidth < 1440;
+    timeline.setAttribute(
+      'data-layout',
+      newIsMobile ? 'vertical' : 'horizontal'
+    );
+
+    // Update dimensions on layout change
+    if (newIsMobile) {
+      const minHeight = '2500px';
+      timeline.style.height = minHeight;
+      timeline.style.width = '';
+      timeline.parentElement.style.height = minHeight;
+
+      // Update hour label container for mobile
+      const hourLabelsContainer = timeline.querySelector('.hour-labels');
+      if (hourLabelsContainer) {
+        hourLabelsContainer.style.height = '100%';
+        hourLabelsContainer.style.width = 'auto';
+      }
+    } else {
+      timeline.style.height = '';
+      timeline.style.width = '100%';
+      timeline.parentElement.style.height = '';
+
+      // Update hour label container for desktop
+      const hourLabelsContainer = timeline.querySelector('.hour-labels');
+      if (hourLabelsContainer) {
+        hourLabelsContainer.style.width = '100%';
+        hourLabelsContainer.style.height = 'auto';
+      }
+    }
+
+    // Update all markers and their labels if they exist
+    if (timeline.markers && timeline.markers.length > 0) {
+      timeline.markers.forEach((marker) => marker.update(newIsMobile));
+    }
+  });
+
+  if (DEBUG_MODE) {
+    timeline.addEventListener('mousemove', (e) => {
+      const rect = timeline.getBoundingClientRect();
+      updateDebugOverlay(e.clientX, e.clientY, rect);
+    });
+
+    timeline.addEventListener('mouseleave', () => {
+      hideDebugOverlay();
+    });
+  }
+}
+
+// Add validation function before the interact.js initialization
+function validateActivityBlockTransformation(startMinutes, endMinutes, target) {
+  const MIN_BLOCK_LENGTH = 10; // Minimum block length in minutes
+  const TIMELINE_START = 240; // 4:00 AM in minutes
+  const TIMELINE_END = 1680; // 4:00 AM next day in minutes
+
+  // Normalize end minutes if it wraps to next day
+  const normalizedEndMinutes =
+    endMinutes < startMinutes ? endMinutes + 1440 : endMinutes;
+
+  // Calculate block length
+  const blockLength = normalizedEndMinutes - startMinutes;
+
+  // Validation checks
+  if (blockLength <= 0 || blockLength < MIN_BLOCK_LENGTH) {
+    console.warn('Invalid block length:', {
+      startTime: formatTimeHHMM(startMinutes),
+      endTime: formatTimeHHMM(endMinutes),
+      length: blockLength,
+      minLength: MIN_BLOCK_LENGTH,
+    });
+    return false;
+  }
+
+  if (startMinutes < TIMELINE_START || endMinutes > TIMELINE_END) {
+    console.warn('Time out of valid range:', {
+      startTime: formatTimeHHMM(startMinutes),
+      endTime: formatTimeHHMM(endMinutes),
+      validRange: '04:00-04:00(+1)',
+    });
+    return false;
+  }
+
+  return true;
+}
+
+function initTimelineInteraction(timeline) {
+  if (!timeline) {
+    console.error('Timeline must be provided to initTimelineInteraction');
+    return;
+  }
+  const targetTimeline = timeline;
+
+  document.querySelectorAll('.timeline').forEach((timelineElement) => {
+    timelineElement.tabIndex = 0;
+    const timelineName =
+      window.timelineManager?.metadata?.[timelineElement.id]?.name ||
+      'Timeline';
+    // A bare div cannot carry aria-label (axe: aria-prohibited-attr), so the
+    // timeline is exposed as a named group - the blocks inside stay operable.
+    timelineElement.setAttribute('role', 'group');
+    timelineElement.setAttribute('aria-label', timelineName);
+
+    if (!timelineElement.dataset.spaceKeyActivationBound) {
+      timelineElement.addEventListener('keydown', async (event) => {
+        if (
+          event.code !== 'Space' &&
+          event.key !== ' ' &&
+          event.key !== 'Spacebar'
+        ) {
+          return;
+        }
+
+        event.preventDefault();
+        await navigateToTimelineByKey(timelineElement.id);
+      });
+      timelineElement.dataset.spaceKeyActivationBound = 'true';
+    }
+
+    if (!timelineElement.dataset.hoverTooltipBound) {
+      timelineElement.addEventListener('mouseenter', (event) => {
+        showTimelineHoverTooltip(event, timelineElement);
+      });
+
+      timelineElement.addEventListener('mousemove', (event) => {
+        showTimelineHoverTooltip(event, timelineElement);
+      });
+
+      timelineElement.addEventListener('mouseleave', () => {
+        hideTimelineHoverTooltip();
+      });
+
+      timelineElement.dataset.hoverTooltipBound = 'true';
+    }
+  });
+
+  document
+    .querySelectorAll('.timeline-container')
+    .forEach((timelineContainerElement) => {
+      if (timelineContainerElement.dataset.hoverTooltipBound) {
+        return;
+      }
+
+      timelineContainerElement.addEventListener('mouseenter', (event) => {
+        const timelineElement =
+          timelineContainerElement.querySelector('.timeline');
+        if (
+          !timelineElement ||
+          timelineElement.getAttribute('data-active') !== 'false'
+        )
+          return;
+        showTimelineHoverTooltip(event, timelineElement);
+      });
+
+      timelineContainerElement.addEventListener('mousemove', (event) => {
+        const timelineElement =
+          timelineContainerElement.querySelector('.timeline');
+        if (
+          !timelineElement ||
+          timelineElement.getAttribute('data-active') !== 'false'
+        )
+          return;
+        showTimelineHoverTooltip(event, timelineElement);
+      });
+
+      timelineContainerElement.addEventListener('mouseleave', () => {
+        hideTimelineHoverTooltip();
+      });
+
+      timelineContainerElement.dataset.hoverTooltipBound = 'true';
+    });
+
+  // Initialize interact.js resizable
+  interact('.activity-block').resizable({
+    onstart: function (event) {
+      // Store original values before resize
+      const target = event.target;
+      target.dataset.originalStart = target.dataset.start;
+      target.dataset.originalEnd = target.dataset.end;
+      target.dataset.originalLength = target.dataset.length;
+      target.dataset.originalHeight = target.style.height;
+      target.dataset.originalLeft = target.style.left;
+      target.dataset.originalTop = target.style.top;
+      target.dataset.originalWidth = target.style.width;
+      // Store original raw minutes
+      target.dataset.originalStartMinutes =
+        target.dataset.startMinutes || timeToMinutes(target.dataset.start);
+      target.dataset.originalEndMinutes =
+        target.dataset.endMinutes || timeToMinutes(target.dataset.end);
+
+      // Ensure autoscroll is enabled when resizing starts
+      if (window.autoScrollModule && getIsMobile()) {
+        window.autoScrollModule.enable();
+      }
+    },
+    edges: {
+      right: !getIsMobile(),
+      left: !getIsMobile(),
+      bottom: getIsMobile(),
+      top: getIsMobile(),
+    },
+    modifiers: [
+      interact.modifiers.restrictEdges({
+        outer: '.timeline',
+        endOnly: true,
+      }),
+      interact.modifiers.restrictSize({
+        min: { width: 10, height: 10 },
+      }),
+      // Add snap modifier for 10-minute intervals
+      interact.modifiers.snap({
+        targets: [
+          interact.snappers.grid({
+            x: (timelineRect) => (10 / (24 * 60)) * timelineRect.width, // 10-minute intervals
+            y: (timelineRect) => (10 / (24 * 60)) * timelineRect.height,
+          }),
+        ],
+        range: Infinity,
+        relativePoints: [{ x: 0, y: 0 }],
+      }),
+    ],
+    inertia: false,
+    listeners: {
+      start(event) {
+        event.target.classList.add('resizing');
+      },
+      move(event) {
+        const target = event.target;
+        const timelineRect = targetTimeline.getBoundingClientRect();
+        let startMinutes, endMinutes;
+
+        // Get time label at the beginning of the handler
+        const timeLabel = target.querySelector('.time-label');
+
+        target.classList.add('resizing');
+
+        if (getIsMobile()) {
+          // Mobile: Handle vertical resizing
+          if (event.edges.top) {
+            // Get raw cursor position from event coordinates
+            const clientY = event.touches
+              ? event.touches[0].clientY
+              : event.clientY;
+            const timelineRect = targetTimeline.getBoundingClientRect();
+
+            // Calculate relative Y position within timeline bounds
+            const relativeY = clientY - timelineRect.top;
+            const clampedRelativeY = Math.max(
+              0,
+              Math.min(relativeY, timelineRect.height)
+            );
+            const positionPercent =
+              (clampedRelativeY / timelineRect.height) * 100;
+
+            // Convert to raw minutes using timeline-based position
+            const rawMinutes = positionToMinutes(positionPercent);
+            startMinutes = Math.round(rawMinutes / 10) * 10;
+
+            // Keep original end time fixed
+            endMinutes = parseInt(target.dataset.endMinutes);
+
+            // Debug logging with accurate values
+            if (DEBUG_MODE) {
+              console.log('[Resize Top Edge]:', {
+                clientY,
+                timelineTop: timelineRect.top,
+                relativeY: clampedRelativeY,
+                timelineHeight: timelineRect.height,
+                position: positionPercent.toFixed(2) + '%',
+                time: formatTimeHHMM(startMinutes),
+                startMinutes,
+                endMinutes,
+                coverage: window.getTimelineCoverage(),
+              });
+            }
+
+            // Validate time order
+            if (startMinutes >= endMinutes) {
+              console.warn(
+                'Invalid resize detected (vertical/top): Start time would be after end time',
+                {
+                  startTime: formatTimeHHMM(startMinutes),
+                  endTime: formatTimeHHMM(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.top = target.dataset.originalTop;
+              target.style.height = target.dataset.originalHeight;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Validate transformations
+            if (
+              !validateActivityBlockTransformation(
+                startMinutes,
+                endMinutes,
+                target
+              )
+            ) {
+              console.warn(
+                'Invalid resize detected (vertical/top): Invalid block transformation',
+                {
+                  startTime: formatTimeHHMM(startMinutes),
+                  endTime: formatTimeHHMM(endMinutes),
+                  blockId: target.dataset.id,
+                  reason: 'Block transformation validation failed',
+                }
+              );
+              target.style.top = target.dataset.originalTop;
+              target.style.height = target.dataset.originalHeight;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Check for overlaps
+            if (
+              !canPlaceActivity(startMinutes, endMinutes, target.dataset.id)
+            ) {
+              console.warn(
+                'Invalid resize detected (vertical/top): Activity overlap',
+                {
+                  startTime: formatTimeHHMM(startMinutes),
+                  endTime: formatTimeHHMM(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.top = target.dataset.originalTop;
+              target.style.height = target.dataset.originalHeight;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Update position and size using percentages
+            target.style.top = `${minutesToPercentage(startMinutes)}%`;
+            target.style.height = `${
+              ((endMinutes - startMinutes) / MINUTES_PER_DAY) * 100
+            }%`;
+          } else if (event.edges.bottom) {
+            // Keep original start time fixed
+            startMinutes = parseInt(target.dataset.startMinutes);
+
+            // Get cursor position from event coordinates instead of element rect
+            const clientY = getIsMobile()
+              ? event.touches
+                ? event.touches[0].clientY
+                : event.clientY
+              : event.clientY;
+            const timelineRect = targetTimeline.getBoundingClientRect();
+
+            // Calculate relative Y position within timeline
+            const relativeY = clientY - timelineRect.top;
+            const positionPercent = Math.min(
+              100,
+              Math.max(0, (relativeY / timelineRect.height) * 100)
+            );
+
+            // For vertical bottom-edge resizing we want to allow reaching the timeline end (04:00(+1))
+            const rawMinutes = positionToMinutes(positionPercent, {
+              allowEnd: true,
+            });
+
+            endMinutes = Math.round(rawMinutes / 10) * 10;
+
+            // Debug logging with corrected values
+            if (DEBUG_MODE) {
+              console.log('[Resize Bottom Edge]:', {
+                clientY: clientY,
+                timelineTop: timelineRect.top,
+                relativeY: relativeY,
+                timelineHeight: timelineRect.height,
+                position: positionPercent.toFixed(2) + '%',
+                time: formatTimeHHMM(endMinutes),
+                startMinutes: startMinutes,
+                endMinutes: endMinutes,
+                coverage: window.getTimelineCoverage(),
+              });
+            }
+
+            // Add snap behavior for smoother resizing
+            const currentEndMinutes = parseInt(target.dataset.endMinutes);
+            const minutesDiff = Math.abs(endMinutes - currentEndMinutes);
+
+            // Only update if the change is at least 10 minutes
+            if (minutesDiff >= 10) {
+              // Validate time order
+              if (endMinutes <= startMinutes) {
+                target.style.height = target.dataset.originalHeight;
+                target.classList.add('invalid');
+                setTimeout(() => target.classList.remove('invalid'), 400);
+                return;
+              }
+
+              // Validate transformations
+              if (
+                !validateActivityBlockTransformation(
+                  startMinutes,
+                  endMinutes,
+                  target
+                )
+              ) {
+                target.style.height = target.dataset.originalHeight;
+                target.classList.add('invalid');
+                setTimeout(() => target.classList.remove('invalid'), 400);
+                return;
+              }
+
+              // Check for overlaps
+              if (
+                !canPlaceActivity(startMinutes, endMinutes, target.dataset.id)
+              ) {
+                target.style.height = target.dataset.originalHeight;
+                target.classList.add('invalid');
+                setTimeout(() => target.classList.remove('invalid'), 400);
+                return;
+              }
+
+              // Update size using percentages
+              target.style.height = `${
+                ((endMinutes - startMinutes) / MINUTES_PER_DAY) * 100
+              }%`;
+            }
+          }
+        } else {
+          // Desktop: Handle left and right edge resizing differently
+          const tenMinutesWidth = (10 / (24 * 60)) * 100; // Width of 10-minute interval as percentage
+
+          if (event.edges.left) {
+            // Left edge resizing - adjust start time
+            const newLeft =
+              ((event.rect.left - timelineRect.left) / timelineRect.width) *
+              100;
+            startMinutes = positionToMinutes(newLeft);
+            endMinutes = parseInt(target.dataset.endMinutes);
+
+            // Debug logging with accurate values
+            if (DEBUG_MODE) {
+              console.log('[Resize Left Edge]:', {
+                newLeft: newLeft.toFixed(2) + '%',
+                time: formatTimelineStart(startMinutes),
+                startMinutes,
+                endMinutes,
+                coverage: window.getTimelineCoverage(),
+              });
+            }
+
+            // Validate time order considering next day times
+            const isEndNextDay = endMinutes < 240 || endMinutes >= 1440;
+            const isStartNextDay = startMinutes < 240 || startMinutes >= 1440;
+
+            // Check if the times would create an invalid order
+            if (
+              (isStartNextDay === isEndNextDay && startMinutes >= endMinutes) ||
+              (!isStartNextDay && isEndNextDay && startMinutes >= 1440)
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/left): Start time would be after end time',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.left = target.dataset.originalLeft;
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Validate transformations
+            if (
+              !validateActivityBlockTransformation(
+                startMinutes,
+                endMinutes,
+                target
+              )
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/left): Invalid block transformation',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                  reason: 'Block transformation validation failed',
+                }
+              );
+              target.style.left = target.dataset.originalLeft;
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Check for overlaps
+            if (
+              !canPlaceActivity(startMinutes, endMinutes, target.dataset.id)
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/left): Activity overlap',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.left = target.dataset.originalLeft;
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Update position and size
+            target.style.left = `${minutesToPercentage(startMinutes)}%`;
+            target.style.width = `${
+              ((endMinutes - startMinutes) / MINUTES_PER_DAY) * 100
+            }%`;
+
+            // Update data attributes with properly formatted times
+            const newStartTime = formatTimelineStart(startMinutes);
+            const newEndTime = formatTimelineEnd(endMinutes);
+            target.dataset.start = newStartTime;
+            target.dataset.end = newEndTime;
+            target.dataset.startMinutes = startMinutes;
+            target.dataset.endMinutes = endMinutes;
+            target.dataset.length = endMinutes - startMinutes;
+
+            // Update time label
+            if (timeLabel) {
+              updateTimeLabel(timeLabel);
+            }
+          } else if (event.edges.right) {
+            // Right edge resizing - adjust end time using absolute timeline
+            const newRight =
+              ((event.rect.right - timelineRect.left) / timelineRect.width) *
+              100;
+            const rawMinutes = positionToMinutes(newRight);
+            endMinutes = Math.round(rawMinutes / 10) * 10;
+
+            // Maintain original start time in absolute minutes
+            startMinutes = parseInt(target.dataset.startMinutes);
+
+            // Special case: If we're at the end of timeline (1680 minutes/04:00(+1))
+            const SNAP_THRESHOLD = 99.65;
+            if (newRight >= SNAP_THRESHOLD) {
+              endMinutes = 1680; // Absolute end of timeline (04:00 next day)
+            }
+
+            // Debug logging with accurate values
+            if (DEBUG_MODE) {
+              console.log('[Resize Right Edge]:', {
+                newRight: newRight.toFixed(2) + '%',
+                time: formatTimelineEnd(endMinutes),
+                startMinutes,
+                endMinutes,
+                coverage: window.getTimelineCoverage(),
+              });
+            }
+
+            // Validate time order considering next day times
+            const isEndNextDay = endMinutes < 240 || endMinutes >= 1440;
+            const isStartNextDay = startMinutes < 240 || startMinutes >= 1440;
+
+            // Check if the times would create an invalid order
+            if (
+              (isStartNextDay === isEndNextDay && startMinutes >= endMinutes) ||
+              (!isStartNextDay && isEndNextDay && startMinutes >= 1440)
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/right): Start time would be after end time',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Validate transformations with absolute times
+            if (
+              !validateActivityBlockTransformation(
+                startMinutes,
+                endMinutes,
+                target
+              )
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/right): Block transformation validation failed',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Check for activity overlap
+            if (
+              !canPlaceActivity(startMinutes, endMinutes, target.dataset.id)
+            ) {
+              console.warn(
+                'Invalid resize detected (horizontal/right): Activity overlap',
+                {
+                  startTime: formatTimelineStart(startMinutes),
+                  endTime: formatTimelineEnd(endMinutes),
+                  blockId: target.dataset.id,
+                }
+              );
+              target.style.width = target.dataset.originalWidth;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+
+            // Update size
+            target.style.width = `${
+              ((endMinutes - startMinutes) / MINUTES_PER_DAY) * 100
+            }%`;
+
+            // Update data attributes with properly formatted times
+            const newStartTime = formatTimelineStart(startMinutes);
+            const newEndTime = formatTimelineEnd(endMinutes);
+            target.dataset.start = newStartTime;
+            target.dataset.end = newEndTime;
+            target.dataset.startMinutes = startMinutes;
+            target.dataset.endMinutes = endMinutes;
+            target.dataset.length = endMinutes - startMinutes;
+
+            // Update time label
+            if (timeLabel) {
+              updateTimeLabel(timeLabel);
+            }
+          }
+        }
+
+        // Update time label and dataset
+        if (timeLabel) {
+          // Format and update times - (+1) notation is handled automatically
+          const newStartTime = formatTimeHHMM(startMinutes, false); // Start time
+          const newEndTime = formatTimeHHMM(endMinutes % MINUTES_PER_DAY, true);
+
+          // Final validation to ensure we never have negative length
+          let timeDiff = endMinutes - startMinutes;
+          if (timeDiff < 0 && !newEndTime.includes('(+1)')) {
+            // If we have negative length and we're not spanning midnight, revert
+            target.dataset.start = target.dataset.originalStart;
+            target.dataset.end = target.dataset.originalEnd;
+            target.dataset.length = target.dataset.originalLength;
+            target.style.left = target.dataset.originalLeft;
+            target.style.width = `${
+              parseFloat(target.dataset.originalLength) * (100 / 1440)
+            }%`;
+
+            console.warn(
+              'Invalid resize detected (final validation): Negative length',
+              {
+                startTime: newStartTime,
+                endTime: newEndTime,
+                length: timeDiff,
+                blockId: target.dataset.id,
+              }
+            );
+
+            target.classList.add('invalid');
+            setTimeout(() => target.classList.remove('invalid'), 400);
+            return;
+          }
+
+          target.dataset.start = newStartTime;
+          target.dataset.end = newEndTime;
+          target.dataset.length = timeDiff;
+          target.dataset.startMinutes = startMinutes;
+          target.dataset.endMinutes = endMinutes;
+          updateTimeLabel(timeLabel);
+
+          // Update text class based on length and mode
+          const textDiv = target.querySelector(
+            'div[class^="activity-block-text"]'
+          );
+          if (textDiv) {
+            textDiv.className = getIsMobile()
+              ? timeDiff >= 60
+                ? 'activity-block-text-narrow wide resized'
+                : 'activity-block-text-narrow'
+              : timeDiff >= 60
+                ? 'activity-block-text-narrow wide resized'
+                : 'activity-block-text-vertical';
+          }
+
+          // Update the activity data in timelineManager
+          const activityId = target.dataset.id;
+          const currentData = getCurrentTimelineData();
+          const activityIndex = currentData.findIndex((activity) =>
+            activityIdsEqual(activity.id, activityId)
+          );
+
+          if (activityIndex !== -1) {
+            currentData[activityIndex].startTime = newStartTime;
+            currentData[activityIndex].endTime = newEndTime;
+            currentData[activityIndex].blockLength = parseInt(
+              target.dataset.length
+            );
+
+            // Update the minutes in the activity data
+            currentData[activityIndex].startMinutes = startMinutes;
+            currentData[activityIndex].endMinutes = endMinutes;
+
+            // Update original values incrementally
+            target.dataset.originalStart = newStartTime;
+            target.dataset.originalEnd = newEndTime;
+            target.dataset.originalLength = target.dataset.length;
+            target.dataset.originalHeight = target.style.height;
+            target.dataset.originalLeft = target.style.left;
+            target.dataset.originalTop = target.style.top;
+            target.dataset.originalWidth = target.style.width;
+            target.dataset.originalStartMinutes = startMinutes;
+            target.dataset.originalEndMinutes = endMinutes;
+
+            // Validate timeline after resizing activity
+            try {
+              const timelineKey = target.dataset.timelineKey;
+              if (!timelineKey) {
+                throw new Error('Timeline key not found on activity block');
+              }
+              window.timelineManager.metadata[timelineKey].validate();
+            } catch (error) {
+              console.error('Timeline validation failed:', error);
+              // Revert the change
+              target.dataset.start = target.dataset.originalStart;
+              target.dataset.end = target.dataset.originalEnd;
+              target.dataset.length = target.dataset.originalLength;
+              target.style.left = target.dataset.originalLeft;
+              target.style.width = `${
+                parseFloat(target.dataset.originalLength) * (100 / 1440)
+              }%`;
+              target.classList.add('invalid');
+              setTimeout(() => target.classList.remove('invalid'), 400);
+              return;
+            }
+          }
+        }
+      },
+      end(event) {
+        event.target.classList.remove('resizing');
+        const textDiv = event.target.querySelector(
+          'div[class^="activity-block-text"]'
+        );
+        const timeLabel = event.target.querySelector('.time-label');
+        if (timeLabel) {
+          timeLabel.style.display = 'block';
+        }
+        if (textDiv) {
+          const length = parseInt(event.target.dataset.length);
+          textDiv.className = getIsMobile()
+            ? length >= 60
+              ? 'activity-block-text-narrow wide resized'
+              : 'activity-block-text-narrow'
+            : length >= 60
+              ? 'activity-block-text-narrow wide resized'
+              : 'activity-block-text-vertical';
+        }
+        // Disable autoscroll when resizing ends
+        if (window.autoScrollModule) {
+          window.autoScrollModule.disable();
+        }
+        updateButtonStates();
+      },
+    },
+  });
+
+  // Initialize interact.js draggable (desktop only)
+  if (!getIsMobile()) {
+    interact('.activity-block').draggable({
+      modifiers: [
+        // Snap to 10-minute grid horizontally
+        interact.modifiers.snap({
+          targets: [
+            interact.snappers.grid({
+              x: (timelineRect) => (10 / (24 * 60)) * timelineRect.width,
+              y: Infinity, // Don't snap vertically
+            }),
+          ],
+          range: Infinity,
+          relativePoints: [{ x: 0, y: 0 }],
+        }),
+        // Restrict to timeline bounds
+        interact.modifiers.restrict({
+          restriction: '.timeline',
+          endOnly: false,
+        }),
+      ],
+      inertia: false,
+      listeners: {
+        start(event) {
+          const target = event.target;
+          const rect = target.getBoundingClientRect();
+          const clickX = event.clientX;
+
+          // Check if click is within edge handle zones (10px from edges)
+          const EDGE_HANDLE_WIDTH = 10;
+          const isLeftEdge = clickX <= rect.left + EDGE_HANDLE_WIDTH;
+          const isRightEdge = clickX >= rect.right - EDGE_HANDLE_WIDTH;
+
+          if (isLeftEdge || isRightEdge) {
+            // Let resize handle this
+            event.stop();
+            return;
+          }
+
+          // Store original values
+          target.dataset.dragOriginalStartMinutes = target.dataset.startMinutes;
+          target.dataset.dragOriginalEndMinutes = target.dataset.endMinutes;
+          target.dataset.dragOriginalLeft = target.style.left;
+
+          target.classList.add('dragging');
+        },
+        move(event) {
+          const target = event.target;
+          const timeline = target.closest('.timeline');
+          if (!timeline) return;
+
+          const timelineRect = timeline.getBoundingClientRect();
+
+          // Calculate new left position using snapped coordinates
+          const newLeftPx = event.rect.left - timelineRect.left;
+          const newLeftPercent = (newLeftPx / timelineRect.width) * 100;
+
+          // Convert to minutes
+          const newStartMinutes = positionToMinutes(newLeftPercent);
+          const duration =
+            parseInt(target.dataset.dragOriginalEndMinutes) -
+            parseInt(target.dataset.dragOriginalStartMinutes);
+          const newEndMinutes = newStartMinutes + duration;
+
+          // Validate bounds
+          const TIMELINE_START = 240;
+          const TIMELINE_END = 1680;
+          if (
+            newStartMinutes < TIMELINE_START ||
+            newEndMinutes > TIMELINE_END
+          ) {
+            return;
+          }
+
+          // Validate no overlaps
+          if (
+            !canPlaceActivity(newStartMinutes, newEndMinutes, target.dataset.id)
+          ) {
+            target.classList.add('invalid');
+            setTimeout(() => target.classList.remove('invalid'), 400);
+            return;
+          }
+
+          // Update position
+          target.style.left = `${minutesToPercentage(newStartMinutes)}%`;
+
+          // Update data attributes
+          target.dataset.startMinutes = newStartMinutes;
+          target.dataset.endMinutes = newEndMinutes;
+          target.dataset.start = formatTimelineStart(newStartMinutes);
+          target.dataset.end = formatTimelineEnd(newEndMinutes);
+          target.dataset.length = duration;
+
+          // Update time label
+          const timeLabel = target.querySelector('.time-label');
+          if (timeLabel) {
+            updateTimeLabel(timeLabel);
+          }
+
+          // Update text class based on length
+          const textDiv = target.querySelector(
+            'div[class^="activity-block-text"]'
+          );
+          if (textDiv) {
+            textDiv.className =
+              duration >= 60
+                ? 'activity-block-text-narrow wide resized'
+                : 'activity-block-text-vertical';
+          }
+        },
+        end(event) {
+          const target = event.target;
+          target.classList.remove('dragging');
+
+          // Update activity data in timelineManager
+          const activityId = target.dataset.id;
+          const currentData = getCurrentTimelineData();
+          const activityIndex = currentData.findIndex((activity) =>
+            activityIdsEqual(activity.id, activityId)
+          );
+
+          if (activityIndex !== -1) {
+            const newStartMinutes = parseInt(target.dataset.startMinutes);
+            const newEndMinutes = parseInt(target.dataset.endMinutes);
+
+            currentData[activityIndex].startTime = target.dataset.start;
+            currentData[activityIndex].endTime = target.dataset.end;
+            currentData[activityIndex].startMinutes = newStartMinutes;
+            currentData[activityIndex].endMinutes = newEndMinutes;
+            currentData[activityIndex].blockLength = parseInt(
+              target.dataset.length
+            );
+
+            // Validate timeline
+            try {
+              const timelineKey = target.dataset.timelineKey;
+              if (timelineKey) {
+                window.timelineManager.metadata[timelineKey].validate();
+              }
+            } catch (error) {
+              console.error('Timeline validation failed:', error);
+              // Revert changes
+              target.dataset.startMinutes =
+                target.dataset.dragOriginalStartMinutes;
+              target.dataset.endMinutes = target.dataset.dragOriginalEndMinutes;
+              target.style.left = target.dataset.dragOriginalLeft;
+              return;
+            }
+          }
+
+          // Clean up temporary data attributes
+          delete target.dataset.dragOriginalStartMinutes;
+          delete target.dataset.dragOriginalEndMinutes;
+          delete target.dataset.dragOriginalLeft;
+
+          persistPendingTimelineStateSoon();
+          updateButtonStates();
+        },
+      },
+    });
+  }
+
+  // Add click and touch handling with debounce
+  let lastClickTime = 0;
+  const CLICK_DELAY = 300; // milliseconds
+
+  // Unified handler function for both click and touch events
+  const handleTimelineInteraction = (e) => {
+    console.log(
+      '[TIMELINE] Event triggered:',
+      e.type,
+      'window.selectedActivity:',
+      window.selectedActivity
+    );
+
+    // Only process clicks on the active timeline
+    if (
+      !targetTimeline ||
+      targetTimeline !== window.timelineManager.activeTimeline
+    ) {
+      console.log('[TIMELINE] Event ignored - not active timeline');
+      return;
+    }
+
+    // Prevent double-clicks
+    const currentTime = new Date().getTime();
+    if (currentTime - lastClickTime < CLICK_DELAY) {
+      console.log('[TIMELINE] Event ignored - within click delay');
+      return;
+    }
+    lastClickTime = currentTime;
+
+    if (!window.selectedActivity || e.target.closest('.activity-block')) {
+      console.log(
+        '[TIMELINE] Event ignored - no window.selectedActivity or clicked on activity block'
+      );
+      return;
+    }
+
+    const currentKey = getCurrentTimelineKey();
+    // Check if timeline is full before proceeding
+    if (isTimelineFull()) {
+      const block = document.createElement('div');
+      block.className = 'activity-block invalid';
+      setTimeout(() => block.remove(), 400); // Remove after animation
+      return;
+    }
+
+    // Ensure we're working with the current timeline data
+    window.timelineManager.activities[currentKey] = getCurrentTimelineData();
+
+    const rect = targetTimeline.getBoundingClientRect();
+    const isMobile = getIsMobile();
+    let clickPositionPercent;
+
+    // Get coordinates from either mouse or touch event
+    const clientX =
+      e.clientX ||
+      (e.touches && e.touches[0]
+        ? e.touches[0].clientX
+        : e.changedTouches && e.changedTouches[0]
+          ? e.changedTouches[0].clientX
+          : 0);
+    const clientY =
+      e.clientY ||
+      (e.touches && e.touches[0]
+        ? e.touches[0].clientY
+        : e.changedTouches && e.changedTouches[0]
+          ? e.changedTouches[0].clientY
+          : 0);
+
+    if (isMobile) {
+      const y = clientY - rect.top;
+      const clampedY = Math.max(0, Math.min(y, rect.height));
+      clickPositionPercent = (clampedY / rect.height) * 100;
+    } else {
+      const x = clientX - rect.left;
+      const clampedX = Math.max(0, Math.min(x, rect.width));
+      clickPositionPercent = (clampedX / rect.width) * 100;
+    }
+
+    if (clickPositionPercent >= 100) {
+      return;
+    }
+
+    // Get minutes and find nearest 10-minute markers
+    let clickMinutes = positionToMinutes(clickPositionPercent);
+    if (clickMinutes === null) {
+      return;
+    }
+
+    // In vertical mode, we only need the start time from the click position
+    // End time should always be start time + block length (default 10 minutes)
+    const startMinutes = Math.round(clickMinutes / 10) * 10;
+    const blockLength =
+      window.selectedActivity.blockLength || DEFAULT_ACTIVITY_LENGTH;
+    const endMinutes = startMinutes + blockLength;
+
+    if (isNaN(startMinutes) || isNaN(endMinutes)) {
+      console.error('Invalid minutes calculation:', {
+        startMinutes,
+        endMinutes,
+      });
+      const invalidPlacementMessage = window.i18n
+        ? window.i18n.t('messages.invalidPlacement')
+        : 'Cannot place activity here due to invalid position.';
+      alert(invalidPlacementMessage);
+      return;
+    }
+
+    // Check if activity can be placed at this position
+    if (!canPlaceActivity(startMinutes, endMinutes, null)) {
+      console.warn('Invalid activity placement attempt:', {
+        activity: window.selectedActivity.name,
+        startMinutes,
+        endMinutes,
+        reason:
+          'Activity cannot be placed at this position due to overlap or timeline bounds',
+      });
+      const block = document.createElement('div');
+      block.className = 'activity-block invalid';
+      block.style.backgroundColor = window.selectedActivity.color;
+
+      // Calculate position percentages
+      const startPositionPercent = minutesToPercentage(startMinutes);
+      const blockSize = (blockLength / 1440) * 100;
+
+      if (isMobile) {
+        block.style.height = `${blockSize}%`;
+        block.style.top = `${startPositionPercent}%`;
+        block.style.width = '50%';
+        block.style.left = '25%';
+      } else {
+        block.style.width = `${blockSize}%`;
+        block.style.left = `${startPositionPercent}%`;
+        block.style.height = '50%';
+        block.style.top = '25%';
+      }
+
+      targetTimeline.appendChild(block);
+      setTimeout(() => block.remove(), 400); // Remove after animation
+      return;
+    }
+
+    // Use the reusable createActivityBlock function instead of manual creation
+    const formattedStartTime = formatTimeHHMM(startMinutes, false);
+    const formattedEndTime = formatTimeHHMM(endMinutes, true);
+
+    const activityData = {
+      activity: window.selectedActivity.selections
+        ? window.selectedActivity.selections.map((s) => s.name).join(' | ')
+        : window.selectedActivity.name,
+      category: window.selectedActivity.category,
+      code: window.selectedActivity.code,
+      codes: window.selectedActivity.codes,
+      startTime: formattedStartTime,
+      endTime: formattedEndTime,
+      blockLength: endMinutes - startMinutes,
+      color: window.selectedActivity.color,
+      parentName: window.selectedActivity.parentName,
+      parentCode: window.selectedActivity.parentCode,
+      selected: window.selectedActivity.selected,
+      isCustomInput: window.selectedActivity.isCustomInput,
+      originalSelection: window.selectedActivity.originalSelection,
+      frequencyKey: window.selectedActivity.frequencyKey || null,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+      mode: window.selectedActivity.selections
+        ? 'multiple-choice'
+        : 'single-choice',
+      count: window.selectedActivity.selections
+        ? window.selectedActivity.selections.length
+        : 1,
+      selections: window.selectedActivity.selections || undefined,
+      availableOptions: window.selectedActivity.availableOptions || undefined,
+      timelineKey: currentKey,
+    };
+
+    const result = createActivityBlock(activityData);
+    const currentBlock = result.block;
+
+    const activitiesContainer =
+      window.timelineManager.activeTimeline.querySelector('.activities') ||
+      (() => {
+        const container = document.createElement('div');
+        container.className = 'activities';
+        window.timelineManager.activeTimeline.appendChild(container);
+        return container;
+      })();
+
+    // On mobile, only the most-recently placed label is shown (narrow vertical blocks).
+    // On desktop, all time labels remain visible simultaneously.
+    if (getIsMobile()) {
+      activitiesContainer.querySelectorAll('.time-label').forEach((label) => {
+        label.style.display = 'none';
+      });
+    }
+
+    activitiesContainer.appendChild(currentBlock);
+
+    // Create time label for both mobile and desktop modes
+    const timeLabel = createTimeLabel(currentBlock);
+    updateTimeLabel(timeLabel);
+    timeLabel.style.display = 'block'; // Ensure the new label is visible
+
+    // On desktop, also re-show any labels that were hidden by earlier placements.
+    if (!getIsMobile()) {
+      activitiesContainer.querySelectorAll('.time-label').forEach((label) => {
+        label.style.display = 'block';
+      });
+    }
+
+    // Deselect the activity button after successful placement
+    console.log(
+      '[ACTIVITY] Clearing window.selectedActivity after successful placement'
+    );
+    clearActiveActivitySelection();
+
+    // Store in timelineManager
+    getCurrentTimelineData().push(result.activityData);
+    currentBlock.dataset.id = result.activityData.id;
+
+    // Validate timeline after adding activity
+    try {
+      const timelineKey = currentBlock.dataset.timelineKey;
+      window.timelineManager.metadata[timelineKey].validate();
+    } catch (error) {
+      console.error('Timeline validation failed:', error);
+      console.warn('Invalid activity placement:', {
+        activity: result.activityData.activity,
+        category: result.activityData.category,
+        timelineKey,
+        reason: error.message,
+      });
+      // Remove the invalid activity
+      getCurrentTimelineData().pop();
+      currentBlock.remove();
+      const block = document.createElement('div');
+      block.className = 'activity-block invalid';
+      block.style.backgroundColor = window.selectedActivity.color;
+      block.style.width = currentBlock.style.width;
+      block.style.height = currentBlock.style.height;
+      block.style.top = currentBlock.style.top;
+      block.style.left = currentBlock.style.left;
+      targetTimeline.appendChild(block);
+      setTimeout(() => block.remove(), 400);
+      return;
+    }
+
+    updateButtonStates();
+    persistPendingTimelineStateSoon();
+
+    console.log(
+      `[Drag & Resize] Added event listeners for activity block: ${result.activityData.id}`
+    );
+  };
+
+  // Add both click and touch event listeners for better mobile support
+  targetTimeline.addEventListener('click', handleTimelineInteraction);
+
+  // Add touch events specifically for mobile devices
+  if (getIsMobile()) {
+    targetTimeline.addEventListener(
+      'touchend',
+      (e) => {
+        // Prevent the click event from also firing
+        e.preventDefault();
+        handleTimelineInteraction(e);
+      },
+      { passive: false }
+    );
+  }
+
+  // Update existing blocks to include parent/selected attributes if they don't have them
+  interact('.activity-block').on('resizeend', function (event) {
+    const target = event.target;
+
+    // If this is an existing block and needs parent/selected attributes
+    if (target.dataset.id && !target.hasAttribute('data-selected')) {
+      const activityId = target.dataset.id;
+      const currentData = getCurrentTimelineData();
+      const activityData = currentData.find((a) =>
+        activityIdsEqual(a.id, activityId)
+      );
+
+      if (activityData) {
+        // If block has parentName but no selected attribute
+        if (target.dataset.parentName && !activityData.selected) {
+          // Activity name is stored in dataset or inner text
+          const textDiv = target.querySelector(
+            'div[class^="activity-block-text"]'
+          );
+          const activityName = textDiv
+            ? textDiv.textContent.trim()
+            : activityData.activity;
+
+          // Update the data structure
+          activityData.selected = activityData.activity;
+          //activityData.parentName = activityName;
+
+          // Update the block
+          target.setAttribute(
+            'title',
+            `${activityName}: ${activityData.activity}`
+          );
+        } else if (!activityData.parentName) {
+          // For items without parent, both are the same
+          //activityData.parentName = activityData.activity;
+          activityData.selected = activityData.activity;
+        }
+      }
+    }
+
+    persistPendingTimelineStateSoon();
+  });
+}
+
+export function loadTimelineFromJSON(jsonData) {
+  console.log(
+    'loadTimelineFromJSON: Loading data for',
+    jsonData.length,
+    'activities'
+  );
+
+  // Group activities by timelineKey
+  const activitiesByTimeline = {};
+  jsonData.forEach((activity) => {
+    if (!activitiesByTimeline[activity.timelineKey]) {
+      activitiesByTimeline[activity.timelineKey] = [];
+    }
+    activitiesByTimeline[activity.timelineKey].push(activity);
+  });
+
+  // Process each timeline
+  Object.keys(activitiesByTimeline).forEach((timelineKey) => {
+    console.log(
+      `Loading ${activitiesByTimeline[timelineKey].length} activities for timeline "${timelineKey}"`
+    );
+
+    // Check if this timeline exists
+    if (!window.timelineManager.metadata[timelineKey]) {
+      console.warn(`Timeline "${timelineKey}" not found in metadata`);
+      return;
+    }
+
+    // Switch to this timeline if it's not the current one
+    const currentKey = getCurrentTimelineKey();
+    if (currentKey !== timelineKey) {
+      // Find the timeline index
+      const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
+      if (
+        targetIndex !== -1 &&
+        targetIndex !== window.timelineManager.currentIndex
+      ) {
+        console.log(
+          `Switching to timeline "${timelineKey}" (index ${targetIndex})`
+        );
+
+        // Update current index and active timeline
+        window.timelineManager.currentIndex = targetIndex;
+        const timelineElement = document.getElementById(timelineKey);
+        if (timelineElement) {
+          window.timelineManager.activeTimeline = timelineElement;
+
+          // Update UI to reflect the switch
+          const timeline = window.timelineManager.metadata[timelineKey];
+          updateTimelineHeader(timeline.name, timeline.description);
+
+          // Update activities container mode
+          const activitiesContainer = document.querySelector(
+            '#activitiesContainer'
+          );
+          if (activitiesContainer) {
+            activitiesContainer.setAttribute('data-mode', timeline.mode);
+          }
+        }
+      }
+    }
+
+    // Clear existing activities for this timeline
+    window.timelineManager.activities[timelineKey] = [];
+
+    // Load activities in sorted order
+    const sortedActivities = activitiesByTimeline[timelineKey].sort(
+      (a, b) => a.startMinutes - b.startMinutes
+    );
+    sortedActivities.forEach((activityData) => {
+      recreateActivityBlockFromTemplate(activityData);
+    });
+  });
+
+  // Switch back to first timeline for better UX
+  if (window.timelineManager.currentIndex !== 0) {
+    window.timelineManager.currentIndex = 0;
+    const firstTimelineKey = window.timelineManager.keys[0];
+    const firstTimelineElement = document.getElementById(firstTimelineKey);
+    if (firstTimelineElement) {
+      window.timelineManager.activeTimeline = firstTimelineElement;
+
+      // Update UI
+      const timeline = window.timelineManager.metadata[firstTimelineKey];
+      updateTimelineHeader(timeline.name, timeline.description);
+
+      // Update activities container
+      const activitiesContainer = document.querySelector(
+        '#activitiesContainer'
+      );
+      if (activitiesContainer) {
+        activitiesContainer.setAttribute('data-mode', timeline.mode);
+      }
+    }
+  }
+
+  updateButtonStates();
+  console.log('Finished loading timeline data');
+}
+
+export function loadTimelineFromJSONOldAndCurrentlyUnused(jsonData) {
+  console.log('loadTimelineFromJSON: Loading timeline data from JSON...');
+  console.trace('loadTimelineFromJSON called from:');
+
+  // Group activities by timelineKey
+  const activitiesByTimeline = {};
+  jsonData.forEach((activity) => {
+    if (!activitiesByTimeline[activity.timelineKey]) {
+      activitiesByTimeline[activity.timelineKey] = [];
+    }
+    activitiesByTimeline[activity.timelineKey].push(activity);
+  });
+
+  // Process each timeline
+  Object.keys(activitiesByTimeline).forEach((timelineKey) => {
+    console.log(
+      `loadTimelineFromJSON: === PROCESSING TIMELINE: ${timelineKey} ===`
+    );
+    console.log(
+      `loadTimelineFromJSON: Number of activities for ${timelineKey}:`,
+      activitiesByTimeline[timelineKey].length
+    );
+    // Check if this timeline exists in our metadata
+    if (!window.timelineManager.metadata[timelineKey]) {
+      console.warn(
+        `loadTimelineFromJSON: Timeline "${timelineKey}" not found in metadata, skipping activities`
+      );
+      return;
+    }
+
+    // Clear existing activities for this timeline
+    window.timelineManager.activities[timelineKey] = [];
+
+    // Switch to this timeline temporarily to create DOM elements
+    const timelineElement = document.getElementById(timelineKey);
+    if (timelineElement) {
+      window.timelineManager.activeTimeline = timelineElement;
+
+      // Load activities in sorted order
+      const sortedActivities = activitiesByTimeline[timelineKey].sort(
+        (a, b) => a.startMinutes - b.startMinutes
+      );
+      sortedActivities.forEach((activityData) => {
+        recreateActivityBlockFromTemplate(activityData);
+      });
+
+      console.log(
+        `loadTimelineFromJSON: Loaded ${sortedActivities.length} activities for timeline "${timelineKey}"`
+      );
+    } else {
+      console.warn(
+        `loadTimelineFromJSON: Timeline element "${timelineKey}" not found in DOM`
+      );
+    }
+  });
+
+  updateButtonStates();
+  console.log(
+    `loadTimelineFromJSON: Loaded ${jsonData.length} total activities from JSON`
+  );
+}
+
+/**
+ * Converts absolute minutes since midnight to frontend HH:MM/(+1) notation.
+ *
+ * @param {number} minutes Absolute minutes value.
+ * @param {boolean} isEndTime Whether the value is an end time.
+ * @returns {string} Formatted frontend time string (e.g. `14:10` or `00:50(+1)`).
+ */
+function minutesSinceMidnightToHHMM(minutes, isEndTime = false) {
+  return formatTimeHHMM(minutes, isEndTime);
+}
+
+/**
+ * Transform backend activities response to frontend format.
+ * The backend uses snake_case field names; the frontend uses camelCase.
+ * @param {import('./api_types.js').ActivitiesResponse} backendData
+ */
+function transformBackendActivitiesResponse(backendData) {
+  try {
+    // Extract mapping logic into separate function
+    const mapActivityItem = (activity) => ({
+      timelineKey: activity.timeline_key,
+      activity: activity.activity,
+      category: activity.category || 'Travel & Transit',
+      startTime: minutesSinceMidnightToHHMM(activity.start_minutes, false),
+      endTime: minutesSinceMidnightToHHMM(activity.end_minutes, true),
+      blockLength: activity.duration,
+      color: activity.color || '#cccccc',
+      parentName: activity.parent_activity || null,
+      parentCode: activity.parent_activity_code || null,
+      isCustomInput: activity.is_custom_input || false,
+      originalSelection: activity.original_selection || null,
+      startMinutes: activity.start_minutes,
+      endMinutes: activity.end_minutes,
+      mode: activity.timeline_mode,
+      selections: activity.selections || null,
+      availableOptions: activity.available_options || null,
+      count: activity.selections ? activity.selections.length : 1,
+      id: activity.activity_id_backend || generateUniqueId(),
+      code: activity.activity_code,
+      frequencyKey: activity.frequency_key || null,
+      day_label_index: activity.day_label_index,
+      day_label: activity.day_label || null,
+    });
+
+    const backendJson = backendData;
+
+    // Apply mapping to both activities arrays separately
+    // Keep them separate as they are different things
+    backendData.activities = backendJson.activities
+      ? backendJson.activities.map(mapActivityItem)
+      : [];
+
+    backendData.template_activities = backendJson.template_activities
+      ? backendJson.template_activities.map(mapActivityItem)
+      : [];
+  } catch (error) {
+    console.error(
+      'Error transforming backend response, returning empty array. Error details:',
+      error
+    );
+    return [];
+  }
+
+  console.log('Returning transformed activities: ', backendData.activities);
+  console.log(
+    'Transformed template activities: ',
+    backendData.template_activities
+  );
+  return backendData;
+}
+
+function showTemplateBanner(templateSourceDay, messageKey) {
+  // Check if banner already exists
+  const existingBanner = document.getElementById('templateBanner');
+  if (existingBanner) {
+    existingBanner.remove();
+  }
+
+  // Create banner element
+  const banner = document.createElement('div');
+  banner.id = 'templateBanner';
+  banner.className = 'template-banner';
+  banner.style.cssText = `
+        background-color: #4CAF50; /* Green for positive/helpful message */
+        color: white;
+        padding: 12px 20px;
+        position: relative;
+        z-index: 999;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-size: 15px;
+        line-height: 1.4;
+    `;
+
+  const content = document.createElement('div');
+  content.style.cssText = `
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        max-width: 1200px;
+        margin: 0 auto;
+    `;
+
+  const text = document.createElement('span');
+  // The delete instructions differ per layout (long-press vs right-click), and a
+  // phone can only act on its own. Crossing the breakpoint reloads the page, so
+  // choosing once at render time is enough.
+  const defaultMessageKey = getIsMobile()
+    ? 'messages.templateLoadedBannerMobile'
+    : 'messages.templateLoadedBannerDesktop';
+  const effectiveMessageKey = messageKey || defaultMessageKey;
+  text.innerHTML = i18n.t(
+    effectiveMessageKey,
+    templateSourceDay ? { day: templateSourceDay } : {}
+  );
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.textContent = '×';
+  closeBtn.title = i18n.t('buttons.close');
+  closeBtn.setAttribute('aria-label', i18n.t('buttons.close'));
+  closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: background-color 0.2s;
+        flex-shrink: 0;
+        margin-left: 15px;
+    `;
+
+  closeBtn.addEventListener('mouseenter', () => {
+    closeBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+  });
+  closeBtn.addEventListener('mouseleave', () => {
+    closeBtn.style.backgroundColor = 'transparent';
+  });
+
+  closeBtn.addEventListener('click', () => {
+    banner.style.display = 'none';
+  });
+
+  content.appendChild(text);
+  content.appendChild(closeBtn);
+  banner.appendChild(content);
+
+  // Insert after any existing instruction banner, or at top of body
+  const instructionBanner = document.getElementById('instructionBanner');
+  if (instructionBanner && instructionBanner.parentNode) {
+    instructionBanner.parentNode.insertBefore(
+      banner,
+      instructionBanner.nextSibling
+    );
+  } else {
+    document.body.insertBefore(banner, document.body.firstChild);
+  }
+}
+
+function resolveDisplayDayLabel(dayLabel) {
+  if (!dayLabel) {
+    return dayLabel;
+  }
+
+  const studyConfig = window.timelineManager?.studyConfig;
+
+  // Resolve a day-label object (or the matched one) to a localized display
+  // string, preferring the user's currently selected language from the
+  // per-language `display_names` map. Mirrors getDayDisplayLabel() so the
+  // template banner stays consistent with the rest of the UI.
+  const resolveFromLabel = (label) => {
+    if (!label || typeof label !== 'object') {
+      return dayLabel;
+    }
+
+    if (label.display_names && typeof label.display_names === 'object') {
+      const selectedLanguage =
+        (typeof window.studyConfigManager?.getSelectedLanguage === 'function' &&
+          window.studyConfigManager.getSelectedLanguage()) ||
+        getPreferredLanguage(
+          studyConfig?.supported_languages || [],
+          studyConfig?.default_language || 'en'
+        ) ||
+        'en';
+      const defaultLanguage = studyConfig?.default_language || 'en';
+      const backendDisplayName =
+        typeof label.display_name === 'string' ? label.display_name : null;
+
+      return (
+        label.display_names[selectedLanguage] ||
+        backendDisplayName ||
+        label.display_names[defaultLanguage] ||
+        label.display_names.en ||
+        label.name ||
+        dayLabel
+      );
+    }
+
+    return label.display_name || label.name || dayLabel;
+  };
+
+  if (typeof dayLabel === 'object') {
+    return resolveFromLabel(dayLabel);
+  }
+
+  const studyDayLabels = studyConfig?.day_labels;
+  if (!Array.isArray(studyDayLabels)) {
+    return dayLabel;
+  }
+
+  const matched = studyDayLabels.find((label) => {
+    if (!label || typeof label !== 'object') {
+      return false;
+    }
+    return label.name === dayLabel || label.display_name === dayLabel;
+  });
+
+  if (!matched) {
+    return dayLabel;
+  }
+
+  return resolveFromLabel(matched);
+}
+
+function getCurrentDayIndex() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return parseInt(urlParams.get('day_label_index')) || 0;
+}
+
+function normalizeLanguageCode(language) {
+  if (typeof language !== 'string') {
+    return null;
+  }
+  const normalized = language.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  const primarySubtag = normalized.split('-')[0];
+  if (!/^[a-z]{2}$/.test(primarySubtag)) {
+    return null;
+  }
+  return primarySubtag;
+}
+
+function getPreferredLanguage(
+  supportedLanguages = [],
+  fallbackLanguage = 'en'
+) {
+  const normalizedSupported = (
+    Array.isArray(supportedLanguages) ? supportedLanguages : []
+  )
+    .map((language) => normalizeLanguageCode(language))
+    .filter(Boolean);
+  const supportedSet = new Set(normalizedSupported);
+
+  const pickIfSupported = (candidate) => {
+    const normalizedCandidate = normalizeLanguageCode(candidate);
+    if (!normalizedCandidate) {
+      return null;
+    }
+    if (supportedSet.size === 0 || supportedSet.has(normalizedCandidate)) {
+      return normalizedCandidate;
+    }
+    return null;
+  };
+
+  const urlLanguage = new URLSearchParams(window.location.search).get('lang');
+  const fromUrl = pickIfSupported(urlLanguage);
+  if (fromUrl) {
+    return fromUrl;
+  }
+
+  const browserLanguages =
+    Array.isArray(navigator.languages) && navigator.languages.length > 0
+      ? navigator.languages
+      : [navigator.language];
+
+  for (const browserLanguage of browserLanguages) {
+    const picked = pickIfSupported(browserLanguage);
+    if (picked) {
+      return picked;
+    }
+  }
+
+  return (
+    pickIfSupported(fallbackLanguage) ||
+    normalizedSupported[0] ||
+    normalizeLanguageCode(fallbackLanguage) ||
+    'en'
+  );
+}
+
+function getPendingTimelineContext() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return {
+    pid: urlParams.get('pid') || '',
+    study_name:
+      window.studyConfigManager?.getCurrentStudy?.()?.name_short ||
+      urlParams.get('study_name') ||
+      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+        : ''),
+    day_label_index: String(parseInt(urlParams.get('day_label_index')) || 0),
+  };
+}
+
+function hasAnyLocalActivities() {
+  return Object.values(window.timelineManager?.activities || {}).some(
+    (activities) => Array.isArray(activities) && activities.length > 0
+  );
+}
+
+function clearStoredTimelineState() {
+  clearTimelineState({ sessionStorage, localStorage });
+}
+
+window.__TRAC_CAPTURE_PENDING_STATE = function capturePendingTimelineState() {
+  try {
+    if (!window.timelineManager || !window.timelineManager.activities) {
+      return false;
+    }
+
+    const allActivities = Object.values(window.timelineManager.activities)
+      .flat()
+      .filter((activity) => activity && activity.timelineKey);
+
+    if (!allActivities.length) {
+      clearStoredTimelineState();
+      return false;
+    }
+
+    const payload = {
+      ...getPendingTimelineContext(),
+      savedAt: Date.now(),
+      currentIndex: window.timelineManager.currentIndex,
+      activities: JSON.parse(JSON.stringify(allActivities)),
+    };
+
+    const storedInSession = storeTimelineState(
+      sessionStorage,
+      PENDING_TIMELINE_STATE_KEY,
+      payload
+    );
+    const storedInLocal = storeTimelineState(
+      localStorage,
+      DRAFT_TIMELINE_STATE_KEY,
+      payload
+    );
+    return storedInSession || storedInLocal;
+  } catch (error) {
+    console.warn('Failed to store pending timeline state:', error);
+    return false;
+  }
+};
+
+window.__TRAC_CLEAR_PENDING_STATE = clearStoredTimelineState;
+
+function persistPendingTimelineStateSoon() {
+  window.clearTimeout(window.__TRAC_PERSIST_DRAFT_TIMER);
+  window.__TRAC_PERSIST_DRAFT_TIMER = window.setTimeout(() => {
+    if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+      window.__TRAC_CAPTURE_PENDING_STATE();
+    }
+    if (window.timelineManager && hasAnyLocalActivities()) {
+      window.timelineManager._unsavedChanges = true;
+    }
+  }, 100);
+}
+
+async function tryRestorePendingTimelineState(
+  participantId,
+  studyName,
+  dayIndex
+) {
+  const sessionPayload = readStoredTimelineState(
+    sessionStorage,
+    PENDING_TIMELINE_STATE_KEY
+  );
+  const localPayload = readStoredTimelineState(
+    localStorage,
+    DRAFT_TIMELINE_STATE_KEY
+  );
+
+  let payload = sessionPayload;
+  if (!payload && localPayload && isStoredTimelineStateFresh(localPayload)) {
+    payload = localPayload;
+  }
+
+  if (!payload) {
+    if (localPayload && !isStoredTimelineStateFresh(localPayload)) {
+      safeRemoveItem(localStorage, DRAFT_TIMELINE_STATE_KEY);
+    }
+    return false;
+  }
+
+  const sameContext = matchesTimelineContext(payload, {
+    pid: participantId || '',
+    study_name: studyName || '',
+    day_label_index: String(dayIndex),
+  });
+
+  if (!sameContext) {
+    if (localPayload && payload === localPayload) {
+      safeRemoveItem(localStorage, DRAFT_TIMELINE_STATE_KEY);
+    }
+    return false;
+  }
+
+  if (hasAnyLocalActivities()) {
+    clearStoredTimelineState();
+    return false;
+  }
+
+  const restoredActivities = Array.isArray(payload.activities)
+    ? payload.activities
+    : [];
+  if (!restoredActivities.length) {
+    clearStoredTimelineState();
+    return false;
+  }
+
+  const restoredKeys = [
+    ...new Set(
+      restoredActivities
+        .map((activity) => activity.timelineKey)
+        .filter((key) => window.timelineManager.keys.includes(key))
+    ),
+  ];
+
+  if (!restoredKeys.length) {
+    clearStoredTimelineState();
+    return false;
+  }
+
+  console.log(
+    `Restoring ${restoredActivities.length} pending activities after reload.`
+  );
+
+  for (const timelineKey of restoredKeys) {
+    const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
+    if (targetIndex < 0) {
+      continue;
+    }
+
+    while (window.timelineManager.currentIndex < targetIndex) {
+      await addNextTimeline();
+    }
+
+    window.timelineManager.activities[timelineKey] = [];
+    const timelineActivities = restoredActivities
+      .filter((activity) => activity.timelineKey === timelineKey)
+      .sort((a, b) => (a.startMinutes || 0) - (b.startMinutes || 0));
+
+    timelineActivities.forEach((activity) => {
+      recreateActivityBlockFromTemplate(activity);
+    });
+  }
+
+  while (window.timelineManager.currentIndex > 0) {
+    await goToPreviousTimeline();
+  }
+
+  updateButtonStates();
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+    window.__TRAC_CAPTURE_PENDING_STATE();
+  }
+  return true;
+}
+
+function isInstructionsPagePath(pathname = window.location.pathname) {
+  return (
+    pathname.includes('/instructions/') ||
+    /\/pages\/instructions(?:\.html)?$/.test(pathname)
+  );
+}
+
+function isConsentPagePath(pathname = window.location.pathname) {
+  return (
+    pathname.includes('/consent/') ||
+    /\/pages\/consent(?:\.html)?$/.test(pathname)
+  );
+}
+
+function ensureLanguageSelector(supportedLanguages, selectedLanguage) {
+  const existingSelector = document.getElementById('languageSelectMain');
+  if (!Array.isArray(supportedLanguages) || supportedLanguages.length <= 1) {
+    if (existingSelector) {
+      existingSelector.closest('div')?.remove();
+    }
+    return;
+  }
+
+  const controlsContainer =
+    document.querySelector('.header-section .controls-group') ||
+    document.querySelector('.header-section .controls');
+  if (!controlsContainer) {
+    return;
+  }
+
+  const normalizedSelectedLanguage = normalizeLanguageCode(selectedLanguage);
+  if (existingSelector) {
+    existingSelector.value =
+      normalizedSelectedLanguage || existingSelector.value;
+    return;
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'language-select-wrapper';
+
+  const label = document.createElement('label');
+  label.setAttribute('for', 'languageSelectMain');
+  label.textContent = 'Language';
+  label.setAttribute('data-i18n', 'common.language');
+  label.style.fontSize = '0.85rem';
+
+  const select = document.createElement('select');
+  select.id = 'languageSelectMain';
+  select.setAttribute('aria-label', 'Choose language');
+  select.setAttribute('data-i18n-aria-label', 'common.chooseLanguage');
+
+  supportedLanguages.forEach((language) => {
+    const normalizedLanguage = normalizeLanguageCode(language) || language;
+    const option = document.createElement('option');
+    option.value = normalizedLanguage;
+    option.textContent = normalizedLanguage.toUpperCase();
+    if (normalizedLanguage === normalizedSelectedLanguage) {
+      option.selected = true;
+    }
+    select.appendChild(option);
+  });
+
+  select.addEventListener('change', () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('lang', select.value);
+    window.location.href = url.toString();
+  });
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(select);
+  controlsContainer.appendChild(wrapper);
+}
+
+function getDayButtonDisplayLabel(dayIndex) {
+  const displayLabel =
+    window.studyConfigManager?.getDayDisplayLabel(dayIndex) ||
+    `day_${dayIndex + 1}`;
+
+  if (/^day_\d+$/i.test(String(displayLabel))) {
+    const dayWord =
+      window.i18n && window.i18n.isReady() ? i18n.t('common.day') : 'Day';
+    return `${dayWord} ${dayIndex + 1}`;
+  }
+
+  return displayLabel;
+}
+
+async function saveAndSwitchToDay(targetDayIndex) {
+  const currentDayIndex = getCurrentDayIndex();
+  if (targetDayIndex === currentDayIndex) {
+    return;
+  }
+
+  const row = document.getElementById('previousDaysSwitchRow');
+  const rowButtons = row ? row.querySelectorAll('button') : [];
+  rowButtons.forEach((button) => {
+    button.disabled = true;
+  });
+
+  // Flush through the autosave engine instead of saving unconditionally: when
+  // nothing changed since the last save there is nothing to write, and a
+  // pointless write would re-date the day's rows (diary_completed_at is derived
+  // from the earliest created_at per day).
+  const result = window.autosave
+    ? await window.autosave.flush()
+    : await sendData();
+
+  if (!result?.success) {
+    if (window.showToast) {
+      const submitErrorMessage = window.i18n
+        ? window.i18n.t('messages.submitError')
+        : 'Error submitting diary';
+      const errorDetails = result?.error ? `: ${result.error}` : '';
+      window.showToast(`${submitErrorMessage}${errorDetails}`, 'error', 5000);
+    }
+
+    rowButtons.forEach((button) => {
+      button.disabled = false;
+    });
+    return;
+  }
+
+  // Copy Days: mark the source day as saved so templates aren't re-loaded
+  // if the user intentionally saved an empty day.
+  const urlParams = new URLSearchParams(window.location.search);
+  const studyName =
+    urlParams.get('study_name') ||
+    window.studyConfigManager?.getCurrentStudy?.()?.name_short;
+  const pid = urlParams.get('pid');
+  if (studyName && pid) {
+    markDaySaved(studyName, pid, currentDayIndex);
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('day_label_index', String(targetDayIndex));
+  window.location.href = url.toString();
+}
+
+// Used by the phone context bar and its day menu (ui.js).
+window.saveAndSwitchToDay = saveAndSwitchToDay;
+
+function renderPreviousDaysSwitchRow() {
+  const controlsContainer = document.querySelector('.header-section .controls');
+  if (!controlsContainer || !controlsContainer.parentElement) {
+    return;
+  }
+
+  // Phones use the context bar's day picker instead (initMobileContextBar);
+  // a row of seven day buttons is exactly the chrome this replaces.
+  if (getIsMobile()) {
+    document.getElementById('previousDaysSwitchRow')?.remove();
+    return;
+  }
+
+  const currentDayIndex = getCurrentDayIndex();
+
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount() ||
+    0;
+
+  // Days that contain ANY data (protects against overwriting when copying).
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+
+  // Days that are complete *according to min coverage* (the submit-gate
+  // notion).  Falls back to the "has any data" set for backends that do not
+  // send day_indices_meet_min_coverage yet.
+  const dayIndicesMeetMinCoverage = Array.isArray(
+    window.timelineManager?.dayIndicesMeetMinCoverage
+  )
+    ? window.timelineManager.dayIndicesMeetMinCoverage
+    : dayIndicesWithData;
+
+  // Render the full day selector whenever the study spans more than one day.
+  // Copy Days: day buttons are always shown — free navigation is a core feature.
+  const shouldShow = studyDaysCount > 1;
+
+  let existingRow = document.getElementById('previousDaysSwitchRow');
+  if (!shouldShow) {
+    if (existingRow) {
+      existingRow.remove();
+    }
+    return;
+  }
+
+  if (!existingRow) {
+    existingRow = document.createElement('div');
+    existingRow.id = 'previousDaysSwitchRow';
+    existingRow.className = 'previous-days-switch-row';
+    controlsContainer.insertAdjacentElement('afterend', existingRow);
+  }
+
+  existingRow.innerHTML = '';
+
+  const label = document.createElement('span');
+  label.className = 'previous-days-switch-label';
+  label.setAttribute('data-i18n', 'messages.goBackToEditPreviousDays');
+  label.textContent =
+    window.i18n && window.i18n.isReady()
+      ? i18n.t('messages.goBackToEditPreviousDays')
+      : 'Switch to day:';
+  existingRow.appendChild(label);
+
+  for (let dayIndex = 0; dayIndex < studyDaysCount; dayIndex++) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn previous-day-btn';
+
+    const dayLabel = getDayButtonDisplayLabel(dayIndex);
+    button.appendChild(document.createTextNode(dayLabel));
+
+    // Green checkmark for days that meet the min_coverage requirement.
+    const meetsMinCoverage = dayIndicesMeetMinCoverage.includes(dayIndex);
+    if (meetsMinCoverage) {
+      button.classList.add('day-complete');
+      const check = document.createElement('span');
+      check.className = 'day-complete-check';
+      check.setAttribute('aria-hidden', 'true');
+      check.textContent = ' ✓';
+      button.appendChild(check);
+      const completeTitle =
+        window.i18n && window.i18n.isReady()
+          ? window.i18n.t('messages.dayCompleteAria')
+          : 'Day complete (meets minimum coverage)';
+      button.setAttribute('aria-label', `${dayLabel}, ${completeTitle}`);
+    }
+
+    const isCurrentDay = dayIndex === currentDayIndex;
+    if (isCurrentDay) {
+      button.disabled = true;
+      button.classList.add('current-day');
+      button.setAttribute('aria-current', 'date');
+    }
+
+    if (!isCurrentDay) {
+      button.addEventListener('click', async () => {
+        await saveAndSwitchToDay(dayIndex);
+      });
+
+      // Right-click (desktop) on a day button copies THAT day to another day.
+      // Attached for every non-current day; if the day has no activities yet,
+      // showCopyTargetPicker explains there is nothing to copy instead of
+      // silently doing nothing.
+      if (!getIsMobile()) {
+        button.addEventListener('contextmenu', (event) => {
+          event.preventDefault();
+          showCopyTargetPicker(dayIndex, event);
+        });
+      }
+
+      // Copy Days: day switching is always allowed regardless of min_coverage.
+      // The green/gray indicator shows completion status.
+    }
+
+    existingRow.appendChild(button);
+  }
+
+  if (window.i18n && window.i18n.isReady()) {
+    i18n.applyTranslations(existingRow);
+  }
+}
+
+async function init() {
+  console.log(
+    '==================== Initializing TUD frontend application... ===================='
+  );
+  try {
+    try {
+      await window.studyConfigManager?.initializeStudyConfig();
+    } catch (initErr) {
+      if (initErr && initErr.code === 'NO_STUDIES_AVAILABLE') {
+        console.warn('No studies available on server.');
+        // Show friendly message in UI and stop initialization
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const msg = document.createElement('div');
+          msg.className = 'no-studies-message';
+          msg.style.padding = '24px';
+          msg.style.textAlign = 'center';
+          msg.style.color = '#666';
+          msg.style.fontSize = '1.1rem';
+          msg.textContent =
+            window.i18n && window.i18n.isReady()
+              ? window.i18n.t('messages.noStudiesAvailable')
+              : 'No studies available on server.';
+          timelinesWrapper.appendChild(msg);
+        }
+        // Hide footer action buttons (Submit, Skip) since no study is active
+        const footerActions = document.getElementById('instructionsFooter');
+        if (footerActions) footerActions.style.display = 'none';
+        return; // stop further initialization
+      } else if (initErr && initErr.code === 'STUDY_NOT_FOUND') {
+        console.warn('Study not found on server: ' + initErr.message);
+        const studyName =
+          new URLSearchParams(window.location.search).get('study_name') || '';
+        const msgText =
+          window.i18n && window.i18n.isReady()
+            ? window.i18n.t('messages.studyNotFound')
+            : 'The requested study does not exist.';
+        // Show message in UI and stop initialization
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const msg = document.createElement('div');
+          msg.className = 'no-studies-message';
+          msg.style.padding = '24px';
+          msg.style.textAlign = 'center';
+          msg.style.color = '#666';
+          msg.style.fontSize = '1.1rem';
+          msg.textContent = msgText;
+          if (studyName) {
+            const detail = document.createElement('div');
+            detail.style.marginTop = '8px';
+            detail.style.fontSize = '0.9rem';
+            detail.style.color = '#999';
+            detail.textContent = 'study_name=' + studyName;
+            msg.appendChild(detail);
+          }
+          timelinesWrapper.appendChild(msg);
+        }
+        // Hide footer action buttons (Submit, Skip) since no study is active
+        const footerActions = document.getElementById('instructionsFooter');
+        if (footerActions) footerActions.style.display = 'none';
+        return; // stop further initialization
+      } else if (initErr && initErr.code === 'STUDY_CHOICES_AVAILABLE') {
+        console.log('Multiple studies available; showing chooser');
+        const timelinesWrapper = document.querySelector('.timelines-wrapper');
+        if (timelinesWrapper) {
+          timelinesWrapper.innerHTML = '';
+          const container = document.createElement('div');
+          container.className = 'study-chooser';
+          container.style.padding = '20px';
+          container.style.textAlign = 'center';
+
+          const title = document.createElement('h2');
+          title.textContent =
+            window.i18n && window.i18n.isReady()
+              ? window.i18n.t('messages.selectStudy')
+              : 'Please select a study to continue';
+          container.appendChild(title);
+
+          const list = document.createElement('div');
+          list.style.display = 'flex';
+          list.style.flexDirection = 'column';
+          list.style.gap = '8px';
+          list.style.alignItems = 'center';
+
+          // Resolve a possibly-localized description (string or {lang:text} map)
+          // to a plain string using the URL lang param or falling back to 'en'.
+          const urlLang =
+            new URLSearchParams(window.location.search).get('lang') || 'en';
+          const resolveChooserDescription = function (desc) {
+            if (typeof desc === 'string') return desc;
+            if (desc && typeof desc === 'object') {
+              return (
+                desc[urlLang] ||
+                desc['en'] ||
+                Object.values(desc).find((v) => typeof v === 'string') ||
+                ''
+              );
+            }
+            return '';
+          };
+
+          const studies = window.availableOpenStudies || [];
+          studies.forEach((s) => {
+            const btn = document.createElement('button');
+            btn.className = 'btn study-choose-btn';
+            btn.style.minWidth = '280px';
+            btn.style.padding = '12px';
+            btn.style.textAlign = 'left';
+            const desc = resolveChooserDescription(s.description);
+            btn.innerHTML = `<strong>${
+              s.name || s.name_short
+            }</strong><div style="font-size:small;color:#666">${desc}</div><div style="font-size:x-small;color:#999;margin-top:2px">${
+              s.name_short || ''
+            }</div>`;
+            btn.addEventListener('click', () => {
+              const url = new URL(window.location.href);
+              url.searchParams.set('study_name', s.name_short);
+              // Reload with chosen study param
+              window.location.href = url.toString();
+            });
+            list.appendChild(btn);
+          });
+
+          container.appendChild(list);
+          timelinesWrapper.appendChild(container);
+        }
+        return; // stop init; user will reload by choosing
+      }
+      throw initErr;
+    }
+
+    const currentStudy = window.studyConfigManager?.getCurrentStudy();
+    if (!currentStudy) {
+      throw new Error('Failed to load study configuration');
+    }
+
+    console.log('[TRAC day-label-debug] after initializeStudyConfig', {
+      selected_language: currentStudy.selected_language,
+      default_language: currentStudy.default_language,
+      supported_languages: currentStudy.supported_languages,
+      first_day_label: currentStudy.day_labels?.[0] || null,
+      day_labels_count: Array.isArray(currentStudy.day_labels)
+        ? currentStudy.day_labels.length
+        : 0,
+      url_lang: new URLSearchParams(window.location.search).get('lang'),
+    });
+
+    console.log(`Study: ${currentStudy.name} (${currentStudy.name_short})`);
+    console.log(`Days: ${window.studyConfigManager.getStudyDaysCount()}`);
+    console.log(`Source: ${currentStudy.source || 'file'}`);
+
+    ensureLanguageSelector(
+      currentStudy.supported_languages || [],
+      currentStudy.selected_language || currentStudy.default_language || 'en'
+    );
+
+    // Reinitialize timelineManager with an empty study object
+    window.timelineManager = {
+      metadata: {},
+      activities: {},
+      initialized: new Set(),
+      activeTimeline: null,
+      keys: [],
+      currentIndex: 0,
+      study: {},
+      general: {},
+      dayIndicesWithData: [],
+    };
+
+    // Store study info in timelineManager for easy access
+    window.timelineManager.studyConfig = currentStudy;
+    window.timelineManager.studyDaysCount =
+      window.studyConfigManager.getStudyDaysCount();
+    window.timelineManager.dayLabels = currentStudy.day_labels;
+
+    // Start inactivity timeout timer if configured for this study
+    startIdleTimer({
+      inactivity_timeout_minutes: currentStudy.inactivity_timeout_minutes ?? 0,
+      inactivity_timeout_stress_time_left:
+        currentStudy.inactivity_timeout_stress_time_left ?? 5,
+      inactivity_page_custom_text:
+        currentStudy.inactivity_page_custom_text ?? null,
+    });
+
+    // Autosave: the day is written shortly after the last edit, and flushed
+    // before anything that leaves it (day switch, tab hidden, idle timeout,
+    // submit). See js/autosave.js for the rules - it compares the serialised day
+    // with the last stored one, so notePossibleChange() is safe to over-call.
+    window.autosave = createAutosave({
+      save: () => sendData(),
+      serialize: () => createTimelineJSON(true),
+      onSaved: () => {
+        // The same in-place refresh an explicit save does (day status, coverage,
+        // Submit gate) - see refreshDayStatusAfterSave in ui.js.
+        window.refreshDayStatusAfterSave?.();
+        markDaySavedForCurrentDay();
+      },
+      // Visible state (Saving... / Saved / Not saved + Retry) - see the sync
+      // status chip in ui.js. Silent autosave failure would be worse than a
+      // failed explicit save.
+      onStateChange: (state) => window.renderSyncStatus?.(state),
+    });
+
+    // Now sync URL parameters so they are stored in timelineManager.study
+    syncURLParamsToStudy();
+
+    checkAndRequestPID();
+    preventPullToRefresh();
+
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const participantId = urlParams.get('pid');
+    // Prefer study selected/auto-resolved by studyConfigManager; fallback to URL or frontend default
+    const resolvedStudyFromManager =
+      window.studyConfigManager?.getCurrentStudy()?.name_short || null;
+    const studyName =
+      resolvedStudyFromManager ||
+      urlParams.get('study_name') ||
+      (TUD_SETTINGS && TUD_SETTINGS.DEFAULT_STUDY_NAME
+        ? TUD_SETTINGS.DEFAULT_STUDY_NAME
+        : '');
+    const templateUser = (urlParams.get('template_user') || '').trim() || null;
+    const selectedLanguage = getPreferredLanguage(
+      currentStudy.supported_languages || [],
+      urlParams.get('lang') ||
+        currentStudy.selected_language ||
+        currentStudy.default_language ||
+        'en'
+    );
+
+    const participantHasCompletedStudy =
+      currentStudy?.participant_has_completed_study === true;
+    if (participantHasCompletedStudy && !isInstructionsPagePath()) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectPath = getPostDiaryRedirectPath(
+        currentParams.get('completion_status') || 'completed'
+      );
+      const redirectUrl = new URL(redirectPath, window.location.href);
+      if (!currentParams.has('completion_status')) {
+        currentParams.set('completion_status', 'completed');
+      }
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
+
+    // Keep shared study cache aligned with effective language choice.
+    currentStudy.selected_language = selectedLanguage;
+    ensureLanguageSelector(
+      currentStudy.supported_languages || [],
+      selectedLanguage
+    );
+
+    console.log(
+      '[TRAC day-label-debug] selected language before i18n/backend activities fetch',
+      {
+        selectedLanguage,
+        url_lang: urlParams.get('lang'),
+        currentStudy_selected_language: currentStudy.selected_language,
+        currentStudy_default_language: currentStudy.default_language,
+        supported_languages: currentStudy.supported_languages,
+      }
+    );
+
+    try {
+      await i18n.init(selectedLanguage);
+      i18n.applyTranslations();
+    } catch (i18nPreloadError) {
+      console.warn(
+        'Failed to preload i18n before backend config fetch:',
+        i18nPreloadError
+      );
+    }
+
+    const urlLangNormalized = normalizeLanguageCode(urlParams.get('lang'));
+    if (!urlLangNormalized || urlLangNormalized !== selectedLanguage) {
+      urlParams.set('lang', selectedLanguage);
+      window.history.replaceState(
+        {},
+        '',
+        `${window.location.pathname}?${urlParams.toString()}`
+      );
+      window.timelineManager.study.lang = selectedLanguage;
+    }
+
+    const dayIndex = getCurrentDayIndex();
+
+    // ===== FETCH ACTIVITIES CONFIG FROM BACKEND =====
+    let configData = null;
+
+    if (!participantId || !studyName) {
+      throw new Error('Missing participant ID or study name in URL parameters');
+    }
+
+    const footerVersionEl = document.getElementById('footer_app_version');
+    if (footerVersionEl) {
+      footerVersionEl.textContent = `v${TUD_FRONTEND_VERSION}`;
+    }
+
+    try {
+      configData = await loadActivitiesConfig({
+        participantId,
+        studyName,
+        lang: selectedLanguage,
+        apiBaseUrl: TUD_SETTINGS.API_BASE_URL,
+        settingsBasePath: 'settings',
+        preferBackend: true,
+        requireBackend: true,
+        useCache: true,
+      });
+      console.log('Successfully loaded activities config from backend');
+    } catch (error) {
+      console.error('Failed to load activities config from backend:', error);
+      throw new Error(
+        `Cannot load activities configuration: ${error.message}. The application requires backend configuration to run.`
+      );
+    }
+
+    // Save global configuration
+    window.timelineManager.general = configData.general;
+
+    // Initialize i18n (internationalization) system
+    let language = configData.general.language || 'en';
+
+    // Override with URL/study-selected language if available
+    if (selectedLanguage) {
+      language = selectedLanguage;
+    } else if (currentStudy.default_language) {
+      language = currentStudy.default_language;
+    }
+
+    await i18n.init(language);
+    i18n.applyTranslations();
+    // Deliberately after the i18n pass: it rewrites the text of every element
+    // with a data-i18n attribute, <title> included. See applyPageTitle().
+    applyPageTitle();
+    renderPreviousDaysSwitchRow();
+
+    const studyConsentRequired = currentStudy?.require_consent === true;
+    const consentGiven = currentStudy?.consent_given;
+
+    if (
+      studyConsentRequired &&
+      consentGiven === false &&
+      !isConsentPagePath()
+    ) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectUrl = new URL('pages/thank-you.html', window.location.href);
+      currentParams.set('completion_status', 'noconsent');
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
+
+    if (studyConsentRequired && consentGiven !== true && !isConsentPagePath()) {
+      const currentParams = new URLSearchParams(window.location.search);
+      const redirectUrl = new URL('pages/consent.html', window.location.href);
+      currentParams.forEach((value, key) => {
+        redirectUrl.searchParams.append(key, value);
+      });
+      window.location.href = redirectUrl.toString();
+      return;
+    }
+
+    // Handle instructions or redirection if needed
+    const instructionsConfig = configData.general?.instructions;
+
+    if (
+      instructionsConfig &&
+      !new URLSearchParams(window.location.search).has('instructions')
+    ) {
+      if (!isInstructionsPagePath()) {
+        const currentParams = new URLSearchParams(window.location.search);
+        let redirectPath;
+
+        // Determine the redirect path based on configuration type
+        if (typeof instructionsConfig === 'boolean') {
+          // Boolean: true = default instructions, false = no instructions
+          if (instructionsConfig === true) {
+            redirectPath = 'pages/instructions.html'; // Default
+          } else {
+            redirectPath = null; // No redirection
+          }
+        } else if (typeof instructionsConfig === 'string') {
+          // String: could be URL or path
+          const trimmed = instructionsConfig.trim();
+          if (trimmed === '') {
+            redirectPath = null;
+          } else if (
+            trimmed.startsWith('/') ||
+            trimmed.startsWith('./') ||
+            trimmed.startsWith('../') ||
+            trimmed.endsWith('.html')
+          ) {
+            // Relative path or HTML file
+            redirectPath = trimmed;
+          } else if (
+            trimmed.startsWith('http://') ||
+            trimmed.startsWith('https://')
+          ) {
+            // Full URL - redirect immediately
+            const redirectUrl = new URL(trimmed);
+            currentParams.forEach((value, key) => {
+              redirectUrl.searchParams.append(key, value);
+            });
+            window.location.href = redirectUrl.toString();
+            return;
+          } else {
+            // Assume relative path
+            redirectPath = trimmed;
+          }
+        }
+
+        if (redirectPath) {
+          const redirectUrl = new URL(redirectPath, window.location.href);
+          currentParams.forEach((value, key) => {
+            redirectUrl.searchParams.append(key, value);
+          });
+          window.location.href = redirectUrl.toString();
+          return;
+        }
+      }
+    } else if (isInstructionsPagePath()) {
+      // Check if we should redirect back from instructions page
+      const shouldStayOnInstructions =
+        (instructionsConfig &&
+          typeof instructionsConfig === 'boolean' &&
+          instructionsConfig === true) ||
+        (typeof instructionsConfig === 'string' &&
+          instructionsConfig.trim() !== '');
+
+      if (!shouldStayOnInstructions) {
+        const currentParams = new URLSearchParams(window.location.search);
+        const redirectUrl = new URL('index.html', window.location.href);
+        currentParams.forEach((value, key) => {
+          redirectUrl.searchParams.append(key, value);
+        });
+        window.location.href = redirectUrl.toString();
+        return;
+      }
+    }
+
+    // Initialize timeline management structure with timeline keys
+    window.timelineManager.keys = Object.keys(configData.timeline);
+    window.timelineManager.keys.forEach((timelineKey) => {
+      window.timelineManager.metadata[timelineKey] = new Timeline(
+        timelineKey,
+        configData.timeline[timelineKey]
+      );
+      window.timelineManager.activities[timelineKey] = [];
+    });
+
+    // Create timelines wrapper if it doesn't exist
+    const timelinesWrapper = document.querySelector('.timelines-wrapper');
+    if (!timelinesWrapper) {
+      throw new Error('Timelines wrapper not found');
+    }
+
+    // Get max day index from study config
+    const maxDayIndex = window.studyConfigManager.getStudyDaysCount() - 1;
+
+    if (dayIndex > maxDayIndex) {
+      console.warn(
+        `Day index ${dayIndex} is out of range. Adjusting to last day (${maxDayIndex})`
+      );
+      urlParams.set('day_label_index', String(maxDayIndex));
+      window.history.replaceState(
+        {},
+        '',
+        `${window.location.pathname}?${urlParams.toString()}`
+      );
+    } else {
+      console.log(`Current day index from URL: ${dayIndex}`);
+    }
+
+    // Copy Days: initialize ALL timelines immediately instead of revealing
+    // them one-by-one with "Next Timeline".  Users see the full picture from
+    // the start and can freely navigate between timelines.
+    window.timelineManager.currentIndex = -1;
+    for (let i = 0; i < window.timelineManager.keys.length; i++) {
+      await addNextTimeline();
+    }
+    // After adding all timelines, addNextTimeline leaves currentIndex on the
+    // last one.  Walk back to the first — it's the natural starting point.
+    while (window.timelineManager.currentIndex > 0) {
+      await goToPreviousTimeline();
+    }
+
+    const restoredPendingState = await tryRestorePendingTimelineState(
+      participantId,
+      studyName,
+      dayIndex
+    );
+    if (restoredPendingState) {
+      console.log(
+        'Successfully restored pending timeline activities from session state.'
+      );
+    }
+
+    // When pending state was restored (e.g. after a save-day reload where
+    // beforeunload re-captured just-saved activities), the backend-fetch
+    // block below is skipped — but we still need day_indices_with_data so
+    // the day-switch buttons render correctly.  Do a lightweight fetch
+    // purely for the switch-row metadata.
+    if (restoredPendingState && participantId && studyName) {
+      try {
+        const metaUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/participants/${participantId}/activities?day_label_index=${dayIndex}`;
+        const metaResp = await fetch(metaUrl, {
+          headers: { Accept: 'application/json' },
+        });
+        if (metaResp.ok) {
+          const metaData = await metaResp.json();
+          window.timelineManager.dayIndicesWithData = Array.isArray(
+            metaData.day_indices_with_data
+          )
+            ? metaData.day_indices_with_data
+            : [];
+          // Days complete according to min coverage (submit-gate notion).
+          // Falls back to the "has any data" set when not provided.
+          window.timelineManager.dayIndicesMeetMinCoverage = Array.isArray(
+            metaData.day_indices_meet_min_coverage
+          )
+            ? metaData.day_indices_meet_min_coverage
+            : window.timelineManager.dayIndicesWithData;
+          renderPreviousDaysSwitchRow();
+        }
+      } catch (e) {
+        console.warn(
+          'Could not fetch day_indices_with_data after pending-state restore:',
+          e.message
+        );
+      }
+    }
+
+    let loadedActivitiesFromBackend = restoredPendingState;
+
+    // Helper to load a list of activities (already transformed to frontend format)
+    // into the currently initialized timeline manager.
+    const loadActivitiesIntoTimelineManager = async (activitiesToLoad) => {
+      if (!activitiesToLoad || activitiesToLoad.length === 0) {
+        return false;
+      }
+
+      const loadedTimelineKeySet = new Set(
+        activitiesToLoad.map((a) => a.timelineKey)
+      );
+      const loadedTimelineKeys = window.timelineManager.keys.filter((key) =>
+        loadedTimelineKeySet.has(key)
+      );
+
+      for (let i = 0; i < loadedTimelineKeys.length; i++) {
+        const timelineKey = loadedTimelineKeys[i];
+
+        if (i === 0) {
+          const firstTimelineActivities = activitiesToLoad.filter(
+            (a) => a.timelineKey === timelineKey
+          );
+          window.timelineManager.activities[timelineKey] =
+            firstTimelineActivities;
+
+          firstTimelineActivities.forEach((activityData) => {
+            recreateActivityBlockFromTemplate(activityData);
+          });
+        } else {
+          console.log(
+            `Creating timeline ${timelineKey} (${i + 1}/${
+              loadedTimelineKeys.length
+            })`
+          );
+
+          const originalIndex = window.timelineManager.currentIndex;
+          const targetIndex = window.timelineManager.keys.indexOf(timelineKey);
+
+          if (targetIndex > originalIndex) {
+            while (window.timelineManager.currentIndex < targetIndex) {
+              await addNextTimeline();
+            }
+
+            const timelineActivities = activitiesToLoad.filter(
+              (a) => a.timelineKey === timelineKey
+            );
+
+            if (timelineActivities.length > 0) {
+              window.timelineManager.activities[timelineKey] =
+                timelineActivities;
+
+              timelineActivities.forEach((activityData) => {
+                recreateActivityBlockFromTemplate(activityData);
+              });
+            }
+
+            while (window.timelineManager.currentIndex > 0) {
+              await goToPreviousTimeline();
+            }
+          }
+        }
+      }
+
+      updateButtonStates();
+      return true;
+    };
+
+    // Cross-user template copy: POST to DB BEFORE the normal GET so the GET returns the
+    // copied activities as regular data.  The operation is idempotent – days that already
+    // have target data are skipped by the backend.
+    if (templateUser && participantId && studyName && !restoredPendingState) {
+      try {
+        const copyUrl = new URL(
+          `${TUD_SETTINGS.API_BASE_URL}/template-activities`,
+          window.location.origin
+        );
+        copyUrl.searchParams.set('study', studyName);
+        copyUrl.searchParams.set('source_user', templateUser);
+        copyUrl.searchParams.set('target_user', participantId);
+
+        console.log(
+          `Copying cross-user template activities via POST: ${copyUrl.toString()}`
+        );
+        const copyResponse = await fetch(copyUrl.toString(), {
+          method: 'POST',
+          headers: { Accept: 'application/json' },
+        });
+
+        if (copyResponse.ok) {
+          /** @type {import('./api_types.js').TemplateCopyResponse} */
+          const copyPayload = await copyResponse.json();
+          console.log('Cross-user template copy result:', copyPayload);
+          if (copyPayload.copied_days_count > 0) {
+            // Cross-user copy: the copied data is saved as regular activities, so
+            // use a dedicated message instead of the same-user "from <day>" one
+            // (which would otherwise render the source participant id as the day).
+            showTemplateBanner(null, 'messages.templateCopiedBanner');
+          }
+        } else {
+          console.warn(
+            `Template copy endpoint returned ${copyResponse.status}; source data may not be available yet.`
+          );
+        }
+      } catch (error) {
+        console.warn(
+          'Error during cross-user template copy, continuing without template:',
+          error.message
+        );
+      }
+    }
+
+    // Load existing activities from backend if available
+    if (participantId && studyName && !restoredPendingState) {
+      console.log(
+        `Attempting to load existing activities for participant ${participantId}, study ${studyName}, day index ${dayIndex}`
+      );
+
+      try {
+        const backendUrl = `${TUD_SETTINGS.API_BASE_URL}/studies/${studyName}/participants/${participantId}/activities?day_label_index=${dayIndex}`;
+
+        console.log(`Fetching existing activities from: ${backendUrl}`);
+
+        const response = await fetch(backendUrl, {
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const backendData = await response.json();
+          console.log(
+            'Successfully loaded existing activities from backend:',
+            backendData
+          );
+
+          window.timelineManager.dayIndicesWithData = Array.isArray(
+            backendData.day_indices_with_data
+          )
+            ? backendData.day_indices_with_data
+            : [];
+          // Days complete according to min coverage (submit-gate notion).
+          // Falls back to the "has any data" set when not provided.
+          window.timelineManager.dayIndicesMeetMinCoverage = Array.isArray(
+            backendData.day_indices_meet_min_coverage
+          )
+            ? backendData.day_indices_meet_min_coverage
+            : window.timelineManager.dayIndicesWithData;
+          renderPreviousDaysSwitchRow();
+
+          // Phones copy from the context bar's day menu and do not render the
+          // timeline title at all.
+          if (!getIsMobile() && typeof window.addCopyDayLink === 'function') {
+            const timelineTitle = document.querySelector('.timeline-title');
+            if (timelineTitle) {
+              window.addCopyDayLink(timelineTitle, dayIndex);
+            }
+          }
+
+          const transformedData =
+            transformBackendActivitiesResponse(backendData);
+          console.log('Transformed backend activities data:', transformedData);
+
+          let activitiesToLoad = null;
+
+          if (
+            transformedData &&
+            transformedData.activities &&
+            transformedData.activities.length > 0
+          ) {
+            console.log(
+              'Existing activities found in backend data, will load these.'
+            );
+            activitiesToLoad = transformedData.activities;
+          } else if (
+            !loadedActivitiesFromBackend &&
+            TUD_SETTINGS.TEMPLATE_ENABLED !== false &&
+            !wasDaySaved(studyName, participantId, dayIndex) &&
+            transformedData.template_activities &&
+            transformedData.template_activities.length > 0
+          ) {
+            console.log(
+              'No existing activities found, but template activities are available. Will load template activities.'
+            );
+            activitiesToLoad = transformedData.template_activities;
+
+            if (transformedData.template_source_day_label) {
+              const displayTemplateDayLabel = resolveDisplayDayLabel(
+                transformedData.template_source_day_label
+              );
+              showTemplateBanner(displayTemplateDayLabel);
+            }
+          }
+
+          if (await loadActivitiesIntoTimelineManager(activitiesToLoad)) {
+            loadedActivitiesFromBackend = true;
+            if (window.timelineManager) {
+              window.timelineManager._unsavedChanges = !(
+                transformedData &&
+                transformedData.activities &&
+                transformedData.activities.length > 0
+              );
+            }
+          }
+
+          // loadActivitiesIntoTimelineManager() calls updateButtonStates(),
+          // which now also re-renders #previousDaysSwitchRow, so the stale
+          // coverage-based disabled state from the render at the top of this
+          // branch gets refreshed with the loaded (saved or templated)
+          // activities.
+        } else if (response.status === 404) {
+          console.log(
+            `No existing data found for participant ${participantId}, study ${studyName}, day index ${dayIndex}. Starting fresh.`
+          );
+        } else {
+          console.warn(
+            `Backend returned ${response.status} for existing data request, continuing without preload`
+          );
+        }
+      } catch (error) {
+        console.warn(
+          'Error fetching existing activities from backend, continuing without preload:',
+          error.message
+        );
+      }
+    }
+
+    console.log('Initializing past timeline click handlers...');
+    initPastTimelineClickHandlers();
+
+    console.log('Timeline structure after initialization:', {
+      keys: window.timelineManager.keys,
+      currentIndex: window.timelineManager.currentIndex,
+      configSource: 'backend',
+      activities: Object.keys(window.timelineManager.activities).reduce(
+        (acc, key) => {
+          acc[key] =
+            window.timelineManager.activities[key].length + ' activities';
+          return acc;
+        },
+        {}
+      ),
+      initialized: Array.from(window.timelineManager.initialized),
+    });
+
+    setTimeout(() => {
+      console.log('=== POST-PRELOAD DEBUG ===');
+
+      // Check data structure
+      Object.keys(window.timelineManager.activities).forEach((timelineKey) => {
+        const activities = window.timelineManager.activities[timelineKey];
+        console.log(
+          `Timeline "${timelineKey}" has ${activities.length} activities in data`
+        );
+
+        // Check if timeline DOM element exists and has activities container
+        const timelineElement = document.getElementById(timelineKey);
+        if (timelineElement) {
+          const activitiesContainer =
+            timelineElement.querySelector('.activities');
+          console.log(`Timeline "${timelineKey}" DOM:`, {
+            elementExists: !!timelineElement,
+            hasActivitiesContainer: !!activitiesContainer,
+            activitiesContainerChildren: activitiesContainer
+              ? activitiesContainer.children.length
+              : 0,
+          });
+        }
+      });
+
+      // Count all activity blocks in DOM
+      const allActivityBlocks = document.querySelectorAll('.activity-block');
+      console.log(`Total activity blocks in DOM: ${allActivityBlocks.length}`);
+    }, 500);
+
+    // Update gradient bar layout
+    updateGradientBarLayout();
+
+    // Create and show floating add button for mobile
+    createFloatingAddButton();
+    if (getIsMobile()) {
+      document.querySelector('.floating-add-button').style.display = 'flex';
+      updateFloatingButtonPosition();
+    }
+
+    // Set initial data-mode on activities container
+    const activitiesContainerElement = document.querySelector(
+      '#activitiesContainer'
+    );
+    const currentKey = getCurrentTimelineKey();
+    if (currentKey && window.timelineManager.metadata[currentKey]) {
+      activitiesContainerElement.setAttribute(
+        'data-mode',
+        window.timelineManager.metadata[currentKey].mode
+      );
+    }
+
+    // Scroll to first timeline in mobile layout
+    scrollToActiveTimeline();
+
+    initButtons();
+    initKeyboardShortcuts();
+    initInstructionBanner();
+    initActivityContextMenu();
+    initMobileLongPressMenu();
+
+    // Initialize header and footer heights early
+    updateHeaderHeight();
+    updateFooterHeight();
+
+    // Add resize event listener with debounce
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        handleResize();
+      }, 100);
+    });
+
+    // Add scroll listener to update button position
+    window.addEventListener('scroll', () => {
+      if (getIsMobile()) {
+        updateFloatingButtonPosition();
+      }
+    });
+
+    // Initialize debug overlay
+    initDebugOverlay();
+
+    if (DEBUG_MODE) {
+      console.log('Initialized timeline structure:', window.timelineManager);
+    }
+  } catch (error) {
+    console.error('Failed to initialize application:', error);
+    const isStudyUnavailableError = error?.code === 'STUDY_UNAVAILABLE';
+    const isStudyAuthorizationError =
+      error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
+    const isMissingParticipantIdError =
+      error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' || error?.status === 400;
+
+    const errorTitle = isStudyUnavailableError
+      ? 'Studie nicht verfügbar:'
+      : isStudyAuthorizationError
+        ? 'Access denied:'
+        : isMissingParticipantIdError
+          ? 'Participant link required:'
+          : window.i18n?.isReady()
+            ? i18n.t('errors.loadingActivitiesConfigurationTitle')
+            : 'Error loading activities configuration:';
+
+    const errorHelp = isStudyUnavailableError
+      ? 'Diese Studie ist momentan nicht verfügbar.'
+      : isStudyAuthorizationError
+        ? 'You are not authorized to participate in this study.'
+        : isMissingParticipantIdError
+          ? 'Please use your personal invitation link that includes your participant ID.'
+          : window.i18n?.isReady()
+            ? i18n.t('errors.loadingActivitiesConfigurationHelp')
+            : 'The application requires a valid backend connection to load the appropriate activities for your study.';
+
+    const errorMessage = isStudyUnavailableError
+      ? 'Diese Studie ist momentan nicht verfügbar.'
+      : isStudyAuthorizationError
+        ? 'You are not authorized to participate in this study.'
+        : error.message;
+
+    renderFatalInitializationError({
+      title: errorTitle,
+      message: errorMessage,
+      help: errorHelp,
+      hideInteractiveUi:
+        isStudyUnavailableError ||
+        isStudyAuthorizationError ||
+        isMissingParticipantIdError,
+    });
+  }
+  updateButtonStates();
+}
+
+/**
+ * The diary's tab title and footer line: the study's own name (`app_name` from
+ * the study config), because a participant knows the study they joined, not the
+ * software behind it. Falls back to the localized generic page name.
+ *
+ * Must run AFTER i18n.applyTranslations(): that pass rewrites the text of every
+ * element carrying a data-i18n attribute - <title> and the footer span included -
+ * so a title set before it is silently reverted. That is what left the tab stuck
+ * on "Loading..." while the <title> was wired to the common.loading key.
+ */
+function applyPageTitle() {
+  const localizedPageTitle =
+    window.i18n && window.i18n.isReady()
+      ? i18n.t('common.pageTitle')
+      : 'Time Use Diary';
+  const appName =
+    window.timelineManager?.general?.app_name || localizedPageTitle;
+
+  document.title = appName;
+
+  const footerAppTitle = document.getElementById('footer_app_title');
+  if (footerAppTitle) {
+    footerAppTitle.textContent = appName;
+  }
+}
+
+function renderFatalInitializationError({
+  title,
+  message,
+  help,
+  hideInteractiveUi = false,
+}) {
+  if (hideInteractiveUi) {
+    // No software brand here either: a participant who just hit an error should
+    // not be introduced to a name they have never seen. The study's own name if
+    // we got far enough to know it, plus the localized "Error".
+    const appName =
+      window.timelineManager?.general?.app_name ||
+      (window.i18n && window.i18n.isReady() ? i18n.t('common.pageTitle') : '');
+    const errorLabel =
+      window.i18n && window.i18n.isReady() ? i18n.t('common.error') : '';
+    const parts = [appName, errorLabel].filter(Boolean);
+    if (parts.length) {
+      document.title = parts.join(' - ');
+    }
+  }
+
+  const activitiesContainer = document.getElementById('activitiesContainer');
+  if (activitiesContainer) {
+    activitiesContainer.innerHTML =
+      '<p style="color: red; padding: 20px; background: #ffebee; border: 2px solid #ef9a9a; border-radius: 8px; margin: 20px;">' +
+      `<strong>${title}</strong><br>${message}${
+        help ? `<br><br>${help}` : ''
+      }</p>`;
+  }
+
+  if (hideInteractiveUi) {
+    [
+      '.controls',
+      '.timeline-header',
+      '.timeline-canvas',
+      '#instructionsFooter',
+      '#previousDaysSwitchRow',
+    ].forEach((selector) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.style.display = 'none';
+      }
+    });
+
+    document.querySelectorAll('button').forEach((button) => {
+      button.disabled = true;
+      button.setAttribute('aria-disabled', 'true');
+      button.style.pointerEvents = 'none';
+      button.style.display = 'none';
+    });
+  }
+}
+
+init().catch((error) => {
+  console.error('Failed to initialize application:', error);
+  const isStudyUnavailableError = error?.code === 'STUDY_UNAVAILABLE';
+  const isStudyAuthorizationError =
+    error?.code === 'STUDY_NOT_AUTHORIZED' || error?.status === 403;
+  const isMissingParticipantIdError =
+    error?.code === 'STUDY_PARTICIPANT_ID_REQUIRED' || error?.status === 400;
+  const shortError = window.i18n?.isReady()
+    ? i18n.t('errors.loadingActivitiesShort')
+    : 'Error loading activities. Please refresh the page to try again. Error:';
+  const message = isStudyUnavailableError
+    ? 'Diese Studie ist momentan nicht verfügbar.'
+    : isStudyAuthorizationError
+      ? 'You are not authorized to participate in this study.'
+      : isMissingParticipantIdError
+        ? 'A participant link is required for this study.'
+        : `${shortError} ${error.message}`;
+  renderFatalInitializationError({
+    title: 'Error:',
+    message,
+    help: '',
+    hideInteractiveUi:
+      isStudyUnavailableError ||
+      isStudyAuthorizationError ||
+      isMissingParticipantIdError,
+  });
+});
+
+window.addEventListener('beforeunload', () => {
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+    window.__TRAC_CAPTURE_PENDING_STATE();
+  }
+});
+
+/**
+ * Copy Days: return all day indices (excluding `excludeIndex`) as potential
+ * copy targets.  Defaults to excluding the current viewing day — the "Copy
+ * this day" button uses this.  Right-click on a day button passes that day's
+ * index so the viewing day becomes a valid target.
+ */
+function getAllTargetDayIndices(excludeIndex) {
+  if (excludeIndex === undefined) {
+    excludeIndex = getCurrentDayIndex();
+  }
+
+  const studyDaysCount =
+    window.timelineManager?.studyDaysCount ||
+    window.studyConfigManager?.getStudyDaysCount() ||
+    0;
+
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+
+  const currentDayIndex = getCurrentDayIndex();
+
+  const targets = [];
+  for (let i = 0; i < studyDaysCount; i++) {
+    if (i !== excludeIndex) {
+      // For the current viewing day, check in-memory state — the DB may
+      // be stale because template activities or local edits haven't been
+      // saved yet (or local deletions haven't been persisted).
+      const inDb = dayIndicesWithData.includes(i);
+      const isCurrent = i === currentDayIndex;
+      const hasData = isCurrent ? hasFrontendActivities() : inDb;
+
+      targets.push({ index: i, hasData });
+    }
+  }
+  return targets;
+}
+
+/** True when the current viewing day has any activity blocks rendered. */
+function hasFrontendActivities() {
+  return (window.timelineManager?.keys || []).some(function (key) {
+    return (window.timelineManager.activities[key] || []).length > 0;
+  });
+}
+
+// Keep old name as alias for backward compatibility with any remaining callers.
+function getEmptyTargetDayIndices() {
+  return getAllTargetDayIndices()
+    .filter(function (t) {
+      return !t.hasData;
+    })
+    .map(function (t) {
+      return t.index;
+    });
+}
+
+function removeCopyDayContextMenu() {
+  const existingMenu = document.querySelector('.copy-day-context-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+  }
+}
+
+function showCopyTargetPicker(sourceDayIndex, event) {
+  removeCopyDayContextMenu();
+
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) {
+          return key;
+        };
+
+  // Copy Days: right-click on a day button (desktop) copies THAT day to
+  // another.  If the source day has no activities yet there is nothing to
+  // copy — inform the user instead of showing an empty picker or silently
+  // doing nothing.  The current viewing day may hold unsaved frontend data,
+  // so check its in-memory state (same logic as getAllTargetDayIndices).
+  const currentDayIndex = getCurrentDayIndex();
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const sourceHasData =
+    sourceDayIndex === currentDayIndex
+      ? hasFrontendActivities()
+      : dayIndicesWithData.includes(sourceDayIndex);
+
+  if (!sourceHasData) {
+    showCopyToast(t('messages.copyEmptySource'), false);
+    return;
+  }
+
+  const targets = getAllTargetDayIndices(sourceDayIndex);
+  if (!targets.length) {
+    return;
+  }
+
+  const sourceDayName =
+    window.studyConfigManager?.getDayDisplayLabel(sourceDayIndex) ||
+    t('common.day') + ' ' + (sourceDayIndex + 1);
+
+  const menu = document.createElement('div');
+  menu.className = 'copy-day-context-menu context-menu';
+
+  const header = document.createElement('div');
+  header.className = 'copy-day-context-menu-header context-menu-header';
+  header.textContent = t('messages.copyToDay') + ': ' + sourceDayName;
+  menu.appendChild(header);
+
+  for (const target of targets) {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'copy-day-context-menu-item context-menu-item';
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(target.index) ||
+      t('common.day') + ' ' + (target.index + 1);
+    // Copy Days: show status so users know whether they'll overwrite
+    const status = target.hasData
+      ? ' (' + t('messages.copyDayHasData') + ')'
+      : ' (' + t('messages.copyDayEmpty') + ')';
+    item.textContent = targetDayName + status;
+    item.addEventListener('click', async () => {
+      removeCopyDayContextMenu();
+      await copyDayTo(sourceDayIndex, target.index);
+    });
+    menu.appendChild(item);
+  }
+
+  // Position the menu at the cursor.  The CSS keeps the menu position:fixed,
+  // so this works both for the desktop right-click entry point and for the
+  // "Copy this day" button (which supplies clientX/clientY).
+  const menuX = Math.min(event.clientX, window.innerWidth - 210);
+  const menuY = Math.min(event.clientY, window.innerHeight - 200);
+  menu.style.position = 'fixed';
+  menu.style.left = menuX + 'px';
+  menu.style.top = menuY + 'px';
+
+  document.body.appendChild(menu);
+
+  const closeHandler = function (e) {
+    if (!menu.contains(e.target)) {
+      removeCopyDayContextMenu();
+      document.removeEventListener('click', closeHandler, true);
+    }
+  };
+  setTimeout(function () {
+    document.addEventListener('click', closeHandler, true);
+  }, 0);
+}
+
+window.showCopyTargetPicker = showCopyTargetPicker;
+
+// copyDayTo() and the day-menu copy row both need the same "does this day have
+// anything in it" test the picker uses for the day being viewed, so ui.js can
+// grey that row out instead of offering an action that cannot run yet.
+window.hasFrontendActivities = hasFrontendActivities;
+
+async function copyDayTo(sourceDayIndex, targetDayIndex) {
+  const t =
+    window.i18n && window.i18n.isReady()
+      ? window.i18n.t.bind(window.i18n)
+      : function (key) {
+          return key;
+        };
+
+  const studyName =
+    window.timelineManager?.study?.study_name_short ||
+    new URLSearchParams(window.location.search).get('study_name');
+  const participantId =
+    window.timelineManager?.study?.pid ||
+    new URLSearchParams(window.location.search).get('pid');
+
+  if (!studyName || !participantId) {
+    showCopyToast(
+      t('messages.copyError', { message: 'missing study or participant info' }),
+      true
+    );
+    return;
+  }
+
+  // Copy Days: if target day already has data, ask for confirmation first.
+  // For the current viewing day, check in-memory state (same logic as the
+  // picker) so the confirmation matches what the user sees.
+  const dayIndicesWithData = Array.isArray(
+    window.timelineManager?.dayIndicesWithData
+  )
+    ? window.timelineManager.dayIndicesWithData
+    : [];
+  const currentDayIndex = getCurrentDayIndex();
+  const targetHasData =
+    targetDayIndex === currentDayIndex
+      ? hasFrontendActivities()
+      : dayIndicesWithData.includes(targetDayIndex);
+
+  if (targetHasData) {
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
+      t('common.day') + ' ' + (targetDayIndex + 1);
+    // Styled dialog, not window.confirm() - the native prompt is unstyled and
+    // has to be intercepted in tests. See showConfirmDialog in ui.js.
+    const confirmed = await window.showConfirmDialog({
+      overlayId: 'copyOverwriteConfirm',
+      confirmId: 'copyOverwriteYes',
+      cancelId: 'copyOverwriteNo',
+      title: t('messages.copyOverwriteTitle'),
+      message: t('messages.copyOverwriteConfirm', { day: targetDayName }),
+      confirmLabel: t('messages.copyOverwriteYes'),
+    });
+    if (!confirmed) {
+      return;
+    }
+  }
+
+  const targetDayLabel = window.studyConfigManager?.getDayLabel(targetDayIndex);
+  const sourceDayLabel = window.studyConfigManager?.getDayLabel(sourceDayIndex);
+
+  if (!targetDayLabel || !sourceDayLabel) {
+    showCopyToast(
+      t('messages.copyError', { message: 'could not resolve day labels' }),
+      true
+    );
+    return;
+  }
+
+  // Copying uses the SAVED state of the source day, so persist the current
+  // frontend state to the backend first.  This is the same save path used by
+  // day switching (see saveAndSwitchToDay): frontend+backend validation
+  // applies, and if the current day doesn't meet min_coverage the save fails
+  // and we abort the copy before touching the DB.  We stay on the current
+  // day — copying never advances day_label_index.
+  if (sourceDayIndex === currentDayIndex) {
+    try {
+      const saveResult = await sendData();
+
+      if (!saveResult?.success) {
+        const submitErrorMessage = window.i18n
+          ? window.i18n.t('messages.submitError')
+          : 'Error submitting diary';
+        const errorDetails = saveResult?.error ? `: ${saveResult.error}` : '';
+        showCopyToast(
+          t('messages.copyError', {
+            message: submitErrorMessage + errorDetails,
+          }),
+          true
+        );
+        return;
+      }
+
+      // Copying saved the current day itself, so this is the autosave baseline.
+      window.autosave?.markSaved?.();
+
+      // The save persisted the current frontend state to the DB for the
+      // current day label, so mark it clean and record it as a day with data.
+      if (window.timelineManager) {
+        window.timelineManager._unsavedChanges = false;
+        if (Array.isArray(window.timelineManager.dayIndicesWithData)) {
+          if (
+            !window.timelineManager.dayIndicesWithData.includes(sourceDayIndex)
+          ) {
+            window.timelineManager.dayIndicesWithData.push(sourceDayIndex);
+            window.timelineManager.dayIndicesWithData.sort(function (a, b) {
+              return a - b;
+            });
+          }
+        }
+      }
+    } catch (saveError) {
+      showCopyToast(
+        t('messages.copyError', {
+          message: saveError.message || 'save failed',
+        }),
+        true
+      );
+      return;
+    }
+  }
+
+  try {
+    const url =
+      TUD_SETTINGS.API_BASE_URL +
+      '/studies/' +
+      encodeURIComponent(studyName) +
+      '/participants/' +
+      encodeURIComponent(participantId) +
+      '/day_labels/' +
+      encodeURIComponent(targetDayLabel) +
+      '/copy-from/' +
+      encodeURIComponent(sourceDayLabel);
+
+    const response = await fetch(url, { method: 'POST' });
+
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(function () {
+        return { detail: 'Unknown error' };
+      });
+      showCopyToast(
+        t('messages.copyError', {
+          message: errorPayload.detail || 'Failed to copy',
+        }),
+        true
+      );
+      return;
+    }
+
+    const data = await response.json();
+
+    const sourceDayName =
+      window.studyConfigManager?.getDayDisplayLabel(sourceDayIndex) ||
+      sourceDayLabel;
+    const targetDayName =
+      window.studyConfigManager?.getDayDisplayLabel(targetDayIndex) ||
+      targetDayLabel;
+    // Offer the jump to the day that was just filled: the participant stays on
+    // the source day, and the target day is the one they still have to complete.
+    // Skipped when the target *is* the day being viewed - that case reloads.
+    showCopyToast(
+      t('messages.copySuccess', {
+        sourceDay: sourceDayName,
+        targetDay: targetDayName,
+      }),
+      false,
+      targetDayIndex === currentDayIndex
+        ? null
+        : {
+            label: t('messages.goToCopiedDay', { day: targetDayName }),
+            onClick: () => window.saveAndSwitchToDay?.(targetDayIndex),
+          }
+    );
+
+    if (
+      window.timelineManager &&
+      Array.isArray(window.timelineManager.dayIndicesWithData)
+    ) {
+      if (!window.timelineManager.dayIndicesWithData.includes(targetDayIndex)) {
+        window.timelineManager.dayIndicesWithData.push(targetDayIndex);
+        window.timelineManager.dayIndicesWithData.sort(function (a, b) {
+          return a - b;
+        });
+      }
+    }
+
+    // The copy wrote the source day's activities (which meet min_coverage) to
+    // the target day, so the target day is now complete by min coverage too.
+    // Keep the day status in sync so the green checkmark appears immediately,
+    // without requiring a day switch / page reload.
+    if (
+      window.timelineManager &&
+      Array.isArray(window.timelineManager.dayIndicesMeetMinCoverage)
+    ) {
+      if (
+        !window.timelineManager.dayIndicesMeetMinCoverage.includes(
+          targetDayIndex
+        )
+      ) {
+        window.timelineManager.dayIndicesMeetMinCoverage.push(targetDayIndex);
+        window.timelineManager.dayIndicesMeetMinCoverage.sort(function (a, b) {
+          return a - b;
+        });
+      }
+    }
+
+    if (typeof renderPreviousDaysSwitchRow === 'function') {
+      renderPreviousDaysSwitchRow();
+    }
+
+    if (typeof window.updateSubmitStudyButton === 'function') {
+      window.updateSubmitStudyButton();
+    }
+
+    if (!getIsMobile() && typeof window.addCopyDayLink === 'function') {
+      const timelineTitle = document.querySelector('.timeline-title');
+      const currentDayIndex = getCurrentDayIndex();
+      if (timelineTitle && typeof currentDayIndex === 'number') {
+        window.addCopyDayLink(timelineTitle, currentDayIndex);
+      }
+    }
+
+    // Copy Days: if the copy target is the current viewing day, reload so
+    // the user immediately sees the new data instead of the old state.
+    if (targetDayIndex === currentDayIndex) {
+      setTimeout(function () {
+        window.location.reload();
+      }, 3000);
+    }
+  } catch (error) {
+    showCopyToast(t('messages.copyError', { message: error.message }), true);
+  }
+}
+
+function showCopyToast(message, isError, action) {
+  if (window.showToast) {
+    // An action needs longer on screen than a plain confirmation: the
+    // participant has to read the second line and decide to tap it.
+    window.showToast(
+      message,
+      isError ? 'error' : 'success',
+      action ? 6000 : 4000,
+      action
+    );
+  } else {
+    console.log(message);
+  }
+}
+
+window.renderPreviousDaysSwitchRow = renderPreviousDaysSwitchRow;
+
+window.addEventListener('beforeunload', function () {
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+    window.__TRAC_CAPTURE_PENDING_STATE();
+  }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'hidden') return;
+
+  // Leaving the tab is a natural checkpoint: persist pending edits while the
+  // page is still alive (the draft capture below is only the last resort).
+  window.autosave?.flush?.();
+
+  if (typeof window.__TRAC_CAPTURE_PENDING_STATE === 'function') {
+    window.__TRAC_CAPTURE_PENDING_STATE();
+  }
+});
+
+// Best effort on unload; the draft in local storage covers the rest.
+window.addEventListener('pagehide', () => {
+  window.autosave?.flush?.();
+});
+
+// Export addNextTimeline, goToPreviousTimeline, navigateToTimelineByKey,
+// renderActivities, getCurrentDayIndex and getTimelineLabel for ui.js
+export {
+  addNextTimeline,
+  goToPreviousTimeline,
+  navigateToTimelineByKey,
+  renderActivities,
+  getCurrentDayIndex,
+  getTimelineLabel,
+};

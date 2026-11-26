@@ -73,25 +73,27 @@ Behavior:
 
 ## 5. Callback / Return Contract (Documented, Not Configured)
 
-The return contract remains fixed and documented (not per-task configurable). The admin study page
-shows the return URL for every task.
+The return contract remains fixed and documented (not per-task configurable). There are two
+frontends and therefore two return URLs; the admin study page shows both for every task, and a study
+is configured with whichever one its participants use.
 
 Remote site should return the browser to TRAC with query parameters:
 - `pid`
-- the study: `study`
+- the study: `study_name` for the classic client, `study` for the rewrite (`frontend_new`)
 - `callback_task_key` (or `task_key`)
 - `callback_token` (or `token`)
 - `hmac` *(required when the task defines `hmac_secret_reference`; see §5a)*
 
 The prefixed names (`callback_task_key`, `callback_token`) take priority when both forms are present.
 
-Return URL shape:
+| Frontend | Return URL shape |
+| --- | --- |
+| classic (`frontend/`) | `{TUD_FRONTEND_URL}/pages/tasks.html?study_name=…&pid={participant_id}&callback_task_key=…&callback_token={assigned_token}[&hmac={hmac_signature}]` |
+| rewrite (`frontend_new/`) | `{TUD_FRONTEND_NEW_URL}/index.html?study=…&pid={participant_id}&callback_task_key=…&callback_token={assigned_token}[&hmac={hmac_signature}]#/tasks` |
 
-`{TUD_FRONTEND_URL}/index.html?study=…&pid={participant_id}&callback_task_key=…&callback_token={assigned_token}[&hmac={hmac_signature}]#/tasks`
-
-The `#/tasks` fragment is a courtesy: the client asks the server for the participant's stage and
-lands on the tasks page anyway, so a provider that drops everything after `#` still returns the
-participant to the right place.
+The rewrite's `#/tasks` fragment is a courtesy: the client asks the server for the participant's
+stage and lands on the tasks page anyway, so a provider that drops everything after `#` still
+returns the participant to the right place.
 
 Frontend behavior:
 - Read query params from the return URL.
@@ -99,9 +101,10 @@ Frontend behavior:
   - `task_key` = value of `callback_task_key` or `task_key`
   - `assigned_token` = value of `callback_token` or `token`
   - `hmac = hmac` (forwarded when present in the URL)
-- A rejected confirmation is not an error page: the tasks page still lists what is owed. The client
-  logs the failure and leaves the parameters in the URL so a reload retries.
-- The client redeems the confirmation **before** it reads the stage, because the stage it fetched
+- A rejected confirmation is not an error page: the tasks page still lists what is owed. The classic
+  client logs the failure; the rewrite does the same and leaves the parameters in the URL so a reload
+  retries.
+- The rewrite redeems the confirmation **before** it reads the stage, because the stage it fetched
   first was computed without it, then drops the spent parameters from the address bar (the token is a
   per-task credential). `pid` and any `return_url` stay.
 
