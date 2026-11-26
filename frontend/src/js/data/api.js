@@ -5,31 +5,9 @@
  * backend's machine-readable `code` so the UI can map one set of messages.
  */
 
-export class ApiError extends Error {
-  /**
-   * @param {string} message
-   * @param {{ status: number, code?: string | null, detail?: unknown }} info
-   */
-  constructor(message, info) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = info.status;
-    this.code = info.code ?? null;
-    this.detail = info.detail ?? null;
-  }
-}
+import { ApiError, createRequest } from './request.js';
 
-/**
- * @param {unknown} detail
- * @returns {string | null}
- */
-function codeFromDetail(detail) {
-  if (detail && typeof detail === 'object' && 'code' in detail) {
-    const code = /** @type {{ code?: unknown }} */ (detail).code;
-    return typeof code === 'string' ? code : null;
-  }
-  return null;
-}
+export { ApiError } from './request.js';
 
 /**
  * @param {string} baseUrl e.g. "/tud_backend/api"
@@ -37,77 +15,82 @@ function codeFromDetail(detail) {
  * @param {string} participantId
  * @param {{
  *   onError?: (info: { method: string, route: string, status: number, code?: string | null }) => void,
+ *   onSessionExpired?: (info: { code: string }) => void,
  * }} [hooks] `onError` sees the failures a participant cannot do anything about
  *   (5xx, network, an unmapped 4xx). A 4xx with a machine code is a rule the UI
  *   explains inline, so it is reported as a refusal instead - see
  *   `createDiaryActions`.
  */
-export function createApi(baseUrl, studyName, participantId, { onError } = {}) {
+export function createApi(
+  baseUrl,
+  studyName,
+  participantId,
+  { onError, onSessionExpired } = {}
+) {
   const studyRoot = `${baseUrl}/studies/${encodeURIComponent(studyName)}`;
   const diaryRoot = `${studyRoot}/participants/${encodeURIComponent(participantId)}`;
-
-  /**
-   * The route without the participant id, so nothing that identifies a person
-   * can reach an error table.
-   *
-   * @param {string} url
-   * @returns {string}
-   */
-  function routeOf(url) {
-    const withoutQuery = String(url).split('?')[0];
-    const route = withoutQuery.startsWith(baseUrl)
-      ? withoutQuery.slice(baseUrl.length)
-      : withoutQuery;
-    return route
-      .split(`/participants/${encodeURIComponent(participantId)}`)
-      .join('/participants/:pid');
-  }
-
-  /**
-   * @param {string} url
-   * @param {RequestInit} [options]
-   * @returns {Promise<any>}
-   */
-  async function request(url, options = {}) {
-    const method = String(options.method || 'GET').toUpperCase();
-    let response;
-    try {
-      response = await fetch(url, {
-        ...options,
-        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
-      });
-    } catch (error) {
-      onError?.({ method, route: routeOf(url), status: 0 });
-      throw error;
-    }
-
-    if (response.status === 204) return null;
-
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch {
-      payload = null;
-    }
-
-    if (!response.ok) {
-      const detail = payload && typeof payload === 'object' ? payload.detail : null;
-      const code = codeFromDetail(detail);
-      // A coded 4xx is a rule the participant was told about; only the rest is
-      // an error in the sense of "something is broken".
-      if (response.status >= 500 || !code) {
-        onError?.({ method, route: routeOf(url), status: response.status, code });
-      }
-      const message =
-        (detail && typeof detail === 'object' && 'message' in detail
-          ? String(/** @type {{ message?: unknown }} */ (detail).message)
-          : null) || `HTTP ${response.status}`;
-      throw new ApiError(message, { status: response.status, code, detail });
-    }
-    return payload;
-  }
+  const request = createRequest(baseUrl, participantId, {
+    onError,
+    onSessionExpired,
+  });
 
   return {
+    /**
+     * Start (or resume) the server-side session. Only called when the study's
+     * inactivity timeout is greater than zero; a no-op otherwise.
+     *
+     * @returns {Promise<{ active: boolean, timeout_minutes: number, expires_at?: string | null }>}
+     */
+    startSession: () => request(`${diaryRoot}/session`, { method: 'POST' }),
+
+    /**
+     * Refresh an existing session from user activity. A 401 here means the
+     * session already ended and the API hook sends the participant to the
+     * timeout page.
+     *
+     * @returns {Promise<{ active: boolean, timeout_minutes: number, expires_at?: string | null }>}
+     */
+    touchSession: () => request(`${diaryRoot}/session/touch`, { method: 'POST' }),
+
+    /** @returns {Promise<{ active: boolean, timeout_minutes: number, expires_at?: string | null }>} */
+    getSession: () => request(`${diaryRoot}/session`),
+
+    /**
+     * Whether the browser actually stored the session cookie. A 401 means it did
+     * not (or the session vanished); a network failure is not a cookie verdict.
+     *
+     * @returns {Promise<boolean>}
+     */
+    verifySession: async () => {
+      try {
+        const response = await fetch(`${diaryRoot}/session`, {
+          credentials: 'include',
+        });
+        return response.status !== 401;
+      } catch {
+        return true;
+      }
+    },
+
+    /**
+     * Best-effort revocation before the timeout page. Deliberately bypasses the
+     * shared request helper: the app is already navigating away, and a session
+     * 401 must not trigger another redirect.
+     *
+     * @returns {Promise<void>}
+     */
+    endSession: async () => {
+      try {
+        await fetch(`${diaryRoot}/session`, {
+          method: 'DELETE',
+          credentials: 'include',
+          keepalive: true,
+        });
+      } catch {
+        // The timeout page is the important part; revocation is best effort.
+      }
+    },
+
     /**
      * @param {{ singleTimeline?: boolean }} [options] `singleTimeline` asks for
      *   the one timeline this diary uses, which is the app's mode (D1).

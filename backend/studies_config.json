@@ -127,13 +127,7 @@
       },
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z",
-      "inactivity_timeout_minutes": 30,
-      "inactivity_timeout_stress_time_left": 5,
-      "inactivity_page_custom_text": {
-        "en": "Your session has ended because you were inactive for 30 minutes. Please use your invitation link to continue.",
-        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Bitte verwenden Sie Ihren Einladungslink, um fortzufahren.",
-        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Vänligen använd din inbjudningslänk för att fortsätta."
-      },
+      "inactivity_timeout_minutes": 0,
       "footer_links": [
         {
           "title": {

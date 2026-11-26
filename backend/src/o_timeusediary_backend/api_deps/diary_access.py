@@ -12,13 +12,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import NamedTuple, Optional
 
-from fastapi import Depends, HTTPException, Path
-from sqlmodel import Session, select
+from fastapi import Depends, HTTPException
+from sqlmodel import Session
 
 from ..database import get_session
 from ..models import Study, StudyParticipant
 from ..utils import coerce_utc_aware, utc_now
-from .participant_identity import require_valid_participant_id
+from .participant_context import ParticipantContext, get_participant_context
+from .participant_session import ParticipantSessionContext, require_participant_session
 
 
 class DiaryContext(NamedTuple):
@@ -26,6 +27,7 @@ class DiaryContext(NamedTuple):
 
     study: Study
     study_participant: StudyParticipant
+    participant_session: Optional[ParticipantSessionContext] = None
 
 
 UNAVAILABLE_PAUSED = "paused"
@@ -85,64 +87,22 @@ def ensure_study_is_currently_available(study: Study) -> None:
     )
 
 
-def get_study(
-    study_name_short: str,
-    session: Session = Depends(get_session),
-) -> Study:
-    """Resolve a study by its short name or raise 404."""
-    study = session.exec(
-        select(Study).where(Study.name_short == study_name_short)
-    ).first()
-    if not study:
-        raise HTTPException(
-            status_code=404, detail=f"Study '{study_name_short}' not found"
-        )
-    return study
-
-
-def _participant_link(
-    session: Session, study: Study, participant_id: str
-) -> Optional[StudyParticipant]:
-    return session.exec(
-        select(StudyParticipant).where(
-            StudyParticipant.study_id == study.id,
-            StudyParticipant.participant_id == participant_id,
-        )
-    ).first()
-
-
-def ensure_participant_allowed(
-    session: Session, study: Study, participant_id: str
-) -> None:
-    """Raise 403 when a closed study has no link for this participant."""
-    if study.allow_unlisted_participants:
-        return
-    if _participant_link(session, study, participant_id) is None:
-        raise HTTPException(
-            status_code=403,
-            detail=f"Participant '{participant_id}' not authorized for this study",
-        )
-
-
 def get_readable_diary_context(
-    study: Study = Depends(get_study),
-    participant_id: str = Path(...),
-    session: Session = Depends(get_session),
+    context: ParticipantContext = Depends(get_participant_context),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ) -> DiaryContext:
     """Context for reading a diary.
 
     A participant who has not started yet is not an error: an empty diary is
     returned, which is what the new frontend renders on first load.
     """
-    # One shared rule: an id that cannot be stored must not reach the diary.
-    require_valid_participant_id(participant_id)
-    ensure_participant_allowed(session, study, participant_id)
-    link = _participant_link(session, study, participant_id)
-    if link is None:
-        # Only reachable for open studies: a stand-in object that is not added
-        # to the session, so read paths cannot accidentally persist it.
-        link = StudyParticipant(study_id=study.id, participant_id=participant_id)
-    return DiaryContext(study=study, study_participant=link)
+    return DiaryContext(
+        study=context.study,
+        study_participant=context.study_participant,
+        participant_session=participant_session,
+    )
 
 
 def ensure_study_participant_row(session: Session, link: StudyParticipant) -> None:
@@ -184,4 +144,8 @@ def get_writable_diary_context(
             },
         )
 
-    return DiaryContext(study=study, study_participant=link)
+    return DiaryContext(
+        study=study,
+        study_participant=link,
+        participant_session=context.participant_session,
+    )

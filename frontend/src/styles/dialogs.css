@@ -34,3 +34,11 @@
 .t-facts dd {
   margin-bottom: 0;
 }
+
+/* Static inactivity/privacy note in the drawer. No countdown, no pressure. */
+.t-drawer__note {
+  margin: var(--space-3) 0 0;
+  padding: 0 var(--space-3);
+  color: var(--ink-muted);
+  font-size: 0.875rem;
+}

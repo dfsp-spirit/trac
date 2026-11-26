@@ -528,7 +528,6 @@ def _kitchen_sink_study_payload(name_short: str, name: str) -> dict:
         "time_step_minutes": 5,
         "min_duration_minutes": 10,
         "inactivity_timeout_minutes": 20,
-        "inactivity_timeout_stress_time_left": 7,
         "footer_links": [
             {
                 "title": {

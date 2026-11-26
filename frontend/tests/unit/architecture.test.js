@@ -48,6 +48,7 @@ test('layerOf maps the component tree and rejects loose files', () => {
   assert.equal(layerOf('src/js/state/store.js'), 'state');
   assert.equal(layerOf('src/js/ui/timeline/timeline.js'), 'ui');
   assert.equal(layerOf('src/js/main.js'), 'main');
+  assert.equal(layerOf('src/js/timeout-main.js'), 'main');
   assert.equal(layerOf('src/js/config.js'), 'config');
   assert.equal(layerOf('src/js/rogue.js'), 'unknown');
   assert.equal(layerOf('src/styles/tokens.css'), null);

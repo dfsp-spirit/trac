@@ -138,7 +138,6 @@
       "data_collection_end": "2027-08-01T23:59:59Z",
       "is_paused": false,
       "inactivity_timeout_minutes": 20,
-      "inactivity_timeout_stress_time_left": 5,
       "inactivity_page_custom_text": {
         "de": "Ihre Sitzung wurde beendet, weil Sie zu lange inaktiv waren. Bitte nutzen Sie Ihren Einladungslink erneut, um mit der Eingabe fortzufahren.",
         "en": "Your session has ended because you were inactive for too long. Please use your invitation link again to continue.",

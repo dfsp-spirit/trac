@@ -90,24 +90,26 @@ export function mount({ root, params }) {
 
   let copy = /** @type {ReturnType<typeof createCopyDay> | null} */ (null); // wired below
 
+  const api = studyName && participantId
+    ? createApi(config.apiBaseUrl, studyName, participantId, {
+        onError: (info) => signals.track('api.error', info),
+        onSessionExpired: () => chrome.expireSession(),
+      })
+    : null;
+
   // Shell parts that depend on the study config (shellChrome.js); callbacks are deferred.
   const chrome = createShellChrome({
     shell: handles,
     t,
+    tCount,
+    api,
     getLanguage: () => store.get().language,
     onLanguageChange: (next) => void languageSwitch.setLanguage(next),
-    onSkip: (body) =>
-      actions ? actions.skip(body).then(() => stageMachine.refresh()) : undefined,
+    onSkip: (body) => actions?.skip(body).then(() => stageMachine.refresh()),
     onCopy: () => copy?.open(),
     onReview: () => review.open(),
   });
 
-  const api =
-    studyName && participantId
-      ? createApi(config.apiBaseUrl, studyName, participantId, {
-          onError: (info) => signals.track('api.error', info),
-        })
-      : null;
   const actions = api
     ? createDiaryActions({
         store,
@@ -293,6 +295,5 @@ export function mount({ root, params }) {
     },
   };
 }
-
 const root = /** @type {HTMLElement | null} */ (document.querySelector('.t-app'));
 if (root) mount({ root, params: new URLSearchParams(window.location.search) });

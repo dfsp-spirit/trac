@@ -17,6 +17,7 @@
 - `a11y.spec.js` runs axe-core via `@axe-core/playwright` (dev dependency) over the app and its
   views and fails on any WCAG A/AA violation.
 - `touch-targets.spec.js` checks the phone layout (no sideways scrolling, >= 24x24 controls).
+- `timeout.spec.js` uses Playwright's clock to prove the opt-in inactivity timeout redirects after the configured period, that the timeout page carries no invitation identity, that a study with the default `0` never redirects, and that a blocked session cookie shows the "Cookies required" failure instead of looping. Direct participant API helpers call `ensureParticipantSession` first, so a future timed fixture does not need a per-test cookie setup.
 - `tests/unit/architecture.test.js` runs `tools/check-architecture.mjs` (D33): layer imports, no
   network outside `js/data`, no device storage outside the allow-list, file-size caps.
 - `tests/unit/page_i18n_keys.test.js` fails when the app requests a locale key that is missing from

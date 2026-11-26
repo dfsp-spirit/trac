@@ -107,11 +107,26 @@ export function studyConfigUrl(pid, study = STUDY, language = 'de') {
 }
 
 /**
+ * Start the participant session for studies that opt into an inactivity
+ * timeout. With the default timeout of 0 this is a cheap no-op that also
+ * clears any stale cookie.
+ *
+ * @param {import('@playwright/test').APIRequestContext} request
+ * @param {string} pid
+ * @param {string} [study]
+ */
+export async function ensureParticipantSession(request, pid, study = STUDY) {
+  const response = await request.post(`${participantsUrl(study)}/${pid}/session`);
+  expect(response.ok(), `starting session for ${pid}`).toBeTruthy();
+}
+
+/**
  * @param {import('@playwright/test').APIRequestContext} request
  * @param {string} pid
  * @param {string} [study]
  */
 export async function clearActivities(request, pid, study = STUDY) {
+  await ensureParticipantSession(request, pid, study);
   const base = participantsUrl(study);
   const response = await request.get(`${base}/${pid}/diary`);
   expect(response.ok(), `loading diary for ${pid}`).toBeTruthy();

@@ -13,10 +13,14 @@
  */
 import { confirmReturningTask } from './externalTaskReturn.js';
 
+class CookieRequiredError extends Error {}
+
 /**
  * @param {{
  *   api: {
  *     getStudyConfig: (language: string) => Promise<any>,
+ *     startSession: () => Promise<any>,
+ *     verifySession: () => Promise<boolean>,
  *     confirmExternalTask: (input: {
  *       taskKey: string, assignedToken: string, hmac?: string | null
  *     }) => Promise<any>,
@@ -58,6 +62,17 @@ export async function loadFirstStage({ api, store, stageMachine, t, listStudies,
   }
   try {
     let session = await api.getStudyConfig(store.get().language);
+
+    // The timeout is opt-in and off by default. When it is on, establish the
+    // server session before the provider return is redeemed: that request is
+    // protected too, and a long external task may have outlived the old cookie.
+    if (Number(session.inactivity_timeout_minutes) > 0) {
+      const started = await api.startSession();
+      if (started?.active && !(await api.verifySession())) {
+        throw new CookieRequiredError('session cookie was not stored');
+      }
+    }
+
     store.set({ status: 'ready' });
 
     // The stage above was computed before the provider's confirmation existed,
@@ -76,6 +91,13 @@ export async function loadFirstStage({ api, store, stageMachine, t, listStudies,
     stageMachine.show(session);
   } catch (error) {
     store.set({ status: 'error', error });
+    if (error instanceof CookieRequiredError) {
+      stageMachine.fail(t('diary.stage.cookiesRequiredText'), {
+        title: t('diary.stage.cookiesRequiredTitle'),
+        retry: true,
+      });
+      return;
+    }
     stageMachine.fail(t('diary.stage.failedText'));
   }
 }

@@ -650,14 +650,6 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                         )
                         study_updated = True
                     if (
-                        existing_study.inactivity_timeout_stress_time_left
-                        != study_config.inactivity_timeout_stress_time_left
-                    ):
-                        existing_study.inactivity_timeout_stress_time_left = (
-                            study_config.inactivity_timeout_stress_time_left
-                        )
-                        study_updated = True
-                    if (
                         existing_study.inactivity_page_custom_text
                         != study_config.inactivity_page_custom_text
                     ):
@@ -959,7 +951,6 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     data_collection_end=study_config.data_collection_end,
                     day_start_minutes=study_config.day_start_minutes,
                     inactivity_timeout_minutes=study_config.inactivity_timeout_minutes,
-                    inactivity_timeout_stress_time_left=study_config.inactivity_timeout_stress_time_left,
                     inactivity_page_custom_text=study_config.inactivity_page_custom_text,
                     footer_links=config_footer_links,
                     hide_server_wide_links=study_config.hide_server_wide_links,

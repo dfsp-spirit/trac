@@ -101,6 +101,36 @@ def test_load_studies_config_from_json(tmp_path):
     assert sorted(config.studies[0].get_supported_languages()) == ["en", "sv"]
 
 
+def test_inactivity_timeout_defaults_to_off_for_open_and_closed_studies(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+
+    for allow_unlisted in (False, True):
+        payload = _valid_studies_payload()
+        study = payload["studies"][0]
+        study.pop("inactivity_timeout_minutes", None)
+        study["allow_unlisted_participants"] = allow_unlisted
+        if allow_unlisted:
+            study["study_participant_ids"] = []
+        config_file = tmp_path / f"studies_config_{allow_unlisted}.json"
+        config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+        config = load_studies_config(str(config_file))
+        assert config.studies[0].inactivity_timeout_minutes == 0
+
+
+def test_inactivity_timeout_explicit_zero_and_positive_value_are_kept(tmp_path):
+    _write_default_multilingual_activities(tmp_path)
+
+    for value in (0, 12):
+        payload = _valid_studies_payload()
+        payload["studies"][0]["inactivity_timeout_minutes"] = value
+        config_file = tmp_path / f"studies_config_{value}.json"
+        config_file.write_text(json.dumps(payload), encoding="utf-8")
+
+        config = load_studies_config(str(config_file))
+        assert config.studies[0].inactivity_timeout_minutes == value
+
+
 def test_load_studies_config_rejects_an_invalid_participant_id(tmp_path):
     _write_default_multilingual_activities(tmp_path)
     payload = _valid_studies_payload()

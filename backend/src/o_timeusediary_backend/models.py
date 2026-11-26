@@ -94,8 +94,13 @@ class Study(SQLModel, table=True):
     # stores the minutes it is sent.
     time_step_minutes: int = Field(default=10)
     min_duration_minutes: int = Field(default=10)
-    # Inactivity timeout configuration
+    # Inactivity timeout configuration. 0 (the default) means off. When greater
+    # than zero, participant data endpoints require a server-side session held
+    # in an HttpOnly cookie; participants with cookies disabled cannot use the
+    # study. See participant_sessions.py and README_CREATE_STUDY.md.
     inactivity_timeout_minutes: int = Field(default=0)
+    # Legacy column from the old client's two-phase countdown. It is no longer
+    # read, written or exported; kept until a later contract migration drops it.
     inactivity_timeout_stress_time_left: int = Field(default=5)
     inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
@@ -494,6 +499,46 @@ class StudyParticipant(SQLModel, table=True):
 
     # Relationships
     study: Study = Relationship(back_populates="participants")
+
+
+class ParticipantSession(SQLModel, table=True):
+    """One active browser session for a participant (opt-in inactivity timeout).
+
+    Only a hash of the cookie token is stored. ``study_id`` is the foreign key
+    rather than a link to ``StudyParticipant`` because an open study may create a
+    session before the first diary write materialises the association row.
+    """
+
+    __tablename__ = "participant_sessions"
+    __table_args__ = (
+        Index(
+            "ix_participant_sessions_study_participant",
+            "study_id",
+            "participant_id",
+        ),
+    )
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    study_id: int = Field(
+        sa_column=Column(
+            Integer,
+            ForeignKey("studies.id", ondelete="CASCADE"),
+            nullable=False,
+        )
+    )
+    participant_id: str = Field(sa_type=String(255))
+    token_hash: str = Field(sa_type=String(64), unique=True, index=True)
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    last_seen_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    ended_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
 
 
 class Activity(SQLModel, table=True):

@@ -474,9 +474,21 @@ Rules worth knowing:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `inactivity_timeout_minutes` | integer | No | Minutes of user inactivity before the session is automatically ended. Omit or set to `0` to disable. |
-| `inactivity_timeout_stress_time_left` | integer | No | When remaining time drops below this threshold (minutes), a visual countdown warning appears. Default: `5`. |
-| `inactivity_page_custom_text` | `{lang: text}` | No | Localized message shown on the inactivity expiration page. |
+| `inactivity_timeout_minutes` | integer | No | Minutes of user inactivity before the server-side participant session ends. **Default: `0` (off) for every study, open or closed.** Set a positive number to enable it. |
+| `inactivity_page_custom_text` | `{lang: text}` | No | Optional localized message shown on the timeout page. It is displayed as plain text, and must be present for every supported language when configured. |
+
+> **Cookies are required when the timeout is enabled.** With
+> `inactivity_timeout_minutes > 0`, the participant app keeps a server-side
+> session in an HttpOnly cookie and protects diary, consent, instruction and
+> external-task requests with it. Participants who block cookies cannot use a
+> study configured this way; the app shows a "Cookies required" message instead
+> of the diary. Leave the setting at `0` unless you need the timeout and are
+> confident that your participants can use cookies.
+
+The timeout is a privacy/UX guard, not a login: the invitation link remains the
+credential. Reopening the invitation link starts a new session. The app shows a
+static note in the menu and redirects to `report/timeout.html` after the
+configured period of inactivity. There is no countdown or stress indicator.
 
 #### External Tasks
 
@@ -528,32 +540,44 @@ participant export.
 ### Inactivity Timeout
 
 Each study can optionally configure an **inactivity timeout** that ends the
-participant's session after a period of no user interaction, helping to protect
-study data integrity.
+participant's session after a period of no user interaction. The default is
+**`0` (off)** for every study, open or closed. A study must opt in explicitly.
 
 | Field | Type | Description |
 |---|---|---|
-| `inactivity_timeout_minutes` | integer | Duration of inactivity (in minutes) after which the session is automatically ended. Omit or set to `0` to disable the timeout. |
-| `inactivity_timeout_stress_time_left` | integer | When the remaining time drops below this threshold (in minutes), a visual countdown indicator appears in the frontend to warn the participant. |
-| `inactivity_page_custom_text` | object | Localized message object (e.g., `{ "en": "...", "de": "..." }`) displayed on the inactivity expiration page, explaining why the session ended. |
+| `inactivity_timeout_minutes` | integer | Minutes of inactivity after which the server-side session ends. `0` (the default) disables it. |
+| `inactivity_page_custom_text` | object | Optional localized message object (e.g. `{ "en": "...", "de": "..." }`) shown as plain text on the timeout page. |
+
+> **Warning: the timeout requires cookies.** When `inactivity_timeout_minutes`
+> is greater than `0`, the app creates a server-side session and stores its
+> token in an HttpOnly cookie. The backend rejects protected participant
+> requests without that cookie. Participants who have disabled cookies cannot
+> use the study. Only enable the timeout if this is acceptable for your study
+> population.
 
 Example configuration:
 
 ```json
 {
     "inactivity_timeout_minutes": 30,
-    "inactivity_timeout_stress_time_left": 5,
     "inactivity_page_custom_text": {
-        "en": "Your session has ended because you were inactive for 30 minutes. This is required to protect the integrity of the study data. Thank you for your understanding.",
-        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Dies ist notwendig, um die Integrität der Studiendaten zu schützen. Vielen Dank für Ihr Verständnis.",
-        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Detta krävs för att skydda studiedatas integritet. Tack för din förståelse."
+        "en": "Your session has ended because you were inactive for 30 minutes. Please open your invitation link again to continue.",
+        "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Bitte öffnen Sie Ihren Einladungslink erneut, um fortzufahren.",
+        "sv": "Din session har avslutats eftersom du var inaktiv i 30 minuter. Öppna din inbjudningslänk igen för att fortsätta."
     }
 }
 ```
 
-When the inactivity timeout triggers, the frontend redirects the participant to
-the `inactivity.html` page, which displays the localized
-`inactivity_page_custom_text` message.
+When the timeout triggers, the frontend redirects the participant to
+`report/timeout.html`. The page shows the localized custom text (or a generic
+message) and asks the participant to open the invitation link again. It contains
+no invitation link and no participant identifiers. The menu shows a static
+privacy note while the timeout is active; there is deliberately no ticking
+countdown.
+
+This is not a substitute for authentication: anyone who has the invitation link
+can start a new session. The timeout protects an idle tab and rejects direct API
+use after inactivity.
 
 ---
 
@@ -991,7 +1015,6 @@ window.
       "data_collection_start": "2024-01-01T00:00:00Z",
       "data_collection_end": "2026-12-31T23:59:59Z",
       "inactivity_timeout_minutes": 30,
-      "inactivity_timeout_stress_time_left": 5,
       "inactivity_page_custom_text": {
         "en": "Your session has ended because you were inactive for 30 minutes. Please use your invitation link to continue.",
         "de": "Ihre Sitzung wurde beendet, weil Sie 30 Minuten lang inaktiv waren. Bitte verwenden Sie Ihren Einladungslink, um fortzufahren.",

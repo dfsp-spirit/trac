@@ -22,6 +22,7 @@ from .models import (
     StudyParticipant,
     Timeline,
 )
+from .participant_sessions import delete_study_sessions
 
 
 def delete_study_data(session: Session, study_name_short: str) -> bool:
@@ -65,6 +66,7 @@ def delete_study_data(session: Session, study_name_short: str) -> bool:
         )
 
     session.exec(delete(Activity).where(Activity.study_id == study.id))
+    delete_study_sessions(session, study.id)
     session.exec(delete(StudyParticipant).where(StudyParticipant.study_id == study.id))
     session.exec(
         delete(StudyActivityConfigBlob).where(

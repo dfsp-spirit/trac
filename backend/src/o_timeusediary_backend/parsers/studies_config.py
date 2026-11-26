@@ -636,15 +636,17 @@ class CfgFileStudy(BaseModel):
     )
     inactivity_timeout_minutes: int = Field(
         default=0,
-        description="Minutes of user inactivity before session timeout. Set to 0 to disable.",
-    )
-    inactivity_timeout_stress_time_left: int = Field(
-        default=5,
-        description="When time left drops below this (minutes), switch to stressed display with seconds.",
+        ge=0,
+        description=(
+            "Minutes of user inactivity before the server-side participant "
+            "session ends. 0 (the default) disables the timeout. A value > 0 "
+            "requires browser cookies; participants with cookies disabled "
+            "cannot use the study."
+        ),
     )
     inactivity_page_custom_text: Optional[Dict[str, str]] = Field(
         default=None,
-        description="Localized markdown-lite text shown on the timeout page.",
+        description="Localized plain text shown on the timeout page.",
     )
     # Study-specific footer links
     footer_links: Optional[List["CfgFileFooterLink"]] = Field(

@@ -95,6 +95,7 @@ export function layerOf(relativePath) {
   if (!match) return null;
   if (match[1]) return match[1];
   if (relativePath === 'src/js/main.js') return 'main';
+  if (relativePath === 'src/js/timeout-main.js') return 'main';
   if (relativePath === 'src/js/config.js') return 'config';
   return 'unknown';
 }

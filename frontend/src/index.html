@@ -162,6 +162,9 @@
         <div class="t-drawer__section" data-i18n="diary.shell.menuPages">Pages</div>
         <ul id="menu-pages"></ul>
       </div>
+      <!-- Static privacy note for studies with an inactivity timeout. It never
+           ticks and disappears when the timeout is off (shellChrome.apply). -->
+      <p class="t-drawer__note" id="session-note" hidden></p>
       <!-- A study that ships one language has nothing to choose: the whole block
            (separator included) appears only when the study offers more than one
            (D40). Filled and unhidden by ui/shellChrome.js. -->

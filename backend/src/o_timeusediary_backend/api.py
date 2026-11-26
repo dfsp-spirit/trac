@@ -100,13 +100,22 @@ from .database import (
     ensure_external_task_assignments,
 )
 from .study_cleanup import delete_study_data
+from .participant_sessions import (
+    delete_participant_sessions,
+    delete_study_sessions,
+)
 from pathlib import Path
 import hashlib
 import html
 import hmac as hmac_lib
 from .api_deps.diary_access import ensure_study_is_currently_available
+from .api_deps.participant_session import (
+    ParticipantSessionContext,
+    require_participant_session,
+)
 from .api_diary import router as diary_router
 from .api_messages import router as messages_router
+from .api_session import router as session_router
 from .messages import (
     get_server_message,
     get_study_message,
@@ -1231,6 +1240,7 @@ app = FastAPI(
 
 app.include_router(diary_router)
 app.include_router(messages_router)
+app.include_router(session_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -2706,8 +2716,14 @@ class ImportStudiesConfigStudy(BaseModel):
     # so a runtime-config export imports back unchanged.
     time_step_minutes: int = 10
     min_duration_minutes: int = 10
-    inactivity_timeout_minutes: int = 0
-    inactivity_timeout_stress_time_left: int = 5
+    inactivity_timeout_minutes: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Minutes of user inactivity before the server-side session ends. "
+            "0 (the default) means off. Values > 0 require cookies."
+        ),
+    )
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
     footer_links: Optional[List[Dict[str, Any]]] = None
     hide_server_wide_links: bool = False
@@ -3830,7 +3846,6 @@ def _create_study_from_import_payload(
         time_step_minutes=study_payload.time_step_minutes,
         min_duration_minutes=study_payload.min_duration_minutes,
         inactivity_timeout_minutes=study_payload.inactivity_timeout_minutes,
-        inactivity_timeout_stress_time_left=study_payload.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study_payload.inactivity_page_custom_text,
         footer_links=study_payload.footer_links,
         hide_server_wide_links=study_payload.hide_server_wide_links,
@@ -4905,9 +4920,6 @@ async def export_runtime_studies_config(
                 "time_step_minutes": study.time_step_minutes,
                 "min_duration_minutes": study.min_duration_minutes,
                 "inactivity_timeout_minutes": study.inactivity_timeout_minutes,
-                "inactivity_timeout_stress_time_left": (
-                    study.inactivity_timeout_stress_time_left
-                ),
                 "inactivity_page_custom_text": study.inactivity_page_custom_text,
                 "footer_links": study.footer_links,
                 "hide_server_wide_links": study.hide_server_wide_links,
@@ -7243,6 +7255,7 @@ async def remove_participant_from_study(
         )
 
     session.delete(association)
+    delete_participant_sessions(session, study.id, [participant_id])
     session.commit()
 
     logger.info(
@@ -7319,6 +7332,7 @@ async def delete_multiple_participants_from_study(
 
         for a in associations:
             session.delete(a)
+        delete_participant_sessions(session, study.id, found_pids)
 
     session.commit()
 
@@ -7416,6 +7430,7 @@ async def reset_participant_study_data(
         session.add(association)
         association_reset = True
 
+    delete_participant_sessions(session, study.id, [participant_id])
     session.commit()
 
     logger.info(
@@ -7944,6 +7959,7 @@ async def delete_study_participant_data(
         or 0
     )
 
+    delete_study_sessions(session, study.id)
     session.commit()
 
     logger.info(
@@ -8734,9 +8750,6 @@ async def admin_extract_studies(
                 "save_browser_identification": current_study.save_browser_identification,
                 "save_ux_events": current_study.save_ux_events,
                 "inactivity_timeout_minutes": current_study.inactivity_timeout_minutes,
-                "inactivity_timeout_stress_time_left": (
-                    current_study.inactivity_timeout_stress_time_left
-                ),
                 "owner_usernames": current_study.owner_usernames,
                 "footer_links": current_study.footer_links,
                 "study_texts": {
@@ -9576,9 +9589,8 @@ class StudyConfigResponse(BaseModel):
     timelines: List[TimelineConfigResponse]
     day_labels: List[DayLabelConfigResponse]
     study_days_count: int
-    # Inactivity timeout configuration
+    # Inactivity timeout configuration: 0 means off and is the default.
     inactivity_timeout_minutes: int = 0
-    inactivity_timeout_stress_time_left: int = 5
     inactivity_page_custom_text: Optional[Dict[str, str]] = None
     # Study-specific footer links
     footer_links: Optional[List[Dict[str, Any]]] = None
@@ -9881,7 +9893,6 @@ def get_study_config(
         day_labels=day_label_responses,
         study_days_count=len(day_labels),
         inactivity_timeout_minutes=study.inactivity_timeout_minutes,
-        inactivity_timeout_stress_time_left=study.inactivity_timeout_stress_time_left,
         inactivity_page_custom_text=study.inactivity_page_custom_text,
         footer_links=study.footer_links,
         hide_server_wide_links=study.hide_server_wide_links,
@@ -9910,6 +9921,9 @@ def confirm_external_task_callback(
     participant_id: str,
     payload: ConfirmExternalTaskCallbackPayload,
     session: Session = Depends(get_session),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ):
     require_valid_participant_id(participant_id)
     study = session.exec(
@@ -10022,6 +10036,9 @@ def launch_external_task(
     task_key: str,
     assigned_token: str = Query(""),
     session: Session = Depends(get_session),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ):
     require_valid_participant_id(participant_id)
     event_at = utc_now().isoformat()
@@ -10246,6 +10263,9 @@ def complete_participant_instructions(
     participant_id: str,
     payload: CompleteInstructionsPayload,
     session: Session = Depends(get_session),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ):
     require_valid_participant_id(participant_id)
     study = session.exec(
@@ -10287,6 +10307,9 @@ async def set_participant_consent(
     participant_id: str,
     payload: UpdateConsentRequest,
     session: Session = Depends(get_session),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ):
     require_valid_participant_id(participant_id)
     study = session.exec(
@@ -10393,6 +10416,9 @@ def submit_participant_client_info(
     payload: ClientInfoSubmitRequest,
     request: Request,
     session: Session = Depends(get_session),
+    participant_session: Optional[ParticipantSessionContext] = Depends(
+        require_participant_session
+    ),
 ):
     """Store browser/device identification for a participant.
 

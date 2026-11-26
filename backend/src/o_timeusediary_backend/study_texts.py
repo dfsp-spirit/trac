@@ -99,8 +99,8 @@ STUDY_TEXT_FIELD_SPECS: tuple[StudyTextFieldSpec, ...] = (
         key="inactivity_page_custom_text",
         label="Inactivity page text",
         group="Inactivity page",
-        format="markdown",
-        help_text="Shown when a session times out due to inactivity. Markdown is supported.",
+        format="plain",
+        help_text="Shown on the timeout page after inactivity. Plain text; line breaks are preserved.",
     ),
 )
 

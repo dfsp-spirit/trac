@@ -108,6 +108,41 @@ JavaScript file:
 - Do not add a second source for these URLs: `study-config` is the only place the
   participant app learns them.
 
+## Participant inactivity sessions (opt-in)
+
+`studies.inactivity_timeout_minutes` defaults to **0 (off)** for every study.
+When it is greater than zero, participant data routes require a server-side
+session; with the default 0 they behave exactly as before.
+
+- **Storage / migration:** `participant_sessions` (0024) stores the study,
+  participant id, SHA-256 of the cookie token, `created_at`, `last_seen_at` and
+  `ended_at`. The raw token exists only in the browser cookie.
+- **Cookie:** `trac_session`, `HttpOnly`, `SameSite=Lax`, `Secure` when the
+  frontend URL is HTTPS, path-scoped to
+  `.../participants/<pid>/`. Cookies are required: participants who block them
+  cannot use a timed study. This is documented for study authors.
+- **Endpoints:** `api_session.py` provides `POST .../session` (start/resume on a
+  page load; replaces an expired cookie), `POST .../session/touch` (refresh from
+  user activity; 401 when already expired), `GET .../session`, and
+  `DELETE .../session`.
+- **Enforcement:** `api_deps/participant_session.py` wraps `get_participant_context`
+  and is used by `get_readable_diary_context` (and therefore all diary writes),
+  consent, instructions, client-info, and external-task launch/confirm. It is
+  deliberately absent from `study-config`, `activities-config`, the public study
+  list and `ux-events`, so the app can bootstrap and telemetry cannot keep a
+  session alive.
+- **Errors:** 401 with `detail.code` `session.required`, `session.expired` or
+  `session.invalid`. The frontend redirects to the timeout page for all three.
+- **Sliding window:** valid protected requests refresh `last_seen_at` (throttled
+  to 5 s); `/session/touch` refreshes it from non-API activity. Expiry is
+  `now >= last_seen_at + timeout`, so exactly the configured duration counts as
+  expired.
+- **Cleanup:** participant removal, participant data reset, all-participant-data
+  deletion and study deletion remove the corresponding session rows.
+- **Not authentication:** the invitation link remains the credential. Reopening
+  it starts a new session; the timeout protects an idle tab and rejects direct
+  API use after inactivity. It does not prove who is at the keyboard.
+
 ## Browser/device identification (`save_browser_identification`)
 
 Opt-in per study, **off by default**. The participant UI reports the device through
