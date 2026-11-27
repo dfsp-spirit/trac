@@ -80,6 +80,17 @@ export function renderActivityList(host, { entries, recents = [], query, t, onCh
       button.append(end);
     }
 
+    // A row whose activity offers a frequency: the choice itself is made in the
+    // form, but the marker says there is one, so a participant who chose
+    // "monthly" last week is not surprised by the extra row. A sub-activity
+    // inherits its parent's options, so it carries the marker too.
+    if (entry.frequencyOptions.length) {
+      const end = el('span', 't-activity__end');
+      end.setAttribute('aria-hidden', 'true');
+      end.append(el('span', 't-activity__freq', '⟳'));
+      button.append(end);
+    }
+
     button.addEventListener('click', () => onChoose(hit, groupKind));
     item.append(button);
     return item;

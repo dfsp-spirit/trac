@@ -43,9 +43,10 @@ function dayAnchor(dayName) {
  * @param {import('../domain/geometry.js').DaySegment} segment
  * @param {number} dayStart
  * @param {Translator} t
+ * @param {((code: number | string, key: string) => string | null) | null} [frequencyLabel]
  * @returns {HTMLElement}
  */
-function renderEvent(activity, segment, dayStart, t) {
+function renderEvent(activity, segment, dayStart, t, frequencyLabel = null) {
   const start = segment.start;
   const end = segment.end;
   const duration = end - start;
@@ -93,6 +94,20 @@ function renderEvent(activity, segment, dayStart, t) {
     nextDay.setAttribute('aria-hidden', 'true');
     time.append(nextDay, el('span', 't-vh', t('diary.timeline.continuesNextDay')));
   }
+  // The frequency the participant chose has to be readable after the save: it is
+  // the only way to check that a hobby really repeats every second week. The
+  // words come from the catalogue (per language), so an unknown key or a
+  // catalogue that has not loaded yet simply leaves them out.
+  const frequencyText =
+    activity.frequency_key && frequencyLabel
+      ? frequencyLabel(activity.activity_code, activity.frequency_key)
+      : null;
+  if (frequencyText) {
+    // The dot is punctuation between two facts, not something to read out.
+    const separator = el('span', null, ' · ');
+    separator.setAttribute('aria-hidden', 'true');
+    time.append(separator, el('span', 't-event__freq', frequencyText));
+  }
 
   button.append(top, time);
   // No `aria-label`: the name comes from the content - the activity, its time
@@ -137,9 +152,10 @@ function renderGap(start, end, dayIndex, dayStart, t) {
  * @param {Set<number>} copyable Days that own at least one entry.
  * @param {Translator} t
  * @param {string} language
+ * @param {(code: number | string, key: string) => string | null} [frequencyLabel]
  * @returns {HTMLElement}
  */
-function renderDay(diary, day, copyable, t, language) {
+function renderDay(diary, day, copyable, t, language, frequencyLabel) {
   const dayStart = diary.study.day_start_minutes || 0;
   const layout = layoutForDay(diary, day.index);
   const byUuid = new Map(diary.activities.map((activity) => [activity.client_uuid, activity]));
@@ -195,7 +211,7 @@ function renderDay(diary, day, copyable, t, language) {
     if (!activity) continue;
     items.push([
       segment.start,
-      renderEvent(activity, segment, dayStart, t),
+      renderEvent(activity, segment, dayStart, t, frequencyLabel),
     ]);
   }
   if (!diary.study.submitted_at) {
@@ -219,14 +235,16 @@ function renderDay(diary, day, copyable, t, language) {
  *   diary: import('../domain/diary.js').ApiDiary,
  *   language: string,
  *   t: Translator,
- * }} view
+ *   frequencyLabel?: (code: number | string, key: string) => string | null,
+ * }} view `frequencyLabel` turns a stored key into the words of the study
+ *   language; without it an entry shows its times only.
  * @returns {HTMLElement[]}
  */
-export function renderTimeline(host, { diary, language, t }) {
+export function renderTimeline(host, { diary, language, t, frequencyLabel }) {
   const fragment = document.createDocumentFragment();
   const copyable = new Set(ownCounts(diary).keys());
   for (const day of diary.days) {
-    fragment.append(renderDay(diary, day, copyable, t, language));
+    fragment.append(renderDay(diary, day, copyable, t, language, frequencyLabel));
   }
   host.replaceChildren(fragment);
   return Array.from(host.querySelectorAll('.t-timeline-day'));

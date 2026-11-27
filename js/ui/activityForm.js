@@ -11,7 +11,12 @@ import { validateActivity } from '../domain/validation.js';
 import { dayLabel } from '../domain/diary.js';
 import { el } from './dom.js';
 import { buildDayStrip } from './dayStrip.js';
-import { dayChips, field, syncChips as syncChipsForSelection } from './formFields.js';
+import {
+  dayChips,
+  field,
+  frequencyField,
+  syncChips as syncChipsForSelection,
+} from './formFields.js';
 import { createCustomField } from './customField.js';
 import { createMultiDayHint } from './multiDayHint.js';
 import { createTimeNeighbours } from './timeNeighbours.js';
@@ -85,17 +90,7 @@ export function renderActivityForm(host, view) {
   custom.sync();
   if (childSelect) childSelect.addEventListener('change', custom.sync);
 
-  /** @type {HTMLSelectElement | null} */
-  let frequencySelect = null;
-  if (entry.frequencyOptions.length) {
-    frequencySelect = el('select', 't-select t-select--text');
-    frequencySelect.append(new Option(t('diary.form.frequencyUnset'), ''));
-    for (const option of entry.frequencyOptions) {
-      frequencySelect.append(new Option(option.label, option.key));
-    }
-    if (current?.frequency_key) frequencySelect.value = current.frequency_key;
-    form.append(field(t('diary.form.frequency'), 'form-frequency', frequencySelect));
-  }
+  const frequency = frequencyField(entry.frequencyOptions, t, current?.frequency_key ?? null);
 
   const timeFieldset = el('fieldset', 't-time-range');
   timeFieldset.append(el('legend', null, t('diary.form.when')));
@@ -160,8 +155,10 @@ export function renderActivityForm(host, view) {
 
   // The context block goes last: everything above it belongs to the entry being
   // edited, so the block can close the section instead of splitting it in two.
+  // "How often" sits under the day it qualifies: both answer "which day".
+  timeFieldset.append(dayField);
+  if (frequency) timeFieldset.append(frequency.element);
   timeFieldset.append(
-    dayField,
     timeRange.row,
     timeRange.summary,
     timeRange.endHint,
@@ -285,7 +282,7 @@ export function renderActivityForm(host, view) {
         category: entry.category,
         color: entry.color,
         parent_activity_code: parentCode,
-        frequency_key: frequencySelect?.value || null,
+        frequency_key: frequency?.select.value || null,
         day_label_index: dayIndex,
         start_minutes: start,
         end_minutes: end,

@@ -156,6 +156,33 @@ export function flattenCatalogue(catalogue, timelineKeys = null) {
 }
 
 /**
+ * Look up the label of a frequency key that a saved activity carries.
+ *
+ * The diary stores the key ("monthly"); the words live in the study's catalogue,
+ * per language. The form offers an entry's options for whichever row of it is
+ * chosen, so a sub-activity resolves through its parent - the same rule the form
+ * applies when it renders the select.
+ *
+ * @param {any} catalogue Response of /activities-config
+ * @returns {(code: number | string, key: string) => string | null}
+ */
+export function frequencyLabelLookup(catalogue) {
+  /** @type {Map<number, Array<{ key: string, label: string }>>} */
+  const byCode = new Map();
+  for (const entry of flattenCatalogue(catalogue).entries) {
+    if (!entry.frequencyOptions.length) continue;
+    byCode.set(entry.code, entry.frequencyOptions);
+    for (const child of entry.children) byCode.set(child.code, entry.frequencyOptions);
+  }
+  return (code, key) => {
+    const options = byCode.get(Number(code));
+    if (!options) return null;
+    const match = options.find((option) => option.key === key);
+    return match ? match.label : null;
+  };
+}
+
+/**
  * Match entries and their sub-activities against a query.
  *
  * A matching sub-activity *replaces* its parent row: the parent name alone does

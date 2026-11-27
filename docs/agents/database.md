@@ -23,6 +23,27 @@
 - Activity source files: `backend/activities_*.json`.
 - Startup hydration inserts missing records; it does not auto-migrate existing study schema/state.
 
+## Frequency options in the activities file
+- Activities that happen less often than weekly offer "how often" answers
+  (`frequency_options` on the stored row, `frequency_options` in the i18n
+  tables). The keys are the same in every language of a study; only the labels
+  are translated, and `studies_config` import refuses a mismatch.
+- **The list is written once per file** under a top-level
+  `frequency_option_sets` map, and an activity names the list:
+  `"frequency": "less_than_weekly"`. Repeating the same block on every activity
+  was the error-prone version: `activities_newui_main*.json` carried the
+  identical three options on three activities.
+- `parsers/activities_config.py` resolves the name into the activity's options
+  while the file is parsed, so hydration, `/activities-config`, the export and
+  `api_deps/frequency.py` keep seeing a plain `frequency_options` list - the
+  reference never leaves the parser.
+- An unknown set name fails the parse with the activity's name and code, and a
+  key that is still written inline under an activity is refused by name instead
+  of being ignored. Both are startup/import errors, not a quietly missing
+  dropdown.
+- `ACTIVITIES_SCHEMA_VERSION` is 2. A version 1 file without frequency data
+  still means exactly what it did, so the readable floor stays at 1.
+
 ## Participant-observation flags in the study config
 - `save_browser_identification` (device snapshot, per participant) and
   `save_ux_events` (unlinked usability signals: refused saves, dead-end

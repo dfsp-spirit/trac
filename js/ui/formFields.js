@@ -38,6 +38,28 @@ export function field(text, id, control) {
 }
 
 /**
+ * The same field on one line: label and control side by side.
+ *
+ * For an optional answer that is one short choice and belongs to the control
+ * above it. Stacked, it costs a full field - label line, control, and the form's
+ * section gap - which is what made the "how often" row the thing that pushed the
+ * activity dialog past the fold on a small phone.
+ *
+ * @param {string} text
+ * @param {string} id
+ * @param {HTMLElement} control
+ * @returns {HTMLElement}
+ */
+export function inlineField(text, id, control) {
+  const wrapper = el('div', 't-field t-field--inline');
+  const label = el('label', null, text);
+  label.htmlFor = id;
+  control.id = id;
+  wrapper.append(label, control);
+  return wrapper;
+}
+
+/**
  * A 24-hour time field. The browser supplies the picker: a segmented, typeable
  * field on desktop and the OS dial/wheel on phones, so the form no longer owns a
  * 144-entry list. `step` is the study's grid (`domain/timing.js`); the form
@@ -156,4 +178,29 @@ export function durationText(t, minutes) {
   if (hours) parts.push(t('diary.form.hours', { count: hours }));
   if (rest) parts.push(t('diary.form.minutes', { count: rest }));
   return parts.join(' ');
+}
+
+/**
+ * The optional "how often" answer for an activity that offers one.
+ *
+ * Returns null when the row offers nothing, so the form adds neither a control
+ * nor the gap around it - most activities have no frequency. When it does render,
+ * its label shares the line with the select: stacked, it costs a full field, and
+ * that was what pushed the dialog past the fold on a small phone.
+ *
+ * The empty option names what leaving it alone means ("every week"), because
+ * "not specified" reads like missing data and invites a guess.
+ *
+ * @param {Array<{ key: string, label: string }>} options
+ * @param {(key: string, params?: Record<string, string | number>) => string} t
+ * @param {string | null} [selectedKey] The stored answer, on edit.
+ * @returns {{ element: HTMLElement, select: HTMLSelectElement } | null}
+ */
+export function frequencyField(options, t, selectedKey = null) {
+  if (!options.length) return null;
+  const select = el('select', 't-select t-select--text');
+  select.append(new Option(t('diary.form.frequencyUnset'), ''));
+  for (const option of options) select.append(new Option(option.label, option.key));
+  if (selectedKey) select.value = selectedKey;
+  return { element: inlineField(t('diary.form.frequency'), 'form-frequency', select), select };
 }

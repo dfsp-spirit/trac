@@ -167,6 +167,37 @@
   the edit round-trip, and that the label follows the chosen row (own question,
   fallback, hidden for a plain row).
 
+## Frequency options in the activity form
+- A catalogue row may offer "how often" answers (`frequency_option_sets` in the
+  activities file, referenced by `frequency`); the resolved list reaches the
+  client as `frequency_options` and is stored per row as `frequency_key`.
+- **Most activities must not pay for it.** `frequencyField()` returns `null`
+  when the chosen entry offers nothing, so the form has no empty field and no
+  extra gap. Only the handful of rows that really repeat less often get a
+  control.
+- **It shares a line with its label and sits under the day.**
+  `t-field--inline` (label left, select right) is one 48px tap target; the
+  stacked field it replaced was 104px, which pushed the dialog past the fold on a
+  390x844 phone in create mode and turned the 38px a 375x667 edit form had to
+  spare into an 18px overflow. "How often" and "which day" answer the same
+  question, so the row belongs in the "when" fieldset directly below the day,
+  not at the end of the form where it also made an optional field the last thing
+  before the times.
+- **The empty option says what empty means**: "Jede Woche (Standard)" /
+  "Every week (default)" / "Varje vecka (standard)". "Nicht angegeben" read like
+  missing data and invited a guess.
+- **The answer stays visible.** A catalogue row that offers options carries a
+  `⟳` marker (`ui/activityList.js`), and a saved entry shows its label on the
+  timeline after the time range (`ui/timeline.js`, resolution via
+  `frequencyLabelLookup()`; a sub-activity resolves through its parent, like the
+  form's select). Without that, the field was write-only: stored, exported, and
+  impossible for the participant to check. A row of 45 minutes or less (one line,
+  time only) leaves it out; there is no width for it there.
+- Tests: `activityform.spec.js` (absent without options, one-line layout under
+  the day, default wording, save/edit round trip, sub-activity), `timeline.spec.js`
+  (label shown, unknown key and missing catalogue leave it out, one-line rows),
+  `activitylist.spec.js` (marker only on rows that offer options).
+
 ## Surroundings block in the activity form
 - On a phone the panel is a modal that covers the timeline, so the one fact a
   participant cannot look up while choosing times is where the neighbouring

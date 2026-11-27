@@ -14,6 +14,7 @@ import { icon } from './dom.js';
 import { renderDiaryNotice } from './diaryNotice.js';
 import { renderDayNav, watchDayInView } from './dayNav.js';
 import { renderDayRail } from './dayRail.js';
+import { frequencyLabelLookup } from './activitySearch.js';
 import { minutesAtViewportTop, renderTimeline } from './timeline.js';
 
 /** @typedef {(key: string, params?: Record<string, string | number>) => string} Translator */
@@ -70,9 +71,10 @@ export function createDiaryView({
    *   revision: number,
    *   currentDay: number,
    *   locked: boolean,
-   * }} view
+   *   catalogue: any,
+   * }} view `catalogue` is where the words for a stored frequency key live.
    */
-  function render({ diary, language, revision, currentDay, locked }) {
+  function render({ diary, language, revision, currentDay, locked, catalogue }) {
     lastDiary = diary;
     const upToDate =
       timelineHost.childElementCount > 0 &&
@@ -80,7 +82,12 @@ export function createDiaryView({
       timelineHost.dataset.revision === String(revision);
 
     if (!upToDate) {
-      sections = renderTimeline(timelineHost, { diary, language, t });
+      sections = renderTimeline(timelineHost, {
+        diary,
+        language,
+        t,
+        frequencyLabel: frequencyLabelLookup(catalogue),
+      });
       timelineHost.dataset.language = language;
       timelineHost.dataset.revision = String(revision);
       stopSpy?.();
