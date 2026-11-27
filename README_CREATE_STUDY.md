@@ -1092,6 +1092,44 @@ The `general` section provides metadata about the activities definition:
 | `language` | string | 2-letter language code this file is written for. |
 | `instructions` | boolean | Whether the frontend should show activity instructions. |
 | `fallbackToCSV` | boolean | Whether the frontend should fall back to CSV export. |
+| `schema_version` | integer | Format version of the activities file. The current version is `2`; a file without the key is read as version 1. |
+
+#### Frequency option sets
+
+`frequency_option_sets` is an optional top-level object next to `general` and
+`timeline`. It holds the "how often" answers an activity can offer, so several
+activities share one definition instead of repeating it:
+
+```json
+{
+  "general": { "language": "en", "schema_version": 2 },
+  "frequency_option_sets": {
+    "less_than_weekly": [
+      { "key": "bi-weekly", "label": "Every two weeks" },
+      { "key": "monthly", "label": "Monthly" }
+    ]
+  },
+  "timeline": { "...": "..." }
+}
+```
+
+Each activity that offers these answers names the set with
+`"frequency": "less_than_weekly"`. The set does not change what is stored: the
+app saves the chosen `key` with the entry, and the row shows the matching
+`label`.
+
+Rules the importer enforces:
+
+- A set must be a non-empty list; `key` and `label` must be non-empty, and keys
+  must be unique within the set.
+- An activity that names a set that does not exist is refused, with the
+  activity's name and code.
+- The list is no longer written inside an activity. A file that still carries
+  `frequency_options` on an activity is refused by name — move the list up into
+  `frequency_option_sets` and reference it.
+- In a multilingual study, every language of an activity that offers options
+  must offer the **same keys in the same order**; only the labels are
+  translated. Name the set the same way in all language files.
 
 #### Timeline
 
@@ -1134,7 +1172,7 @@ Each activity item in a category can have these fields:
 | `examples` | string | No | Examples shown in the UI to help participants understand the activity, e.g., `"Eating, drinking, personal care"`. |
 | `is_custom_input` | boolean | No | If `true`, the participant can type a free-text custom description for this activity. Default: `false`. |
 | `custom_input_question` | string | No | Prompt shown as the label of the free-text field, e.g. `"What is your job?"`. Only allowed together with `is_custom_input: true`. When omitted, the client uses its localized generic question ("What did you do?"). Because each language has its own activities file, write the question in that language's file — no separate i18n map is needed. |
-| `frequency_options` | `[{key, label}]` | No | Array of frequency options the participant can select from. Each option has a `key` (machine identifier) and `label` (display text). All keys must be unique within the activity. |
+| `frequency` | string | No | Name of an entry in the file's `frequency_option_sets`. The activity then offers those answers ("every two weeks", "monthly", …) as an optional field in the form, and the chosen key is stored with the entry. Omit it for activities that happen weekly. |
 | `childItems` | `[object]` | No | Array of child activities. When a parent activity is selected, the participant can optionally choose a more specific child activity. Child items use the same fields as parent activities (except they cannot have their own `childItems`). |
 
 > **Note on activity codes**: Activity codes must be unique across all
@@ -1233,6 +1271,27 @@ A child item that also allows free-text input:
 A child row may name its own `custom_input_question` exactly like a parent
 activity; this is the case the field is designed for, because the child — not
 the parent — is the row whose text is stored.
+
+#### 5. Activity with a Frequency
+
+An activity that some participants do less often than every week can offer the
+answers for that. Define the list once in `frequency_option_sets` and reference
+it:
+
+```json
+{
+  "name": "Leisure / hobby (please specify)",
+  "code": 1144,
+  "label": "hobby at home",
+  "color": "#DDA0DD",
+  "is_custom_input": true,
+  "frequency": "less_than_weekly"
+}
+```
+
+The form only asks the question for activities that name a set, so the extra
+field never appears for the ordinary weekly activities. Leave the question at
+its default ("Every week") and nothing is stored.
 
 ---
 

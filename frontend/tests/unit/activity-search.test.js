@@ -4,6 +4,7 @@ import {
   filterEntries,
   flattenCatalogue,
   fold,
+  frequencyLabelLookup,
   groupByCategory,
   searchHits,
 } from '../../src/js/ui/activitySearch.js';
@@ -544,6 +545,20 @@ test('a single selected timeline drops the other one entirely', () => {
   assert.deepEqual(categories, ['Main']);
   assert.equal(minCoverage, 600);
   assert.equal(maxOverlap, 3);
+});
+
+test('a frequency key resolves to the label the catalogue gives it', () => {
+  const label = frequencyLabelLookup(config);
+
+  assert.equal(label(102, 'often'), 'Often');
+  // The form offers the entry's options for whichever of its rows is chosen,
+  // so a sub-activity resolves through its parent too.
+  assert.equal(label(1021, 'often'), 'Often');
+  // An activity without options, an unknown key, and an unknown code all say
+  // nothing rather than printing the raw key.
+  assert.equal(label(100, 'often'), null);
+  assert.equal(label(102, 'weekly'), null);
+  assert.equal(label(999, 'often'), null);
 });
 
 test('a catalogue without timelines flattens to nothing instead of throwing', () => {

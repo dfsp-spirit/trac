@@ -1,7 +1,20 @@
 {
   "general": {
     "app_name": "KI Zeitverwendungstagebuch - Erwachsene",
-    "language": "de"
+    "language": "de",
+    "schema_version": 2
+  },
+  "frequency_option_sets": {
+    "less_than_weekly": [
+      {
+        "key": "bi-weekly",
+        "label": "Alle zwei Wochen"
+      },
+      {
+        "key": "monthly",
+        "label": "Monatlich"
+      }
+    ]
   },
   "timeline": {
     "primary": {
@@ -247,16 +260,7 @@
               "code": 1163,
               "label": "veranstaltungen oder unterhaltung außerhalb",
               "color": "#DA70D6",
-              "frequency_options": [
-                {
-                  "key": "bi-weekly",
-                  "label": "Alle zwei Wochen"
-                },
-                {
-                  "key": "monthly",
-                  "label": "Monatlich"
-                }
-              ]
+              "frequency": "less_than_weekly"
             },
             {
               "name": "Hobby nicht-Sport",
@@ -265,17 +269,8 @@
               "label": "hobby nicht-sport",
               "color": "#BA55D3",
               "childItems": [],
-              "frequency_options": [
-                {
-                  "key": "bi-weekly",
-                  "label": "Alle zwei Wochen"
-                },
-                {
-                  "key": "monthly",
-                  "label": "Monatlich"
-                }
-              ],
-              "is_custom_input": true
+              "is_custom_input": true,
+              "frequency": "less_than_weekly"
             },
             {
               "name": "Sport / Bewegung im Freien",
@@ -287,16 +282,7 @@
                   "name": "Spazierengehen allein",
                   "code": 1167,
                   "color": "#9370DB",
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Alle zwei Wochen"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monatlich"
-                    }
-                  ]
+                  "frequency": "less_than_weekly"
                 },
                 {
                   "name": "Spazierengehen mit anderen",
@@ -322,17 +308,8 @@
                   "code": 1171,
                   "label": "sport im freien sonstiges",
                   "color": "#9370DB",
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Alle zwei Wochen"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monatlich"
-                    }
-                  ],
-                  "is_custom_input": true
+                  "is_custom_input": true,
+                  "frequency": "less_than_weekly"
                 }
               ]
             },

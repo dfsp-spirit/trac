@@ -70,6 +70,7 @@ export function createDiaryScreen({
       revision: state.revision,
       currentDay: state.currentDay,
       locked,
+      catalogue: state.catalogue,
     });
     panels.sync(locked);
     const button = copyDays?.button ?? null;

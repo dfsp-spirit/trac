@@ -47,7 +47,14 @@
                 name: '5. Social, leisure, hobbies (non-digital)',
                 activities: [
                   { code: 1130, name: 'Talking with others', color: '#FFD9A0' },
-                  { code: 1131, name: 'Hobbies', color: '#FFC0CB' },
+                  // The only row that offers a frequency: its marker says so
+                  // before the form has to.
+                  {
+                    code: 1131,
+                    name: 'Hobbies',
+                    color: '#FFC0CB',
+                    frequency_options: [{ key: 'monthly', label: 'Monthly' }],
+                  },
                 ],
               },
               {

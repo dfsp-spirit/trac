@@ -54,6 +54,13 @@ def _minimal_activities_payload(codes: list[int]) -> dict:
     }
 
 
+def _with_frequency_options(payload: dict, options: list[dict], name: str = "occasionally") -> dict:
+    """Give the payload's first activity a frequency option set, by reference."""
+    payload.setdefault("frequency_option_sets", {})[name] = options
+    payload["timeline"]["primary"]["categories"][0]["activities"][0]["frequency"] = name
+    return payload
+
+
 def _write_default_multilingual_activities(
     tmp_path, codes_en: list[int] | None = None, codes_sv: list[int] | None = None
 ):
@@ -852,9 +859,7 @@ def test_load_studies_config_rejects_frequency_option_presence_mismatch_across_l
     en_payload = _minimal_activities_payload([100, 200])
     sv_payload = _minimal_activities_payload([100, 200])
 
-    en_payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [{"key": "monthly", "label": "Monthly"}]
+    _with_frequency_options(en_payload, [{"key": "monthly", "label": "Monthly"}])
 
     (tmp_path / "activities_default.json").write_text(
         json.dumps(en_payload), encoding="utf-8"
@@ -878,18 +883,20 @@ def test_load_studies_config_rejects_frequency_option_key_mismatch_across_langua
     en_payload = _minimal_activities_payload([100, 200])
     sv_payload = _minimal_activities_payload([100, 200])
 
-    en_payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
-    sv_payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "annan_vecka", "label": "Varannan vecka"},
-        {"key": "monthly", "label": "Manadsvis"},
-    ]
+    _with_frequency_options(
+        en_payload,
+        [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ],
+    )
+    _with_frequency_options(
+        sv_payload,
+        [
+            {"key": "annan_vecka", "label": "Varannan vecka"},
+            {"key": "monthly", "label": "Manadsvis"},
+        ],
+    )
 
     (tmp_path / "activities_default.json").write_text(
         json.dumps(en_payload), encoding="utf-8"
@@ -913,18 +920,20 @@ def test_load_studies_config_accepts_matching_frequency_option_keys_across_langu
     en_payload = _minimal_activities_payload([100, 200])
     sv_payload = _minimal_activities_payload([100, 200])
 
-    en_payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
-    sv_payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Varannan vecka"},
-        {"key": "monthly", "label": "Manadsvis"},
-    ]
+    _with_frequency_options(
+        en_payload,
+        [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ],
+    )
+    _with_frequency_options(
+        sv_payload,
+        [
+            {"key": "bi_weekly", "label": "Varannan vecka"},
+            {"key": "monthly", "label": "Manadsvis"},
+        ],
+    )
 
     (tmp_path / "activities_default.json").write_text(
         json.dumps(en_payload), encoding="utf-8"

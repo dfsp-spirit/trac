@@ -40,7 +40,7 @@ from __future__ import annotations
 from typing import Any, Mapping, Optional
 
 STUDIES_CONFIG_SCHEMA_VERSION = 1
-ACTIVITIES_SCHEMA_VERSION = 1
+ACTIVITIES_SCHEMA_VERSION = 2
 EXPORT_SCHEMA_VERSION = 1
 
 # Response header that carries the export schema version for delimited-text

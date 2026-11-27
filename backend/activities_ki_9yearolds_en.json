@@ -18,8 +18,7 @@
               "code": 1101,
               "label": "sleeping",
               "color": "#A8D8EA",
-              "childItems": [],
-              "frequency": ["weekly", "bi-weekly","monthly", "yearly"]
+              "childItems": []
             },
             {
               "name": "Activities of Daily Living",

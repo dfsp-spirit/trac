@@ -47,6 +47,13 @@ def _minimal_activities_payload(codes):
     }
 
 
+def _set_frequency_options(payload, options, name="occasionally"):
+    """Give the payload's first activity a frequency option set, by reference."""
+    payload.setdefault("frequency_option_sets", {})[name] = options
+    payload["timeline"]["primary"]["categories"][0]["activities"][0]["frequency"] = name
+    return payload
+
+
 def _base_payload():
     return {
         "name": "Unit Import Study",
@@ -350,18 +357,20 @@ def test_validate_import_payload_rejects_frequency_key_mismatch_across_languages
     sv_data = _minimal_activities_payload([100])
     sv_data["general"]["language"] = "sv"
 
-    en_data["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
-    sv_data["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "annan_vecka", "label": "Varannan vecka"},
-        {"key": "monthly", "label": "Manadsvis"},
-    ]
+    _set_frequency_options(
+        en_data,
+        [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ],
+    )
+    _set_frequency_options(
+        sv_data,
+        [
+            {"key": "annan_vecka", "label": "Varannan vecka"},
+            {"key": "monthly", "label": "Manadsvis"},
+        ],
+    )
 
     payload["activities_json_data"] = {"en": en_data, "sv": sv_data}
 
@@ -380,17 +389,19 @@ def test_validate_import_payload_reports_specific_structure_difference_details()
     de_data = _minimal_activities_payload([100])
     de_data["general"]["language"] = "de"
 
-    en_data["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
-    de_data["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "monthly", "label": "Monatlich"},
-    ]
+    _set_frequency_options(
+        en_data,
+        [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ],
+    )
+    _set_frequency_options(
+        de_data,
+        [
+            {"key": "monthly", "label": "Monatlich"},
+        ],
+    )
 
     payload["activities_json_data"] = {"en": en_data, "de": de_data}
 

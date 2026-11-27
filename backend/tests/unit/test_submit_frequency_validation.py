@@ -8,6 +8,12 @@ from o_timeusediary_backend.parsers.activities_config import ActivitiesConfig
 def _activities_payload_with_frequency() -> dict:
     return {
         "general": {"app_name": "TRAC"},
+        "frequency_option_sets": {
+            "occasionally": [
+                {"key": "bi_weekly", "label": "Bi-weekly"},
+                {"key": "monthly", "label": "Monthly"},
+            ]
+        },
         "timeline": {
             "primary": {
                 "name": "Primary",
@@ -19,10 +25,7 @@ def _activities_payload_with_frequency() -> dict:
                             {
                                 "name": "Sleep",
                                 "code": 100,
-                                "frequency_options": [
-                                    {"key": "bi_weekly", "label": "Bi-weekly"},
-                                    {"key": "monthly", "label": "Monthly"},
-                                ],
+                                "frequency": "occasionally",
                             },
                             {
                                 "name": "Work",

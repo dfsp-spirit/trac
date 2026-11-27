@@ -1,7 +1,13 @@
 # activities_config.py -- Parser for activities.json configuration file.
 
 from typing import List, Optional, Dict, Any, Set
-from pydantic import BaseModel, field_validator, model_validator, ConfigDict
+from pydantic import (
+    BaseModel,
+    field_validator,
+    model_validator,
+    ConfigDict,
+    PrivateAttr,
+)
 import json
 from pathlib import Path
 from functools import lru_cache
@@ -12,14 +18,40 @@ from ..formats import (
     coerce_schema_version,
 )
 
-# Oldest activities schema this reader still parses. Only the current shape is
-# understood, so the floor equals the supported version.
+# Oldest activities schema this reader still parses. Version 2 added
+# `frequency_option_sets`; a version 1 file that carries no frequency data means
+# exactly the same thing as before, and one that does is refused by name
+# (`ActivityItem.reject_inline_frequency_options`) rather than misread - so the
+# floor stays at 1.
 OLDEST_READABLE_ACTIVITIES_SCHEMA_VERSION = 1
 
 
 class FrequencyOption(BaseModel):
     key: str
     label: str
+
+
+def _validated_frequency_options(
+    options: List[FrequencyOption], where: str
+) -> List[FrequencyOption]:
+    """Check one authored list of frequency options and return it normalized."""
+    if len(options) == 0:
+        raise ValueError(f"{where} cannot be an empty list")
+
+    seen_keys: Set[str] = set()
+    for option in options:
+        option.key = option.key.strip()
+        option.label = option.label.strip()
+
+        if not option.key:
+            raise ValueError(f"{where}[].key must be a non-empty string")
+        if not option.label:
+            raise ValueError(f"{where}[].label must be a non-empty string")
+        if option.key in seen_keys:
+            raise ValueError(f"{where} contains duplicate key '{option.key}'")
+        seen_keys.add(option.key)
+
+    return options
 
 
 class ActivityItem(BaseModel):
@@ -30,7 +62,12 @@ class ActivityItem(BaseModel):
     vshort: Optional[str] = None
     color: Optional[str] = None
     examples: Optional[str] = None
-    frequency_options: Optional[List[FrequencyOption]] = None
+    # Name of a list in the file's `frequency_option_sets`. Several activities
+    # that offer the same choices name one list instead of repeating it, and the
+    # parser resolves the name into `frequency_options` - so every reader below
+    # this module still sees a plain list and never a reference.
+    frequency: Optional[str] = None
+    _frequency_options: Optional[List[FrequencyOption]] = PrivateAttr(default=None)
     is_custom_input: Optional[bool] = False
     # Label of the free-text field for this row, e.g. "What is your job?".
     # Only meaningful together with `is_custom_input`; omitted means the client
@@ -65,33 +102,36 @@ class ActivityItem(BaseModel):
         text = v.strip()
         return text or None
 
-    @field_validator("frequency_options")
+    @field_validator("frequency")
     @classmethod
-    def validate_frequency_options(
-        cls, v: Optional[List[FrequencyOption]]
-    ) -> Optional[List[FrequencyOption]]:
+    def normalize_frequency(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
-            return v
+            return None
+        text = v.strip()
+        return text or None
 
-        if len(v) == 0:
-            raise ValueError("frequency_options cannot be an empty list")
+    @model_validator(mode="before")
+    @classmethod
+    def reject_inline_frequency_options(cls, data: Any) -> Any:
+        """Point an inline list at the set it should have been defined in.
 
-        seen_keys: Set[str] = set()
-        for option in v:
-            option.key = option.key.strip()
-            option.label = option.label.strip()
+        Before the sets existed, an activity carried its own `frequency_options`
+        list. Ignoring the key now would silently drop every frequency choice of
+        that activity, so it is refused by name.
+        """
+        if isinstance(data, dict) and "frequency_options" in data:
+            name = data.get("name") or data.get("code")
+            raise ValueError(
+                f"activity '{name}' sets frequency_options inline; define the "
+                "list once under 'frequency_option_sets' and reference it with "
+                '"frequency": "<set name>"'
+            )
+        return data
 
-            if not option.key:
-                raise ValueError("frequency_options[].key must be a non-empty string")
-            if not option.label:
-                raise ValueError("frequency_options[].label must be a non-empty string")
-            if option.key in seen_keys:
-                raise ValueError(
-                    f"frequency_options contains duplicate key '{option.key}'"
-                )
-            seen_keys.add(option.key)
-
-        return v
+    @property
+    def frequency_options(self) -> Optional[List[FrequencyOption]]:
+        """The choices this activity offers, resolved from `frequency`."""
+        return self._frequency_options
 
 
 class ActivityCategory(BaseModel):
@@ -167,7 +207,54 @@ class GeneralConfig(BaseModel):
 
 class ActivitiesConfig(BaseModel):
     general: GeneralConfig
+    # Optional choice lists that activities reference by name (`frequency`), so
+    # the same options are authored once per language file instead of being
+    # repeated on every activity that offers them.
+    frequency_option_sets: Dict[str, List[FrequencyOption]] = {}
     timeline: Dict[str, TimelineConfig]
+
+    @field_validator("frequency_option_sets")
+    @classmethod
+    def validate_frequency_option_sets(
+        cls, v: Dict[str, List[FrequencyOption]]
+    ) -> Dict[str, List[FrequencyOption]]:
+        normalized: Dict[str, List[FrequencyOption]] = {}
+        for raw_name, options in v.items():
+            name = (raw_name or "").strip()
+            if not name:
+                raise ValueError("frequency_option_sets name must be a non-empty string")
+            if name in normalized:
+                raise ValueError(f"frequency_option_sets contains duplicate name '{name}'")
+            normalized[name] = _validated_frequency_options(
+                options, f"frequency_option_sets[{name}]"
+            )
+        return normalized
+
+    @model_validator(mode="after")
+    def resolve_frequency_option_sets(self) -> "ActivitiesConfig":
+        """Attach each activity's referenced option list to the activity."""
+        sets = self.frequency_option_sets or {}
+
+        def resolve(activities: List[ActivityItem]) -> None:
+            for activity in activities:
+                name = activity.frequency
+                if name:
+                    options = sets.get(name)
+                    if options is None:
+                        raise ValueError(
+                            f"activity '{activity.name}' (code {activity.code}) "
+                            f"references unknown frequency option set '{name}'; "
+                            f"defined sets: {sorted(sets) or 'none'}"
+                        )
+                    activity._frequency_options = options
+                else:
+                    activity._frequency_options = None
+                resolve(activity.childItems)
+
+        for timeline_config in self.timeline.values():
+            for category in timeline_config.categories:
+                resolve(category.activities)
+        return self
 
     @field_validator("timeline")
     @classmethod

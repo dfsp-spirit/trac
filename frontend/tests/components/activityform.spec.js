@@ -140,3 +140,78 @@ test.describe('a custom activity without sub-activities', () => {
     });
   });
 });
+
+/**
+ * How often an activity happens is an optional answer that only a few catalogue
+ * rows offer. It used to be a stacked field at the end of the form, which pushed
+ * the dialog past the fold on a 375x667 phone; it now shares a line with the day
+ * it qualifies. These pin the layout and the round trip, not the wording.
+ */
+test.describe('a frequency the activity offers', () => {
+  const frequency = (page) => page.locator('#form-frequency');
+
+  test('is absent for an activity that offers no options', async ({ page }) => {
+    await open(page, '?child=1171');
+
+    await expect(frequency(page)).toHaveCount(0);
+    const result = await read(page);
+    expect(result.values.frequency_key).toBeNull();
+  });
+
+  test('shares one line with its label, right under the day', async ({ page }) => {
+    await open(page, '?freq=1&child=1171');
+
+    await expect(frequency(page)).toBeVisible();
+    await expect(page.locator('label[for="form-frequency"]')).toHaveText('Wie oft?');
+
+    // One row: label and select sit on the same line, and the select keeps the
+    // full tap height. A stacked field would put the label above the control.
+    const label = await page.locator('label[for="form-frequency"]').boundingBox();
+    const select = await frequency(page).boundingBox();
+    expect(select.height).toBeGreaterThanOrEqual(48);
+    expect(label.x + label.width).toBeLessThan(select.x);
+    expect(Math.abs(label.y + label.height / 2 - (select.y + select.height / 2))).toBeLessThan(6);
+
+    // It belongs to "when": above the start time, and below the day control.
+    const day = await page.locator('#form-day').boundingBox();
+    const start = await page.locator('#form-start').boundingBox();
+    expect(select.y).toBeGreaterThan(day.y);
+    expect(select.y).toBeLessThan(start.y);
+  });
+
+  test('states what the empty answer means and saves the chosen key', async ({ page }) => {
+    await open(page, '?freq=1&child=1171');
+
+    // Leaving it alone means "every week", so the option says so.
+    expect(await frequency(page).locator('option').first().textContent()).toBe(
+      'Jede Woche (Standard)'
+    );
+    expect((await read(page)).values.frequency_key).toBeNull();
+
+    await frequency(page).selectOption('monthly');
+    const result = await read(page);
+    expect(result.ok).toBe(true);
+    expect(result.values.frequency_key).toBe('monthly');
+  });
+
+  test('editing a stored row shows the key that was saved', async ({ page }) => {
+    await open(page, '?freq=1&child=1171&edit=1&frequency_key=monthly');
+
+    await expect(frequency(page)).toHaveValue('monthly');
+    const result = await read(page);
+    expect(result.values.frequency_key).toBe('monthly');
+  });
+
+  test('a sub-activity offers the options of its row', async ({ page }) => {
+    await open(page, '?freq=1&child=1171');
+
+    await expect(frequency(page)).toBeVisible();
+    await frequency(page).selectOption('bi-weekly');
+
+    const result = await read(page);
+    expect(result.values).toMatchObject({
+      activity_code: 1171,
+      frequency_key: 'bi-weekly',
+    });
+  });
+});

@@ -403,7 +403,7 @@
       "chooseOption": "Välj ett alternativ",
       "what": "Vad gjorde du?",
       "frequency": "Hur ofta?",
-      "frequencyUnset": "Ej angivet",
+      "frequencyUnset": "Varje vecka (standard)",
       "when": "När?",
       "day": "Dag",
       "start": "Start",

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>mount: timeline</title>
+    <!-- The event box, its colour and the lane arithmetic come from CSS custom
+         properties, so the fixture loads the stylesheet that positions them. -->
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/base.css" />
+    <link rel="stylesheet" href="/src/styles/components.css" />
+  </head>
+  <body>
+    <div class="t-timeline" id="root"></div>
+    <!--
+      One day with the rows the frequency label has to survive:
+        a  long entry (1 hour) that carries a frequency key
+        b  an entry whose stored key is not offered by the catalogue any more
+        c  a short entry (30 minutes) that also carries a key
+      The catalogue is what turns a key into words; without it nothing is shown.
+      `?catalogue=0` mounts the timeline the way a caller that has no catalogue
+      does.
+    -->
+    <script type="module">
+      import { frequencyLabelLookup } from '/src/js/ui/activitySearch.js';
+      import { renderTimeline } from '/src/js/ui/timeline.js';
+
+      const params = new URLSearchParams(window.location.search);
+      const t = (key, params) => (params ? `${key}:${params.minutes}` : key);
+
+      /** @param {string} id @param {number} start @param {number} end @param {string | null} key */
+      const activity = (id, start, end, key) => ({
+        client_uuid: id,
+        group_id: null,
+        day_label_index: 0,
+        activity_code: 1144,
+        activity_name: `Activity ${id}`,
+        category: 'Leisure',
+        color: '#DDA0DD',
+        parent_activity_code: null,
+        frequency_key: key,
+        start_minutes: start,
+        end_minutes: end,
+      });
+
+      const diary = {
+        schema_version: 1,
+        study: { day_start_minutes: 0, submitted_at: null },
+        timeline: { min_coverage: 1440, max_overlap: 2 },
+        days: [
+          {
+            index: 0,
+            name: 'monday',
+            display_name: 'Monday',
+            display_names: { en: 'Monday' },
+            has_data: true,
+            coverage_minutes: 90,
+            meets_requirement: false,
+          },
+        ],
+        activities: [
+          activity('a', 480, 540, 'monthly'),
+          activity('b', 600, 660, 'gone'),
+          activity('c', 720, 750, 'monthly'),
+        ],
+      };
+
+      const catalogue = {
+        general: { version: '1' },
+        timeline: {
+          primary: {
+            min_coverage: 1440,
+            max_overlap: 2,
+            categories: [
+              {
+                name: 'Leisure',
+                activities: [
+                  {
+                    code: 1144,
+                    name: 'Leisure / hobby',
+                    frequency_options: [
+                      { key: 'bi-weekly', label: 'Every two weeks' },
+                      { key: 'monthly', label: 'Monthly' },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      renderTimeline(document.getElementById('root'), {
+        diary,
+        language: 'en',
+        t,
+        frequencyLabel:
+          params.get('catalogue') === '0' ? undefined : frequencyLabelLookup(catalogue),
+      });
+
+      window.__done = true;
+    </script>
+  </body>
+</html>

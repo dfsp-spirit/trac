@@ -1,6 +1,23 @@
 {
   "general": {
-    "language": "en"
+    "language": "en",
+    "schema_version": 2
+  },
+  "frequency_option_sets": {
+    "less_than_weekly": [
+      {
+        "key": "bi-weekly",
+        "label": "Every two weeks"
+      },
+      {
+        "key": "monthly",
+        "label": "Monthly"
+      },
+      {
+        "key": "yearly",
+        "label": "Yearly"
+      }
+    ]
   },
   "timeline": {
     "primary": {
@@ -244,20 +261,7 @@
                   "label": "hobby at home",
                   "color": "#DDA0DD",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Every two weeks"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monthly"
-                    },
-                    {
-                      "key": "yearly",
-                      "label": "Yearly"
-                    }
-                  ]
+                  "frequency": "less_than_weekly"
                 },
                 {
                   "name": "At home: other (please state)",
@@ -298,20 +302,7 @@
                   "label": "hobby outside home",
                   "color": "#DA70D6",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Every two weeks"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monthly"
-                    },
-                    {
-                      "key": "yearly",
-                      "label": "Yearly"
-                    }
-                  ]
+                  "frequency": "less_than_weekly"
                 },
                 {
                   "name": "Outside home: cultural activity / event (cinema, theatre, concert, etc.)",
@@ -319,20 +310,7 @@
                   "label": "culture event",
                   "color": "#DA70D6",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Every two weeks"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monthly"
-                    },
-                    {
-                      "key": "yearly",
-                      "label": "Yearly"
-                    }
-                  ]
+                  "frequency": "less_than_weekly"
                 },
                 {
                   "name": "Outside home: other (please state)",

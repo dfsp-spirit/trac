@@ -99,12 +99,15 @@ def test_rejects_third_level_activity_nesting():
 
 def test_activity_frequency_options_are_optional_and_exposed_in_metadata():
     payload = _example_activities_payload()
-    payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
+    payload["frequency_option_sets"] = {
+        "occasionally": [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ]
+    }
+    payload["timeline"]["primary"]["categories"][0]["activities"][0]["frequency"] = (
+        "occasionally"
+    )
 
     config = ActivitiesConfig(**payload)
     all_codes = get_all_activity_codes(config)
@@ -116,26 +119,72 @@ def test_activity_frequency_options_are_optional_and_exposed_in_metadata():
     assert all_codes[200]["frequency_options"] is None
 
 
-def test_rejects_duplicate_frequency_option_keys():
+def test_frequency_option_set_is_resolved_for_child_items():
+    payload = _example_activities_payload()
+    payload["frequency_option_sets"] = {
+        "occasionally": [{"key": "monthly", "label": "Monthly"}]
+    }
+    payload["timeline"]["primary"]["categories"][0]["activities"][0]["childItems"][0][
+        "frequency"
+    ] = "occasionally"
+
+    config = ActivitiesConfig(**payload)
+
+    assert get_all_activity_codes(config)[101]["frequency_options"] == [
+        {"key": "monthly", "label": "Monthly"}
+    ]
+    assert get_all_activity_codes(config)[100]["frequency_options"] is None
+
+
+def test_rejects_unknown_frequency_option_set_name():
+    payload = _example_activities_payload()
+    payload["frequency_option_sets"] = {
+        "occasionally": [{"key": "monthly", "label": "Monthly"}]
+    }
+    payload["timeline"]["primary"]["categories"][0]["activities"][0]["frequency"] = (
+        "nope"
+    )
+
+    with pytest.raises(ValueError, match="unknown frequency option set 'nope'"):
+        ActivitiesConfig(**payload)
+
+
+def test_rejects_inline_frequency_options_with_a_pointer_to_the_sets():
     payload = _example_activities_payload()
     payload["timeline"]["primary"]["categories"][0]["activities"][0][
         "frequency_options"
-    ] = [
-        {"key": "monthly", "label": "Monthly"},
-        {"key": "monthly", "label": "Every month"},
-    ]
+    ] = [{"key": "monthly", "label": "Monthly"}]
+
+    with pytest.raises(ValueError, match="frequency_option_sets"):
+        ActivitiesConfig(**payload)
+
+
+def test_rejects_duplicate_frequency_option_keys():
+    payload = _example_activities_payload()
+    payload["frequency_option_sets"] = {
+        "occasionally": [
+            {"key": "monthly", "label": "Monthly"},
+            {"key": "monthly", "label": "Every month"},
+        ]
+    }
 
     with pytest.raises(ValueError, match="duplicate key"):
         ActivitiesConfig(**payload)
 
 
-def test_rejects_empty_frequency_options_list():
+def test_rejects_empty_frequency_option_set():
     payload = _example_activities_payload()
-    payload["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = []
+    payload["frequency_option_sets"] = {"occasionally": []}
 
     with pytest.raises(ValueError, match="cannot be an empty list"):
+        ActivitiesConfig(**payload)
+
+
+def test_rejects_blank_frequency_option_set_name():
+    payload = _example_activities_payload()
+    payload["frequency_option_sets"] = {" ": [{"key": "monthly", "label": "Monthly"}]}
+
+    with pytest.raises(ValueError, match="name must be a non-empty string"):
         ActivitiesConfig(**payload)
 
 

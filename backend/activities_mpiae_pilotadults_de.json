@@ -1,7 +1,28 @@
 {
   "general": {
     "app_name": "KI Zeitverwendungstagebuch - Erwachsene",
-    "language": "de"
+    "language": "de",
+    "schema_version": 2
+  },
+  "frequency_option_sets": {
+    "leisure_cadence": [
+      {
+        "key": "weekly",
+        "label": "Wöchentlich"
+      },
+      {
+        "key": "bi-weekly",
+        "label": "Alle zwei Wochen"
+      },
+      {
+        "key": "monthly",
+        "label": "Monatlich"
+      },
+      {
+        "key": "yearly",
+        "label": "Jährlich"
+      }
+    ]
   },
   "timeline": {
     "primary": {
@@ -38,7 +59,7 @@
             }
           ]
         },
-       {
+        {
           "name": "2. Arbeit & Studium",
           "activities": [
             {
@@ -261,12 +282,7 @@
                   "label": "hobby zuhause",
                   "color": "#DDA0DD",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    { "key": "weekly", "label": "Wöchentlich" },
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
-                  ]
+                  "frequency": "leisure_cadence"
                 },
                 {
                   "name": "Sonstiges (Bitte angeben)",
@@ -307,12 +323,7 @@
                   "label": "hobby außer haus",
                   "color": "#DA70D6",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    { "key": "weekly", "label": "Wöchentlich" },
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
-                  ]
+                  "frequency": "leisure_cadence"
                 },
                 {
                   "name": "Kulturelle Aktivität / Event (Kino, Theater, Konzert, etc.)",
@@ -320,12 +331,7 @@
                   "label": "kultur event",
                   "color": "#DA70D6",
                   "is_custom_input": true,
-                  "frequency_options": [
-                    { "key": "weekly", "label": "Wöchentlich" },
-                    { "key": "bi-weekly", "label": "Alle zwei Wochen" },
-                    { "key": "monthly", "label": "Monatlich" },
-                    { "key": "yearly", "label": "Jährlich" }
-                  ]
+                  "frequency": "leisure_cadence"
                 },
                 {
                   "name": "Sonstiges (Bitte angeben)",

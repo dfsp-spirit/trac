@@ -403,7 +403,7 @@
       "chooseOption": "Choose an option",
       "what": "What did you do?",
       "frequency": "How often?",
-      "frequencyUnset": "Not specified",
+      "frequencyUnset": "Every week (default)",
       "when": "When?",
       "day": "Day",
       "start": "Start",

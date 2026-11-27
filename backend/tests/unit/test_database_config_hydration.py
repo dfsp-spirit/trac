@@ -207,12 +207,15 @@ def test_create_config_file_studies_in_database_accepts_embedded_activities_json
     activities_data = json.loads(
         (tmp_path / "activities.json").read_text(encoding="utf-8")
     )
+    activities_data["frequency_option_sets"] = {
+        "occasionally": [
+            {"key": "bi_weekly", "label": "Bi-weekly"},
+            {"key": "monthly", "label": "Monthly"},
+        ]
+    }
     activities_data["timeline"]["primary"]["categories"][0]["activities"][0][
-        "frequency_options"
-    ] = [
-        {"key": "bi_weekly", "label": "Bi-weekly"},
-        {"key": "monthly", "label": "Monthly"},
-    ]
+        "frequency"
+    ] = "occasionally"
 
     config_path = _write_studies_config_with_embedded_activities(
         tmp_path,

@@ -101,3 +101,23 @@ test('the current category stays pinned while its rows scroll', async ({ page })
   );
   expect(Math.abs(headingTop - bodyTop)).toBeLessThanOrEqual(1);
 });
+
+/**
+ * An activity that offers a frequency carries a marker. The choice is made in the
+ * form; the row only has to say that there is one, so a participant who set
+ * "monthly" last week recognises the row rather than being surprised by it. The
+ * marker is decoration: the form is where the question is answered.
+ */
+test('marks the rows that offer a frequency, and only those', async ({ page }) => {
+  await open(page);
+
+  const marked = page.locator('[data-activity-code="1131"] .t-activity__freq');
+  await expect(marked).toHaveCount(1);
+  await expect(
+    page.locator('[data-activity-code="1131"] .t-activity__end')
+  ).toHaveAttribute('aria-hidden', 'true');
+
+  await expect(
+    page.locator('[data-activity-code="1101"] .t-activity__freq')
+  ).toHaveCount(0);
+});

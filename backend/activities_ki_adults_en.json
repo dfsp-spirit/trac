@@ -1,7 +1,20 @@
 {
   "general": {
     "app_name": "KI Time Use Diary - Adults",
-    "language": "en"
+    "language": "en",
+    "schema_version": 2
+  },
+  "frequency_option_sets": {
+    "less_than_weekly": [
+      {
+        "key": "bi-weekly",
+        "label": "Bi-weekly"
+      },
+      {
+        "key": "monthly",
+        "label": "Monthly"
+      }
+    ]
   },
   "timeline": {
     "primary": {
@@ -247,16 +260,7 @@
               "code": 1163,
               "label": "events or entertainment outside",
               "color": "#DA70D6",
-              "frequency_options": [
-                {
-                  "key": "bi-weekly",
-                  "label": "Bi-weekly"
-                },
-                {
-                  "key": "monthly",
-                  "label": "Monthly"
-                }
-              ]
+              "frequency": "less_than_weekly"
             },
             {
               "name": "Hobby non-sports",
@@ -265,17 +269,8 @@
               "label": "hobby non-sports",
               "color": "#BA55D3",
               "childItems": [],
-              "frequency_options": [
-                {
-                  "key": "bi-weekly",
-                  "label": "Bi-weekly"
-                },
-                {
-                  "key": "monthly",
-                  "label": "Monthly"
-                }
-              ],
-              "is_custom_input": true
+              "is_custom_input": true,
+              "frequency": "less_than_weekly"
             },
             {
               "name": "Sports / Exercise outdoors",
@@ -288,16 +283,7 @@
                   "code": 1167,
                   "label": "Walking",
                   "color": "#9370DB",
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Bi-weekly"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monthly"
-                    }
-                  ]
+                  "frequency": "less_than_weekly"
                 },
                 {
                   "name": "Walking with someone else",
@@ -323,17 +309,8 @@
                   "code": 1171,
                   "label": "sports outdoors other",
                   "color": "#9370DB",
-                  "frequency_options": [
-                    {
-                      "key": "bi-weekly",
-                      "label": "Bi-weekly"
-                    },
-                    {
-                      "key": "monthly",
-                      "label": "Monthly"
-                    }
-                  ],
-                  "is_custom_input": true
+                  "is_custom_input": true,
+                  "frequency": "less_than_weekly"
                 }
               ]
             },
