@@ -526,6 +526,12 @@
       "cancel": "Fortsätt fylla i",
       "sending": "Hoppar över…",
       "failed": "Dagboken kunde inte hoppas över. Försök igen."
+    },
+    "templateCopy": {
+      "title": "Kopiera föregående frågeformulär?",
+      "text": "Du kan börja detta frågeformulär med det föregående barnets poster och ändra dem efteråt.",
+      "copy": "Kopiera föregående poster",
+      "blank": "Börja med tom dagbok"
     }
   }
 }

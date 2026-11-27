@@ -526,6 +526,12 @@
       "cancel": "Keep filling it in",
       "sending": "Skipping…",
       "failed": "Could not skip the diary. Please try again."
+    },
+    "templateCopy": {
+      "title": "Copy the previous questionnaire?",
+      "text": "You can start this questionnaire with the entries of the previous child and change them afterwards.",
+      "copy": "Copy previous entries",
+      "blank": "Start with an empty diary"
     }
   }
 }

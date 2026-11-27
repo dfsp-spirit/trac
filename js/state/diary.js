@@ -48,7 +48,11 @@ export function createDiaryActions({
     return typeof code === 'string' && code ? [code] : [];
   }
 
-  async function load() {
+  /**
+   * @param {{ resetDay?: boolean }} [options] `resetDay` starts at day 0, which
+   *   is what a freshly opened questionnaire (another child) means.
+   */
+  async function load({ resetDay = false } = {}) {
     store.set({ status: 'loading', error: null });
     try {
       const policy = normalizePolicy(multiTimelinePolicy);
@@ -80,7 +84,9 @@ export function createDiaryActions({
         catalogue,
         revision: (state.revision || 0) + 1,
         currentDay:
-          state.currentDay != null && state.currentDay < diary.days.length
+          !resetDay &&
+          state.currentDay != null &&
+          state.currentDay < diary.days.length
             ? state.currentDay
             : 0,
         error: null,

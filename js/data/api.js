@@ -227,6 +227,17 @@ export function createApi(
       }),
 
     /**
+     * Seed an empty proxy questionnaire from a finished sibling's diary.
+     *
+     * Refused by the server unless the target is empty and the study is a proxy
+     * study, so the client can offer it optimistically.
+     *
+     * @returns {Promise<{ copied: number, group_id: string, source_participant_id: string }>}
+     */
+    copyPreviousQuestionnaire: () =>
+      request(`${diaryRoot}/template-copy`, { method: 'POST' }),
+
+    /**
      * Lock the diary. Idempotent, so a retry after a lost response is harmless.
      *
      * @returns {Promise<{ study_submitted_at: string, already_submitted: boolean, stage: string }>}
