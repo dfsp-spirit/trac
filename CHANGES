@@ -3,6 +3,9 @@ TRAC MPIAE Changes
 
 Current WIP
 ------------
+- NEW: proxy studies (parent/child), first stage: a study has a `report_mode` (`self` or `proxy`; migration 0025) instead of a boolean, a proxy study is always closed and its participants come from a long-format roster upload (`parent_id, subject_id, subject_name_encrypted, latest_possible_submission_at_encrypted`), and a parent fills in one 7-day questionnaire per child, one after the other. The active child is derived from completion state, so reloading a page lands on the same questionnaire, submitting one child leads straight to the next, and skipping closes every still-unfinished child at once. A child's participant id can no longer act as a credential: the diary, `study-config` and `activities-config` refuse it, and the server resolves the subject itself. Consent and instructions are per family, the family deadline is a hard stop for saves, submits and skips, and a parent may seed an empty questionnaire from a finished sibling's diary (unmarked, per the KI's decision)
+- NEW: child names are encrypted at rest (`*_encrypted` columns, AES-256-GCM with a version prefix, key from `TUD_FIELD_ENCRYPTION_KEYS`). The roster and the runtime-config backup carry ciphertext, no export carries a name, and the admin tools page has an encryption health check that can decrypt a small sample without printing anything
+- DEV: `tud roster encrypt` turns a plaintext proxy roster into the encrypted form the import expects, for demos and manual QA (`backend/testdata/proxy/`, `backend/studies_config_proxy_demo.json`)
 
 
 v0.30.0 -- Dropped old frontend, monthly activities, timeout, other improvements

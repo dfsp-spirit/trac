@@ -526,6 +526,12 @@
       "cancel": "Weiter ausfüllen",
       "sending": "Wird übersprungen…",
       "failed": "Das Tagebuch konnte nicht übersprungen werden. Bitte versuchen Sie es erneut."
+    },
+    "templateCopy": {
+      "title": "Vorherigen Fragebogen übernehmen?",
+      "text": "Du kannst diesen Fragebogen mit den Einträgen des vorherigen Kindes beginnen und sie danach ändern.",
+      "copy": "Vorherige Einträge übernehmen",
+      "blank": "Mit leerem Tagebuch beginnen"
     }
   }
 }

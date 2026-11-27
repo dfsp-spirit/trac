@@ -58,7 +58,9 @@ def require_participant_session(
             "This request needs an active session. Please open your invitation link again.",
         )
 
-    row = find_session(db, token, context.study, context.participant_id)
+    # The session belongs to the credential (the parent in a proxy study), not
+    # to the subject: advancing to the next child must not expire the cookie.
+    row = find_session(db, token, context.study, context.credential)
     if row is None:
         raise session_error(
             "session.invalid",
@@ -79,6 +81,6 @@ def require_participant_session(
     touch_session(db, row, now=now, force=False)
     return ParticipantSessionContext(
         study=context.study,
-        participant_id=context.participant_id,
+        participant_id=context.credential,
         participant_session=row,
     )

@@ -320,3 +320,38 @@ markup driven by `static/admin_messages.js`. Texts are rendered as plain text
   only reason it can do that safely is the client-side exemption for unchanged
   times (see `docs/agents/frontend.md`).
 
+## Proxy studies (parent/child)
+
+A study has a `report_mode`: `self` (the participant fills in their own diary) or
+`proxy` (a parent fills in one questionnaire per child). A proxy study is always
+closed and gets its participants from the KI's long-format roster upload, which
+is the only writer of the parent/child link.
+
+**Two identities per request.** The id in the URL is the *credential* (the
+parent); the row the diary belongs to is the *subject* (the active child). The
+server derives the subject from the roster and the children's completion state -
+the client never sends it. `ParticipantContext` carries both
+(`credential`, `participant_id`, `family`), sessions are keyed by the credential,
+and consent/instructions are written to the parent's row.
+
+**Enforcement lives in three places**, because three code paths resolve a
+participant id: `api_deps/participant_context.py` (the diary and session routers,
+and through `require_participant_session` also consent, instructions,
+client-info, skip, submit and the external-task endpoints), and the inline checks
+in `study-config` and `activities-config`. A child's id is refused everywhere
+(`proxy_not_allowed`); the rules themselves live in `proxy_families.py`.
+
+**Sequence.** A family is finished when every child has `study_submitted_at`
+(submitted or skipped). `stages.stage_for_family` turns that into the parent's
+stage, so no new stage value and no new client route exists.
+
+**Deadline.** `proxy_deadline_at` on the parent row narrows the study window:
+`study_availability(study, family=...)` returns `deadline_passed`, and
+`ensure_before_deadline` refuses saves, submits and skips.
+
+**Encryption.** Child names live in `subject_name_encrypted` (AES-256-GCM, `v1.`
+prefix, key from `TUD_FIELD_ENCRYPTION_KEYS`, first key encrypts and all keys
+decrypt). `display_names.participant_display_name()` is the only reader, so the
+plaintext exists only where it is needed. `GET /api/admin/diagnostics/encryption`
+answers "can this deployment still read what it wrote?" without printing anything.
+The design record is `dev_tools/plans/proxy_studies.md`.

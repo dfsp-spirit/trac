@@ -77,9 +77,7 @@ def _clear_session_cookie(response: Response, request: Request) -> None:
     )
 
 
-def _state(
-    row: ParticipantSession, timeout_minutes: int
-) -> ParticipantSessionState:
+def _state(row: ParticipantSession, timeout_minutes: int) -> ParticipantSessionState:
     last_seen = coerce_utc_aware(row.last_seen_at)
     return ParticipantSessionState(
         active=True,
@@ -112,11 +110,7 @@ def start_participant_session(
 
     now = utc_now()
     token = request.cookies.get(SESSION_COOKIE_NAME, "")
-    row = (
-        find_session(db, token, context.study, context.participant_id)
-        if token
-        else None
-    )
+    row = find_session(db, token, context.study, context.credential) if token else None
     if (
         row is not None
         and row.ended_at is None
@@ -126,9 +120,7 @@ def start_participant_session(
     else:
         if row is not None and row.ended_at is None:
             mark_session_ended(db, row, now=now)
-        row, token = create_session(
-            db, context.study, context.participant_id, now=now
-        )
+        row, token = create_session(db, context.study, context.credential, now=now)
 
     _set_session_cookie(response, request, token)
     return _state(row, timeout_minutes)
@@ -151,7 +143,7 @@ def touch_participant_session(
             "This request needs an active session. Please open your invitation link again.",
         )
 
-    row = find_session(db, token, context.study, context.participant_id)
+    row = find_session(db, token, context.study, context.credential)
     if row is None:
         raise session_error(
             "session.invalid",
@@ -176,9 +168,7 @@ def touch_participant_session(
 @router.get("/session", response_model=ParticipantSessionState)
 def get_participant_session(
     context: ParticipantContext = Depends(get_participant_context),
-    current: Optional[ParticipantSessionContext] = Depends(
-        require_participant_session
-    ),
+    current: Optional[ParticipantSessionContext] = Depends(require_participant_session),
 ) -> ParticipantSessionState:
     timeout_minutes = session_timeout_minutes(context.study)
     if timeout_minutes <= 0 or current is None:
@@ -196,7 +186,7 @@ def end_participant_session(
     """End the browser's session, if it has one. Always succeeds."""
     token = request.cookies.get(SESSION_COOKIE_NAME, "")
     if token:
-        row = find_session(db, token, context.study, context.participant_id)
+        row = find_session(db, token, context.study, context.credential)
         if row is not None and row.ended_at is None:
             mark_session_ended(db, row, now=utc_now())
     _clear_session_cookie(response, request)

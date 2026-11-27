@@ -1,5 +1,5 @@
 # config/study_config.py
-from typing import List, Optional, Any, Dict, Union
+from typing import List, Optional, Any, Dict, Union, Sequence
 from datetime import datetime, timezone
 from pydantic import (
     BaseModel,
@@ -22,6 +22,7 @@ from .activities_config import (
     get_all_activity_codes,
 )
 from ..timing import validate_timing_settings
+from ..models import REPORT_MODE_PROXY, REPORT_MODE_SELF, REPORT_MODES
 from ..formats import (
     STUDIES_CONFIG_SCHEMA_VERSION,
     UnsupportedSchemaVersionError,
@@ -355,6 +356,49 @@ def validate_public_listing(
     )
 
 
+def validate_report_mode(
+    *,
+    study_name_short: str,
+    report_mode: str,
+    allow_unlisted_participants: bool,
+    study_participant_ids: Sequence[str] = (),
+) -> None:
+    """Refuse a configuration that cannot be a proxy study.
+
+    A proxy study is filled in by a parent, one questionnaire per child, for a
+    fixed roster the KI uploads before the study starts
+    (``dev_tools/plans/proxy_studies.md`` §0). Two consequences are checked here,
+    because each would produce participants that no roster knows:
+
+    * it cannot be open - an unlisted id would become a stand-in participant
+      that is neither a parent nor a child. Public listing needs no separate
+      check: ``validate_public_listing`` already refuses a listed, closed study,
+      and a proxy study is always closed.
+    * it cannot declare participants in the configuration file - the roster
+      upload is the only writer of the parent/child links, so a config-file id
+      would sit in neither position.
+    """
+    if report_mode not in REPORT_MODES:
+        raise ValueError(
+            f"Study '{study_name_short}': report_mode must be one of "
+            f"{list(REPORT_MODES)}, got '{report_mode}'."
+        )
+    if report_mode != REPORT_MODE_PROXY:
+        return
+    if allow_unlisted_participants:
+        raise ValueError(
+            f"Study '{study_name_short}': a proxy study is always invitation-only "
+            "and must set allow_unlisted_participants: false. Its parents come "
+            "from the KI's roster, so nobody may join without an invitation."
+        )
+    if study_participant_ids:
+        raise ValueError(
+            f"Study '{study_name_short}': a proxy study gets its participants "
+            "from the roster upload, not from study_participant_ids. Remove the "
+            "list from the configuration file."
+        )
+
+
 def validate_external_tasks_for_study(
     *,
     study_name_short: str,
@@ -571,6 +615,11 @@ class CfgFileStudy(BaseModel):
     # studies; production names belong in the roster upload, not in a file that
     # lives in the repository. The id list above stays the identity.
     participant_display_names: Dict[str, str] = Field(default_factory=dict)
+    # The data-source axis (see models.REPORT_MODES): `self` - the participant
+    # fills in their own diary - or `proxy` - a parent fills in one
+    # questionnaire per child for a roster the KI uploads. A proxy study is
+    # always closed; see validate_report_mode.
+    report_mode: str = REPORT_MODE_SELF
     allow_unlisted_participants: bool = True
     # Opt-in: show the study on the entry page's public list, which is what a
     # visitor without an invitation link sees. Only an open study can be joined
@@ -1030,6 +1079,16 @@ class CfgFileStudy(BaseModel):
             study_name_short=self.name_short,
             is_listed_publicly=self.is_listed_publicly,
             allow_unlisted_participants=self.allow_unlisted_participants,
+        )
+        return self
+
+    @model_validator(mode="after")
+    def validate_report_mode_config(self) -> "CfgFileStudy":
+        validate_report_mode(
+            study_name_short=self.name_short,
+            report_mode=self.report_mode,
+            allow_unlisted_participants=self.allow_unlisted_participants,
+            study_participant_ids=self.study_participant_ids,
         )
         return self
 

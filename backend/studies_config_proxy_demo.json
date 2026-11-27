@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "studies": [
+    {
+      "name": "Proxy Demo — twins (manual QA)",
+      "name_short": "proxy_twins_demo",
+      "description": {
+        "en": "Demo proxy study: a parent fills in one 7-day diary per child. Seed the roster with backend/testdata/proxy/roster_valid.csv."
+      },
+      "report_mode": "proxy",
+      "allow_unlisted_participants": false,
+      "is_listed_publicly": false,
+      "allow_skip_timeuse": true,
+      "require_consent": false,
+      "is_paused": false,
+      "default_language": "en",
+      "supported_languages": [
+        "en"
+      ],
+      "day_labels": [
+        {
+          "name": "monday",
+          "display_order": 0,
+          "display_names": {
+            "en": "Monday"
+          }
+        },
+        {
+          "name": "tuesday",
+          "display_order": 1,
+          "display_names": {
+            "en": "Tuesday"
+          }
+        },
+        {
+          "name": "wednesday",
+          "display_order": 2,
+          "display_names": {
+            "en": "Wednesday"
+          }
+        },
+        {
+          "name": "thursday",
+          "display_order": 3,
+          "display_names": {
+            "en": "Thursday"
+          }
+        },
+        {
+          "name": "friday",
+          "display_order": 4,
+          "display_names": {
+            "en": "Friday"
+          }
+        },
+        {
+          "name": "saturday",
+          "display_order": 5,
+          "display_names": {
+            "en": "Saturday"
+          }
+        },
+        {
+          "name": "sunday",
+          "display_order": 6,
+          "display_names": {
+            "en": "Sunday"
+          }
+        }
+      ],
+      "study_participant_ids": [],
+      "activities_json_files": {
+        "en": "activities_default.json"
+      },
+      "data_collection_start": "2024-01-01T00:00:00Z",
+      "data_collection_end": "2028-12-31T23:59:59Z",
+      "study_text_intro": {
+        "en": "This demo is a proxy study. Open the parent link and fill in one week for each child."
+      },
+      "study_text_end_completed": {
+        "en": "Thank you for taking part in this study."
+      }
+    }
+  ]
+}

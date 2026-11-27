@@ -1063,6 +1063,61 @@ window.
 
 ---
 
+## Proxy Studies (Parent and Children)
+
+A proxy study is filled in by someone else: a parent completes one questionnaire
+per child. It is a different kind of study, not a setting on a normal one.
+
+```json
+{
+  "name": "Twin study",
+  "name_short": "twins_2027",
+  "report_mode": "proxy",
+  "allow_unlisted_participants": false,
+  "is_listed_publicly": false,
+  "day_labels": [ ... 7 days ... ],
+  "study_participant_ids": [],
+  "activities_json_files": {"en": "activities_ki_9yearolds_en.json"},
+  "data_collection_start": "2027-05-01T00:00:00Z",
+  "data_collection_end": "2027-12-31T23:59:59Z"
+}
+```
+
+Rules the config parser enforces:
+
+* a proxy study is **always closed** (`allow_unlisted_participants: false`) and
+  never listed publicly - there is no way in without an invitation link;
+* it **cannot list participants** in the configuration file
+  (`study_participant_ids: []`), because parents and children only come from the
+  roster upload;
+* `report_mode` cannot be changed once the study has participants.
+
+### The roster
+
+The KI supplies one CSV/TSV file, one row per child, with the names and the
+deadline **encrypted** (the key is `TUD_FIELD_ENCRYPTION_KEYS`):
+
+```
+parent_id,subject_id,subject_name_encrypted,latest_possible_submission_at_encrypted
+```
+
+Upload it under *Admin → Study → Participants → Upload roster*. The import is
+whole-file or nothing, supports a dry run, and can be repeated: re-uploading
+updates names and the deadline and unlinks children that left the file without
+deleting their data.
+
+For demos and manual QA, `tud roster encrypt plain.csv` produces the encrypted
+form from a plaintext file; `backend/testdata/proxy/` holds ready-made examples
+and `backend/studies_config_proxy_demo.json` a demo study.
+
+### What a parent sees
+
+One invitation link, no child in it. The app shows the first child whose
+questionnaire is not finished; submitting it continues with the next child, and
+only after the last one does the family reach the thank-you page. Skipping closes
+every still-unfinished child at once. The deadline is a hard stop: nothing can be
+saved, submitted or skipped afterwards.
+
 ## The Activities File
 
 ### Structure Overview

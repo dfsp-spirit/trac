@@ -124,7 +124,116 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Report how many rows would be deleted, without deleting them.",
     )
 
+    roster_parser = subparsers.add_parser(
+        "roster",
+        help="Proxy-study roster helpers (they run without a database)",
+    )
+    roster_subparsers = roster_parser.add_subparsers(dest="roster_command")
+
+    encrypt_parser = roster_subparsers.add_parser(
+        "encrypt",
+        help=(
+            "Seal the name and deadline columns of a plaintext proxy roster, "
+            "which is the inverse of what the import expects"
+        ),
+    )
+    encrypt_parser.add_argument(
+        "source",
+        help=(
+            "Plaintext CSV/TSV with parent_id, subject_id, subject_name and "
+            "latest_possible_submission_at. Use '-' to read from stdin."
+        ),
+    )
+    encrypt_parser.add_argument(
+        "--output",
+        help="Where to write the encrypted file. Default: standard output.",
+    )
+
     return parser
+
+
+def _run_roster_encrypt(source: str, output: str | None) -> int:
+    """Seal the two personal columns of a roster, so demos and tests can build one.
+
+    The KI encrypts their own files; this exists for the fixtures, the manual
+    QA study and for checking a file before it is uploaded. Nothing here touches
+    the database.
+
+    @param source Path to the plaintext file, or "-" for stdin.
+    @param output Path to write, or None for stdout.
+    @returns Process exit code.
+    """
+    import sys as _sys
+
+    from .encrypted_fields import EncryptionConfigError, encrypt_text
+    from .tabular_files import DelimitedUploadError, parse_delimited_upload
+
+    try:
+        raw = (
+            _sys.stdin.buffer.read()
+            if source == "-"
+            else Path(source).read_bytes()
+        )
+        parsed = parse_delimited_upload(raw)
+    except (OSError, DelimitedUploadError) as error:
+        print(f"error: {error}", file=_sys.stderr)
+        return 2
+
+    name_column = "subject_name"
+    deadline_column = "latest_possible_submission_at"
+    if name_column not in parsed.headers or deadline_column not in parsed.headers:
+        print(
+            f"error: expected columns '{name_column}' and '{deadline_column}'. "
+            f"Found: {', '.join(parsed.headers)}.",
+            file=_sys.stderr,
+        )
+        return 2
+
+    encrypted_headers = [
+        "subject_name_encrypted"
+        if header == name_column
+        else "latest_possible_submission_at_encrypted"
+        if header == deadline_column
+        else header
+        for header in parsed.headers
+    ]
+
+    rows = []
+    for line_number, row in parsed.rows:
+        values = []
+        for header in parsed.headers:
+            cell = (row.get(header) or "").strip()
+            if header in (name_column, deadline_column):
+                try:
+                    values.append(encrypt_text(cell) or "")
+                except EncryptionConfigError as error:
+                    print(f"error: {error}", file=_sys.stderr)
+                    return 1
+            else:
+                values.append(row.get(header, ""))
+        rows.append(values)
+
+    lines = [
+        ",".join(_csv_cell(value) for value in row)
+        for row in [encrypted_headers, *rows]
+    ]
+    try:
+        if output:
+            Path(output).write_text("\n".join(lines) + "\n", encoding="utf-8")
+        else:
+            for line in lines:
+                print(line)
+    except OSError as error:
+        print(f"error: {error}", file=_sys.stderr)
+        return 2
+    return 0
+
+
+def _csv_cell(value: str) -> str:
+    text = str(value)
+    if any(char in text for char in ',"\n'):
+        return '"' + text.replace('"', '""') + '"'
+    return text
 
 
 def _run_ux_events_purge(
@@ -466,6 +575,9 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             assume_yes=args.yes,
         )
+
+    if args.command == "roster" and args.roster_command == "encrypt":
+        return _run_roster_encrypt(args.source, args.output)
 
     if args.command == "ux-events" and args.ux_command == "purge":
         return _run_ux_events_purge(args.days, args.study, args.dry_run)

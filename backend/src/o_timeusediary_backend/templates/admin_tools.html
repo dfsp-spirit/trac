@@ -48,6 +48,24 @@
                 <p class="hint">Do not double-encode the value: encode the raw destination URL once.</p>
             </div>
         </div>
+
+        <div class="card">
+            <h2>Field encryption</h2>
+            <p>
+                Proxy studies store a child's first name encrypted. This check decrypts a small
+                sample of the stored values, so a wrong or missing key is found here instead of by
+                a parent whose child's name is missing from the questionnaire.
+            </p>
+            <div class="actions">
+                <button type="button" class="btn-primary" id="encryptionCheckBtn">Run check</button>
+                <span id="encryptionStatus" class="status" role="status" aria-live="polite"></span>
+            </div>
+            <div id="encryptionResult" class="example" hidden>
+                <strong id="encryptionHeadline"></strong>
+                <p id="encryptionDetails" class="mt-sm"></p>
+                <code id="encryptionFailures" hidden></code>
+            </div>
+        </div>
 {% endblock %}
 
 {% block scripts %}
@@ -94,6 +112,42 @@
             encodedUrl.value = '';
             exampleLink.textContent = EMPTY_LINK;
             setStatus(toolsStatus, '', 'info');
+        });
+
+        // Field-encryption health check (see the encryption diagnostics endpoint).
+        // The response never contains a name or a token, only counts and ids.
+        document.getElementById('encryptionCheckBtn').addEventListener('click', async () => {
+            const status = document.getElementById('encryptionStatus');
+            const result = document.getElementById('encryptionResult');
+            const headline = document.getElementById('encryptionHeadline');
+            const details = document.getElementById('encryptionDetails');
+            const failures = document.getElementById('encryptionFailures');
+            setStatus(status, 'Checking…', 'info');
+            try {
+                const response = await fetch('{{ request.scope.root_path }}/api/admin/diagnostics/encryption', {
+                    credentials: 'same-origin'
+                });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                result.hidden = false;
+                const failing = Array.isArray(data.failed_participant_ids)
+                    ? data.failed_participant_ids
+                    : [];
+                headline.textContent =
+                    data.status === 'not_configured'
+                        ? 'Not configured'
+                        : data.failed === 0
+                          ? 'OK'
+                          : 'Failures';
+                details.textContent =
+                    `${data.message} Keys configured: ${data.configured_keys}. ` +
+                    `Checked ${data.checked}, read ${data.decrypted}, failed ${data.failed}.`;
+                failures.hidden = failing.length === 0;
+                failures.textContent = failing.length ? `Failing participant ids: ${failing.join(', ')}` : '';
+                setStatus(status, data.failed === 0 ? 'Check finished.' : 'Check found failures.', data.failed === 0 ? 'ok' : 'error');
+            } catch (error) {
+                setStatus(status, `Check failed: ${error.message}`, 'error');
+            }
         });
     </script>
 {% endblock %}

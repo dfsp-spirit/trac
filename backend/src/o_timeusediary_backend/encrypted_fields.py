@@ -36,7 +36,7 @@ import base64
 import binascii
 import os
 from dataclasses import dataclass
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -81,6 +81,8 @@ class ProbeResult:
     checked: int
     decrypted: int
     failed: int
+    #: What could not be read. Participant ids only - never a token.
+    failed_ids: tuple = ()
 
 
 def configured_keys() -> List[bytes]:
@@ -196,15 +198,15 @@ def mask(value: object) -> str:
     return "***" if value else ""
 
 
-def probe(tokens: Iterable[Optional[str]]) -> ProbeResult:
+def probe(items: Iterable[Tuple[str, Optional[str]]]) -> ProbeResult:
     """Try to decrypt a small sample, for the admin health check (§7.6).
 
-    Counts only: never returns, logs or raises with a token or a plaintext.
-    Empty and ``None`` values are not checked, so an empty column reports
-    ``checked == 0`` instead of a false alarm.
+    Never returns, logs or raises with a token or a plaintext: the result names
+    the rows that failed, which are participant ids.
 
-    @param tokens Ciphertext values, e.g. sampled from one column.
-    @returns How many were checked, decrypted and failed.
+    @param items ``(label, token)`` pairs, e.g. participant id and the sampled
+        ``subject_name_encrypted`` value.
+    @returns How many were checked, decrypted and failed, plus the failing labels.
     @raises EncryptionConfigError When no key is configured; the caller reports
         that as "not configured" rather than as a data problem.
     """
@@ -215,16 +217,22 @@ def probe(tokens: Iterable[Optional[str]]) -> ProbeResult:
         )
 
     checked = 0
-    failed = 0
-    for token in tokens:
+    failed_ids = []
+    for label, token in items:
         if token is None or not str(token).strip():
             continue
         checked += 1
         try:
             _open(keys, str(token).strip())
         except DecryptionError:
-            failed += 1
-    return ProbeResult(checked=checked, decrypted=checked - failed, failed=failed)
+            failed_ids.append(label)
+    failed = len(failed_ids)
+    return ProbeResult(
+        checked=checked,
+        decrypted=checked - failed,
+        failed=failed,
+        failed_ids=tuple(failed_ids),
+    )
 
 
 def _open(keys: List[bytes], text: str) -> str:

@@ -55,6 +55,7 @@ from .parsers.studies_config import (
     validate_day_group_definitions,
     validate_external_tasks_for_study,
     validate_public_listing,
+    validate_report_mode,
 )
 from .formats import (
     ACTIVITIES_SCHEMA_VERSION,
@@ -88,6 +89,8 @@ from .models import (
     StudyExternalTask,
     StudyExternalTaskAssignment,
     UxEvent,
+    REPORT_MODE_PROXY,
+    REPORT_MODE_SELF,
 )
 from .models import (
     StudyAvailableTimeline,
@@ -162,9 +165,35 @@ from .api_deps.participant_identity import (
     require_valid_participant_id,
 )
 from .api_deps.study_identity import require_valid_study_name_short
+from .encrypted_fields import (
+    EncryptionConfigError,
+    configured_keys,
+    probe as probe_encrypted_values,
+)
 from .display_names import (
     DISPLAY_NAME_RULE_TEXT,
+    participant_display_name as resolve_display_name,
     validate_participant_display_names,
+)
+from .proxy_families import (
+    ProxyResolutionError,
+    children_by_parent,
+    family_finished,
+    is_proxy_study,
+    resolve_family,
+    roles_for,
+)
+from .proxy_roster import (
+    ProxyRosterError,
+    apply_proxy_roster,
+    parse_proxy_roster,
+)
+from .api_deps.participant_context import (
+    CredentialDenied,
+    ParticipantContext,
+    get_participant_context,
+    proxy_denied,
+    require_credential_link,
 )
 from .participant_ids import (
     PARTICIPANT_ID_PATTERN,
@@ -503,6 +532,41 @@ def _build_external_task_launch_url(
     return base_url
 
 
+def _export_proxy_roster(participants: List[StudyParticipant]) -> List[Dict[str, Any]]:
+    """The parent/child structure of one study, as it is stored.
+
+    Sealed names travel as ciphertext on purpose: the backup is only complete
+    together with the key, and a plaintext copy here would undo the reason for
+    encrypting at rest.
+    """
+    grouped = children_by_parent(participants)
+    families: List[Dict[str, Any]] = []
+    for participant in sorted(participants, key=lambda row: row.id or 0):
+        if participant.proxy_participant_id is not None:
+            continue
+        children = grouped.get(participant.participant_id)
+        if not children:
+            continue
+        families.append(
+            {
+                "parent_id": participant.participant_id,
+                "deadline_at": (
+                    participant.proxy_deadline_at.isoformat()
+                    if participant.proxy_deadline_at
+                    else None
+                ),
+                "children": [
+                    {
+                        "participant_id": child.participant_id,
+                        "subject_name_encrypted": child.subject_name_encrypted,
+                    }
+                    for child in sorted(children, key=lambda row: row.id or 0)
+                ],
+            }
+        )
+    return families
+
+
 def _build_external_task_expected_return_url_template(
     study_name_short: str,
     task_key: str,
@@ -728,6 +792,23 @@ def _get_participant_external_tasks(
             )
         )
     return tasks
+
+
+def _state_participant(
+    context: ParticipantContext,
+    session: Session,
+    study: Study,
+    participant_id: str,
+) -> Optional[StudyParticipant]:
+    """The row that owns family-level state.
+
+    Consent, instructions and the browser snapshot belong to the parent in a
+    proxy study (decision 14): the child rows hold the diaries, and the parent is
+    the one person giving consent and sitting at the browser.
+    """
+    if context.is_proxy:
+        return context.family_participant
+    return _get_study_participant_association(session, study, participant_id)
 
 
 def _get_study_participant_association(
@@ -1502,7 +1583,7 @@ def get_study_activities_config(
     _ensure_study_is_currently_available(study)
 
     # Check if participant_id is required
-    if not study.allow_unlisted_participants:
+    if not study.allow_unlisted_participants or is_proxy_study(study):
         # Study restricts participants - participant_id parameter is required
         if participant_id is None:
             raise HTTPException(
@@ -1511,22 +1592,20 @@ def get_study_activities_config(
                 "Please provide 'participant_id' query parameter.",
             )
 
-        # Check if the participant is authorized for this study
-        study_participant = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-
-        if not study_participant:
+        # Same two rules as study-config: the id must be known, and a child's id
+        # must not act as a credential (proxy_studies.md §8.1).
+        try:
+            require_credential_link(session, study, participant_id)
+        except CredentialDenied as error:
+            if error.reason == CredentialDenied.IS_CHILD:
+                raise proxy_denied(error.message) from error
             logger.info(
                 f"Unauthorized participant '{participant_id}' attempted to access activities config for '{study_name_short}'"
             )
             raise HTTPException(
                 status_code=403,
                 detail=f"Participant '{participant_id}' not authorized for this study",
-            )
+            ) from error
     try:
         activities_config, _source, _selected_language = (
             get_study_activities_config_model(
@@ -2731,6 +2810,26 @@ class UpdateStudyOwnersRequest(BaseModel):
     owner_usernames: List[str]
 
 
+class CfgFileProxyChild(BaseModel):
+    """One child in a restored proxy roster."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    participant_id: str
+    #: Ciphertext, written back as it is; never decrypted on this path.
+    subject_name_encrypted: Optional[str] = None
+
+
+class CfgFileProxyFamily(BaseModel):
+    """One parent with the children whose questionnaires they fill in."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    parent_id: str
+    deadline_at: Optional[datetime] = None
+    children: List[CfgFileProxyChild] = Field(default_factory=list)
+
+
 class ImportStudiesConfigStudy(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -2747,6 +2846,11 @@ class ImportStudiesConfigStudy(BaseModel):
     # Optional id -> display name map, same rule as in the config file. Present
     # so a runtime-config export can be imported back without losing names.
     participant_display_names: Dict[str, str] = Field(default_factory=dict)
+    # Same value and rules as in the config file: `self` or `proxy`, and a proxy
+    # study is always closed (validate_report_mode).
+    report_mode: str = REPORT_MODE_SELF
+    # Present so a runtime-config backup of a proxy study restores its families.
+    proxy_roster: List[CfgFileProxyFamily] = Field(default_factory=list)
     allow_unlisted_participants: bool = True
     # Opt-in: show the study on the entry page's public list. Same rule as in the
     # config file - only an open study can be joined from that list.
@@ -3084,6 +3188,63 @@ def _create_available_catalog_from_validated_activities(
             )
 
 
+def _validate_proxy_roster(study_payload: ImportStudiesConfigStudy) -> None:
+    """Check a restored proxy roster: proxy only, ids valid, no duplicates.
+
+    The link structure comes from the backup, so it has to satisfy the same
+    rules the roster upload enforces - otherwise a restore could create the
+    half-linked state the importer exists to prevent.
+    """
+    families = study_payload.proxy_roster
+    if not families:
+        return
+    if study_payload.report_mode != REPORT_MODE_PROXY:
+        raise ValueError(
+            f"Study '{study_payload.name_short}': proxy_roster is only valid for "
+            "a proxy study (report_mode: proxy)."
+        )
+
+    parents: set[str] = set()
+    children: set[str] = set()
+    for family in families:
+        parent_id = require_valid_participant_id(
+            family.parent_id, source="proxy_roster parent id"
+        )
+        if parent_id in parents:
+            raise ValueError(
+                f"Study '{study_payload.name_short}': parent '{parent_id}' "
+                "appears twice in proxy_roster."
+            )
+        parents.add(parent_id)
+        if not family.children:
+            raise ValueError(
+                f"Study '{study_payload.name_short}': parent '{parent_id}' has "
+                "no children in proxy_roster."
+            )
+        for child in family.children:
+            child_id = require_valid_participant_id(
+                child.participant_id, source="proxy_roster child id"
+            )
+            if child_id == parent_id:
+                raise ValueError(
+                    f"Study '{study_payload.name_short}': '{child_id}' cannot be "
+                    "its own parent."
+                )
+            if child_id in children:
+                raise ValueError(
+                    f"Study '{study_payload.name_short}': child '{child_id}' "
+                    "appears twice in proxy_roster."
+                )
+            children.add(child_id)
+
+    both = sorted(parents & children)
+    if both:
+        raise ValueError(
+            f"Study '{study_payload.name_short}': these ids are a parent in one "
+            f"family and a child in another: {both}."
+        )
+
+
 def _validate_import_study_payload(
     study_payload: ImportStudiesConfigStudy,
     *,
@@ -3146,6 +3307,14 @@ def _validate_import_study_payload(
         is_listed_publicly=study_payload.is_listed_publicly,
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
     )
+
+    validate_report_mode(
+        study_name_short=study_payload.name_short,
+        report_mode=study_payload.report_mode,
+        allow_unlisted_participants=study_payload.allow_unlisted_participants,
+        study_participant_ids=study_payload.study_participant_ids,
+    )
+    _validate_proxy_roster(study_payload)
 
     has_embedded_data = bool(study_payload.activities_json_data)
     has_file_refs = bool(study_payload.activities_json_files)
@@ -3883,6 +4052,7 @@ def _create_study_from_import_payload(
         name=study_payload.name,
         name_short=study_payload.name_short,
         description=(description_map or fallback_description),
+        report_mode=study_payload.report_mode,
         allow_unlisted_participants=study_payload.allow_unlisted_participants,
         is_listed_publicly=study_payload.is_listed_publicly,
         require_consent=study_payload.require_consent,
@@ -3917,6 +4087,30 @@ def _create_study_from_import_payload(
     )
     session.add(study)
     session.flush()
+
+    if study_payload.proxy_roster:
+        # Parents first: the composite foreign key on (study_id,
+        # proxy_participant_id) needs the parent row to exist before a child
+        # points at it.
+        for family in study_payload.proxy_roster:
+            session.add(
+                StudyParticipant(
+                    study_id=study.id,
+                    participant_id=family.parent_id,
+                    proxy_deadline_at=family.deadline_at,
+                )
+            )
+        session.flush()
+        for family in study_payload.proxy_roster:
+            for child in family.children:
+                session.add(
+                    StudyParticipant(
+                        study_id=study.id,
+                        participant_id=child.participant_id,
+                        proxy_participant_id=family.parent_id,
+                        subject_name_encrypted=child.subject_name_encrypted,
+                    )
+                )
 
     for external_task_payload in study_payload.external_tasks:
         session.add(
@@ -5043,7 +5237,12 @@ async def export_runtime_studies_config(
                 # Part of the technical backup: losing the groups would remove
                 # the copy-dialog shortcuts on restore.
                 "day_groups": list(study.day_groups or []),
-                "study_participant_ids": participant_ids,
+                # A proxy study's structure is the roster below, not a plain id
+                # list: an id list would be refused on import, because a
+                # config-file participant is neither a parent nor a child.
+                "study_participant_ids": (
+                    [] if is_proxy_study(study) else participant_ids
+                ),
                 # Part of the technical backup: a restore that lost the labels
                 # would show the wrong child's name in a chain. Never part of a
                 # data export - see the participant/activity exports.
@@ -5052,6 +5251,18 @@ async def export_runtime_studies_config(
                     for association in study_participants
                     if association.display_name
                 },
+                # Part of the technical backup: a restore that flipped this
+                # would turn a proxy study into a self-report study.
+                "report_mode": study.report_mode,
+                # Families, links, sealed names and the deadline. Names stay
+                # ciphertext (§7.5): a restore needs the same key set.
+                **(
+                    {
+                        "proxy_roster": _export_proxy_roster(study_participants),
+                    }
+                    if is_proxy_study(study)
+                    else {}
+                ),
                 "allow_unlisted_participants": study.allow_unlisted_participants,
                 # Part of the technical backup: a restore that dropped the flag
                 # would silently remove the study from the public list.
@@ -6363,6 +6574,14 @@ async def export_participant_invitation_links(
     ).all()
 
     build_invitation_link = _build_frontend_study_join_url
+    roles = roles_for(participants, study)
+    # A child's id is not a credential: it is refused by every participant
+    # endpoint, so a link for it would only look like one (decision 5, §8.3).
+    invitees = [
+        participant
+        for participant in participants
+        if roles.get(participant.participant_id) != "child"
+    ]
 
     # Written explicitly instead of via export_csv(), which sorts column names
     # and would put the link before the pid.
@@ -6371,7 +6590,7 @@ async def export_participant_invitation_links(
             participant.participant_id,
             build_invitation_link(study.name_short, participant.participant_id),
         ]
-        for participant in participants
+        for participant in invitees
     ]
 
     audit_admin_action(
@@ -6869,6 +7088,7 @@ async def validate_files_in_memory(
                 # Review data: the admin confirms this card before creating, so it
                 # must carry what the study will actually be, not just the counts.
                 "study_name": import_study_payload.name,
+                "report_mode": import_study_payload.report_mode,
                 "allow_unlisted_participants": import_study_payload.allow_unlisted_participants,
                 "is_listed_publicly": import_study_payload.is_listed_publicly,
                 "require_consent": import_study_payload.require_consent,
@@ -7088,6 +7308,20 @@ def apply_participant_assignment(
     @returns Counts keyed by ``assigned`` (newly assigned to this study),
         ``already_assigned`` and ``display_names_updated``.
     """
+    if is_proxy_study(study):
+        # A proxy study's participants are parents and children with links that
+        # only the roster import can write; a plain id list would create rows
+        # that are neither (proxy_studies.md §5). Stated here rather than in the
+        # two endpoints so the paste box and the file upload cannot drift.
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Study '{study.name_short}' is a proxy study: its participants "
+                "come from the parent/child roster upload, not from a plain id "
+                "list."
+            ),
+        )
+
     names = display_names or {}
     summary = {
         "assigned": 0,
@@ -7215,6 +7449,52 @@ async def assign_participants_to_study(
     }
 
 
+async def _import_proxy_roster(
+    *,
+    study: Study,
+    file,
+    dry_run: bool,
+    current_admin: str,
+    session: Session,
+):
+    """The proxy branch of the roster import: parent/child rows plus links.
+
+    Same contract as the self-report path - whole file or nothing, ``dry_run``
+    writes nothing - but the columns are the KI's long format and the ids are
+    grouped into families (``proxy_roster.py``).
+    """
+    try:
+        parsed = parse_delimited_upload(await file.read())
+        families, warnings = parse_proxy_roster(parsed, study)
+    except (DelimitedUploadError, ProxyRosterError) as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    summary = apply_proxy_roster(session, study, families, dry_run=dry_run)
+    if not dry_run:
+        session.commit()
+        audit_admin_action(
+            current_admin,
+            (
+                f"imported proxy roster for study '{study.name_short}' from file "
+                f"'{file.filename}' (format={parsed.format}, "
+                f"families={summary['families']}, "
+                f"children_created={summary['children_created']}, "
+                f"children_updated={summary['children_updated']}, "
+                f"children_unlinked={summary['children_unlinked']})"
+            ),
+        )
+
+    return {
+        "study_name_short": study.name_short,
+        "dry_run": dry_run,
+        "format": parsed.format,
+        "report_mode": study.report_mode,
+        "summary": {**summary, "rows_in_file": len(parsed.rows)},
+        "warnings": warnings,
+        "errors": [],
+    }
+
+
 @app.post(
     "/api/admin/studies/{study_name_short}/import-participants",
     name="Import participants from a CSV/TSV file",
@@ -7256,6 +7536,15 @@ async def import_participants_from_file(
     if not study:
         raise HTTPException(
             status_code=404, detail=f"Study '{study_name_short}' not found"
+        )
+
+    if is_proxy_study(study):
+        return await _import_proxy_roster(
+            study=study,
+            file=file,
+            dry_run=dry_run,
+            current_admin=current_admin,
+            session=session,
         )
 
     try:
@@ -8522,11 +8811,15 @@ async def export_study_participants(
         )
 
     completion_map = _build_participant_completion_map(session, study)
+    roles = roles_for(study_participants, study)
 
     export_data = []
     for study_participant in study_participants:
         record: Dict[str, Any] = {
             "participant_id": study_participant.participant_id,
+            # parent / child / self. Derived from the roster, so it cannot
+            # disagree with who actually fills in a diary.
+            "participant_role": roles.get(study_participant.participant_id),
             # The date the participant joined this study. Kept under the old
             # column name for analyses that already read it; participants have no
             # server-wide record any more.
@@ -8959,6 +9252,96 @@ async def admin_extract_studies(
     return export_json(records, f"admin_studies_{timestamp}", allow_empty=True)
 
 
+#: How many stored values the encryption health check looks at. Small on
+#: purpose: it answers "can this deployment still read what it wrote?", which a
+#: handful of rows settles.
+ENCRYPTION_PROBE_LIMIT = 20
+
+
+@app.get("/api/admin/diagnostics/encryption")
+async def encryption_diagnostics(
+    current_admin: str = Depends(verify_admin),
+    session: Session = Depends(get_session),
+):
+    """Can this deployment read the encrypted columns? (§7.6)
+
+    A wrong or missing key has to be found *before* a parent hits it, and the
+    parent cannot be helped by a fallback: showing a pid instead of a child's
+    name does not tell twins apart. So the check is an admin action that can be
+    run after a key change, a restore or a redeploy.
+
+    Reads at most ``ENCRYPTION_PROBE_LIMIT`` stored names across all studies and
+    reports counts plus the participant ids that failed. It never returns, logs
+    or raises with a name or a token, and it never fails the request: an
+    unreadable value is a finding, not an error.
+
+    @param current_admin Authenticated admin username.
+    @param session Database session dependency.
+    @returns Key count, sampled/decrypted/failed counts, and the failing ids.
+    """
+    try:
+        key_count = len(configured_keys())
+    except EncryptionConfigError as error:
+        key_count = 0
+        config_error = str(error)
+    else:
+        config_error = None
+
+    if key_count == 0:
+        return {
+            "status": "not_configured",
+            "configured_keys": 0,
+            "checked": 0,
+            "decrypted": 0,
+            "failed": 0,
+            "failed_participant_ids": [],
+            "message": config_error
+            or (
+                "No field-encryption key is configured. Encrypted values cannot "
+                "be stored or read."
+            ),
+        }
+
+    sampled = session.exec(
+        select(
+            StudyParticipant.participant_id,
+            StudyParticipant.subject_name_encrypted,
+        )
+        .where(StudyParticipant.subject_name_encrypted.is_not(None))
+        .order_by(StudyParticipant.id)
+        .limit(ENCRYPTION_PROBE_LIMIT)
+    ).all()
+
+    result = probe_encrypted_values(
+        [(participant_id, token) for participant_id, token in sampled]
+    )
+
+    audit_admin_action(
+        current_admin,
+        (
+            "ran the encryption diagnostics "
+            f"(configured_keys={key_count}, checked={result.checked}, "
+            f"failed={result.failed})"
+        ),
+    )
+    return {
+        "status": "ok" if result.failed == 0 else "failures",
+        "configured_keys": key_count,
+        "checked": result.checked,
+        "decrypted": result.decrypted,
+        "failed": result.failed,
+        "failed_participant_ids": list(result.failed_ids),
+        "message": (
+            "All sampled values could be read."
+            if result.failed == 0
+            else (
+                "Some stored names cannot be decrypted with the configured key. "
+                "Check TUD_FIELD_ENCRYPTION_KEYS."
+            )
+        ),
+    }
+
+
 @app.get("/api/admin/participants")
 async def admin_extract_participants(
     study: Optional[List[str]] = Query(
@@ -9055,8 +9438,23 @@ async def admin_extract_participants(
             else {}
         )
 
+        roles = roles_for(study_participants, current_study)
+        children_lookup = children_by_parent(study_participants)
+
         for study_participant in study_participants:
             submitted_at = study_participant.study_submitted_at
+            role = roles.get(study_participant.participant_id)
+            # A parent never submits (decision 15); the family is done when its
+            # children are, which is what the extraction endpoint reports so the
+            # `submitted` filter and `submitted_after` polling stay usable.
+            family_done = (
+                family_finished(children_lookup.get(study_participant.participant_id, []))
+                if role == "parent"
+                else None
+            )
+            effective_submitted = (
+                bool(family_done) if family_done is not None else submitted_at is not None
+            )
 
             if cutoff is not None and (
                 submitted_at is None or _to_utc_naive(submitted_at) < cutoff
@@ -9071,8 +9469,9 @@ async def admin_extract_participants(
                 "study_name": current_study.name,
                 "study_name_short": current_study.name_short,
                 "participant_id": study_participant.participant_id,
+                "participant_role": role,
                 "participant_study_created_at": study_participant.created_at.isoformat(),
-                "submitted": submitted_at is not None,
+                "submitted": effective_submitted,
                 "study_submitted_at": (
                     submitted_at.isoformat() if submitted_at else None
                 ),
@@ -9696,12 +10095,37 @@ class ParticipantExternalTaskResponse(BaseModel):
     locked_reason: Optional[str] = None
 
 
+class ProxyActiveSubjectResponse(BaseModel):
+    """The child whose questionnaire is open right now."""
+
+    participant_id: str
+    #: The child's first name ("Tim"), decrypted for the family's own browser.
+    display_name: Optional[str] = None
+    #: 1-based position in the roster, so the client can say "2 of 3".
+    index: int
+    total: int
+
+
+class ProxyFamilyResponse(BaseModel):
+    """Where the family stands. Absent for a self-report study.
+
+    The client uses this only to *show* progress ("child 2 of 3"). The subject
+    itself is derived by the server on every request, never sent back.
+    """
+
+    active: Optional[ProxyActiveSubjectResponse] = None
+    finished_count: int = 0
+    total: int = 0
+
+
 class StudyConfigResponse(BaseModel):
     study_name: str
     study_name_short: str
     #: The label the diary is filled out for ("Tim"), or None when the study
     #: does not use display names. Display only - `pid` stays the identity.
     participant_display_name: Optional[str] = None
+    #: Proxy studies only: the family's progress, for a "1 of 2" hint.
+    proxy: Optional[ProxyFamilyResponse] = None
     description: Optional[Union[str, Dict[str, str]]] = None
     allow_unlisted_participants: bool
     require_consent: bool = False
@@ -9810,25 +10234,23 @@ def get_study_config(
     if not include_unavailable:
         _ensure_study_is_currently_available(study)
 
-    # Check if participant_id is required
-    if not study.allow_unlisted_participants:
-        # Study restricts participants - participant_id parameter is required
+    # Authorize the id, and refuse a child's id: in a proxy study the id in the
+    # link is a credential, never a subject (proxy_studies.md §8.1). This
+    # endpoint takes the id as a query parameter instead of through the shared
+    # context dependency, so the rule is applied here as well.
+    credential: Optional[StudyParticipant] = None
+    if not study.allow_unlisted_participants or is_proxy_study(study):
         if participant_id is None:
             raise HTTPException(
                 status_code=400,
                 detail="Participant ID is required for this study. "
                 "Please provide 'participant_id' query parameter.",
             )
-
-        # Check if the participant is authorized for this study
-        study_participant = session.exec(
-            select(StudyParticipant).where(
-                StudyParticipant.study_id == study.id,
-                StudyParticipant.participant_id == participant_id,
-            )
-        ).first()
-
-        if not study_participant:
+        try:
+            credential = require_credential_link(session, study, participant_id)
+        except CredentialDenied as error:
+            if error.reason == CredentialDenied.IS_CHILD:
+                raise proxy_denied(error.message) from error
             logger.info(
                 f"Unauthorized participant '{participant_id}' attempted to access study config for '{study_name_short}'"
             )
@@ -9838,7 +10260,24 @@ def get_study_config(
                     "code": "study_access_denied",
                     "message": "You are not authorized to participate in this study.",
                 },
-            )
+            ) from error
+    elif participant_id is not None:
+        credential = _get_study_participant_association(session, study, participant_id)
+
+    # Two identities: the parent (family state) and the active child (the diary).
+    family = None
+    if credential is not None and is_proxy_study(study):
+        try:
+            family = resolve_family(session, study, credential)
+        except ProxyResolutionError as error:
+            raise proxy_denied(str(error)) from error
+    state = family.parent if family is not None else credential
+    subject_id = family.subject.participant_id if family is not None else participant_id
+
+    # The study-wide check above cannot see the family deadline; this one can, so
+    # a closed family gets the same 403 a closed study does.
+    if not include_unavailable and family is not None:
+        ensure_study_is_currently_available(study, family=family)
     normalized_lang = _normalize_language_code(lang)
     selected_language = normalized_lang or study.default_language
     supported_languages: List[str] = _get_study_blob_languages(session, study.id) or [
@@ -9914,28 +10353,30 @@ def get_study_config(
     )
     require_consent = bool(study.require_consent)
 
+    # Consent and instructions are family-level in a proxy study (decision 14),
+    # so they are read from the parent's row; the diary state is the child's.
     consent_given = None
     consent_decided_at = None
     instructions_completed = False
     instructions_completed_at = None
     study_submitted_at = None
     skipped_at = None
-    study_participant = None
-    if participant_id is not None:
-        study_participant = _get_study_participant_association(
-            session, study, participant_id
-        )
-        if study_participant:
-            consent_given = study_participant.consent_given
-            consent_decided_at = study_participant.consent_decided_at
-            instructions_completed = bool(study_participant.instructions_completed)
-            instructions_completed_at = study_participant.instructions_completed_at
-            study_submitted_at = study_participant.study_submitted_at
-            skipped_at = study_participant.skipped_at
+    if state is not None:
+        consent_given = state.consent_given
+        consent_decided_at = state.consent_decided_at
+        instructions_completed = bool(state.instructions_completed)
+        instructions_completed_at = state.instructions_completed_at
+    diary_owner = family.subject if family is not None else state
+    if diary_owner is not None:
+        study_submitted_at = diary_owner.study_submitted_at
+        skipped_at = diary_owner.skipped_at
 
-    participant_display_name = (
-        study_participant.display_name if study_participant else None
-    )
+    if family is not None:
+        participant_display_name = resolve_display_name(family.subject)
+    elif state is not None:
+        participant_display_name = resolve_display_name(state)
+    else:
+        participant_display_name = None
     # Study texts may reference the person the diary is for. Substitution runs
     # here, after the language was resolved and before the client renders the
     # text as Markdown, and every participant-facing text gets the same values.
@@ -9963,37 +10404,74 @@ def get_study_config(
     )
 
     participant_external_tasks = _get_participant_external_tasks(
-        session, study, participant_id, selected_language, len(day_labels)
+        session, study, subject_id, selected_language, len(day_labels)
     )
     all_external_tasks_confirmed = bool(participant_external_tasks) and all(
         external_task.is_confirmed for external_task in participant_external_tasks
     )
-    participant_has_completed_study = _is_participant_study_complete(
-        session=session,
-        study=study,
-        participant_id=participant_id,
-        study_days_count=len(day_labels),
-    )
+    if family is not None:
+        # "Done" for a family means every child is finished (decision 17), not
+        # that one row carries a submission timestamp (decision 15).
+        participant_has_completed_study = family.finished
+    else:
+        participant_has_completed_study = _is_participant_study_complete(
+            session=session,
+            study=study,
+            participant_id=participant_id,
+            study_days_count=len(day_labels),
+        )
 
-    availability = study_availability(study)
-    placement = stages.resolve_placement(
-        available=availability.available,
-        unavailable_reason=availability.reason,
-        require_consent=require_consent,
-        consent_given=consent_given,
-        require_instructions=bool(study_text_instructions),
-        instructions_completed=instructions_completed,
-        submitted=participant_has_completed_study,
-        pending_external_tasks=sum(
-            1
-            for external_task in participant_external_tasks
-            if not external_task.is_confirmed
-        ),
-        skipped=skipped_at is not None,
-        require_diary_before_external_tasks=bool(
-            study.require_diary_before_external_tasks
-        ),
-    )
+    if family is not None:
+        # Same function the diary endpoints use, so the stage a parent sees here
+        # and the stage a submit returns cannot disagree.
+        placement = stages.stage_for_family(
+            session, study, family, selected_language
+        )
+    else:
+        availability = study_availability(study)
+        placement = stages.resolve_placement(
+            available=availability.available,
+            unavailable_reason=availability.reason,
+            require_consent=require_consent,
+            consent_given=consent_given,
+            require_instructions=bool(study_text_instructions),
+            instructions_completed=instructions_completed,
+            submitted=participant_has_completed_study,
+            pending_external_tasks=sum(
+                1
+                for external_task in participant_external_tasks
+                if not external_task.is_confirmed
+            ),
+            skipped=skipped_at is not None,
+            require_diary_before_external_tasks=bool(
+                study.require_diary_before_external_tasks
+            ),
+        )
+
+    proxy_payload = None
+    if family is not None:
+        children = family.children
+        active = family.active
+        proxy_payload = ProxyFamilyResponse(
+            active=(
+                ProxyActiveSubjectResponse(
+                    participant_id=active.participant_id,
+                    display_name=resolve_display_name(active),
+                    index=next(
+                        position
+                        for position, child in enumerate(children, start=1)
+                        if child.participant_id == active.participant_id
+                    ),
+                    total=len(children),
+                )
+                if active is not None
+                else None
+            ),
+            finished_count=sum(
+                1 for child in children if child.study_submitted_at is not None
+            ),
+            total=len(children),
+        )
 
     # Resolve localized study description for the selected language when possible
     localized_description = _get_localized_study_text(
@@ -10009,6 +10487,7 @@ def get_study_config(
         study_name=study.name,
         study_name_short=study.name_short,
         participant_display_name=participant_display_name,
+        proxy=proxy_payload,
         description=localized_description,
         allow_unlisted_participants=study.allow_unlisted_participants,
         require_consent=require_consent,
@@ -10413,6 +10892,7 @@ def complete_participant_instructions(
     participant_id: str,
     payload: CompleteInstructionsPayload,
     session: Session = Depends(get_session),
+    context: ParticipantContext = Depends(get_participant_context),
     participant_session: Optional[ParticipantSessionContext] = Depends(
         require_participant_session
     ),
@@ -10426,7 +10906,7 @@ def complete_participant_instructions(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    association = _get_study_participant_association(session, study, participant_id)
+    association = _state_participant(context, session, study, participant_id)
     if not association:
         if not study.allow_unlisted_participants:
             raise HTTPException(
@@ -10457,6 +10937,7 @@ async def set_participant_consent(
     participant_id: str,
     payload: UpdateConsentRequest,
     session: Session = Depends(get_session),
+    context: ParticipantContext = Depends(get_participant_context),
     participant_session: Optional[ParticipantSessionContext] = Depends(
         require_participant_session
     ),
@@ -10470,12 +10951,7 @@ async def set_participant_consent(
             status_code=404, detail=f"Study '{study_name_short}' not found"
         )
 
-    association = session.exec(
-        select(StudyParticipant).where(
-            StudyParticipant.study_id == study.id,
-            StudyParticipant.participant_id == participant_id,
-        )
-    ).first()
+    association = _state_participant(context, session, study, participant_id)
 
     if association is None:
         if not study.allow_unlisted_participants:
@@ -10566,6 +11042,7 @@ def submit_participant_client_info(
     payload: ClientInfoSubmitRequest,
     request: Request,
     session: Session = Depends(get_session),
+    context: ParticipantContext = Depends(get_participant_context),
     participant_session: Optional[ParticipantSessionContext] = Depends(
         require_participant_session
     ),
@@ -10628,8 +11105,9 @@ def submit_participant_client_info(
     _ensure_study_is_currently_available(study)
 
     # Resolve the association, mirroring the consent/instructions endpoints:
-    # open studies auto-create it, closed studies require authorization.
-    association = _get_study_participant_association(session, study, participant_id)
+    # open studies auto-create it, closed studies require authorization, and a
+    # proxy study writes it to the parent's row.
+    association = _state_participant(context, session, study, participant_id)
 
     if association is None and not study.allow_unlisted_participants:
         logger.info(

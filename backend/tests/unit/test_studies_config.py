@@ -2,8 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
-from o_timeusediary_backend.parsers.studies_config import load_studies_config
+from o_timeusediary_backend.parsers.studies_config import (
+    CfgFileStudies,
+    load_studies_config,
+)
 
 
 def _valid_studies_payload() -> dict:
@@ -1232,3 +1236,82 @@ def test_load_studies_config_rejects_an_empty_day_group(tmp_path):
 
     with pytest.raises(ValueError, match="at least one day"):
         load_studies_config(str(config_file))
+
+
+# ── Proxy studies (report_mode) ────────────────────────────────────────────
+
+
+def _proxy_study_payload(**overrides) -> dict:
+    """A minimal closed study; proxy-specific keys arrive via ``overrides``."""
+    payload = {
+        "name": "Proxy Study",
+        "name_short": "proxy_study",
+        "day_labels": [
+            {"name": "day1", "display_order": 0, "display_names": {"en": "Day 1"}}
+        ],
+        "study_participant_ids": [],
+        "allow_unlisted_participants": False,
+        "default_language": "en",
+        "supported_languages": ["en"],
+        "activities_json_data": {"en": _minimal_activities_payload([100])},
+        "data_collection_start": "2024-01-01T00:00:00Z",
+        "data_collection_end": "2028-12-31T23:59:59Z",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_report_mode_defaults_to_self():
+    studies = CfgFileStudies(
+        studies=[_proxy_study_payload(allow_unlisted_participants=True)]
+    )
+
+    assert studies.studies[0].report_mode == "self"
+
+
+def test_a_closed_proxy_study_parses():
+    studies = CfgFileStudies(studies=[_proxy_study_payload(report_mode="proxy")])
+
+    assert studies.studies[0].report_mode == "proxy"
+
+
+def test_a_proxy_study_cannot_be_open():
+    with pytest.raises(ValidationError, match="always invitation-only"):
+        CfgFileStudies(
+            studies=[
+                _proxy_study_payload(
+                    report_mode="proxy", allow_unlisted_participants=True
+                )
+            ]
+        )
+
+
+def test_a_proxy_study_can_never_be_public():
+    """Both doors are shut: it is closed, and a listed study must be open."""
+    with pytest.raises(ValidationError, match="always invitation-only"):
+        CfgFileStudies(
+            studies=[
+                _proxy_study_payload(
+                    report_mode="proxy", allow_unlisted_participants=True
+                )
+            ]
+        )
+
+    with pytest.raises(ValidationError, match="requires an open study"):
+        CfgFileStudies(
+            studies=[_proxy_study_payload(report_mode="proxy", is_listed_publicly=True)]
+        )
+
+
+def test_a_proxy_study_takes_its_participants_from_the_roster_upload():
+    with pytest.raises(ValidationError, match="roster upload"):
+        CfgFileStudies(
+            studies=[
+                _proxy_study_payload(report_mode="proxy", study_participant_ids=["p1"])
+            ]
+        )
+
+
+def test_an_unknown_report_mode_is_rejected():
+    with pytest.raises(ValidationError, match="report_mode must be one of"):
+        CfgFileStudies(studies=[_proxy_study_payload(report_mode="teacher")])

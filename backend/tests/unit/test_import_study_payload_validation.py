@@ -654,3 +654,48 @@ def test_import_payload_requires_the_day_group_name_in_the_default_language():
 
     with pytest.raises(ValidationError, match='default language "en"'):
         ImportStudiesConfigStudy(**payload)
+
+
+# ── Proxy studies (report_mode) ────────────────────────────────────────────
+
+
+def _proxy_payload(**overrides):
+    payload = _base_payload()
+    payload["activities_json_data"] = {"en": _minimal_activities_payload([100])}
+    payload["report_mode"] = "proxy"
+    # A proxy study is always closed; tests that need it open say so explicitly.
+    payload["allow_unlisted_participants"] = False
+    payload.update(overrides)
+    return payload
+
+
+def test_validate_import_payload_rejects_an_open_proxy_study():
+    study_payload = ImportStudiesConfigStudy(
+        **_proxy_payload(allow_unlisted_participants=True)
+    )
+
+    with pytest.raises(ValueError, match="always invitation-only"):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_rejects_config_participants_in_a_proxy_study():
+    study_payload = ImportStudiesConfigStudy(
+        **_proxy_payload(study_participant_ids=["parent_01"])
+    )
+
+    with pytest.raises(ValueError, match="roster upload"):
+        _validate_import_study_payload(study_payload)
+
+
+def test_validate_import_payload_accepts_a_closed_proxy_study():
+    study_payload = ImportStudiesConfigStudy(**_proxy_payload())
+
+    _validate_import_study_payload(study_payload)  # does not raise
+
+
+def test_validate_import_payload_rejects_an_unknown_report_mode():
+    with pytest.raises(ValueError, match="report_mode must be one of"):
+        study_payload = ImportStudiesConfigStudy(
+            **_proxy_payload(report_mode="teacher")
+        )
+        _validate_import_study_payload(study_payload)

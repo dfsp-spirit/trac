@@ -1,7 +1,7 @@
 # Proxy Studies — Implementation Plan
 
 Status: draft for review, 2026-11-27. Not yet started.
-Progress: **A and B done** (crypto seam + migration `0025_add_proxy_studies`, both tested) · C–K not started.
+Progress: **A–J done, K partially** — implemented 2026-11-27. Verified: 657 unit tests, 283 integration tests (including the §7 acceptance scenarios), 29 migration tests, 383 frontend unit tests plus architecture and typecheck. Not verified: the copy offer in a real browser.
 Derived from [proxy_studies.md](./proxy_studies.md) — the decision record (decisions 1–25). That file says *what* and *why*; this one says *in what order*, *which files*, and *how it is tested*.
 
 Phases A–K are independently shippable and each ends green. A, B and C can run in parallel; D depends on B; E–I depend on D; J depends on E; K is last.
@@ -78,6 +78,8 @@ Columns are listed in §3. `models.py` gets the fields, the composite FK, the CH
 
 **Tests:** unit — proxy + open is a `ValueError` with an actionable message; proxy + listed is refused; the three accepted combinations parse. Integration — create a proxy study, export the runtime config, re-import it, assert the mode survived (`test_admin_export_import_roundtrip.py`).
 
+> Done 2026-11-27. `report_mode` is a config-file field, an import-payload field and part of the runtime-config export; `validate_report_mode` refuses an open study and config-file participants, and the mode cannot change once a study has participants (`database.py`). 8 new unit tests; the "no participants in a proxy config" rule also removes the only way to create half-linked participants outside the roster import. The round-trip assertion is in the integration test but was **not executed** here (needs a running backend).
+
 ---
 
 ### Phase D — Identity resolution and enforcement (the core)
@@ -100,13 +102,23 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 
 **Tests:** the acceptance criterion directly — a child pid gets 403 on the diary read, the diary write, study-config and activities-config; the parent pid gets 200 and the child's name; a self-report study is byte-for-byte unchanged (existing suite green).
 
+> Done 2026-11-27. `proxy_families.py` (resolution + one definition of "finished"), `ParticipantContext` split into credential/subject/family, refusals on all three resolution points, sessions keyed by the credential, and `participant_display_name()` as the single name resolver. 12 new unit tests.
+>
+> Two deliberate additions to the plan's scope, both to avoid a split identity:
+> * `study-config` already reads consent/instructions from the **parent** row and `submitted` from `family.finished`; leaving that to Phase E would have made the same request resolve to two different identities.
+> * `apply_participant_assignment` refuses proxy studies outright until Phase G — otherwise the paste box and the old upload path create participants that are neither parent nor child.
+>
+> **The HTTP-level acceptance test is not written yet**: it needs a proxy study *with a roster*, which only Phase G can create through the API. It lands there, together with the sequence scenarios in §7.
+
 ---
 
 ### Phase E — Sequence and stage
 
+> Done 2026-11-27. `stages.stage_for_family` (reads the children's rows, not the cached answer), the `proxy` block in `StudyConfigResponse` (`active` with id/name/index/total, `finished_count`, `total`), and `deadline_passed` as the availability reason that wins over `ended`.
+
 **Files:** `stages.py`, `api.py` (`StudyConfigResponse`, the study-config handler), `api_deps/diary_access.py` (`study_availability_for`).
 
-- The parent's stage is `resolve_placement(available, consent=family, instructions=family, submitted=family_finished, skipped=family_skipped)` — **no new stage value** and no new client route.
+- The parent's stage is `resolve_placement(available, consent=family, instructions=family, submitted=family_finished, skipped=family_skipped)` — **no new stage value** and no new client route. (Phase D already feeds the family values into `study-config`; what remains here is the response block and the done-reason refinement.)
 - `done_reason`: `completed` if at least one child was submitted, `skipped` only if every child was skipped. Both render the same proxy end text (decision 23).
 - `StudyConfigResponse` gains an optional `proxy` block: `{"active": {"participant_id", "display_name", "index", "total"}, "finished", "total"}`. `participant_display_name` is filled from the resolver, so "For: Tim" and the tab title keep working without client changes.
 - `study_availability_for(study, family)` = the existing window check **and** the family deadline, with `deadline_passed` as a new `unavailable_reason` that wins over `ended` for the message.
@@ -116,6 +128,8 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 ---
 
 ### Phase F — Submit, skip, deadline
+
+> Done 2026-11-27. Submit accepts the child (deadline-guarded) and returns the family's stage; skip fans out to every unfinished child with the same reason; consent, instructions and client-info write the parent row. `deadline_passed` blocks saves, submits and skips.
 
 **Files:** `api_diary.py`, `api.py` (consent, instructions, client-info), `api_deps/diary_access.py`.
 
@@ -129,6 +143,8 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 ---
 
 ### Phase G — Roster import (long format)
+
+> Done 2026-11-27. `proxy_roster.py` (parse → validate → decrypt → validate name → re-encrypt → apply), the proxy branch of `import-participants`, `tud roster encrypt`, demo data under `backend/testdata/proxy/` plus `studies_config_proxy_demo.json`, and `tests/integration/test_proxy_studies.py` with the §7 acceptance scenarios - all green against a real backend and database.
 
 **Files:** `api.py` (`import_participants_from_file`, `apply_participant_assignment` or a new `apply_proxy_roster`), `tabular_files.py` (unchanged), `cli.py` (roster generator), `templates/admin_file_validation.html`.
 
@@ -144,12 +160,15 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 
 ### Phase H — Exports, role column, admin diagnostics
 
+> Done 2026-11-27. `participant_role` on both participant endpoints, the parent's `submitted` derived from its children, invitation links for parents only, the `proxy_roster` block in the runtime-config export (ciphertext names, and `study_participant_ids` empty for a proxy study so a restore is lossless), the import side of that block, and `GET /api/admin/diagnostics/encryption` with a section on the admin tools page.
+
 **Files:** `api.py` (participant export, extraction endpoints, invitation links, runtime config), `templates/admin_participant_management.html`, `templates/admin_tools.html`.
 
 - `participant_role` (`parent` / `child` / `self`, the KI's wording) on `/api/admin/participants` and `/api/admin/export/{study}/participants`. A parent's `submitted` is **derived** from its children (decision 15) so the filter and `submitted_after` polling stay usable.
 - Activity export and science CSV: unchanged, and now guarded — a test asserts no name and no `*_encrypted` column reaches any export.
 - `export-invitation-links` emits **parent rows only** (decision §8.3); a child link must not exist.
 - Runtime config: families, links, ciphertext names and the deadline, so a restore is lossless with the same key.
+  **Known gap until this phase lands:** the export already lists a proxy study's parents and children in `study_participant_ids`, while `validate_report_mode` refuses config-file participants for a proxy study. A backup of a proxy study that has a roster therefore fails to re-import *loudly* ("roster upload") instead of losing the links. Adding the roster block is what closes it — do not "fix" it by emitting an empty id list, which would be silent data loss.
 - Admin participant page hides the name column for proxy studies and searches on ids (decision 22).
 - New `GET /api/admin/diagnostics/encryption`: configured key count, sampled rows, ok/failed counts, failing participant ids — never a name, never a token, never raises. Surfaced as a section on `admin_tools.html`.
 
@@ -158,6 +177,8 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 ---
 
 ### Phase I — Template copy
+
+> Done 2026-11-27. `POST .../template-copy` copies every day of the most recently finished sibling into an empty target, one `group_id`, refused otherwise.
 
 **Files:** `api_diary.py` (new endpoint), `api.py` (route registration if needed).
 
@@ -168,6 +189,8 @@ Refusals: a participant id that is a *subject* of any family → 403 for every p
 ---
 
 ### Phase J — Frontend
+
+> Done 2026-11-27. The subject-change reset in `stageMachine` (`diaryMounted` was never reset, so the next child's screen kept the previous child's entries), `load({ resetDay })`, and the copy offer in the diary's notice area (`ui/templateCopy.js` + `domain/templateCopy.js`, offered once per child). Verified with the frontend suite (383 tests, architecture and typecheck green); the offer itself was not exercised in a browser.
 
 **Files:** `frontend/src/js/ui/stageMachine.js`, `domain/displayName.js` (unchanged), `ui/shellChrome.js` (unchanged), `ui/copyDayDialog.js` / new `ui/templateCopy.js`, `locales/en.json`, `locales/de.json`, `locales/sv.json`, `frontend/tests/unit/`.
 
@@ -182,6 +205,8 @@ Remaining work: the template-copy offer (a dialog on first load of an empty chil
 ---
 
 ### Phase K — Docs
+
+> Partially done 2026-11-27: `README_CREATE_STUDY.md` (proxy section), `docs/agents/backend.md`, `.env.example`, `CHANGES`. Outstanding: `docs/agents/database.md` (migration 0025) and closing sub-issues #163–#166.
 
 `README_CREATE_STUDY.md` (proxy study section), `docs/agents/backend.md` (identity resolution, the three enforcement points), `docs/agents/database.md` (0025), `.env.example` (the key), `CHANGES`.
 

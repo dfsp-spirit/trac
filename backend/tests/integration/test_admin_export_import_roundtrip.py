@@ -663,6 +663,9 @@ async def test_runtime_export_is_lossless_for_every_backup_field():
                 "sv": "Studieinformation",
             }
             assert split_study["hide_server_wide_links"] is True
+            # A restore that dropped the mode would silently reinterpret every
+            # participant of a proxy study as a self-reporting diary owner.
+            assert split_study["report_mode"] == "self"
             assert split_study["day_labels"][0]["display_names"] == {
                 "en": "Monday",
                 "sv": "Måndag",

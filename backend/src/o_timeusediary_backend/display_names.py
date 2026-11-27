@@ -30,6 +30,8 @@ from __future__ import annotations
 import unicodedata
 from typing import Any, Mapping, Optional, Sequence
 
+from .encrypted_fields import decrypt_text
+
 DISPLAY_NAME_MAX_LENGTH = 50
 
 # Rendered into the admin UI so the hint cannot drift from the rule.
@@ -217,3 +219,23 @@ def validate_participant_display_names(
         except InvalidDisplayNameError as error:
             raise ValueError(str(error)) from error
     return normalized
+
+
+def participant_display_name(participant: Any) -> Optional[str]:
+    """The name to show for a participant, plaintext or decrypted.
+
+    Two storage slots exist because a proxy child's name is encrypted at rest
+    (``dev_tools/plans/proxy_studies.md`` §7): ``subject_name_encrypted`` holds a
+    token and ``display_name`` holds the plaintext of a self-report study. This
+    is the only function that decides between them, so the study-config payload,
+    the admin views and the runtime-config backup cannot disagree - and nothing
+    else has to know that a name can be ciphertext.
+
+    @param participant A ``StudyParticipant``-like row.
+    @returns The name, or None when the participant has none.
+    @raises encrypted_fields.DecryptionError When the token is unreadable.
+    """
+    token = getattr(participant, "subject_name_encrypted", None)
+    if token:
+        return decrypt_text(token)
+    return getattr(participant, "display_name", None)

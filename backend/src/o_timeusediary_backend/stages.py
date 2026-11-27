@@ -37,6 +37,7 @@ from sqlalchemy import func
 from sqlmodel import Session, select
 
 from .api_deps.diary_access import study_availability
+from .proxy_families import ProxyFamily
 from .models import (
     Study,
     StudyExternalTask,
@@ -178,6 +179,55 @@ def stage_for_participant(
             session, study, participant_id
         ),
         skipped=bool(link and link.skipped_at is not None),
+        require_diary_before_external_tasks=bool(
+            study.require_diary_before_external_tasks
+        ),
+    )
+
+
+def family_skipped(family: ProxyFamily) -> bool:
+    """Whether the family finished by skipping everything.
+
+    Only used for ``done_reason``: a mixed family (one questionnaire submitted,
+    one skipped) counts as completed, because the family did hand in data
+    (decision 17 leaves the exclusion to the analysis).
+    """
+    return all(child.skipped_at is not None for child in family.children)
+
+
+def stage_for_family(
+    session: Session,
+    study: Study,
+    family: ProxyFamily,
+    language: Optional[str] = None,
+) -> Placement:
+    """The parent's stage: decided by the family, not by one row (decision 14-17).
+
+    Consent and instructions are family-level, so they come from the parent's
+    row; "submitted" means every child is finished, which is what makes the
+    parent reach the thank-you page exactly once, after the last questionnaire.
+    Deliberately no new stage value and no new client route.
+    """
+    availability = study_availability(study, family=family)
+    # Read the children rather than ``family.active``: after a submit or skip the
+    # cached answer is stale, while the rows are refreshed by the session.
+    finished = all(child.study_submitted_at is not None for child in family.children)
+    return resolve_placement(
+        available=availability.available,
+        unavailable_reason=availability.reason,
+        require_consent=bool(study.require_consent),
+        consent_given=family.parent.consent_given,
+        require_instructions=bool(
+            localized_study_text(study, "study_text_instructions", language)
+        ),
+        instructions_completed=bool(family.parent.instructions_completed),
+        submitted=finished,
+        # External tasks are per participant; the parent holds the login and is
+        # the one who would follow a task link.
+        pending_external_tasks=pending_external_task_count(
+            session, study, family.credential_participant_id
+        ),
+        skipped=finished and family_skipped(family),
         require_diary_before_external_tasks=bool(
             study.require_diary_before_external_tasks
         ),

@@ -37,6 +37,11 @@ if [ ! -d "backend/tests/integration" ]; then
 fi
 
 PORT="${TUD_INTEGRATION_TEST_PORT:-8010}"
+# The proxy tests encrypt a roster and the backend decrypts it, so both sides
+# need the same key. A fixed test value keeps the suite self-contained; a real
+# deployment gets its key from .env.
+FIELD_ENCRYPTION_KEYS="${TUD_FIELD_ENCRYPTION_KEYS:-dHJhYy11bml0LXRlc3Qta2V5LTMyYnl0ZXMtcGFkISE=}"
+export FIELD_ENCRYPTION_KEYS
 BASE_URL="http://127.0.0.1:${PORT}"
 CONTAINER_NAME="${TUD_TEST_DB_CONTAINER:-tud_integration_test_db}"
 DB_IMAGE="${TUD_TEST_DB_IMAGE:-postgres:18}"
@@ -118,7 +123,9 @@ else
 fi
 
 echo "Starting a throwaway backend on ${BASE_URL}..."
-TUD_DATABASE_URL="${TEST_DATABASE_URL}" uv run uvicorn o_timeusediary_backend.api:app \
+TUD_DATABASE_URL="${TEST_DATABASE_URL}" \
+    TUD_FIELD_ENCRYPTION_KEYS="${FIELD_ENCRYPTION_KEYS}" \
+    uv run uvicorn o_timeusediary_backend.api:app \
     --host 127.0.0.1 --port "${PORT}" --log-level warning &
 BACKEND_PID=$!
 
@@ -136,4 +143,5 @@ done
 echo "Running backend integration tests"
 echo "IMPORTANT: the tests run against a disposable database, not backend/.env."
 TUD_DATABASE_URL="${TEST_DATABASE_URL}" TUD_BASE_SCHEME="${BASE_URL}" \
+    TUD_FIELD_ENCRYPTION_KEYS="${FIELD_ENCRYPTION_KEYS}" \
     uv run pytest tests/integration "$@"

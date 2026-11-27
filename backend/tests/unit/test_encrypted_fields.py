@@ -146,7 +146,7 @@ def test_missing_key_is_a_configuration_error(monkeypatch):
         ef.decrypt_text("v1.AAAA")
 
     with pytest.raises(ef.EncryptionConfigError):
-        ef.probe(["v1.AAAA"])
+        ef.probe([("p1", "v1.AAAA")])
 
 
 @pytest.mark.parametrize(
@@ -223,13 +223,19 @@ def test_probe_counts_and_skips_empty_values(monkeypatch):
     unreadable = ef.encrypt_text("Tim")
 
     _set_keys(monkeypatch, TEST_KEY)
-    result = ef.probe([good, unreadable, None, ""])
+    result = ef.probe(
+        [("p1", good), ("p2", unreadable), ("p3", None), ("p4", "")]
+    )
 
-    assert result == ef.ProbeResult(checked=2, decrypted=1, failed=1)
+    assert result == ef.ProbeResult(
+        checked=2, decrypted=1, failed=1, failed_ids=("p2",)
+    )
 
 
 def test_probe_on_an_empty_sample_reports_nothing_checked(keyed):
-    assert ef.probe([]) == ef.ProbeResult(checked=0, decrypted=0, failed=0)
+    assert ef.probe([]) == ef.ProbeResult(
+        checked=0, decrypted=0, failed=0, failed_ids=()
+    )
 
 
 def test_decode_incoming_uses_the_same_envelope_for_now(keyed):

@@ -30,6 +30,7 @@ from sqlmodel import Session, delete, select
 
 from .api_deps.available_activities import get_study_activities_config_model
 from .api_deps.diary_access import (
+    ensure_before_deadline,
     DiaryContext,
     ensure_study_participant_row,
     get_readable_diary_context,
@@ -50,7 +51,7 @@ from .parsers.activities_config import (
 
 from .database import get_session
 from .models import Activity, DayLabel, Study, Timeline
-from .stages import stage_for_participant
+from .stages import stage_for_family, stage_for_participant
 from .utils import utc_now
 
 logger = logging.getLogger(__name__)
@@ -137,6 +138,19 @@ class UpdateActivityRequest(BaseModel):
 # --------------------------------------------------------------------------- #
 # Study layout helpers
 # --------------------------------------------------------------------------- #
+def _next_stage(session: Session, context: DiaryContext) -> str:
+    """The stage to show after a mutation: the family's in a proxy study.
+
+    One helper so submit and skip cannot report different answers, and so the
+    proxy case is decided in one place instead of at every call site.
+    """
+    if context.family is not None:
+        return stage_for_family(session, context.study, context.family).stage
+    return stage_for_participant(
+        session, context.study, context.study_participant.participant_id
+    ).stage
+
+
 def _ordered_day_labels(session: Session, study: Study) -> List[DayLabel]:
     day_labels = session.exec(
         select(DayLabel).where(DayLabel.study_id == study.id)
@@ -259,7 +273,10 @@ def _crosses_day_window(row: Activity, day_start_minutes: int) -> bool:
     ``end_minutes > MINUTES_PER_DAY`` would only be right for a 00:00 day start.
     """
     duration = row.end_minutes - row.start_minutes
-    return to_day_relative(row.start_minutes, day_start_minutes) + duration > MINUTES_PER_DAY
+    return (
+        to_day_relative(row.start_minutes, day_start_minutes) + duration
+        > MINUTES_PER_DAY
+    )
 
 
 def _duplicate_exists(
@@ -368,7 +385,10 @@ def _row_uuid(client_uuid: Optional[str], day_index: int) -> str:
 
 
 def _activity_rows(
-    session: Session, study: Study, participant_id: str, timeline_id: Optional[int] = None
+    session: Session,
+    study: Study,
+    participant_id: str,
+    timeline_id: Optional[int] = None,
 ) -> List[Activity]:
     statement = (
         select(Activity)
@@ -389,7 +409,9 @@ def _activity_rows(
 
 def _timeline_names(session: Session, study: Study) -> Dict[int, str]:
     """``{timeline_id: key}`` so a row can say which timeline it belongs to."""
-    timelines = session.exec(select(Timeline).where(Timeline.study_id == study.id)).all()
+    timelines = session.exec(
+        select(Timeline).where(Timeline.study_id == study.id)
+    ).all()
     return {int(timeline.id): timeline.name for timeline in timelines}
 
 
@@ -412,7 +434,9 @@ def _validate_codes_and_frequency(
         return codes_by_timeline.get(item.timeline_key or "", all_codes)
 
     invalid = [
-        item.activity_code for item in items if item.activity_code not in allowed_codes(item)
+        item.activity_code
+        for item in items
+        if item.activity_code not in allowed_codes(item)
     ]
     if invalid:
         raise HTTPException(
@@ -588,13 +612,15 @@ def submit_diary(
     study = context.study
     participant = context.study_participant
 
+    # Decision 16: the family deadline blocks submitting too - a family that did
+    # not submit in time did not submit.
+    ensure_before_deadline(study, context.family)
+
     if participant.study_submitted_at is not None:
         return {
             "study_submitted_at": participant.study_submitted_at.isoformat(),
             "already_submitted": True,
-            "stage": stage_for_participant(
-                session, study, participant.participant_id
-            ).stage,
+            "stage": _next_stage(session, context),
         }
 
     rows = _activity_rows(session, study, participant.participant_id)
@@ -625,10 +651,9 @@ def submit_diary(
     return {
         "study_submitted_at": submitted_at.isoformat(),
         "already_submitted": False,
-        # `tasks` when external tasks are still owed, otherwise `done` (D37).
-        "stage": stage_for_participant(
-            session, study, participant.participant_id
-        ).stage,
+        # `diary` while another child is unfinished, `tasks` when external tasks
+        # are owed, otherwise `done` (D37) - the family decides.
+        "stage": _next_stage(session, context),
     }
 
 
@@ -703,8 +728,60 @@ def skip_diary(
     note = (payload.reason_note or "").strip() or None
 
     # A first write from an open study still has to create the association;
-    # the readable context hands out an unsaved stand-in on purpose.
+    # the readable context hands out an unsaved stand-in on purpose. A proxy
+    # study never has a stand-in: the roster created every row.
     ensure_study_participant_row(session, participant)
+
+    # Decision 16: skipping is a family action and stops at the deadline too.
+    ensure_before_deadline(study, context.family)
+
+    if context.family is not None:
+        # Decision 17: the parent abandons the *study*, not one twin - every
+        # still-unfinished child is closed with the same reason. Children that
+        # were submitted normally keep their submission.
+        targets = [
+            child
+            for child in context.family.children
+            if child.study_submitted_at is None
+        ]
+        if not targets:
+            closed = context.family.subject
+            return {
+                "study_submitted_at": closed.study_submitted_at.isoformat(),
+                "skipped_at": (
+                    closed.skipped_at.isoformat() if closed.skipped_at else None
+                ),
+                "already_closed": True,
+                "skipped_children": [],
+                "stage": _next_stage(session, context),
+            }
+
+        closed_at = utc_now()
+        for child in targets:
+            child.study_submitted_at = closed_at
+            child.skipped_at = closed_at
+            child.skip_reason_code = reason_code
+            child.skip_note = note
+            session.add(child)
+        session.commit()
+        for child in targets:
+            session.refresh(child)
+
+        skipped_ids = [child.participant_id for child in targets]
+        logger.info(
+            "Proxy family '%s' skipped the diaries of study '%s' for %s (reason=%s)",
+            context.family.credential_participant_id,
+            study.name_short,
+            skipped_ids,
+            reason_code or "not given",
+        )
+        return {
+            "study_submitted_at": closed_at.isoformat(),
+            "skipped_at": closed_at.isoformat(),
+            "already_closed": False,
+            "skipped_children": skipped_ids,
+            "stage": _next_stage(session, context),
+        }
 
     # Already closed: report what is stored instead of overwriting it. A diary
     # submitted the normal way is not turned into a skipped one.
@@ -715,9 +792,7 @@ def skip_diary(
                 participant.skipped_at.isoformat() if participant.skipped_at else None
             ),
             "already_closed": True,
-            "stage": stage_for_participant(
-                session, study, participant.participant_id
-            ).stage,
+            "stage": _next_stage(session, context),
         }
 
     closed_at = utc_now()
@@ -742,9 +817,115 @@ def skip_diary(
         "study_submitted_at": participant.study_submitted_at.isoformat(),
         "skipped_at": skipped_at.isoformat(),
         "already_closed": False,
-        "stage": stage_for_participant(
-            session, study, participant.participant_id
-        ).stage,
+        "stage": _next_stage(session, context),
+    }
+
+
+@router.post("/template-copy", status_code=201)
+def copy_previous_questionnaire(
+    context: DiaryContext = Depends(get_writable_diary_context),
+    session: Session = Depends(get_session),
+):
+    """Seed this child's empty questionnaire from a sibling's (decision 18).
+
+    The convenience for parents filling in several children: the diary of an
+    already finished sibling is copied verbatim, all days in one transaction
+    under one ``group_id``, so the existing undo removes the whole copy.
+
+    Deliberately narrow:
+
+    * proxy studies only - a self-report participant has no sibling;
+    * the target must be empty, so a copy never overwrites work;
+    * the source is the most recently finished sibling of the same family, so a
+      parent can never reach across families;
+    * **no provenance is stored** (decision 18). A copied questionnaire is not
+      independent data, and nothing in the export says so - that is a documented
+      consequence for the analysis, not an oversight.
+
+    @returns How many rows were copied, the undo group and the source id.
+    """
+    if context.family is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "template_copy.not_proxy_study",
+                "message": "Copying a questionnaire is only available in a proxy study.",
+            },
+        )
+
+    study = context.study
+    target_id = context.study_participant.participant_id
+
+    if _activity_rows(session, study, target_id):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "template_copy.target_not_empty",
+                "message": "This questionnaire already has entries.",
+            },
+        )
+
+    source = None
+    for child in context.family.children:
+        if child.participant_id == target_id:
+            continue
+        if child.study_submitted_at is not None:
+            source = child
+    if source is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "template_copy.no_source",
+                "message": "There is no finished questionnaire to copy from yet.",
+            },
+        )
+
+    source_rows = _activity_rows(session, study, source.participant_id)
+    if not source_rows:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "template_copy.no_source_data",
+                "message": "The finished questionnaire has no entries to copy.",
+            },
+        )
+
+    group_id = str(uuid.uuid4())
+    for row in source_rows:
+        session.add(
+            Activity(
+                study_id=study.id,
+                participant_id=target_id,
+                day_label_id=row.day_label_id,
+                timeline_id=row.timeline_id,
+                activity_code=row.activity_code,
+                start_minutes=row.start_minutes,
+                end_minutes=row.end_minutes,
+                activity_name=row.activity_name,
+                activity_path_frontend=row.activity_path_frontend,
+                color=row.color,
+                category=row.category,
+                frequency_key=row.frequency_key,
+                parent_activity_code=row.parent_activity_code,
+                catalogue_version=row.catalogue_version,
+                group_id=group_id,
+            )
+        )
+    session.commit()
+
+    logger.info(
+        "Copied %s activities from '%s' to '%s' in study '%s' (group=%s)",
+        len(source_rows),
+        source.participant_id,
+        target_id,
+        study.name_short,
+        group_id,
+    )
+    return {
+        "copied": len(source_rows),
+        "group_id": group_id,
+        "source_participant_id": source.participant_id,
+        "target_participant_id": target_id,
     }
 
 
@@ -1194,7 +1375,9 @@ def copy_day(
             )
             continue
 
-        target_rows = [row for row in current_rows if row.day_label_id == target_label_id]
+        target_rows = [
+            row for row in current_rows if row.day_label_id == target_label_id
+        ]
         remaining = [row for row in current_rows if row.day_label_id != target_label_id]
 
         planned: List[Activity] = []

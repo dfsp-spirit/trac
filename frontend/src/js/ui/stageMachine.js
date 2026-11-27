@@ -33,7 +33,7 @@ import { renderStudyList } from './views/studyList.js';
  *     completeInstructions: () => Promise<{ stage: string }>,
  *   } | null,
  *   getLanguage: () => string,
- *   onEnterDiary: () => void,
+ *   onEnterDiary: (options: { reset: boolean }) => void,
  *   onSession?: (session: any) => void,
  * }} deps
  */
@@ -54,6 +54,13 @@ export function createStageMachine({
   let diaryMounted = false;
   let locked = false;
   let lastRefreshAt = 0;
+  /** The child whose questionnaire the mounted screen belongs to, '' outside proxy. */
+  /** @type {string | null} */
+  let activeSubject = null;
+  /** Set when the subject changed, so the diary screen is rebuilt from scratch. */
+  let pendingDiaryReset = false;
+  /** @param {any} payload The study-config payload. @returns {string} */
+  const subjectOf = (payload) => payload?.proxy?.active?.participant_id || '';
 
   /**
    * Move focus to the new page's heading. Replacing the content drops the
@@ -104,6 +111,13 @@ export function createStageMachine({
   async function refresh() {
     lastRefreshAt = Date.now();
     session = await requireApi().getStudyConfig(getLanguage());
+    const nextSubject = subjectOf(session);
+    // Submitting one child leaves the stage at `diary` again - for the next one.
+    // Without this the mounted screen keeps showing the previous child's entries.
+    if (activeSubject !== null && nextSubject && nextSubject !== activeSubject) {
+      pendingDiaryReset = true;
+    }
+    activeSubject = nextSubject;
     onSession?.(session);
     applyStage(session.stage);
   }
@@ -117,7 +131,8 @@ export function createStageMachine({
     if (diary) {
       if (!diaryMounted) {
         diaryMounted = true;
-        onEnterDiary();
+        onEnterDiary({ reset: pendingDiaryReset });
+        pendingDiaryReset = false;
       }
       return;
     }
@@ -200,6 +215,7 @@ export function createStageMachine({
     /** @param {any} loaded The study-config payload, which carries `stage`. */
     show(loaded) {
       session = loaded;
+      activeSubject = subjectOf(loaded);
       onSession?.(session);
       const requested = router.requested();
       // A deep link is honoured only when it names the stage the server reports,

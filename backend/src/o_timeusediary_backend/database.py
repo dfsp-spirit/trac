@@ -118,6 +118,31 @@ def _hydrate_study_texts_from_config(
     return updated
 
 
+def _ensure_report_mode_can_change(
+    session: Session, study: Study, requested_mode: str
+) -> None:
+    """Refuse to switch a study that already has participants to another mode.
+
+    A self-report study turns every participant into a diary owner; a proxy
+    study turns them into either a parent or a child, with links that only the
+    roster import can create. Reinterpreting rows that are already there would
+    decide, silently and for real research data, who is a child - so the switch
+    is only allowed while the study is still empty (``proxy_studies.md`` §9).
+    """
+    first_participant = session.exec(
+        select(StudyParticipant.id)
+        .where(StudyParticipant.study_id == study.id)
+        .limit(1)
+    ).first()
+    if first_participant is None:
+        return
+    raise ValueError(
+        f"Study '{study.name_short}': report_mode cannot change from "
+        f"'{study.report_mode}' to '{requested_mode}' because the study already "
+        "has participants. Create a new study instead."
+    )
+
+
 def _resolve_relative_to_studies_config(file_path: str) -> Path:
     candidate = Path(file_path)
     if candidate.is_absolute():
@@ -625,6 +650,12 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     study_updated = _hydrate_study_texts_from_config(
                         session, existing_study, study_config
                     )
+                    if existing_study.report_mode != study_config.report_mode:
+                        _ensure_report_mode_can_change(
+                            session, existing_study, study_config.report_mode
+                        )
+                        existing_study.report_mode = study_config.report_mode
+                        study_updated = True
                     if (
                         existing_study.require_diary_before_external_tasks
                         != study_config.require_diary_before_external_tasks
@@ -923,6 +954,7 @@ def create_config_file_studies_in_database(config_path: str) -> list[dict[str, o
                     name=study_config.name,
                     name_short=study_config.name_short,
                     description=(description_map or fallback_description),
+                    report_mode=study_config.report_mode,
                     allow_unlisted_participants=study_config.allow_unlisted_participants,
                     is_listed_publicly=study_config.is_listed_publicly,
                     require_consent=study_config.require_consent,

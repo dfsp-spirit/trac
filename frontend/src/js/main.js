@@ -19,6 +19,7 @@ import { createDiaryActions } from './state/diary.js';
 import { createInitialState, createStore } from './state/store.js';
 import { createCopyDay } from './ui/copyDay.js';
 import { createDiaryScreen } from './ui/diaryScreen.js';
+import { mountTemplateCopy } from './ui/templateCopy.js';
 import { createDiaryView } from './ui/diaryView.js';
 import { adoptParticipantId } from './ui/identity.js';
 import { createPanelController } from './ui/panelController.js';
@@ -87,9 +88,8 @@ export function mount({ root, params }) {
   } = handles;
 
   const wide = window.matchMedia('(min-width: 1200px)');
-
   let copy = /** @type {ReturnType<typeof createCopyDay> | null} */ (null); // wired below
-
+  const templateCopy = mountTemplateCopy(noticesHost, store, t, signals, () => api, () => actions);
   const api = studyName && participantId
     ? createApi(config.apiBaseUrl, studyName, participantId, {
         onError: (info) => signals.track('api.error', info),
@@ -166,8 +166,8 @@ export function mount({ root, params }) {
     t,
     api,
     getLanguage: () => store.get().language,
-    onEnterDiary: () => void actions?.load(),
-    onSession: (session) => (chrome.apply(session), signals.onSession(session)),
+    onEnterDiary: ({ reset } = { reset: false }) => void actions?.load({ resetDay: reset }),
+    onSession: (session) => (chrome.apply(session), signals.onSession(session), templateCopy.sessionChanged(session)),
   });
 
   const languageSwitch = createLanguageSwitch({
