@@ -2,8 +2,9 @@ TRAC MPIAE Changes
 ===================
 
 
-Current WIP
-------------
+v0.30.0 -- Dropped old frontend, monthly activities, timeout, other improvements
+---------------------------------------------------------------------------------
+- NEW: support activities with a frequency like bi-weekly and monthly in new frontend. CHG In the JSON, define the drequency ONCE per file, then re-use in each activity -- a lot less error-prone than before.
 - NEW: admins and study owners can change the participant-facing runtime settings from the admin study detail page: `require_consent`, `allow_skip_timeuse`, `num_recent_activities_shown`, `time_step_minutes`, `min_duration_minutes`, `inactivity_timeout_minutes` and `hide_server_wide_links`. The `PATCH /api/admin/studies/{study_name_short}/runtime-settings` endpoint applies partial updates atomically, validates the time-step/minimum-duration pair together, and audit-logs every changed field. Consent can only be enabled when `study_text_consent` exists for every supported language; the Texts editor cannot clear it while consent is required. Existing consent flags are not reset, time-grid changes do not rewrite stored diary rows, and the UI asks for confirmation before applying a time-grid change
 - NEW: opt-in participant inactivity timeout. `inactivity_timeout_minutes` defaults to `0` (off) for every study, open or closed; a positive value starts a sliding server-side session and redirects an idle tab to a standalone timeout page that asks for the invitation link again. The app shows a static privacy note in the menu and deliberately no countdown. The session token lives in an HttpOnly cookie and only its SHA-256 hash is stored (migration 0024); timed studies therefore require cookies, and participants who block them cannot use the study. The old two-phase stress/countdown setting is no longer read or written, and `inactivity_page_custom_text` is shown as plain text on the timeout page
 - CHG: remove the old frontend and promote the participant app: `frontend_new/` is now `frontend/` and is served at `/report/` (the former `/report-new/`). The old app, its `/report/` alias, its settings files and its E2E suite are gone; the admin-only E2E specs moved into the participant suite as the `admin-chromium` project
