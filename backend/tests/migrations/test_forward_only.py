@@ -52,6 +52,7 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("studies", "num_recent_activities_shown"),
     ("studies", "time_step_minutes"),
     ("studies", "min_duration_minutes"),
+    ("studies", "report_mode"),
     ("day_labels", "display_names"),
     ("study_participants", "study_submitted_at"),
     ("study_participants", "display_name"),
@@ -61,6 +62,9 @@ COLUMNS_ADDED_AFTER_0003 = (
     ("study_participants", "skipped_at"),
     ("study_participants", "skip_reason_code"),
     ("study_participants", "skip_note"),
+    ("study_participants", "proxy_participant_id"),
+    ("study_participants", "subject_name_encrypted"),
+    ("study_participants", "proxy_deadline_at"),
     ("timelines", "max_overlap"),
     ("activities", "client_uuid"),
     ("activities", "group_id"),
@@ -87,6 +91,10 @@ CONSTRAINTS_ADDED_AFTER_0003 = (
     ("activities", "uq_activity_slot"),
     ("activities", "ck_activity_end_after_start"),
     ("activities", "ck_activity_duration_max"),
+    ("studies", "ck_studies_report_mode"),
+    ("study_participants", "fk_study_participant_proxy"),
+    ("study_participants", "ck_study_participant_proxy_not_self"),
+    ("study_participants", "ix_study_participants_proxy"),
 )
 
 
@@ -126,6 +134,56 @@ def test_upgrading_twice_is_a_no_op(scratch_database):
 
     assert scratch_database.current() == HEAD
     assert sorted(scratch_database.tables()) == tables_before
+
+
+def test_proxy_link_rules_are_enforced_by_the_database(scratch_database):
+    """The parent link is a schema rule, not only an import check.
+
+    Migration 0025 adds the self-referential link. Three properties have to hold
+    on the migrated database, not just in the importer:
+
+    * a child in the same study may point at its parent,
+    * no row may point at itself (CHECK),
+    * a link may not cross studies (the composite foreign key, which is the
+      whole reason the column stores the participant id instead of the row id).
+    """
+    from sqlalchemy.exc import IntegrityError
+
+    scratch_database.upgrade("head")
+    scratch_database.seed("studies", name="Proxy study", name_short="proxy_links")
+    scratch_database.seed("studies", name="Other study", name_short="proxy_other")
+    proxy_study = scratch_database.scalar(
+        "SELECT id FROM studies WHERE name_short = 'proxy_links'"
+    )
+    other_study = scratch_database.scalar(
+        "SELECT id FROM studies WHERE name_short = 'proxy_other'"
+    )
+
+    scratch_database.seed(
+        "study_participants", study_id=proxy_study, participant_id="parent_1"
+    )
+    scratch_database.seed(
+        "study_participants",
+        study_id=proxy_study,
+        participant_id="child_1",
+        proxy_participant_id="parent_1",
+    )
+
+    with pytest.raises(IntegrityError):
+        scratch_database.seed(
+            "study_participants",
+            study_id=proxy_study,
+            participant_id="own_parent",
+            proxy_participant_id="own_parent",
+        )
+
+    with pytest.raises(IntegrityError):
+        scratch_database.seed(
+            "study_participants",
+            study_id=other_study,
+            participant_id="child_in_other_study",
+            proxy_participant_id="parent_1",
+        )
 
 
 @pytest.mark.parametrize("revision", REVISIONS[1:])

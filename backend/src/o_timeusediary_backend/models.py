@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     UniqueConstraint,
@@ -15,9 +16,22 @@ from sqlalchemy import (
 
 from .utils import utc_now
 
+# The values of ``studies.report_mode``. A study is either filled in by the
+# person themselves or by a proxy reporting for someone else (a parent for their
+# children) - never both. Kept here because the column needs them and a module
+# that imports ``models`` cannot be imported by it.
+REPORT_MODE_SELF = "self"
+REPORT_MODE_PROXY = "proxy"
+REPORT_MODES = (REPORT_MODE_SELF, REPORT_MODE_PROXY)
+
 
 class Study(SQLModel, table=True):
     __tablename__ = "studies"
+    __table_args__ = (
+        CheckConstraint(
+            "report_mode IN ('self', 'proxy')", name="ck_studies_report_mode"
+        ),
+    )
 
     id: Optional[int] = Field(default=None, primary_key=True)
     # `name` is the human-readable label (not an identifier): studies are looked
@@ -31,6 +45,12 @@ class Study(SQLModel, table=True):
     description: Optional[Union[str, Dict[str, str]]] = Field(
         default=None, sa_column=Column(JSON, nullable=True)
     )
+    # The data-source axis: `self` (the participant fills in their own diary) or
+    # `proxy` (a parent fills in one questionnaire per child; see migration
+    # 0025 and dev_tools/plans/proxy_studies.md). A mode rather than a flag,
+    # because a study is never both and the value is stored per study, not
+    # derived from the roster.
+    report_mode: str = Field(default=REPORT_MODE_SELF, sa_type=String(16))
     allow_unlisted_participants: bool = Field(default=True)
     # Opt-in (default false): whether the study is shown in the public list the
     # entry page offers to visitors who arrive without an invitation link. Only
@@ -440,6 +460,21 @@ class StudyParticipant(SQLModel, table=True):
     __tablename__ = "study_participants"
     __table_args__ = (
         UniqueConstraint("study_id", "participant_id", name="uq_study_participant"),
+        # Proxy studies: the parent link lives on the *child* row and stores the
+        # parent's participant_id, so this composite foreign key can reuse
+        # `uq_study_participant` and a link can never cross studies. A NULL link
+        # means the row is not a child (self-report studies, parents).
+        ForeignKeyConstraint(
+            ["study_id", "proxy_participant_id"],
+            ["study_participants.study_id", "study_participants.participant_id"],
+            name="fk_study_participant_proxy",
+        ),
+        CheckConstraint(
+            "proxy_participant_id IS NULL OR proxy_participant_id <> participant_id",
+            name="ck_study_participant_proxy_not_self",
+        ),
+        # "Who are this parent's children?" is asked on every participant request.
+        Index("ix_study_participants_proxy", "study_id", "proxy_participant_id"),
     )
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -453,6 +488,25 @@ class StudyParticipant(SQLModel, table=True):
     # child's name must go when the study goes. The rule lives in
     # `display_names.py`; nothing writes this column without validating it.
     display_name: Optional[str] = Field(default=None, sa_type=String(64))
+    # --- Proxy studies (a parent filling in one questionnaire per child) ------
+    # The parent who fills in this row: a *child* row points at the parent's
+    # participant_id, while parents (and every row of a self-report study) point
+    # at nothing. The composite foreign key above keeps both rows in one study,
+    # the CHECK stops a row from pointing at itself.
+    proxy_participant_id: Optional[str] = Field(default=None, sa_type=String(255))
+    # The child's first name, sealed by `encrypted_fields.py`. Only proxy
+    # children use it: it is never searched, exported or listed, and its single
+    # reader is the resolver that fills `participant_display_name` for the
+    # family's own browser. 512 because 50 code points of 4-byte UTF-8 seal to
+    # ~304 characters; 255 would overflow on a valid name.
+    subject_name_encrypted: Optional[str] = Field(default=None, sa_type=String(512))
+    # The family's hard deadline, set once per family at roster import from the
+    # KI's encrypted file column, stored once on the parent row. Deliberately a
+    # plain timestamp: a deadline identifies nobody and is compared on every
+    # write, which ciphertext cannot do.
+    proxy_deadline_at: Optional[datetime] = Field(
+        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+    )
     consent_given: Optional[bool] = Field(default=None)
     consent_decided_at: Optional[datetime] = Field(
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)

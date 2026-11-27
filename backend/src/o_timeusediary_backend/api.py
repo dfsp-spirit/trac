@@ -1213,6 +1213,9 @@ async def lifespan(app: FastAPI):
     # Fail fast when the admin/scientist configuration is inconsistent, e.g. a
     # username configured both as super admin and as scientist.
     settings.validate_auth_configuration()
+    # Same idea for the field-encryption key: a malformed value must not
+    # surface as a 500 on the first roster import or on a parent's first page.
+    settings.validate_field_encryption_keys()
 
     logger.info(
         f"TUD Backend version {tud_version} starting with allowed origins: {settings.allowed_origins}"

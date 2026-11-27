@@ -6,6 +6,8 @@ This file records the decisions taken so far and the clarifications from the 202
 
 Related existing docs: [Testing & environment](../../docs/agents/testing.md), [Backend agents](../../docs/agents/backend.md), [Database agents](../../docs/agents/database.md), [External tasks v2 spec](../../docs/external-tasks-v2-spec.md) (house style for this kind of document).
 
+Implementation plan: [proxy_studies_implementation.md](./proxy_studies_implementation.md) — phases, files, test data.
+
 ---
 
 ## 0. Intended workflow (clarified 2026-11-27)
@@ -153,7 +155,7 @@ Decided 2026-11-27 (decisions 19–22, 24–25). The KI operates the server and 
 
 ### 7.1 What is encrypted
 
-- **The child's name, at rest.** Column `study_participants.subject_name_encrypted`, `String(255)`: 50 characters of UTF-8 plus a nonce and an authentication tag, base64-encoded, lands between ~105 (AES-GCM) and ~165 (Fernet) characters. `display_name`'s `String(64)` cannot hold it; `display_name` stays the plaintext slot for self-report studies.
+- **The child's name, at rest.** Column `study_participants.subject_name_encrypted`, `String(512)`. A typical name yields 105 (AES-GCM) to 165 (Fernet) characters, but the bound has to cover the worst case: the name rule allows 50 *code points*, and 50 four-byte UTF-8 characters are 200 bytes, which seals to ~304 base64 characters. `String(255)` would fail on a valid name; `display_name`'s `String(64)` cannot hold a token at all. `display_name` stays the plaintext slot for self-report studies.
 - **The child's name, in the KI's roster file.** Decrypted on import, validated with `display_names.validate_display_name`, re-encrypted for storage. So there is exactly one name rule, and the roster cannot introduce a name the app would reject.
 - **The deadline, in the roster file** — decrypted on import and stored as a plain `DateTime(timezone=True)` on the parent row. It is not encrypted at rest: decision 16 makes it a comparison on every write, and a timestamp does not identify a person.
 - **Nothing else.** Encrypted values are never searched, sorted, joined, exported or listed.

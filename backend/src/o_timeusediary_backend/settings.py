@@ -1,7 +1,9 @@
 import os
 from dotenv import load_dotenv
 import json
-from typing import Optional
+from typing import List, Optional
+
+from .encrypted_fields import configured_keys
 
 load_dotenv()  # load .env file in working directory if it exists
 
@@ -387,6 +389,31 @@ class TUDBackendSettings:
                 "(TUD_API_SCIENTISTS) and as backup user (TUD_API_BACKUP_USERS): "
                 f"{overlapping_names}"
             )
+
+    @property
+    def field_encryption_keys(self) -> List[bytes]:
+        """Raw keys for ``*_encrypted`` columns; the first one encrypts.
+
+        The parsing and the envelope live in ``encrypted_fields``, which owns
+        the format. An empty list means "not configured", which is fine for a
+        deployment whose studies do not store encrypted columns.
+        """
+        return configured_keys()
+
+    def validate_field_encryption_keys(self) -> None:
+        """Fail fast at startup on a malformed field-encryption key.
+
+        Mirrors ``validate_auth_configuration``: a broken key has to show up as
+        a clear error at startup instead of a 500 on the first roster import or,
+        worse, on the first parent opening the diary.
+
+        An *absent* key is allowed — a deployment without proxy studies does not
+        need one — but a value that is present and unusable is never tolerated.
+
+        Raises:
+            EncryptionConfigError: If the variable is set but unusable.
+        """
+        configured_keys()
 
     @property
     def ux_event_retention_days(self) -> int:
