@@ -76,7 +76,7 @@ jobs:
     timeout-minutes: 30
     services:
       mariadb:
-        image: mariadb:13.0
+        image: mariadb:13.1
         env:
           MARIADB_ROOT_PASSWORD: Migration_Test_pw1
           MARIADB_DATABASE: timeusediary_db
