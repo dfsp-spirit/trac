@@ -352,6 +352,10 @@ stage, so no new stage value and no new client route exists.
 **Encryption.** Child names live in `subject_name_encrypted` (AES-256-GCM, `v1.`
 prefix, key from `TUD_FIELD_ENCRYPTION_KEYS`, first key encrypts and all keys
 decrypt). `display_names.participant_display_name()` is the only reader, so the
-plaintext exists only where it is needed. `GET /api/admin/diagnostics/encryption`
+plaintext exists only where it is needed. A missing or malformed key answers
+`503` with the variable to set (an app-level handler, so no request has to
+repeat it), which is what a roster upload and a parent's study-config request
+show instead of a bare "internal server error".
+`GET /api/admin/diagnostics/encryption`
 answers "can this deployment still read what it wrote?" without printing anything.
 The design record is `dev_tools/plans/proxy_studies.md`.
