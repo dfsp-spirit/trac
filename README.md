@@ -160,6 +160,27 @@ uv run tud studies delete my_study             # asks for confirmation
 uv run tud studies delete my_study --yes       # non-interactive
 ```
 
+To get an overview of every study in the database, use `tud studies list`. It
+prints one CSV row per study (header first), sorted by short name, with the same
+participant and activity numbers as the study detail page in the admin portal:
+
+```bash
+cd backend/
+uv run tud studies list
+```
+
+```
+name_short,is_proxy,status,participants,activities
+adult_pilot_de,false,closed,15,1240
+pilot_mpiae_01_open,false,open,42,3100
+pilot_mpiae_02_proxy,true,closed,8,96
+```
+
+`status` is `open` when anyone with the link can join the study
+(`allow_unlisted_participants`) and `closed` when it is invitation-only; proxy
+studies are always closed. `participants` counts enrolled participant rows, and
+`activities` counts logged diary entries for the study.
+
 The admin web interface at `<TUD_ROOTPATH>/admin` also lets you validate and
 import study configurations interactively through the browser.
 

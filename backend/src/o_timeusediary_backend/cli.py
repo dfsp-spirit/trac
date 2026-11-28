@@ -16,6 +16,7 @@ from .database import (
 )
 from .models import Activity, Study, StudyParticipant
 from .parsers.studies_config import load_studies_config
+from .proxy_families import is_proxy_study
 from .settings import settings
 from .study_cleanup import delete_study_data
 
@@ -94,6 +95,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--yes",
         action="store_true",
         help="Delete without asking for interactive confirmation.",
+    )
+
+    studies_subparsers.add_parser(
+        "list",
+        help=(
+            "Print one CSV row per study: short name, proxy flag, open/closed "
+            "state, participant count and activities logged"
+        ),
     )
 
     ux_parser = subparsers.add_parser(
@@ -509,6 +518,47 @@ def _study_row_counts(session: Session, study_id: int) -> dict[str, int]:
     return counts
 
 
+def _count_rows_per_study(session: Session, model) -> dict[int, int]:
+    """Row count per study id for a study-scoped model, in one query."""
+    return {
+        int(study_id): int(count or 0)
+        for study_id, count in session.exec(
+            select(model.study_id, func.count(model.id)).group_by(model.study_id)
+        ).all()
+        if study_id is not None
+    }
+
+
+def _run_studies_list() -> int:
+    """Print one CSV row per study, matching the admin detail page's numbers.
+
+    Same sources as ``participant_count`` and ``total_activities_logged`` on the
+    admin detail page, so the output can be compared against the portal. Open
+    means anyone with the link may join (``allow_unlisted_participants``); proxy
+    studies are always closed.
+    """
+    with Session(engine) as session:
+        studies = session.exec(select(Study).order_by(Study.name_short)).all()
+        participant_counts = _count_rows_per_study(session, StudyParticipant)
+        activity_counts = _count_rows_per_study(session, Activity)
+
+    lines = ["name_short,is_proxy,status,participants,activities"]
+    for study in studies:
+        lines.append(
+            ",".join(
+                [
+                    _csv_cell(study.name_short),
+                    "true" if is_proxy_study(study) else "false",
+                    "open" if study.allow_unlisted_participants else "closed",
+                    str(participant_counts.get(study.id, 0)),
+                    str(activity_counts.get(study.id, 0)),
+                ]
+            )
+        )
+    print("\n".join(lines))
+    return 0
+
+
 def _run_studies_delete(study_name_short: str, dry_run: bool, assume_yes: bool) -> int:
     with Session(engine) as session:
         study = session.exec(
@@ -568,6 +618,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "studies" and args.studies_command == "export-runtime-config":
         return _run_studies_export_runtime_config(args.output)
+
+    if args.command == "studies" and args.studies_command == "list":
+        return _run_studies_list()
 
     if args.command == "studies" and args.studies_command == "delete":
         return _run_studies_delete(

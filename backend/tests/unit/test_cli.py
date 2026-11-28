@@ -1,7 +1,9 @@
 import os
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from sqlmodel import Session, SQLModel, create_engine
 
 os.environ.setdefault("TUD_DATABASE_URL", "sqlite:///:memory:")
 os.environ.setdefault("TUD_ALLOWED_ORIGINS", '["http://localhost:3000"]')
@@ -9,6 +11,15 @@ os.environ.setdefault("TUD_API_ADMIN_USERNAME", "admin")
 os.environ.setdefault("TUD_API_ADMIN_PASSWORD", "admin")
 
 from o_timeusediary_backend import cli
+from o_timeusediary_backend.models import (
+    REPORT_MODE_PROXY,
+    REPORT_MODE_SELF,
+    Activity,
+    DayLabel,
+    Study,
+    StudyParticipant,
+    Timeline,
+)
 
 
 def test_cli_studies_import_runs_schema_then_import(monkeypatch, tmp_path, capsys):
@@ -449,3 +460,91 @@ def test_cli_studies_delete_reports_missing_study(monkeypatch, capsys):
     assert exit_code == 1
     assert calls == []
     assert "Study 'missing' not found." in capsys.readouterr().out
+
+
+def _add_study_with_data(
+    session: Session,
+    name_short: str,
+    *,
+    report_mode: str = REPORT_MODE_SELF,
+    allow_unlisted_participants: bool = True,
+    participants: int = 0,
+    activities: int = 0,
+) -> None:
+    study = Study(
+        name=f"Study {name_short}",
+        name_short=name_short,
+        report_mode=report_mode,
+        allow_unlisted_participants=allow_unlisted_participants,
+        activities_json_url=f"db_blob://{name_short}/en",
+        data_collection_start=datetime(2024, 1, 1, tzinfo=UTC),
+        data_collection_end=datetime(2028, 1, 1, tzinfo=UTC),
+    )
+    session.add(study)
+    session.commit()
+    session.refresh(study)
+
+    if not participants and not activities:
+        return
+
+    day_label = DayLabel(
+        study_id=study.id, name="monday", display_order=0, display_name="Monday"
+    )
+    timeline = Timeline(
+        study_id=study.id, name="primary", display_name="Primary", mode="single-choice"
+    )
+    session.add_all([day_label, timeline])
+    session.commit()
+    session.refresh(day_label)
+    session.refresh(timeline)
+
+    for index in range(participants):
+        session.add(StudyParticipant(study_id=study.id, participant_id=f"p{index}"))
+    for index in range(activities):
+        session.add(
+            Activity(
+                study_id=study.id,
+                participant_id="p0",
+                day_label_id=day_label.id,
+                timeline_id=timeline.id,
+                start_minutes=index * 10,
+                end_minutes=index * 10 + 10,
+                activity_code=100,
+                activity_name="Work",
+                activity_path_frontend="General > Work",
+            )
+        )
+    session.commit()
+
+
+def test_cli_studies_list_prints_one_csv_row_per_study(monkeypatch, capsys):
+    engine = create_engine("sqlite:///:memory:")
+    SQLModel.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        _add_study_with_data(session, "b_open", participants=2, activities=3)
+        _add_study_with_data(
+            session,
+            "a_closed",
+            allow_unlisted_participants=False,
+            participants=1,
+        )
+        _add_study_with_data(
+            session,
+            "c_proxy",
+            report_mode=REPORT_MODE_PROXY,
+            allow_unlisted_participants=False,
+        )
+
+    monkeypatch.setattr(cli, "engine", engine)
+
+    exit_code = cli.main(["studies", "list"])
+
+    assert exit_code == 0
+    # Sorted by name_short; studies without participants or activities report 0.
+    assert capsys.readouterr().out.strip().splitlines() == [
+        "name_short,is_proxy,status,participants,activities",
+        "a_closed,false,closed,1,0",
+        "b_open,false,open,2,3",
+        "c_proxy,true,closed,0,0",
+    ]
