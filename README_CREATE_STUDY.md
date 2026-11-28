@@ -1110,6 +1110,16 @@ For demos and manual QA, `tud roster encrypt plain.csv` produces the encrypted
 form from a plaintext file; `backend/testdata/proxy/` holds ready-made examples
 and `backend/studies_config_proxy_demo.json` a demo study.
 
+The backend needs `TUD_FIELD_ENCRYPTION_KEYS` configured before a roster upload
+can succeed: that is the key the names were sealed with, and a deployment
+without it cannot read them. Set it in `backend/.env` (the value in
+`.env.example` is the shared dev/test key that the encrypted files under
+`testdata/proxy/` were created with) and restart the backend. If the key is
+missing or malformed, the upload answers `503` with a message naming the
+variable instead of a generic server error; `GET /api/admin/diagnostics/encryption`
+(shown on the admin *Tools* page) reports whether the configured key can read the
+stored names.
+
 ### What a parent sees
 
 One invitation link, no child in it. The app shows the first child whose

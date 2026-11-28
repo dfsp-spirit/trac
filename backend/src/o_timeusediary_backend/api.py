@@ -1426,6 +1426,33 @@ async def global_exception_handler(request: Request, exc: Exception):
     return response
 
 
+@app.exception_handler(EncryptionConfigError)
+async def encryption_config_exception_handler(
+    request: Request, exc: EncryptionConfigError
+):
+    """Answer a missing or unusable key as 503 with the fix, not as a 500.
+
+    A roster upload, or a parent's study-config request, raises this error when
+    ``TUD_FIELD_ENCRYPTION_KEYS`` is absent or malformed. The global handler
+    would answer "Internal server error", which hides the one thing the operator
+    has to do. Nothing encrypted and no plaintext is in the message; the class
+    and its callers guarantee that.
+    """
+    logger.error("Field encryption is misconfigured: %s", exc)
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={
+            "detail": (
+                "Field encryption is not configured correctly on this server, so "
+                "encrypted values (such as a proxy roster's child names) cannot "
+                "be read or written. Set TUD_FIELD_ENCRYPTION_KEYS to the "
+                "deployment's key and restart the backend. "
+                f"Reason: {exc}"
+            )
+        },
+    )
+
+
 # Add this exception handler for request validation errors
 @app.exception_handler(RequestValidationError)
 async def request_validation_exception_handler(

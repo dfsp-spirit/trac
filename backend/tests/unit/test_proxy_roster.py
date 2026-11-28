@@ -268,3 +268,49 @@ def test_dry_run_writes_nothing(session):
     assert summary["parents_created"] == 1
     assert summary["children_created"] == 1
     assert _by_id(session, study) == {}
+
+
+# ── the answer for a deployment that has no key ─────────────────────────────
+@pytest.mark.asyncio
+async def test_a_missing_key_is_reported_to_the_admin_as_a_503(monkeypatch, session):
+    """A roster upload without a configured key must name the fix.
+
+    This is the reported failure: the roster upload answered "internal server
+    error" (the generic handler) because ``EncryptionConfigError`` was unhandled,
+    which told the operator nothing about ``TUD_FIELD_ENCRYPTION_KEYS``.
+    """
+    import httpx
+
+    from o_timeusediary_backend import api
+
+    monkeypatch.delenv(ef.KEY_ENV)
+    study = _study(session)
+
+    api.app.dependency_overrides[api.verify_admin] = lambda: "unit-test-admin"
+    api.app.dependency_overrides[api.get_session] = lambda: session
+    try:
+        transport = httpx.ASGITransport(app=api.app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://testserver"
+        ) as client:
+            response = await client.post(
+                f"/api/admin/studies/{study.name_short}"
+                "/import-participants?dry_run=true",
+                files={
+                    "file": (
+                        "roster.csv",
+                        (
+                            "parent_id,subject_id,subject_name_encrypted,"
+                            "latest_possible_submission_at_encrypted\n"
+                            "p1,c1,v1.notarealtoken,v1.notarealtoken\n"
+                        ),
+                        "text/csv",
+                    )
+                },
+            )
+    finally:
+        api.app.dependency_overrides.clear()
+
+    assert response.status_code == 503
+    assert ef.KEY_ENV in response.json()["detail"]
+    assert session.exec(select(StudyParticipant)).all() == []
