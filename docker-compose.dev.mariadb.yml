@@ -1,6 +1,6 @@
 services:
   db:
-    image: mariadb:13.0
+    image: mariadb:13.1
     environment:
       MARIADB_DATABASE: timeusediary_db
       MARIADB_USER: timeusediary_user
